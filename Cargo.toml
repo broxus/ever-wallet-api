@@ -1,0 +1,68 @@
+[package]
+name = "ton-wallet-api"
+version = "0.1.0"
+edition = "2018"
+publish = false
+
+[lib]
+name = "ton_wallet_api_lib"
+path = "src/lib.rs"
+
+[dependencies]
+async-trait = "0.1"
+chrono = { version = "*", features = ["serde"] }
+config = { version = "0.11.0", default-features = false }
+derive_more = "*"
+dexpa = { git = "ssh://git@gitlab.dexpa.io/rust/libdexpa", features = ["sentry-integration", "exchange", "web"] }
+futures = { version = "0.3" }
+hex = "*"
+hmac = "*"
+http = "0.2"
+hyper = { version = "0.14" }
+log = { version = "0.4", features = ["std", "serde"] }
+pin-project = "0.4"
+opg = "0.0"
+r2d2 = "0.8.9"
+r2d2_redis = "0.14.0"
+redis = "0.20.2"
+sentry = { version = "0.23.0", features = ["log", "debug-logs"] }
+sentry-panic = { version = "0.23.0" }
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+serde_yaml = "0.8.17"
+sha2 = "*"
+snafu = "*"
+stackdriver_logger = { git = "https://github.com/dexpa/stackdriver-logger" }
+tokio = { version = "1", features = ["full"] }
+uuid = { version = "0.8", features = ["v4", "serde"] }
+url = { version = "2.2.0", features = ["serde"] }
+warp = { version = "0.3" }
+anyhow = "1.0.38"
+lazy_static = "1.4.0"
+sqlx = { version = "0.5", features = ["runtime-tokio-native-tls", "postgres", "uuid", "bigdecimal", "offline", "chrono", "json"] }
+indexmap = "*"
+urlencoding = "2.1.0"
+
+nekoton = { git = "https://github.com/broxus/nekoton.git", default-features = false }
+node-indexer = { git = "ssh://git@gitlab.dexpa.io/broxus/legacy-node-indexer" }
+indexer-lib = { git = "ssh://git@gitlab.dexpa.io/broxus/legacy-node-indexer" }
+ton_abi = { git = "https://github.com/tonlabs/ton-labs-abi", rev = "a2b2a9dc2e8c30a070e9af79cf0c24a55bdd5a87" }
+ton_types = { git = "https://github.com/tonlabs/ton-labs-types" }
+ton_block = { git = "https://github.com/tonlabs/ton-labs-block.git" }
+
+thiserror = "1.0.26"
+itertools = "0.10.1"
+lru = "0.6.5"
+parking_lot = { version = "0.11.1", default_features = false }
+bigdecimal = {version= "0.2.0",features =["serde"] }
+num-bigint = "0.3.2"
+
+
+[dependencies.ton_api]
+git = "https://github.com/broxus/ton-labs-tl.git"
+branch = "original"
+package = "ton_api"
+features = ["lite_api", "ton_api"]
+
+[dev-dependencies]
+env_logger = "0.8.4"
