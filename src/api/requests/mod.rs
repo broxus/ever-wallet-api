@@ -2,8 +2,11 @@ use bigdecimal::BigDecimal;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
-use crate::models::account_enums::{AccountType, TonEventStatus, AccountAddressType, PostTonTransactionSendOutputType};
-use crate::models::address::Address;
+use crate::models::account_enums::{
+    AccountAddressType, AccountType, TonEventStatus, TransactionSendOutputType,
+};
+use crate::models::address::{Address, CreateAddress};
+use crate::models::transactions::{TransactionSend, TransactionSendOutput};
 
 #[derive(Debug, Deserialize, Serialize, Clone, derive_more::Constructor)]
 #[serde(rename_all = "camelCase")]
@@ -18,26 +21,19 @@ pub struct CreateAddressRequest {
     pub workchain_id: Option<i32>,
 }
 
+impl From<CreateAddressRequest> for CreateAddress {
+    fn from(c: CreateAddressRequest) -> Self {
+        CreateAddress {
+            account_type: c.account_type,
+            workchain_id: c.workchain_id,
+        }
+    }
+}
+
 #[derive(Debug, Deserialize, Serialize, Clone, derive_more::Constructor)]
 #[serde(rename_all = "camelCase")]
 pub struct BalanceRequest {
     pub api_key: String,
-}
-
-#[derive(Debug, Deserialize, Serialize, Clone, derive_more::Constructor)]
-#[serde(rename_all = "camelCase")]
-pub struct PostTransactionSendRequest {
-    pub source_address: Address,
-    pub outputs: Vec<PostTonTransactionSendOutput>,
-}
-
-#[derive(Debug, Deserialize, Serialize, Clone)]
-#[serde(rename_all = "camelCase")]
-pub struct PostTonTransactionSendOutput {
-    pub id: Uuid,
-    pub recipient_address: Address,
-    pub value: BigDecimal,
-    pub output_type: Option<PostTonTransactionSendOutputType>,
 }
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
@@ -46,6 +42,16 @@ pub struct PostTonTransactionSendRequest {
     pub id: Uuid,
     pub from_address: Address,
     pub outputs: Vec<PostTonTransactionSendOutputRequest>,
+}
+
+impl From<PostTonTransactionSendRequest> for TransactionSend {
+    fn from(c: PostTonTransactionSendRequest) -> Self {
+        TransactionSend {
+            id: c.id,
+            from_address: c.from_address,
+            outputs: c.outputs.into_iter().map(From::from).collect(),
+        }
+    }
 }
 
 #[derive(Debug, Deserialize, Serialize, Clone, derive_more::Constructor)]
@@ -65,7 +71,17 @@ pub struct PostTonTransactionEventsRequest {
 pub struct PostTonTransactionSendOutputRequest {
     pub recipient_address: Address,
     pub value: BigDecimal,
-    pub output_type: Option<PostTonTransactionSendOutputType>,
+    pub output_type: Option<TransactionSendOutputType>,
+}
+
+impl From<PostTonTransactionSendOutputRequest> for TransactionSendOutput {
+    fn from(c: PostTonTransactionSendOutputRequest) -> Self {
+        TransactionSendOutput {
+            recipient_address: c.recipient_address,
+            value: c.value,
+            output_type: c.output_type,
+        }
+    }
 }
 
 #[derive(Debug, Deserialize, Serialize, Clone, derive_more::Constructor)]

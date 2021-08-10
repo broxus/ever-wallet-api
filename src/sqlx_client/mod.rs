@@ -1,12 +1,9 @@
 use sqlx::PgPool;
 
-mod bad_transactions;
-mod balances;
+mod addresses;
 mod keys;
-mod raw_transactions;
-mod root_token_contracts;
-mod token_owners;
 mod transactions;
+mod transactions_events;
 
 #[derive(Clone)]
 pub struct SqlxClient {
@@ -18,6 +15,3 @@ impl SqlxClient {
         SqlxClient { pool }
     }
 }
-
-#[cfg(test)]
-mod test {}

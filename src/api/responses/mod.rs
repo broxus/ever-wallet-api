@@ -3,10 +3,11 @@ use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
 use crate::models::account_enums::{
-    AccountStatus, AccountType, AddressResponse, TonStatus, TonTransactionDirection,
-    TonTransactionStatus,
+    AccountStatus, AccountType, AddressResponse, TonEventStatus, TonStatus,
+    TonTransactionDirection, TonTransactionStatus,
 };
-use crate::models::account_transaction_event::AccountTransactionEvent;
+use crate::models::service_id::ServiceId;
+use crate::models::sqlx::{TransactionDb, TransactionEventDb};
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
 #[serde(rename_all = "camelCase")]
@@ -27,7 +28,43 @@ pub struct TonEventsResponse {
 #[serde(rename_all = "camelCase")]
 pub struct EventsResponse {
     pub count: i32,
-    pub items: Vec<AccountTransactionEvent>,
+    pub items: Vec<AccountTransactionEventResponse>,
+}
+
+#[derive(Debug, Deserialize, Serialize, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct AccountTransactionEventResponse {
+    pub id: Uuid,
+    pub service_id: ServiceId,
+    pub transaction_id: Uuid,
+    pub message_hash: String,
+    pub account_workchain_id: i32,
+    pub account_hex: String,
+    pub balance_change: Option<BigDecimal>,
+    pub transaction_direction: TonTransactionDirection,
+    pub transaction_status: TonTransactionStatus,
+    pub event_status: TonEventStatus,
+    pub created_at: i64,
+    pub updated_at: i64,
+}
+
+impl From<TransactionEventDb> for AccountTransactionEventResponse {
+    fn from(c: TransactionEventDb) -> Self {
+        AccountTransactionEventResponse {
+            id: c.id,
+            service_id: c.service_id,
+            transaction_id: c.transaction_id,
+            message_hash: c.message_hash,
+            account_workchain_id: c.account_workchain_id,
+            account_hex: c.account_hex,
+            balance_change: c.balance_change,
+            transaction_direction: c.transaction_direction,
+            transaction_status: c.transaction_status,
+            event_status: c.event_status,
+            created_at: c.created_at.timestamp_millis(),
+            updated_at: c.updated_at.timestamp_millis(),
+        }
+    }
 }
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
@@ -50,8 +87,8 @@ pub struct AccountTransactionResponse {
 #[serde(rename_all = "camelCase")]
 pub struct AccountTransactionDataResponse {
     pub id: Uuid,
-    pub message_hash: TxHash,
-    pub transaction_hash: Option<TxHash>,
+    pub message_hash: String,
+    pub transaction_hash: Option<String>,
     pub transaction_lt: Option<String>,
     pub account: AddressResponse,
     pub value: Option<BigDecimal>,
@@ -62,6 +99,26 @@ pub struct AccountTransactionDataResponse {
     pub bounce: bool,
     pub created_at: i64,
     pub updated_at: i64,
+}
+
+impl From<TransactionDb> for AccountTransactionDataResponse {
+    fn from(c: TransactionDb) -> Self {
+        AccountTransactionDataResponse {
+            id: c.id,
+            message_hash: c.message_hash,
+            transaction_hash: c.transaction_hash,
+            transaction_lt: c.transaction_lt.map(|v| v.to_string()),
+            account: c.account,
+            value: c.value,
+            balance_change: c.balance_change.unwrap_or_default(),
+            direction: c.direction,
+            status: c.status,
+            aborted: c.aborted,
+            bounce: c.bounce,
+            created_at: c.created_at.timestamp_millis(),
+            updated_at: c.updated_at.timestamp_millis(),
+        }
+    }
 }
 
 #[derive(Debug, Deserialize, Serialize, Clone)]

@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 
+use bigdecimal::{BigDecimal, Zero};
 use dexpa::currency::Currency;
 use futures::future::BoxFuture;
 use futures::FutureExt;
@@ -8,137 +9,129 @@ use super::Context;
 use crate::api::requests::*;
 use crate::api::responses::*;
 use crate::api::utils::*;
-use crate::models::balances::BalancesSearch;
-use crate::models::transactions::TransactionsSearch;
-use bigdecimal::{BigDecimal, Zero};
+use crate::models::address::Address;
+use crate::models::service_id::ServiceId;
 
-pub fn post_transactions(
+pub fn post_address_create(
+    service_id: ServiceId,
+    input: CreateAddressRequest,
     ctx: Context,
-    input: TransactionsRequest,
 ) -> BoxFuture<'static, Result<impl warp::Reply, warp::Rejection>> {
     async move {
-        let input_offset = input.offset;
-        let input_limit = input.limit;
+        let address = ctx
+            .ton_service
+            .create_address(&service_id, &input.clone().into())
+            .await?;
+        let res = AccountAddressResponse::from(address);
+        Ok(warp::reply::json(&(res)))
+    }
+    .boxed()
+}
 
-        let transactions = ctx
-            .tokens_service
-            .search_transactions(&input.clone().into())
-            .await
-            .map_err(|e| warp::reject::custom(BadRequestError { 0: e.to_string() }))?;
+pub fn post_address_check(
+    service_id: ServiceId,
+    input: PostAddressBalanceRequest,
+    ctx: Context,
+) -> BoxFuture<'static, Result<impl warp::Reply, warp::Rejection>> {
+    async move {
+        let address = ctx
+            .ton_service
+            .check_address(&service_id, &input.address)
+            .await?;
+        let res = PostCheckedAddressResponse::from(address);
+        Ok(warp::reply::json(&(res)))
+    }
+    .boxed()
+}
 
-        let transactions = transactions
+pub fn get_address_balance(
+    address: Address,
+    service_id: ServiceId,
+    ctx: Context,
+) -> BoxFuture<'static, Result<impl warp::Reply, warp::Rejection>> {
+    async move {
+        let address = ctx
+            .ton_service
+            .get_address_balance(&service_id, &address)
+            .await?;
+        let res = AccountAddressResponse::from(address);
+
+        Ok(warp::reply::json(&(res)))
+    }
+    .boxed()
+}
+
+pub fn post_transactions_create(
+    service_id: ServiceId,
+    input: PostTonTransactionSendRequest,
+    ctx: Context,
+) -> BoxFuture<'static, Result<impl warp::Reply, warp::Rejection>> {
+    async move {
+        let transaction = ctx
+            .ton_service
+            .create_transaction(&service_id, &input.into())
+            .await?;
+        let res = AccountTransactionResponse::from(address);
+        Ok(warp::reply::json(&(res)))
+    }
+    .boxed()
+}
+
+pub fn get_transactions_mh(
+    message_hash: String,
+    service_id: ServiceId,
+    ctx: Context,
+) -> BoxFuture<'static, Result<impl warp::Reply, warp::Rejection>> {
+    async move {
+        let transaction = ctx
+            .ton_service
+            .get_transaction_by_mh(&service_id, &message_hash)
+            .await?;
+        let res = AccountTransactionResponse::from(transaction);
+
+        Ok(warp::reply::json(&(res)))
+    }
+    .boxed()
+}
+
+pub fn get_transactions_h(
+    transaction_hash: String,
+    service_id: ServiceId,
+    ctx: Context,
+) -> BoxFuture<'static, Result<impl warp::Reply, warp::Rejection>> {
+    async move {
+        let transaction = ctx
+            .ton_service
+            .get_transaction_by_h(&service_id, &transaction_hash)
+            .await?;
+        let res = AccountTransactionResponse::from(transaction);
+
+        Ok(warp::reply::json(&(res)))
+    }
+    .boxed()
+}
+
+pub fn post_events(
+    service_id: ServiceId,
+    input: PostTonTransactionEventsRequest,
+    ctx: Context,
+) -> BoxFuture<'static, Result<impl warp::Reply, warp::Rejection>> {
+    async move {
+        let transactions_events = ctx
+            .ton_service
+            .search_events(&service_id, &input.event_status)
+            .await?;
+        let events: Vec<_> = transactions_events
             .into_iter()
-            .map(TransactionInfoResponse::from)
-            .collect::<Vec<_>>();
-
-        let total_count = ctx
-            .tokens_service
-            .count_transactions(&TransactionsSearch::from(input.clone()))
-            .await
-            .map_err(|e| warp::reject::custom(BadRequestError { 0: e.to_string() }))?;
-
-        let res = TransactionsInfoAndCountResponse::new(
-            transactions,
-            input_offset,
-            input_limit,
-            total_count,
-        );
-        Ok(warp::reply::json(&(res)))
-    }
-    .boxed()
-}
-
-pub fn get_tokens(ctx: Context) -> BoxFuture<'static, Result<impl warp::Reply, warp::Rejection>> {
-    async move {
-        let tokens = ctx
-            .tokens_service
-            .get_all_tokens()
-            .await
-            .map_err(|e| warp::reject::custom(BadRequestError { 0: e.to_string() }))?;
-        let res = tokens
-            .into_iter()
-            .map(RootTokenContractResponse::from)
-            .collect::<Vec<_>>();
-
-        Ok(warp::reply::json(&(res)))
-    }
-    .boxed()
-}
-
-pub fn get_token_owner_by_address(
-    address: String,
-    ctx: Context,
-) -> BoxFuture<'static, Result<impl warp::Reply, warp::Rejection>> {
-    async move {
-        let token = ctx
-            .tokens_service
-            .get_token_owner_by_address(address)
-            .await
-            .map_err(|e| warp::reject::custom(BadRequestError { 0: e.to_string() }))?;
-
-        let res = TokenOwnerResponse::from(token);
-
-        Ok(warp::reply::json(&(res)))
-    }
-    .boxed()
-}
-
-pub fn get_root_contract_by_address(
-    address: String,
-    ctx: Context,
-) -> BoxFuture<'static, Result<impl warp::Reply, warp::Rejection>> {
-    async move {
-        let (root_token, mut total_supply) = ctx
-            .tokens_service
-            .get_root_token_by_address(address)
-            .await
-            .map_err(|e| {
-                if e.to_string().contains(
-                    "no rows returned by a query that expected to return at least one row",
-                ) {
-                    warp::reject::not_found()
-                } else {
-                    warp::reject::custom(BadRequestError { 0: e.to_string() })
-                }
-            })?;
-
-        let mut res = RootContractInfoWithTotalSupplyResponse::from(root_token);
-        res.total_supply = total_supply;
-
-        Ok(warp::reply::json(&(res)))
-    }
-    .boxed()
-}
-
-pub fn post_root_contracts_by_symbol_substring(
-    input: RootTokenContractsSearchRequest,
-    ctx: Context,
-) -> BoxFuture<'static, Result<impl warp::Reply, warp::Rejection>> {
-    async move {
-        let input_offset = input.offset;
-        let input_limit = input.limit;
-
-        let (root_tokens, total_count) = ctx
-            .tokens_service
-            .post_root_tokens_by_token_substring(input)
-            .await
-            .map_err(|e| warp::reject::custom(BadRequestError { 0: e.to_string() }))?;
-
-        let root_token_contracts = root_tokens
-            .into_iter()
-            .map(|(root_token_contract, total_supply)| {
-                let mut root_contract =
-                    RootContractInfoWithTotalSupplyResponse::from(root_token_contract);
-                root_contract.total_supply = total_supply;
-                root_contract
-            })
-            .collect::<Vec<_>>();
-
-        let res = RootTokenContractsSearchResponse {
-            root_token_contracts,
-            limit: input_limit,
-            offset: input_offset,
-            total_count,
+            .map(AccountTransactionEventResponse::from)
+            .collect();
+        let res = TonEventsResponse {
+            status: TonStatus::Ok,
+            data: Some(EventsResponse {
+                count: events.len() as i32,
+                items: events,
+            }),
+            error_message: None,
         };
 
         Ok(warp::reply::json(&(res)))
@@ -146,128 +139,17 @@ pub fn post_root_contracts_by_symbol_substring(
     .boxed()
 }
 
-pub fn get_root_contracts_by_symbol_substring(
-    token: String,
+pub fn post_events_mark(
+    service_id: ServiceId,
+    input: PostTonMarkEventsRequest,
     ctx: Context,
 ) -> BoxFuture<'static, Result<impl warp::Reply, warp::Rejection>> {
     async move {
-        let root_tokens = ctx
-            .tokens_service
-            .get_root_token_by_token_substring(token)
-            .await
-            .map_err(|e| warp::reject::custom(BadRequestError { 0: e.to_string() }))?;
-
-        let res = root_tokens
-            .into_iter()
-            .map(|(x1, x2)| {
-                let mut root_contract = RootContractInfoWithTotalSupplyResponse::from(x1);
-                root_contract.total_supply = x2;
-                root_contract
-            })
-            .filter(|x| x.total_supply > BigDecimal::zero())
-            .collect::<Vec<_>>();
-
-        Ok(warp::reply::json(&(res)))
-    }
-    .boxed()
-}
-
-pub fn post_address_transactions(
-    address: String,
-    ctx: Context,
-    input: AddressTransactionsRequest,
-) -> BoxFuture<'static, Result<impl warp::Reply, warp::Rejection>> {
-    async move {
-        let input_offset = input.offset;
-        let input_limit = input.limit;
-        let search = (address, input).into();
-        let transactions = ctx
-            .tokens_service
-            .search_transactions(&search)
-            .await
-            .map_err(|e| warp::reject::custom(BadRequestError { 0: e.to_string() }))?;
-
-        let transactions = transactions
-            .into_iter()
-            .map(TransactionInfoResponse::from)
-            .collect::<Vec<_>>();
-
-        let total_count = ctx
-            .tokens_service
-            .count_transactions(&search)
-            .await
-            .map_err(|e| warp::reject::custom(BadRequestError { 0: e.to_string() }))?;
-
-        let res = AddressTransactionsInfoResponse::new(
-            transactions,
-            input_offset,
-            input_limit,
-            total_count,
-        );
-
-        Ok(warp::reply::json(&(res)))
-    }
-    .boxed()
-}
-
-pub fn post_address_balances(
-    address: String,
-    ctx: Context,
-    input: AddressBalancesRequest,
-) -> BoxFuture<'static, Result<impl warp::Reply, warp::Rejection>> {
-    async move {
-        let input_offset = input.offset;
-        let input_limit = input.limit;
-
-        let balances = ctx
-            .tokens_service
-            .search_balances(&(address.clone(), input.clone()).into())
-            .await
-            .map_err(|e| warp::reject::custom(BadRequestError { 0: e.to_string() }))?;
-
-        let balances = balances
-            .into_iter()
-            .map(BalanceResponse::from)
-            .collect::<Vec<_>>();
-
-        let total_count = ctx
-            .tokens_service
-            .count_balances(&(address, input).into())
-            .await
-            .map_err(|e| warp::reject::custom(BadRequestError { 0: e.to_string() }))?;
-
-        let res = BalancesAndCountResponse::new(balances, input_offset, input_limit, total_count);
-        Ok(warp::reply::json(&(res)))
-    }
-    .boxed()
-}
-
-pub fn post_balances(
-    ctx: Context,
-    input: BalancesRequest,
-) -> BoxFuture<'static, Result<impl warp::Reply, warp::Rejection>> {
-    async move {
-        let input_offset = input.offset;
-        let input_limit = input.limit;
-
-        let balances = ctx
-            .tokens_service
-            .search_balances(&input.clone().into())
-            .await
-            .map_err(|e| warp::reject::custom(BadRequestError { 0: e.to_string() }))?;
-
-        let res = balances
-            .into_iter()
-            .map(BalanceResponse::from)
-            .collect::<Vec<_>>();
-
-        let total_count = ctx
-            .tokens_service
-            .count_balances(&BalancesSearch::from(input))
-            .await
-            .map_err(|e| warp::reject::custom(BadRequestError { 0: e.to_string() }))?;
-
-        let res = BalancesAndCountResponse::new(res, input_offset, input_limit, total_count);
+        ctx.ton_service.mark_event(&service_id, &input.id).await?;
+        let res = MarkEventsResponse {
+            status: TonStatus::Ok,
+            error_message: None,
+        };
 
         Ok(warp::reply::json(&(res)))
     }

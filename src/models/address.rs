@@ -1,3 +1,5 @@
+use crate::models::account_enums::AccountType;
+
 #[derive(
     Clone,
     Debug,
@@ -17,3 +19,9 @@
 )]
 #[opg(inline, string)]
 pub struct Address(pub String);
+
+#[derive(Clone, Debug, serde::Serialize, serde::Deserialize, Eq, PartialEq)]
+pub struct CreateAddress {
+    pub account_type: Option<AccountType>,
+    pub workchain_id: Option<i32>,
+}

@@ -52,7 +52,7 @@ pub async fn start_server() -> StdResult<()> {
 
     let config = Arc::new(config);
     let sqlx_client = SqlxClient::new(pool);
-    let tokens_service = Arc::new(TonServiceImpl::new(sqlx_client.clone()));
+    let ton_service = Arc::new(TonServiceImpl::new(sqlx_client.clone()));
     let auth_service = Arc::new(AuthServiceImpl::new(
         sqlx_client.clone(),
         redis_pool.clone(),
@@ -74,7 +74,7 @@ pub async fn start_server() -> StdResult<()> {
 
     tokio::spawn(http_service(
         config.server_addr,
-        tokens_service,
+        ton_service,
         auth_service,
         owners_hash,
     ));

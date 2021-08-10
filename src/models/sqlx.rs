@@ -4,8 +4,10 @@ use thiserror::Error;
 use chrono::NaiveDateTime;
 use uuid::Uuid;
 
+use crate::models::account_enums::{
+    AccountType, TonEventStatus, TonTransactionDirection, TonTransactionStatus,
+};
 use crate::models::service_id::ServiceId;
-use crate::models::account_enums::{AccountType, TonTransactionDirection, TonTransactionStatus, TonEventStatus};
 
 #[derive(Clone, Debug, serde::Serialize, serde::Deserialize, Eq, PartialEq)]
 pub struct ApiServiceDb {
@@ -42,8 +44,8 @@ pub struct AddressDb {
     pub public_key: String,
     pub private_key: String,
     pub account_type: AccountType,
-    pub custodians:   Option<i32>,
-    pub confirmations:   Option<i32>,
+    pub custodians: Option<i32>,
+    pub confirmations: Option<i32>,
     pub custodians_public_keys: Option<serde_json::Value>,
     pub balance: BigDecimal,
     pub created_at: NaiveDateTime,

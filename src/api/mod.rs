@@ -23,11 +23,11 @@ use tokio::sync::{Mutex, RwLock};
 
 pub async fn http_service(
     server_http_addr: SocketAddr,
-    tokens_service: Arc<dyn TonService>,
+    ton_service: Arc<dyn TonService>,
     auth_service: Arc<dyn AuthService>,
 ) {
     let ctx = Context {
-        tokens_service,
+        ton_service,
         auth_service,
     };
 
@@ -96,8 +96,8 @@ mod filters {
             .and(
                 swagger()
                     .or(post_address_create(ctx.clone()))
-                    .or(get_address_balance(ctx.clone()))
                     .or(post_address_check(ctx.clone()))
+                    .or(get_address_balance(ctx.clone()))
                     .or(post_transactions_create(ctx.clone()))
                     .or(get_transactions_mh(ctx.clone()))
                     .or(get_transactions_h(ctx.clone()))

@@ -12,6 +12,6 @@ use crate::sqlx_client::SqlxClient;
 
 #[derive(Clone)]
 pub struct Context {
-    pub tokens_service: Arc<dyn TonService>,
+    pub ton_service: Arc<dyn TonService>,
     pub auth_service: Arc<dyn AuthService>,
 }

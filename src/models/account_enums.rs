@@ -64,7 +64,7 @@ pub enum AccountAddressType {
 }
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
-pub enum PostTonTransactionSendOutputType {
+pub enum TransactionSendOutputType {
     Normal,
     AllBalance,
     AllBalanceDeleteNetworkAccount,
