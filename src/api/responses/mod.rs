@@ -9,30 +9,34 @@ use crate::models::account_enums::{
 use crate::models::service_id::ServiceId;
 use crate::models::sqlx::{TransactionDb, TransactionEventDb};
 
-#[derive(Debug, Deserialize, Serialize, Clone)]
+#[derive(Debug, Deserialize, Serialize, Clone, opg::OpgModel)]
 #[serde(rename_all = "camelCase")]
+#[opg("MarkEventsResponse")]
 pub struct MarkEventsResponse {
     pub status: TonStatus,
     pub error_message: Option<String>,
 }
 
-#[derive(Debug, Deserialize, Serialize, Clone)]
+#[derive(Debug, Deserialize, Serialize, Clone, opg::OpgModel)]
 #[serde(rename_all = "camelCase")]
+#[opg("TonEventsResponse")]
 pub struct TonEventsResponse {
     pub status: TonStatus,
     pub data: Option<EventsResponse>,
     pub error_message: Option<String>,
 }
 
-#[derive(Debug, Deserialize, Serialize, Clone)]
+#[derive(Debug, Deserialize, Serialize, Clone, opg::OpgModel)]
 #[serde(rename_all = "camelCase")]
+#[opg("EventsResponse")]
 pub struct EventsResponse {
     pub count: i32,
     pub items: Vec<AccountTransactionEventResponse>,
 }
 
-#[derive(Debug, Deserialize, Serialize, Clone)]
+#[derive(Debug, Deserialize, Serialize, Clone, opg::OpgModel)]
 #[serde(rename_all = "camelCase")]
+#[opg("AccountTransactionEventResponse")]
 pub struct AccountTransactionEventResponse {
     pub id: Uuid,
     pub service_id: ServiceId,
@@ -44,7 +48,9 @@ pub struct AccountTransactionEventResponse {
     pub transaction_direction: TonTransactionDirection,
     pub transaction_status: TonTransactionStatus,
     pub event_status: TonEventStatus,
+    #[opg("UTC timestamp in milliseconds", integer, format = "int64")]
     pub created_at: i64,
+    #[opg("UTC timestamp in milliseconds", integer, format = "int64")]
     pub updated_at: i64,
 }
 
@@ -67,24 +73,27 @@ impl From<TransactionEventDb> for AccountTransactionEventResponse {
     }
 }
 
-#[derive(Debug, Deserialize, Serialize, Clone)]
+#[derive(Debug, Deserialize, Serialize, Clone, opg::OpgModel)]
 #[serde(rename_all = "camelCase")]
+#[opg("AccountAddressResponse")]
 pub struct AccountAddressResponse {
     pub status: TonStatus,
     pub data: Option<AddressResponse>,
     pub error_message: Option<String>,
 }
 
-#[derive(Debug, Deserialize, Serialize, Clone)]
+#[derive(Debug, Deserialize, Serialize, Clone, opg::OpgModel)]
 #[serde(rename_all = "camelCase")]
+#[opg("AccountTransactionResponse")]
 pub struct AccountTransactionResponse {
     pub status: TonStatus,
     pub data: Option<AccountTransactionDataResponse>,
     pub error_message: Option<String>,
 }
 
-#[derive(Debug, Deserialize, Serialize, Clone)]
+#[derive(Debug, Deserialize, Serialize, Clone, opg::OpgModel)]
 #[serde(rename_all = "camelCase")]
+#[opg("AccountTransactionDataResponse")]
 pub struct AccountTransactionDataResponse {
     pub id: Uuid,
     pub message_hash: String,
@@ -97,7 +106,9 @@ pub struct AccountTransactionDataResponse {
     pub status: TonTransactionStatus,
     pub aborted: bool,
     pub bounce: bool,
+    #[opg("UTC timestamp in milliseconds", integer, format = "int64")]
     pub created_at: i64,
+    #[opg("UTC timestamp in milliseconds", integer, format = "int64")]
     pub updated_at: i64,
 }
 
@@ -121,28 +132,32 @@ impl From<TransactionDb> for AccountTransactionDataResponse {
     }
 }
 
-#[derive(Debug, Deserialize, Serialize, Clone)]
+#[derive(Debug, Deserialize, Serialize, Clone, opg::OpgModel)]
 #[serde(rename_all = "camelCase")]
+#[opg("PostAddressValidResponse")]
 pub struct PostAddressValidResponse {
     pub valid: bool,
 }
 
-#[derive(Debug, Deserialize, Serialize, Clone)]
+#[derive(Debug, Deserialize, Serialize, Clone, opg::OpgModel)]
 #[serde(rename_all = "camelCase")]
+#[opg("PostCheckedAddressResponse")]
 pub struct PostCheckedAddressResponse {
     pub status: TonStatus,
     pub data: Option<PostAddressValidResponse>,
 }
 
-#[derive(Debug, Deserialize, Serialize, Clone)]
+#[derive(Debug, Deserialize, Serialize, Clone, opg::OpgModel)]
 #[serde(rename_all = "camelCase")]
+#[opg("PostAddressBalanceResponse")]
 pub struct PostAddressBalanceResponse {
     pub status: TonStatus,
     pub data: Option<PostAddressBalanceDataResponse>,
 }
 
-#[derive(Debug, Deserialize, Serialize, Clone)]
+#[derive(Debug, Deserialize, Serialize, Clone, opg::OpgModel)]
 #[serde(rename_all = "camelCase")]
+#[opg("PostAddressBalanceDataResponse")]
 pub struct PostAddressBalanceDataResponse {
     pub id: Uuid,
     pub address: AddressResponse,
@@ -153,6 +168,8 @@ pub struct PostAddressBalanceDataResponse {
     pub last_transaction_hash: Option<String>,
     pub last_transaction_lt: Option<String>,
     pub sync_u_time: i64,
+    #[opg("UTC timestamp in milliseconds", integer, format = "int64")]
     pub created_at: i64,
+    #[opg("UTC timestamp in milliseconds", integer, format = "int64")]
     pub updated_at: i64,
 }

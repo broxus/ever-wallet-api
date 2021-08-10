@@ -148,7 +148,7 @@ mod filters {
     }
 
     pub fn post_events_mark(ctx: Context) -> BoxedFilter<(impl warp::Reply,)> {
-        warp::path!("events")
+        warp::path!("events" / "mark")
             .and(warp::path::end())
             .and(warp::post())
             .and(auth_by_key(ctx.auth_service.clone()).untuple_one())

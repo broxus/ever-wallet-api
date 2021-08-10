@@ -2,101 +2,82 @@
 
 use opg::*;
 
-use dexpa::currency::Currency;
-
 use crate::api::{requests, responses};
 
 pub fn swagger() -> String {
     let api = describe_api! {
         info: {
-            title: "Tokens",
+            title: "TON api",
             version: "1.0.0",
-            description: r##"This API allows you to get the information on TIP-3 tokens"##,
+            description: r##"This API allows you to use TON api"##,
         },
         servers: {
-            "https://token-indexer.broxus.com/v1",
-            "https://token-indexer-test.broxus.com/v1"
+            "https://ton-api.broxus.com/ton/v4",
+            "https://ton-api-test.broxus.com/ton/v4"
         },
         tags: {
-            balances,
+            addresses,
             transactions,
         },
         paths: {
-            ("transactions"): {
+            ("address" / "create"): {
+                POST: {
+                    tags: { addresses },
+                    summary: "Address creation",
+                    description: "Create user address.",
+                    body: requests::CreateAddressRequest,
+                    200: responses::AccountAddressResponse,
+                }
+            },
+            ("address" / "check"): {
+                POST: {
+                    tags: { addresses },
+                    summary: "Check address",
+                    description: "Check correction of TON address.",
+                    body: requests::PostAddressBalanceRequest,
+                    200: responses::PostCheckedAddressResponse,
+                }
+            },
+             ("address" / String): {
+                GET: {
+                    tags: { addresses },
+                    summary: "Address balance",
+                    description: "Get address balance.",
+                    200: responses::AccountAddressResponse,
+                }
+            },
+            ("transactions" / "create"): {
                 POST: {
                     tags: { transactions },
-                    summary: "Transactions data",
-                    description: "Get Transactions data.",
-                    body: requests::TransactionsRequest,
-                    200: responses::TransactionsInfoAndCountResponse,
+                    summary: "Create transaction",
+                    description: "Send transaction.",
+                    body: requests::PostTonTransactionSendRequest,
+                    200: responses::AccountTransactionResponse,
                 }
             },
-            ("address" / String / "balances"): {
-                POST: {
-                    tags: { balances },
-                    summary: "Balances data",
-                    description: "Get address Balances data.",
-                    body: requests::AddressBalancesRequest,
-                    200: responses::BalancesAndCountResponse,
-                }
-            },
-            ("address" / String / "transactions"): {
-                POST: {
+            ("transactions" / "mh"): {
+                GET: {
                     tags: { transactions },
-                    summary: "Address transactions data",
-                    description: "Get address transactions.",
-                    body: requests::AddressTransactionsRequest,
-                    200: responses::AddressTransactionsInfoResponse,
+                    summary: "Get transaction",
+                    description: "Get transaction by message hash.",
+                    200: responses::AccountTransactionResponse,
                 }
             },
-            ("balances"): {
+            ("transactions" / "h"): {
+                GET: {
+                    tags: { transactions },
+                    summary: "Get transaction",
+                    description: "Get transaction by transaction hash.",
+                    200: responses::AccountTransactionResponse,
+                }
+            },
+            ("events" / "mark" ): {
                 POST: {
-                    tags: { balances },
-                    summary: "Balances data",
-                    description: "Get address Balances data.",
-                    body: requests::BalancesRequest,
-                    200: responses::BalancesAndCountResponse,
-                }
-            },
-            ("token_owner" / "address" / String): {
-                GET: {
-                    tags: { tokens },
-                    summary: "Token owner data",
-                    description: "Get token owner data.",
-                    200: responses::TokenOwnerResponse,
-                }
-            },
-            ("root_contract" / "root_address" / String): {
-                GET: {
-                    tags: { root_contracts },
-                    summary: "Root contract data",
-                    description: "Get root contract data.",
-                    200: responses::RootContractInfoWithTotalSupplyResponse,
-                }
-            },
-            ("root_contract"): {
-                POST: {
-                    tags: { root_contracts },
-                    summary: "Root contract data",
-                    description: "Get root contract data.",
-                    body: requests::RootTokenContractsSearchRequest,
-                    200: responses::RootTokenContractsSearchResponse,
-                }
-            },
-            ("root_contract" / "symbol_substring" / String): {
-                GET: {
-                    tags: { root_contracts },
-                    summary: "Root contracts data",
-                    description: "Get root contracts data.",
-                    200: Vec<responses::RootContractInfoWithTotalSupplyResponse>,
-                }
-            },
-            ("tokens"): {
-                GET: {
-                    tags: { tokens },
-                    summary: "Tokens data",
-                    description: "Get all tokens data.",
-                    200: Vec<responses::RootTokenContractResponse>,
+                    tags: { events },
+                    summary: "Mark event",
+                    description: "Mark event by id.",
+                    body: requests::PostTonMarkEventsRequest,
+                    200: responses::MarkEventsResponse,
                 }
             },
         }
