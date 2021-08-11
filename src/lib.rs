@@ -12,11 +12,9 @@ use sqlx::postgres::PgPoolOptions;
 
 use crate::api::http_service;
 use crate::models::owners_cache::OwnersCache;
-use crate::models::root_contracts_cache::RootContractsCache;
 use crate::services::{AuthServiceImpl, TonServiceImpl};
 use crate::settings::Config;
 use crate::sqlx_client::SqlxClient;
-use crate::ws_indexer::ton_indexer_stream;
 
 #[allow(unused)]
 mod api;
@@ -26,7 +24,6 @@ mod redis;
 mod services;
 mod settings;
 mod sqlx_client;
-pub mod ws_indexer;
 
 pub async fn start_server() -> StdResult<()> {
     let config = get_config();
@@ -62,13 +59,6 @@ pub async fn start_server() -> StdResult<()> {
     let owners_hash = OwnersCache::new(sqlx_client.clone()).await?;
     let contracts_hash = RootContractsCache::new(sqlx_client).await?;
     log::debug!("Finish tokens caching");
-
-    tokio::spawn(ton_indexer_stream(
-        sqlx_client_clone,
-        owners_hash.clone(),
-        contracts_hash,
-        redis_pool,
-    ));
 
     log::debug!("start server");
 
