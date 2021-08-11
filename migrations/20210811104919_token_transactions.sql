@@ -41,7 +41,7 @@ create function update_token_balances_on_insert_in_token_transactions() returns 
 as
 $$
 BEGIN
-    INSERT INTO balances (service_id,
+    INSERT INTO token_balances (service_id,
                           account_workchain_id,
                           account_hex,
                           balance,
@@ -57,10 +57,10 @@ BEGIN
             NEW.created_at,
             NEW.updated_at)
     ON CONFLICT (account_workchain_id, account_hex, root_address) DO UPDATE
-        SET balance = balances.balance + NEW.value, updated_at = NEW.updated_at
-    WHERE balances.account_workchain_id = NEW.account_workchain_id
-      AND balances.account_hex = NEW.account_hex
-      AND balances.root_address = NEW.root_address;
+        SET balance = token_balances.balance + NEW.value, updated_at = NEW.updated_at
+    WHERE token_balances.account_workchain_id = NEW.account_workchain_id
+      AND token_balances.account_hex = NEW.account_hex
+      AND token_balances.root_address = NEW.root_address;
     RETURN NEW;
 END;
 $$;

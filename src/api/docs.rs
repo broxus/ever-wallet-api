@@ -18,6 +18,7 @@ pub fn swagger() -> String {
         tags: {
             addresses,
             transactions,
+            events,
         },
         paths: {
             ("address" / "create"): {

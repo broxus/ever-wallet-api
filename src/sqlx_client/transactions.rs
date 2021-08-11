@@ -117,7 +117,7 @@ impl SqlxClient {
     //         .map(|a| a.iter().map(|x| x.to_string()).join(","));
     //     let meta = serde_json::to_value(&transaction.meta)?;
     //     let res =
-    //             sqlx::query!(
+    //             sqlx::query!(get_address_balance
     //             r#"INSERT INTO trading_ton_wallet_api_rs.public.transactions
     //             (transaction_hash, message_hash, owner_address, token_wallet_address, public_key, amount, root_address, token, kind, meta, payload, callback_address, failed_reason,  block_hash, block_time)
     //             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)"#,

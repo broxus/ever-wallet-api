@@ -75,7 +75,7 @@ mod filters {
     use crate::services::AuthService;
 
     pub fn server(ctx: Context) -> BoxedFilter<(impl warp::Reply,)> {
-        warp::any().and(api_v1(ctx).or(healthcheck())).boxed()
+        warp::any().and(api_v4(ctx).or(healthcheck())).boxed()
     }
 
     pub fn healthcheck() -> BoxedFilter<(impl warp::Reply,)> {
@@ -91,7 +91,7 @@ mod filters {
         Box::pin(async move { Ok(warp::reply::json(&())) })
     }
 
-    pub fn api_v1(ctx: Context) -> BoxedFilter<(impl warp::Reply,)> {
+    pub fn api_v4(ctx: Context) -> BoxedFilter<(impl warp::Reply,)> {
         warp::path!("ton" / "v4")
             .and(
                 swagger()
@@ -164,7 +164,7 @@ mod filters {
             .and(warp::get())
             .and(auth_by_key_get(ctx.auth_service.clone()))
             .and(with_ctx(ctx))
-            .and_then(controllers::post_address_balance)
+            .and_then(controllers::get_address_balance)
             .boxed()
     }
 

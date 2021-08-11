@@ -141,3 +141,12 @@ pub struct TransactionToDb {
     pub direction: TonTransactionDirection,
     pub status: TonTokenTransactionStatus,
 }
+
+#[derive(Clone, Debug, serde::Serialize, serde::Deserialize, Eq, PartialEq)]
+pub struct TokenOwnerFromDb {
+    pub address: String,
+    pub owner_account_workchain_id: i32,
+    pub owner_account_hex: String,
+    pub root_address: String,
+    pub created_at: i64,
+}
