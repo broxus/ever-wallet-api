@@ -1,10 +1,3 @@
-use std::str::FromStr;
-
-use itertools::Itertools;
-use sqlx::postgres::PgArguments;
-use sqlx::Arguments;
-use sqlx::Row;
-
 use crate::models::key::Key;
 use crate::prelude::ServiceError;
 use crate::sqlx_client::SqlxClient;

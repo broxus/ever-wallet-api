@@ -50,7 +50,6 @@ pub async fn parse_transactions_functions(
     value: ParsedOutput<ParsedFunctionWithBounce>,
     node: &NodeClient,
     sqlx_client: &SqlxClient,
-    owners_cache: &OwnersCache,
     contracts_cache: &RootContractsCache,
     block_hash: [u8; 32],
 ) -> Result<()> {
