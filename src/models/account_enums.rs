@@ -50,6 +50,14 @@ pub enum TonTransactionStatus {
 }
 
 #[derive(Debug, Deserialize, Serialize, Clone, opg::OpgModel, PartialEq, Eq)]
+#[opg("TonTransactionStatus")]
+pub enum TonTokenTransactionStatus {
+    New,
+    Done,
+    Error,
+}
+
+#[derive(Debug, Deserialize, Serialize, Clone, opg::OpgModel, PartialEq, Eq)]
 #[opg("TonEventStatus")]
 pub enum TonEventStatus {
     New,

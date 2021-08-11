@@ -1,11 +1,3 @@
-
-DROP TYPE IF EXISTS twa_token_transaction_direction;
-
-CREATE TYPE twa_token_transaction_direction as ENUM (
-    'Send',
-    'Receive'
-    );
-
 DROP TYPE IF EXISTS twa_token_transaction_status;
 
 CREATE TYPE twa_token_transaction_status as ENUM (
@@ -24,12 +16,11 @@ CREATE TABLE token_transactions
     account_hex          VARCHAR(64) NOT NULL,
     value                DECIMAL NOT NULL,
     root_address         VARCHAR NOT NULL,
-    meta                 JSONB,
     payload              BYTEA,
     error                VARCHAR,
     block_hash           VARCHAR(64),
     block_time           INTEGER,
-    direction            twa_token_transaction_direction NOT NULL,
+    direction            twa_transaction_direction NOT NULL,
     status               twa_token_transaction_status NOT NULL,
     created_at                  TIMESTAMP NOT NULL DEFAULT current_timestamp,
     updated_at                  TIMESTAMP NOT NULL DEFAULT current_timestamp,
@@ -37,6 +28,13 @@ CREATE TABLE token_transactions
     CONSTRAINT token_transactions_to_api_service_fk FOREIGN KEY (service_id) REFERENCES api_service (id),
     CONSTRAINT token_transactions_account_wc_hex_to_address_fk FOREIGN KEY (account_workchain_id, account_hex) REFERENCES address(workchain_id, hex)
 );
+
+CREATE INDEX token_transactions_service_id_idx ON token_transactions (service_id);
+CREATE INDEX token_transactions_m_hash_idx ON token_transactions (message_hash);
+CREATE INDEX token_transactions_t_hash_idx ON token_transactions (transaction_hash);
+CREATE INDEX token_transactions_created_at_idx ON token_transactions (created_at);
+CREATE UNIQUE INDEX token_transactions_t_hash_a_wi_hex_d_idx ON token_transactions (transaction_hash, account_workchain_id, account_hex, direction)
+    WHERE transaction_hash IS NOT NULL;
 
 create function update_token_balances_on_insert_in_token_transactions() returns trigger
     language plpgsql

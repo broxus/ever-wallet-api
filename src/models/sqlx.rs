@@ -4,9 +4,7 @@ use thiserror::Error;
 use chrono::NaiveDateTime;
 use uuid::Uuid;
 
-use crate::models::account_enums::{
-    AccountType, TonEventStatus, TonTransactionDirection, TonTransactionStatus,
-};
+use crate::models::account_enums::{AccountType, TonEventStatus, TonTransactionDirection, TonTransactionStatus, TonTokenTransactionStatus};
 use crate::models::service_id::ServiceId;
 
 #[derive(Clone, Debug, serde::Serialize, serde::Deserialize, Eq, PartialEq)]
@@ -95,4 +93,51 @@ pub struct TransactionEventDb {
     pub event_status: TonEventStatus,
     pub created_at: NaiveDateTime,
     pub updated_at: NaiveDateTime,
+}
+
+#[derive(Clone, Debug, serde::Serialize, serde::Deserialize, Eq, PartialEq)]
+pub struct TokenBalanceFromDb {
+    pub service_id: ServiceId,
+    pub account_workchain_id: i32,
+    pub account_hex: String,
+    pub balance: BigDecimal,
+    pub root_address: String,
+    pub created_at: NaiveDateTime,
+    pub updated_at: NaiveDateTime,
+}
+
+#[derive(Clone, Debug, serde::Serialize, serde::Deserialize, Eq, PartialEq)]
+pub struct TransactionFromDb {
+    pub id: Uuid,
+    pub service_id: ServiceId,
+    pub transaction_hash: Option<String>,
+    pub message_hash: String,
+    pub account_workchain_id: i32,
+    pub account_hex: String,
+    pub value: BigDecimal,
+    pub root_address: String,
+    pub payload: Option<Vec<u8>>,
+    pub error: Option<String>,
+    pub block_hash: String,
+    pub block_time: u32,
+    pub direction: TonTransactionDirection,
+    pub status: TonTokenTransactionStatus,
+    pub created_at: NaiveDateTime,
+    pub updated_at: NaiveDateTime,
+}
+
+#[derive(Clone, Debug, serde::Serialize, serde::Deserialize, Eq, PartialEq)]
+pub struct TransactionToDb {
+    pub transaction_hash: String,
+    pub message_hash: String,
+    pub account_workchain_id: i32,
+    pub account_hex: String,
+    pub value: BigDecimal,
+    pub root_address: String,
+    pub payload: Option<Vec<u8>>,
+    pub error: Option<String>,
+    pub block_hash: String,
+    pub block_time: u32,
+    pub direction: TonTransactionDirection,
+    pub status: TonTokenTransactionStatus,
 }
