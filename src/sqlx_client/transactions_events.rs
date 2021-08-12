@@ -1,8 +1,7 @@
 use std::convert::TryInto;
 
 use anyhow::Result;
-use indexer_lib::TransactionExt;
-use nekoton::utils::{NoFailure, TrustMe};
+use nekoton_utils::{NoFailure, TrustMe};
 use ton_block::{Deserializable, Serializable, Transaction};
 
 use crate::prelude::stream::StreamExt;

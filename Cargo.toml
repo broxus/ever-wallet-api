@@ -44,13 +44,6 @@ sqlx = { version = "0.5", features = ["runtime-tokio-native-tls", "postgres", "u
 indexmap = "*"
 urlencoding = "2.1.0"
 
-nekoton = { git = "https://github.com/broxus/nekoton.git", default-features = false }
-node-indexer = { git = "ssh://git@gitlab.dexpa.io/broxus/legacy-node-indexer" }
-indexer-lib = { git = "ssh://git@gitlab.dexpa.io/broxus/legacy-node-indexer" }
-ton_abi = { git = "https://github.com/tonlabs/ton-labs-abi", rev = "a2b2a9dc2e8c30a070e9af79cf0c24a55bdd5a87" }
-ton_types = { git = "https://github.com/tonlabs/ton-labs-types" }
-ton_block = { git = "https://github.com/tonlabs/ton-labs-block.git" }
-
 thiserror = "1.0.26"
 itertools = "0.10.1"
 lru = "0.6.5"
@@ -58,6 +51,19 @@ parking_lot = { version = "0.11.1", default_features = false }
 bigdecimal = {version= "0.2.0",features =["serde"] }
 num-bigint = "0.3.2"
 
+# TON specific dependencies
+ton_block = { git = "https://github.com/broxus/ton-labs-block" }
+ton_abi = { git = "https://github.com/broxus/ton-labs-abi" }
+ton_types = { git = "https://github.com/broxus/ton-labs-types" }
+
+tiny-adnl = { git = "https://github.com/broxus/tiny-adnl" }
+
+# Nekoton SDK
+nekoton-abi = { git = "https://github.com/broxus/nekoton.git", features = ["derive"] }
+nekoton-utils = { git = "https://github.com/broxus/nekoton.git" }
+
+# Indexer engine
+ton-indexer = { git = "https://github.com/broxus/ton-indexer.git" }
 
 [dependencies.ton_api]
 git = "https://github.com/broxus/ton-labs-tl.git"

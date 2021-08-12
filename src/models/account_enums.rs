@@ -1,6 +1,6 @@
 use std::str::FromStr;
 
-use nekoton::utils::pack_std_smc_addr;
+use nekoton_utils::pack_std_smc_addr;
 use serde::{Deserialize, Serialize};
 use ton_block::MsgAddressInt;
 
