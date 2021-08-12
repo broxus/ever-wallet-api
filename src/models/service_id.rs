@@ -4,12 +4,21 @@ use std::str::FromStr;
 
 use uuid::Uuid;
 
-use super::prelude::*;
-
 #[derive(
-    Debug, Default, Serialize, Deserialize, Clone, Copy, PartialEq, Eq, Hash, opg::OpgModel,
+    Debug,
+    Default,
+    serde::Serialize,
+    serde::Deserialize,
+    Clone,
+    Copy,
+    PartialEq,
+    Eq,
+    Hash,
+    opg::OpgModel,
+    sqlx::Type,
 )]
 #[opg("Service UUID (v4)")]
+#[sqlx(transparent)]
 pub struct ServiceId(Uuid);
 
 impl ServiceId {

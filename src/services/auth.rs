@@ -1,10 +1,10 @@
+use async_trait::async_trait;
 use chrono::{NaiveDateTime, Utc};
 use dexpa::errors::log_error;
-use hmac::{Hmac, Mac, NewMac};
+use hmac::{Hmac, Mac};
 use http::{header::HeaderValue, HeaderMap};
 use sha2::Sha256;
 
-use super::prelude::*;
 use crate::models::key::Key;
 use crate::models::service_id::ServiceId;
 use crate::prelude::{RedisPool, ServiceError};
@@ -80,11 +80,11 @@ impl AuthService for AuthServiceImpl {
             )));
         }
 
-        let mut mac = HmacSha256::new_from_slice(&key.secret.as_bytes())
-            .or_else(|_| ServiceError::Auth("Secret is not hmac sha256".to_string()))?;
+        let mut mac = HmacSha256::new_varkey(&key.secret.as_bytes())
+            .map_err(|_| ServiceError::Auth("Secret is not hmac sha256".to_string()))?;
 
         let signing_phrase = format!("{}{}{}", timestamp_ms, path.as_str(), body);
-        mac.update(&signing_phrase.as_bytes());
+        mac.input(&signing_phrase.as_bytes());
 
         let sign_header = headers
             .get("sign")
@@ -111,8 +111,8 @@ async fn get_key(
         let mut redis_conn = redis_executor.get_connection()?;
         let mut keys_repo_cache = KeysRepoCacheImpl::new(&mut redis_conn);
 
-        keys_repo_cache.get(api_key).unwrap_or_else(|err| {
-            log_error(&err);
+        keys_repo_cache.get(api_key).unwrap_or_else(|e| {
+            log::error!("{}", &e);
             None
         })
     };
@@ -129,7 +129,7 @@ async fn get_key(
 
         keys_repo_cache.set(&key)
     } {
-        log_error(&err);
+        log::error!("{}", &err);
     }
 
     Ok(key)

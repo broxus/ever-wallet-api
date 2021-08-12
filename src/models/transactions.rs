@@ -1,4 +1,5 @@
 use bigdecimal::BigDecimal;
+use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
 use crate::models::account_enums::TransactionSendOutputType;

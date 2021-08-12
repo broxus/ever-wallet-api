@@ -1,10 +1,12 @@
 use bigdecimal::BigDecimal;
-use thiserror::Error;
 
 use chrono::NaiveDateTime;
 use uuid::Uuid;
 
-use crate::models::account_enums::{AccountType, TonEventStatus, TonTransactionDirection, TonTransactionStatus, TonTokenTransactionStatus};
+use crate::models::account_enums::{
+    AccountType, TonEventStatus, TonTokenTransactionStatus, TonTransactionDirection,
+    TonTransactionStatus,
+};
 use crate::models::service_id::ServiceId;
 
 #[derive(Clone, Debug, serde::Serialize, serde::Deserialize, Eq, PartialEq)]
@@ -148,5 +150,5 @@ pub struct TokenOwnerFromDb {
     pub owner_account_workchain_id: i32,
     pub owner_account_hex: String,
     pub root_address: String,
-    pub created_at: i64,
+    pub created_at: NaiveDateTime,
 }

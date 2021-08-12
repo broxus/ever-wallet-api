@@ -10,16 +10,15 @@ use std::sync::Arc;
 
 use dexpa::currency::*;
 use dexpa::errors::ErrorParams;
+use tokio::sync::{Mutex, RwLock};
 use warp::Filter;
 
 use self::controllers::*;
 use super::settings::Config;
 use crate::api::utils::{bad_request, BadRequestError};
-use crate::models::owners_cache::OwnersCache;
 use crate::prelude::ServiceError;
 use crate::services::{AuthService, TonService};
 use crate::sqlx_client::SqlxClient;
-use tokio::sync::{Mutex, RwLock};
 
 pub async fn http_service(
     server_http_addr: SocketAddr,
@@ -185,8 +184,8 @@ mod filters {
             .and(warp::path::param())
             .and(warp::path::end())
             .and(warp::get())
-            .and(with_ctx(ctx))
             .and(auth_by_key_get(ctx.auth_service.clone()))
+            .and(with_ctx(ctx))
             .and_then(controllers::get_transactions_h)
             .boxed()
     }
@@ -282,7 +281,7 @@ mod filters {
                         match auth_service.authenticate(body_s, path, headers).await {
                             Ok(service_id) => Ok::<_, Rejection>((service_id, body)),
                             Err(e) => {
-                                log_error(&e);
+                                log::error!("{}", &e);
                                 Err(e.into())
                             }
                         }
@@ -308,7 +307,7 @@ mod filters {
                     {
                         Ok(service_id) => Ok::<_, Rejection>(service_id),
                         Err(e) => {
-                            log_error(&e);
+                            log::error!("{}", &e);
                             Err(e.into())
                         }
                     }

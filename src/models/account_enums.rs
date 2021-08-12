@@ -1,8 +1,13 @@
+use std::str::FromStr;
+
+use nekoton::utils::pack_std_smc_addr;
 use serde::{Deserialize, Serialize};
+use ton_block::MsgAddressInt;
 
 use crate::models::address::Address;
+use crate::models::sqlx::AddressDb;
 
-#[derive(Debug, Deserialize, Serialize, Clone, opg::OpgModel)]
+#[derive(Debug, Deserialize, Serialize, Clone, opg::OpgModel, Eq, PartialEq)]
 #[opg("AccountType")]
 pub enum AccountType {
     HighloadWallet,
@@ -24,6 +29,18 @@ pub struct AddressResponse {
     pub workchain_id: i32,
     pub hex: Address,
     pub base64url: Address,
+}
+
+impl From<AddressDb> for AddressResponse {
+    fn from(a: AddressDb) -> Self {
+        let account = MsgAddressInt::from_str(&format!("{}:{}", a.workchain_id, a.hex)).unwrap();
+        let base64url = Address(pack_std_smc_addr(true, &account, false).unwrap());
+        Self {
+            workchain_id: a.workchain_id,
+            hex: Address(a.hex),
+            base64url,
+        }
+    }
 }
 
 #[derive(Debug, Deserialize, Serialize, Clone, opg::OpgModel, PartialEq, Eq)]

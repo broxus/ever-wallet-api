@@ -1,7 +1,5 @@
 pub use futures::prelude::*;
 
-use std::io;
-
 use r2d2::{Pool, PooledConnection};
 use r2d2_redis::RedisConnectionManager;
 use sqlx::Error;
@@ -74,3 +72,5 @@ impl<'a> From<&'a ServiceError> for http::Response<hyper::Body> {
         }
     }
 }
+
+impl warp::reject::Reject for ServiceError {}

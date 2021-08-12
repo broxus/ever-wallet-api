@@ -4,10 +4,20 @@ use crate::sqlx_client::SqlxClient;
 
 impl SqlxClient {
     pub async fn get_key(&self, api_key: &str) -> Result<Key, ServiceError> {
-        sqlx::query!(r#"SELECT * FROM api_service_key WHERE key = $1"#, &api_key)
-            .fetch_one(&self.pool)
-            .await
-            .map_err(From::from)
+        sqlx::query_as!(
+            Key,
+            r#"SELECT id,
+                    service_id as "service_id: _",
+                    key,
+                    secret,
+                    whitelist,
+                    created_at
+                    FROM api_service_key WHERE key = $1"#,
+            &api_key
+        )
+        .fetch_one(&self.pool)
+        .await
+        .map_err(From::from)
     }
 }
 

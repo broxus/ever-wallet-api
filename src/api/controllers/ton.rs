@@ -9,6 +9,7 @@ use super::Context;
 use crate::api::requests::*;
 use crate::api::responses::*;
 use crate::api::utils::*;
+use crate::models::account_enums::{AddressResponse, TonStatus};
 use crate::models::address::Address;
 use crate::models::service_id::ServiceId;
 
@@ -21,7 +22,8 @@ pub fn post_address_create(
         let address = ctx
             .ton_service
             .create_address(&service_id, &input.clone().into())
-            .await?;
+            .await
+            .map(From::from);
         let res = AccountAddressResponse::from(address);
         Ok(warp::reply::json(&(res)))
     }
@@ -37,7 +39,8 @@ pub fn post_address_check(
         let address = ctx
             .ton_service
             .check_address(&service_id, &input.address)
-            .await?;
+            .await
+            .map(PostAddressValidResponse::new);
         let res = PostCheckedAddressResponse::from(address);
         Ok(warp::reply::json(&(res)))
     }
@@ -53,7 +56,8 @@ pub fn get_address_balance(
         let address = ctx
             .ton_service
             .get_address_balance(&service_id, &address)
-            .await?;
+            .await
+            .map(AddressResponse::from);
         let res = AccountAddressResponse::from(address);
 
         Ok(warp::reply::json(&(res)))
@@ -70,8 +74,9 @@ pub fn post_transactions_create(
         let transaction = ctx
             .ton_service
             .create_transaction(&service_id, &input.into())
-            .await?;
-        let res = AccountTransactionResponse::from(address);
+            .await
+            .map(From::from);
+        let res = AccountTransactionResponse::from(transaction);
         Ok(warp::reply::json(&(res)))
     }
     .boxed()
@@ -86,7 +91,8 @@ pub fn get_transactions_mh(
         let transaction = ctx
             .ton_service
             .get_transaction_by_mh(&service_id, &message_hash)
-            .await?;
+            .await
+            .map(From::from);
         let res = AccountTransactionResponse::from(transaction);
 
         Ok(warp::reply::json(&(res)))
@@ -103,7 +109,8 @@ pub fn get_transactions_h(
         let transaction = ctx
             .ton_service
             .get_transaction_by_h(&service_id, &transaction_hash)
-            .await?;
+            .await
+            .map(From::from);
         let res = AccountTransactionResponse::from(transaction);
 
         Ok(warp::reply::json(&(res)))

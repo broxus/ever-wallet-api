@@ -2,6 +2,7 @@ use sqlx::PgPool;
 
 mod addresses;
 mod keys;
+mod token_owners;
 mod transactions;
 mod transactions_events;
 

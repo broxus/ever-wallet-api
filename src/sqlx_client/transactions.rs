@@ -7,9 +7,6 @@ use sqlx::Arguments;
 use sqlx::Row;
 
 use crate::models::sqlx::{TransactionFromDb, TransactionToDb};
-use crate::models::transaction_kind::TransactionKind;
-use crate::models::transactions::TransactionsSearch;
-use crate::models::transactions_ordering::TransactionsOrdering;
 use crate::sqlx_client::SqlxClient;
 
 impl SqlxClient {

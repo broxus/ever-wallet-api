@@ -43,6 +43,7 @@ pub struct BalanceRequest {
 #[serde(rename_all = "camelCase")]
 #[opg("PostTonTransactionSendRequest")]
 pub struct PostTonTransactionSendRequest {
+    #[opg("id", string)]
     pub id: Uuid,
     pub from_address: Address,
     pub outputs: Vec<PostTonTransactionSendOutputRequest>,
@@ -62,6 +63,7 @@ impl From<PostTonTransactionSendRequest> for TransactionSend {
 #[serde(rename_all = "camelCase")]
 #[opg("PostTonMarkEventsRequest")]
 pub struct PostTonMarkEventsRequest {
+    #[opg("id", string)]
     pub id: Uuid,
 }
 
@@ -77,6 +79,7 @@ pub struct PostTonTransactionEventsRequest {
 #[opg("PostTonTransactionSendOutputRequest")]
 pub struct PostTonTransactionSendOutputRequest {
     pub recipient_address: Address,
+    #[opg("value", string)]
     pub value: BigDecimal,
     pub output_type: Option<TransactionSendOutputType>,
 }
@@ -125,5 +128,6 @@ pub struct PostGetOffsetRequest {
 #[serde(rename_all = "camelCase")]
 #[opg("TonTransactionStatusRequest")]
 pub struct TonTransactionStatusRequest {
+    #[opg("transactionId", string)]
     pub transaction_id: Uuid,
 }

@@ -1,10 +1,9 @@
-use anyhow::Error;
 use async_trait::async_trait;
-use bigdecimal::{BigDecimal, Zero};
 use uuid::Uuid;
 
 use crate::models::account_enums::TonEventStatus;
 use crate::models::address::{Address, CreateAddress};
+use crate::models::owners_cache::OwnersCache;
 use crate::models::service_id::ServiceId;
 use crate::models::sqlx::{AddressDb, TransactionDb, TransactionEventDb};
 use crate::models::transactions::TransactionSend;
@@ -57,11 +56,15 @@ pub trait TonService: Send + Sync + 'static {
 
 pub struct TonServiceImpl {
     sqlx_client: SqlxClient,
+    owners_cache: OwnersCache,
 }
 
 impl TonServiceImpl {
-    pub fn new(sqlx_client: SqlxClient) -> Self {
-        Self { sqlx_client }
+    pub fn new(sqlx_client: SqlxClient, owners_cache: OwnersCache) -> Self {
+        Self {
+            sqlx_client,
+            owners_cache,
+        }
     }
 }
 

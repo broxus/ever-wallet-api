@@ -49,25 +49,22 @@ pub async fn start_server() -> StdResult<()> {
 
     let config = Arc::new(config);
     let sqlx_client = SqlxClient::new(pool);
-    let ton_service = Arc::new(TonServiceImpl::new(sqlx_client.clone()));
+    let owners_hash = OwnersCache::new(sqlx_client.clone()).await?;
+    let ton_service = Arc::new(TonServiceImpl::new(
+        sqlx_client.clone(),
+        owners_hash.clone(),
+    ));
     let auth_service = Arc::new(AuthServiceImpl::new(
         sqlx_client.clone(),
         redis_pool.clone(),
     ));
     let sqlx_client_clone = sqlx_client.clone();
     log::debug!("tokens caching");
-    let owners_hash = OwnersCache::new(sqlx_client.clone()).await?;
-    let contracts_hash = RootContractsCache::new(sqlx_client).await?;
     log::debug!("Finish tokens caching");
 
     log::debug!("start server");
 
-    tokio::spawn(http_service(
-        config.server_addr,
-        ton_service,
-        auth_service,
-        owners_hash,
-    ));
+    tokio::spawn(http_service(config.server_addr, ton_service, auth_service));
 
     tokio::spawn(dexpa::net::healthcheck_service(config.healthcheck_addr));
 

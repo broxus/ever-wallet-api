@@ -1,13 +1,10 @@
 use std::collections::HashMap;
 
+use bigdecimal::BigDecimal;
 use sqlx::postgres::PgArguments;
 use sqlx::Arguments;
 use sqlx::Row;
-use bigdecimal::BigDecimal;
 
-use crate::models::balances::BalancesSearch;
-use crate::models::balances_ordering::BalancesOrdering;
-use crate::models::sqlx::BalanceFromDb;
 use crate::sqlx_client::SqlxClient;
 
 impl SqlxClient {

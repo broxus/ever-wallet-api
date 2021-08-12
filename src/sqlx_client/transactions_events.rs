@@ -1,12 +1,12 @@
+use std::convert::TryInto;
+
 use anyhow::Result;
 use indexer_lib::TransactionExt;
 use nekoton::utils::{NoFailure, TrustMe};
 use ton_block::{Deserializable, Serializable, Transaction};
 
-use crate::models::raw_transaction::RawTransactionFromDb;
 use crate::prelude::stream::StreamExt;
 use crate::sqlx_client::SqlxClient;
-use std::convert::TryInto;
 
 impl SqlxClient {
     // pub async fn insert_failed_tx(

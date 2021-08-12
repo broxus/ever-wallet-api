@@ -1917,6 +1917,7 @@ dependencies = [
  "http",
  "opg_derive",
  "serde",
+ "uuid",
 ]
 
 [[package]]
@@ -3316,6 +3317,7 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "async-trait",
+ "base64 0.10.1",
  "bigdecimal",
  "chrono",
  "config",

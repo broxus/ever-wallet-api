@@ -1,353 +1,7 @@
 {
   "db": "PostgreSQL",
-  "08e491991467f9b69d26c3f4205ef7797cd7dd94ededc7ad7c61fcf377a7cbd4": {
-    "query": "INSERT INTO trading_ton_wallet_api_rs.public.transactions\n                (transaction_hash, message_hash, owner_address, token_wallet_address, public_key, amount, root_address, token, kind, meta, payload, callback_address, failed_reason,  block_hash, block_time)\n                VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)",
-    "describe": {
-      "columns": [],
-      "parameters": {
-        "Left": [
-          "Bytea",
-          "Bytea",
-          "Varchar",
-          "Varchar",
-          "Bytea",
-          "Numeric",
-          "Varchar",
-          "Varchar",
-          "Varchar",
-          "Jsonb",
-          "Bytea",
-          "Varchar",
-          "Varchar",
-          "Bytea",
-          "Int4"
-        ]
-      },
-      "nullable": []
-    }
-  },
-  "0f53ced30ea1b4a18c88f42c2356ab0a93f1116a63581cb20860e1af2ff6975e": {
-    "query": "SELECT SUM(amount) FROM balances WHERE root_address = $1",
-    "describe": {
-      "columns": [
-        {
-          "ordinal": 0,
-          "name": "sum",
-          "type_info": "Numeric"
-        }
-      ],
-      "parameters": {
-        "Left": [
-          "Text"
-        ]
-      },
-      "nullable": [
-        null
-      ]
-    }
-  },
-  "16ee117aef480e01a03a697351b7440007d0d9dc9f8f975540920a9dd8771643": {
-    "query": "SELECT name, token, owner_address, root_address, code_hash, scale, root_public_key\n            FROM root_tokens_contracts\n            WHERE code_hash=decode('3BAE4A28A3491AA348AD9B4F21CA642828FCECB0A4945246C5BA7AD4F7F87D04','hex') ORDER BY created_at DESC LIMIT $1 OFFSET $2",
-    "describe": {
-      "columns": [
-        {
-          "ordinal": 0,
-          "name": "name",
-          "type_info": "Varchar"
-        },
-        {
-          "ordinal": 1,
-          "name": "token",
-          "type_info": "Varchar"
-        },
-        {
-          "ordinal": 2,
-          "name": "owner_address",
-          "type_info": "Varchar"
-        },
-        {
-          "ordinal": 3,
-          "name": "root_address",
-          "type_info": "Varchar"
-        },
-        {
-          "ordinal": 4,
-          "name": "code_hash",
-          "type_info": "Bytea"
-        },
-        {
-          "ordinal": 5,
-          "name": "scale",
-          "type_info": "Int4"
-        },
-        {
-          "ordinal": 6,
-          "name": "root_public_key",
-          "type_info": "Bytea"
-        }
-      ],
-      "parameters": {
-        "Left": [
-          "Int8",
-          "Int8"
-        ]
-      },
-      "nullable": [
-        false,
-        false,
-        false,
-        false,
-        false,
-        false,
-        false
-      ]
-    }
-  },
-  "1739b5061549f0bdf3ca3203c6d6b931d44464feb1b2dfd3630a266a07eacaff": {
-    "query": "SELECT transaction \n            FROM raw_transactions \n            WHERE hash = $1",
-    "describe": {
-      "columns": [
-        {
-          "ordinal": 0,
-          "name": "transaction",
-          "type_info": "Bytea"
-        }
-      ],
-      "parameters": {
-        "Left": [
-          "Bytea"
-        ]
-      },
-      "nullable": [
-        false
-      ]
-    }
-  },
-  "179dbbc987519af11fc08b30f19beebd526181384030545cbcda22cbcb5b7b76": {
-    "query": "SELECT  transaction, block_hash,block_time\n            FROM raw_transactions",
-    "describe": {
-      "columns": [
-        {
-          "ordinal": 0,
-          "name": "transaction",
-          "type_info": "Bytea"
-        },
-        {
-          "ordinal": 1,
-          "name": "block_hash",
-          "type_info": "Bytea"
-        },
-        {
-          "ordinal": 2,
-          "name": "block_time",
-          "type_info": "Int4"
-        }
-      ],
-      "parameters": {
-        "Left": []
-      },
-      "nullable": [
-        false,
-        false,
-        false
-      ]
-    }
-  },
-  "2a22d146283177e1c719ea1df2bada870966552ff93b5e12b0c6435856e6eb21": {
-    "query": "SELECT root_address,code_hash,state,token,name, scale,owner_address,root_public_key,created_at\n        FROM root_tokens_contracts",
-    "describe": {
-      "columns": [
-        {
-          "ordinal": 0,
-          "name": "root_address",
-          "type_info": "Varchar"
-        },
-        {
-          "ordinal": 1,
-          "name": "code_hash",
-          "type_info": "Bytea"
-        },
-        {
-          "ordinal": 2,
-          "name": "state",
-          "type_info": "Bytea"
-        },
-        {
-          "ordinal": 3,
-          "name": "token",
-          "type_info": "Varchar"
-        },
-        {
-          "ordinal": 4,
-          "name": "name",
-          "type_info": "Varchar"
-        },
-        {
-          "ordinal": 5,
-          "name": "scale",
-          "type_info": "Int4"
-        },
-        {
-          "ordinal": 6,
-          "name": "owner_address",
-          "type_info": "Varchar"
-        },
-        {
-          "ordinal": 7,
-          "name": "root_public_key",
-          "type_info": "Bytea"
-        },
-        {
-          "ordinal": 8,
-          "name": "created_at",
-          "type_info": "Int8"
-        }
-      ],
-      "parameters": {
-        "Left": []
-      },
-      "nullable": [
-        false,
-        false,
-        false,
-        false,
-        false,
-        false,
-        false,
-        false,
-        false
-      ]
-    }
-  },
-  "2db557a8f9291a2daae4749a9238fef1bde34f11fa0086d027e537e76d526c73": {
-    "query": "SELECT name, token, owner_address, root_address, code_hash, scale, root_public_key\n            FROM root_tokens_contracts\n            WHERE code_hash=decode('3BAE4A28A3491AA348AD9B4F21CA642828FCECB0A4945246C5BA7AD4F7F87D04','hex') and token LIKE $1 ORDER BY created_at DESC LIMIT $2 OFFSET $3",
-    "describe": {
-      "columns": [
-        {
-          "ordinal": 0,
-          "name": "name",
-          "type_info": "Varchar"
-        },
-        {
-          "ordinal": 1,
-          "name": "token",
-          "type_info": "Varchar"
-        },
-        {
-          "ordinal": 2,
-          "name": "owner_address",
-          "type_info": "Varchar"
-        },
-        {
-          "ordinal": 3,
-          "name": "root_address",
-          "type_info": "Varchar"
-        },
-        {
-          "ordinal": 4,
-          "name": "code_hash",
-          "type_info": "Bytea"
-        },
-        {
-          "ordinal": 5,
-          "name": "scale",
-          "type_info": "Int4"
-        },
-        {
-          "ordinal": 6,
-          "name": "root_public_key",
-          "type_info": "Bytea"
-        }
-      ],
-      "parameters": {
-        "Left": [
-          "Text",
-          "Int8",
-          "Int8"
-        ]
-      },
-      "nullable": [
-        false,
-        false,
-        false,
-        false,
-        false,
-        false,
-        false
-      ]
-    }
-  },
-  "3ce493cb4ee6406b3b9bf3310186f590aae4a6c45037bbefc51e6731658fece2": {
-    "query": "INSERT INTO raw_transactions (hash, transaction, block_time, block_hash) VALUES($1,$2,$3,$4) ON CONFLICT DO NOTHING",
-    "describe": {
-      "columns": [],
-      "parameters": {
-        "Left": [
-          "Bytea",
-          "Bytea",
-          "Int4",
-          "Bytea"
-        ]
-      },
-      "nullable": []
-    }
-  },
-  "4e06687d0d6562a5c0f30995d4f4a41e74dd81dc16f078383843aa902f8175f0": {
-    "query": "INSERT INTO bad_transactions\n            (hash, transaction, reason, block_hash,block_time )\n            VALUES ($1, $2, $3, $4, $5)\n            ON CONFLICT DO NOTHING",
-    "describe": {
-      "columns": [],
-      "parameters": {
-        "Left": [
-          "Bytea",
-          "Bytea",
-          "Varchar",
-          "Bytea",
-          "Int4"
-        ]
-      },
-      "nullable": []
-    }
-  },
-  "518abcad68c55f97507a6277be917064706a75222929fe6dc04d8d42adbaa042": {
-    "query": "SELECT COUNT(*)\n            FROM root_tokens_contracts\n             WHERE code_hash=decode('3BAE4A28A3491AA348AD9B4F21CA642828FCECB0A4945246C5BA7AD4F7F87D04','hex')",
-    "describe": {
-      "columns": [
-        {
-          "ordinal": 0,
-          "name": "count",
-          "type_info": "Int8"
-        }
-      ],
-      "parameters": {
-        "Left": []
-      },
-      "nullable": [
-        null
-      ]
-    }
-  },
-  "58a354e6906f7edecefaf2c27c95901223336100e0e9238d4616eb9c70a37484": {
-    "query": "SELECT COUNT(*)\n            FROM root_tokens_contracts\n             WHERE code_hash=decode('3BAE4A28A3491AA348AD9B4F21CA642828FCECB0A4945246C5BA7AD4F7F87D04','hex') and token LIKE $1",
-    "describe": {
-      "columns": [
-        {
-          "ordinal": 0,
-          "name": "count",
-          "type_info": "Int8"
-        }
-      ],
-      "parameters": {
-        "Left": [
-          "Text"
-        ]
-      },
-      "nullable": [
-        null
-      ]
-    }
-  },
-  "6c6e6772eebdb5284cbbafbc64362555fe79ab471d782c09447981fe2c4dc728": {
-    "query": "SELECT address, owner_address, owner_public_key, root_address, token, code_hash, scale, created_at\n        FROM token_owners\n        WHERE address = $1",
+  "3c26cf4dba3382e7a292548520f1933a627528af211ef7b38dd1f63ef1ac4905": {
+    "query": "SELECT address, owner_account_workchain_id, owner_account_hex, root_address, created_at\n        FROM token_owners\n        WHERE address = $1",
     "describe": {
       "columns": [
         {
@@ -357,13 +11,13 @@
         },
         {
           "ordinal": 1,
-          "name": "owner_address",
-          "type_info": "Varchar"
+          "name": "owner_account_workchain_id",
+          "type_info": "Int4"
         },
         {
           "ordinal": 2,
-          "name": "owner_public_key",
-          "type_info": "Bytea"
+          "name": "owner_account_hex",
+          "type_info": "Varchar"
         },
         {
           "ordinal": 3,
@@ -372,23 +26,8 @@
         },
         {
           "ordinal": 4,
-          "name": "token",
-          "type_info": "Varchar"
-        },
-        {
-          "ordinal": 5,
-          "name": "code_hash",
-          "type_info": "Bytea"
-        },
-        {
-          "ordinal": 6,
-          "name": "scale",
-          "type_info": "Int4"
-        },
-        {
-          "ordinal": 7,
           "name": "created_at",
-          "type_info": "Int8"
+          "type_info": "Timestamp"
         }
       ],
       "parameters": {
@@ -399,17 +38,64 @@
       "nullable": [
         false,
         false,
-        true,
-        false,
-        false,
         false,
         false,
         false
       ]
     }
   },
-  "74e5ba6f260508d4c7f7ef63817da5f84d0e437b14c0b229479e7f7ea99a3241": {
-    "query": "SELECT address, owner_address, owner_public_key, root_address, token, code_hash, scale, created_at\n        FROM token_owners ",
+  "6354909cc69073914a8d53e10c484e2057c9589fb4ee2c2b3ee9ae7000d17dda": {
+    "query": "SELECT id,\n                    service_id as \"service_id: _\",\n                    key,\n                    secret,\n                    whitelist,\n                    created_at\n                    FROM api_service_key WHERE key = $1",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "id",
+          "type_info": "Uuid"
+        },
+        {
+          "ordinal": 1,
+          "name": "service_id: _",
+          "type_info": "Uuid"
+        },
+        {
+          "ordinal": 2,
+          "name": "key",
+          "type_info": "Varchar"
+        },
+        {
+          "ordinal": 3,
+          "name": "secret",
+          "type_info": "Varchar"
+        },
+        {
+          "ordinal": 4,
+          "name": "whitelist",
+          "type_info": "Jsonb"
+        },
+        {
+          "ordinal": 5,
+          "name": "created_at",
+          "type_info": "Timestamp"
+        }
+      ],
+      "parameters": {
+        "Left": [
+          "Text"
+        ]
+      },
+      "nullable": [
+        false,
+        false,
+        false,
+        false,
+        true,
+        false
+      ]
+    }
+  },
+  "6ad3ebd9b286fd1d3c16aaf4190dd964698bac44e26c901b41c5155d7a8e482f": {
+    "query": "SELECT address, owner_account_workchain_id, owner_account_hex, root_address, created_at\n        FROM token_owners ",
     "describe": {
       "columns": [
         {
@@ -419,13 +105,13 @@
         },
         {
           "ordinal": 1,
-          "name": "owner_address",
-          "type_info": "Varchar"
+          "name": "owner_account_workchain_id",
+          "type_info": "Int4"
         },
         {
           "ordinal": 2,
-          "name": "owner_public_key",
-          "type_info": "Bytea"
+          "name": "owner_account_hex",
+          "type_info": "Varchar"
         },
         {
           "ordinal": 3,
@@ -434,32 +120,14 @@
         },
         {
           "ordinal": 4,
-          "name": "token",
-          "type_info": "Varchar"
-        },
-        {
-          "ordinal": 5,
-          "name": "code_hash",
-          "type_info": "Bytea"
-        },
-        {
-          "ordinal": 6,
-          "name": "scale",
-          "type_info": "Int4"
-        },
-        {
-          "ordinal": 7,
           "name": "created_at",
-          "type_info": "Int8"
+          "type_info": "Timestamp"
         }
       ],
       "parameters": {
         "Left": []
       },
       "nullable": [
-        false,
-        false,
-        true,
         false,
         false,
         false,
@@ -468,313 +136,19 @@
       ]
     }
   },
-  "7d07c8e35bc88fbf7363c5a4152f6218a6e61ff47e089d9ac446ad6bf1fe4f32": {
-    "query": "SELECT count(*) FROM transactions",
-    "describe": {
-      "columns": [
-        {
-          "ordinal": 0,
-          "name": "count",
-          "type_info": "Int8"
-        }
-      ],
-      "parameters": {
-        "Left": []
-      },
-      "nullable": [
-        null
-      ]
-    }
-  },
-  "956cd4ab7bc00d19bd25cc6254130e60bce5c2e017dace182ec5aa297c795042": {
-    "query": "\n            INSERT INTO root_tokens_contracts (root_address,code_hash,state,token,name, scale,owner_address, root_public_key)\n            VALUES ($1, $2, $3, $4, $5, $6, $7, $8)  ON CONFLICT DO NOTHING\n            ",
+  "a9a1cddfea51c053282f9635c88d1e653df476ca4301690a495c93c2469006c7": {
+    "query": "INSERT INTO token_owners (address, owner_account_workchain_id, owner_account_hex, root_address)\n            VALUES ($1, $2, $3, $4)\n            ON CONFLICT DO NOTHING",
     "describe": {
       "columns": [],
       "parameters": {
         "Left": [
-          "Varchar",
-          "Bytea",
-          "Bytea",
-          "Varchar",
           "Varchar",
           "Int4",
           "Varchar",
-          "Bytea"
+          "Varchar"
         ]
       },
       "nullable": []
-    }
-  },
-  "ac13554bdcffe64cec4a5fc7006d3bdeec927ddc4862222c9a3f41de3245a175": {
-    "query": "SELECT root_address, code_hash, state, token, name, scale, created_at, owner_address, root_public_key\n            FROM root_tokens_contracts\n             WHERE root_address = $1",
-    "describe": {
-      "columns": [
-        {
-          "ordinal": 0,
-          "name": "root_address",
-          "type_info": "Varchar"
-        },
-        {
-          "ordinal": 1,
-          "name": "code_hash",
-          "type_info": "Bytea"
-        },
-        {
-          "ordinal": 2,
-          "name": "state",
-          "type_info": "Bytea"
-        },
-        {
-          "ordinal": 3,
-          "name": "token",
-          "type_info": "Varchar"
-        },
-        {
-          "ordinal": 4,
-          "name": "name",
-          "type_info": "Varchar"
-        },
-        {
-          "ordinal": 5,
-          "name": "scale",
-          "type_info": "Int4"
-        },
-        {
-          "ordinal": 6,
-          "name": "created_at",
-          "type_info": "Int8"
-        },
-        {
-          "ordinal": 7,
-          "name": "owner_address",
-          "type_info": "Varchar"
-        },
-        {
-          "ordinal": 8,
-          "name": "root_public_key",
-          "type_info": "Bytea"
-        }
-      ],
-      "parameters": {
-        "Left": [
-          "Text"
-        ]
-      },
-      "nullable": [
-        false,
-        false,
-        false,
-        false,
-        false,
-        false,
-        false,
-        false,
-        false
-      ]
-    }
-  },
-  "b1b2658d3c7a99dd9fe399b67d936745a5d27d5fbcd8f25347cd5e64a19b3c5b": {
-    "query": "SELECT root_address, SUM(amount) FROM balances WHERE root_address = ANY($1) GROUP BY root_address",
-    "describe": {
-      "columns": [
-        {
-          "ordinal": 0,
-          "name": "root_address",
-          "type_info": "Varchar"
-        },
-        {
-          "ordinal": 1,
-          "name": "sum",
-          "type_info": "Numeric"
-        }
-      ],
-      "parameters": {
-        "Left": [
-          "TextArray"
-        ]
-      },
-      "nullable": [
-        false,
-        null
-      ]
-    }
-  },
-  "c1c079f050df7c7207371badb08ce993f014b00ff9af9acecacd24947b8b109a": {
-    "query": "SELECT transaction, block_hash,block_time\n            FROM bad_transactions",
-    "describe": {
-      "columns": [
-        {
-          "ordinal": 0,
-          "name": "transaction",
-          "type_info": "Bytea"
-        },
-        {
-          "ordinal": 1,
-          "name": "block_hash",
-          "type_info": "Bytea"
-        },
-        {
-          "ordinal": 2,
-          "name": "block_time",
-          "type_info": "Int4"
-        }
-      ],
-      "parameters": {
-        "Left": []
-      },
-      "nullable": [
-        false,
-        false,
-        false
-      ]
-    }
-  },
-  "ce30a1878d08e9b6438a3ccff04f6c9aee12eb46c09ff9614b4be25232977aa2": {
-    "query": "INSERT INTO token_owners (address, owner_address, owner_public_key, root_address, token, code_hash, scale)\n            VALUES ($1, $2, $3, $4, $5, $6, $7)\n            ON CONFLICT DO NOTHING",
-    "describe": {
-      "columns": [],
-      "parameters": {
-        "Left": [
-          "Varchar",
-          "Varchar",
-          "Bytea",
-          "Varchar",
-          "Varchar",
-          "Bytea",
-          "Int4"
-        ]
-      },
-      "nullable": []
-    }
-  },
-  "d08ab7f724d64eb6b93d9b645c0df66687b982c0e6353e0edafde38b1d47a43d": {
-    "query": "SELECT count(*) FROM raw_transactions",
-    "describe": {
-      "columns": [
-        {
-          "ordinal": 0,
-          "name": "count",
-          "type_info": "Int8"
-        }
-      ],
-      "parameters": {
-        "Left": []
-      },
-      "nullable": [
-        null
-      ]
-    }
-  },
-  "ece1057f86305ffaace89ab8f4d2c42a96129e04aa73e0682cb1c4445ae57697": {
-    "query": "SELECT name, token, owner_address, root_address, code_hash, scale, root_public_key\n            FROM root_tokens_contracts\n             WHERE code_hash=decode('3BAE4A28A3491AA348AD9B4F21CA642828FCECB0A4945246C5BA7AD4F7F87D04','hex') and token LIKE $1",
-    "describe": {
-      "columns": [
-        {
-          "ordinal": 0,
-          "name": "name",
-          "type_info": "Varchar"
-        },
-        {
-          "ordinal": 1,
-          "name": "token",
-          "type_info": "Varchar"
-        },
-        {
-          "ordinal": 2,
-          "name": "owner_address",
-          "type_info": "Varchar"
-        },
-        {
-          "ordinal": 3,
-          "name": "root_address",
-          "type_info": "Varchar"
-        },
-        {
-          "ordinal": 4,
-          "name": "code_hash",
-          "type_info": "Bytea"
-        },
-        {
-          "ordinal": 5,
-          "name": "scale",
-          "type_info": "Int4"
-        },
-        {
-          "ordinal": 6,
-          "name": "root_public_key",
-          "type_info": "Bytea"
-        }
-      ],
-      "parameters": {
-        "Left": [
-          "Text"
-        ]
-      },
-      "nullable": [
-        false,
-        false,
-        false,
-        false,
-        false,
-        false,
-        false
-      ]
-    }
-  },
-  "fbf6e4c094ca4630672df4fd94d5f75c21eea6e6a8e5b09b02abf5bcb6261cce": {
-    "query": "SELECT name, token, owner_address, root_address, code_hash, scale, root_public_key from trading_ton_wallet_api_rs.public.root_tokens_contracts\n            WHERE root_address= $1 and code_hash=decode('3BAE4A28A3491AA348AD9B4F21CA642828FCECB0A4945246C5BA7AD4F7F87D04','hex')",
-    "describe": {
-      "columns": [
-        {
-          "ordinal": 0,
-          "name": "name",
-          "type_info": "Varchar"
-        },
-        {
-          "ordinal": 1,
-          "name": "token",
-          "type_info": "Varchar"
-        },
-        {
-          "ordinal": 2,
-          "name": "owner_address",
-          "type_info": "Varchar"
-        },
-        {
-          "ordinal": 3,
-          "name": "root_address",
-          "type_info": "Varchar"
-        },
-        {
-          "ordinal": 4,
-          "name": "code_hash",
-          "type_info": "Bytea"
-        },
-        {
-          "ordinal": 5,
-          "name": "scale",
-          "type_info": "Int4"
-        },
-        {
-          "ordinal": 6,
-          "name": "root_public_key",
-          "type_info": "Bytea"
-        }
-      ],
-      "parameters": {
-        "Left": [
-          "Text"
-        ]
-      },
-      "nullable": [
-        false,
-        false,
-        false,
-        false,
-        false,
-        false,
-        false
-      ]
     }
   }
 }
