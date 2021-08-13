@@ -40,17 +40,22 @@ impl SqlxClient {
             .map_err(From::from)
     }
 
-    // pub async fn get_total_supply_by_root_address(
-    //     &self,
-    //     root_address: &str,
-    // ) -> Result<BigDecimal, anyhow::Error> {
-    //     sqlx::query!(
-    //         r#"SELECT SUM(amount) FROM balances WHERE root_address = $1"#,
-    //         root_address
-    //     )
-    //     .fetch_one(&self.pool)
-    //     .await
-    //     .map(|x| x.sum.unwrap_or_default())
-    //     .map_err(anyhow::Error::new)
-    // }
+    pub async fn get_address(
+        &self,
+        service_id: ServiceId,
+        workchain_id: i32,
+        hex: String,
+    ) -> Result<AddressDb, ServiceError> {
+        sqlx::query_as!(AddressDb,
+                r#"SELECT id, service_id as "service_id: _", workchain_id, hex, base64url, public_key, private_key, account_type as "account_type: _", custodians, confirmations, custodians_public_keys, balance, created_at, updated_at
+                FROM address
+                WHERE service_id = $1 AND workchain_id = $2 AND hex = $3"#,
+                service_id as ServiceId,
+                workchain_id,
+                hex
+            )
+            .fetch_one(&self.pool)
+            .await
+            .map_err(From::from)
+    }
 }

@@ -9,16 +9,16 @@ use crate::models::sqlx::AddressDb;
 
 #[derive(Debug, Deserialize, Serialize, Clone, opg::OpgModel, Eq, PartialEq, sqlx::Type)]
 #[opg("AccountType")]
-#[sqlx(type_name = "twa_account_type")]
-#[sqlx(rename_all = "PascalCase")]
+#[sqlx(type_name = "twa_account_type", rename_all = "PascalCase")]
 pub enum AccountType {
     HighloadWallet,
     Wallet,
     SafeMultisig,
 }
 
-#[derive(Debug, Deserialize, Serialize, Clone, opg::OpgModel)]
+#[derive(Debug, Deserialize, Serialize, Clone, opg::OpgModel, sqlx::Type)]
 #[opg("AccountStatus")]
+#[sqlx(type_name = "twa_account_status", rename_all = "PascalCase")]
 pub enum AccountStatus {
     Active,
     UnInit,
@@ -44,13 +44,14 @@ impl From<AddressDb> for AddressResponse {
         }
     }
 }
-
-#[derive(Debug, Deserialize, Serialize, Clone, opg::OpgModel, PartialEq, Eq)]
-#[opg("TonTransactionType")]
-pub enum TonTransactionType {
-    In,
-    Out,
-}
+//
+// #[derive(Debug, Deserialize, Serialize, Clone, opg::OpgModel, PartialEq, Eq, sqlx::Type)]
+// #[opg("TonTransactionType")]
+// #[sqlx(type_name = "twa_account_status", rename_all = "PascalCase")]
+// pub enum TonTransactionType {
+//     In,
+//     Out,
+// }
 
 #[derive(Debug, Deserialize, Serialize, Clone, opg::OpgModel, PartialEq, Eq)]
 #[opg("TonStatus")]
@@ -59,8 +60,9 @@ pub enum TonStatus {
     Error,
 }
 
-#[derive(Debug, Deserialize, Serialize, Clone, opg::OpgModel, PartialEq, Eq)]
+#[derive(Debug, Deserialize, Serialize, Clone, opg::OpgModel, PartialEq, Eq, sqlx::Type)]
 #[opg("TonTransactionStatus")]
+#[sqlx(type_name = "twa_transaction_status", rename_all = "PascalCase")]
 pub enum TonTransactionStatus {
     New,
     Done,
@@ -68,24 +70,27 @@ pub enum TonTransactionStatus {
     Error,
 }
 
-#[derive(Debug, Deserialize, Serialize, Clone, opg::OpgModel, PartialEq, Eq)]
+#[derive(Debug, Deserialize, Serialize, Clone, opg::OpgModel, PartialEq, Eq, sqlx::Type)]
 #[opg("TonTransactionStatus")]
+#[sqlx(type_name = "twa_token_transaction_status", rename_all = "PascalCase")]
 pub enum TonTokenTransactionStatus {
     New,
     Done,
     Error,
 }
 
-#[derive(Debug, Deserialize, Serialize, Clone, opg::OpgModel, PartialEq, Eq)]
+#[derive(Debug, Deserialize, Serialize, Clone, opg::OpgModel, PartialEq, Eq, sqlx::Type)]
 #[opg("TonEventStatus")]
+#[sqlx(type_name = "twa_transaction_event_status", rename_all = "PascalCase")]
 pub enum TonEventStatus {
     New,
     Notified,
     Error,
 }
 
-#[derive(Debug, Deserialize, Serialize, Clone, opg::OpgModel, PartialEq, Eq)]
+#[derive(Debug, Deserialize, Serialize, Clone, opg::OpgModel, PartialEq, Eq, sqlx::Type)]
 #[opg("TonTransactionDirection")]
+#[sqlx(type_name = "twa_transaction_direction", rename_all = "PascalCase")]
 pub enum TonTransactionDirection {
     Send,
     Receive,

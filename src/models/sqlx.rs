@@ -109,7 +109,7 @@ pub struct TokenBalanceFromDb {
 }
 
 #[derive(Clone, Debug, serde::Serialize, serde::Deserialize, Eq, PartialEq)]
-pub struct TransactionFromDb {
+pub struct TokenTransactionFromDb {
     pub id: Uuid,
     pub service_id: ServiceId,
     pub transaction_hash: Option<String>,
@@ -129,7 +129,7 @@ pub struct TransactionFromDb {
 }
 
 #[derive(Clone, Debug, serde::Serialize, serde::Deserialize, Eq, PartialEq)]
-pub struct TransactionToDb {
+pub struct TokenTransactionToDb {
     pub transaction_hash: String,
     pub message_hash: String,
     pub account_workchain_id: i32,
