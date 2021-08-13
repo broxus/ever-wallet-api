@@ -5,15 +5,18 @@ use sqlx::postgres::PgArguments;
 use sqlx::Arguments;
 use sqlx::Row;
 
+use crate::models::account_enums::AccountType;
 use crate::models::address::CreateAddressInDb;
+use crate::models::service_id::ServiceId;
 use crate::models::sqlx::AddressDb;
+use crate::prelude::ServiceError;
 use crate::sqlx_client::SqlxClient;
 
 impl SqlxClient {
     pub async fn create_address(
         &self,
         payload: CreateAddressInDb,
-    ) -> Result<AddressDb, anyhow::Error> {
+    ) -> Result<AddressDb, ServiceError> {
         sqlx::query_as!(AddressDb,
                 r#"INSERT INTO address
                 (service_id, workchain_id, hex, base64url, public_key, private_key, account_type, custodians, confirmations, custodians_public_keys)
@@ -21,19 +24,20 @@ impl SqlxClient {
                 RETURNING
                 id, service_id as "service_id: _", workchain_id, hex, base64url, public_key, private_key, account_type as "account_type: _", custodians, confirmations, custodians_public_keys, balance, created_at, updated_at
 "#,
-                payload.service_id,
+                payload.service_id as ServiceId,
                 payload.workchain_id,
                 payload.hex,
                 payload.base64url,
                 payload.public_key,
                 payload.private_key,
-                payload.account_type,
+                payload.account_type as AccountType,
                 payload.custodians,
                 payload.confirmations,
                 payload.custodians_public_keys
             )
-            .execute(&self.pool)
+            .fetch_one(&self.pool)
             .await
+            .map_err(From::from)
     }
 
     // pub async fn get_total_supply_by_root_address(
