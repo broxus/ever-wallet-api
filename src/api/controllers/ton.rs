@@ -162,3 +162,107 @@ pub fn post_events_mark(
     }
     .boxed()
 }
+
+pub fn get_tokens_transactions_mh(
+    message_hash: String,
+    service_id: ServiceId,
+    ctx: Context,
+) -> BoxFuture<'static, Result<impl warp::Reply, warp::Rejection>> {
+    async move {
+        let transaction = ctx
+            .ton_service
+            .get_tokens_transaction_by_mh(&service_id, &message_hash)
+            .await
+            .map(From::from);
+        let res = AccountTokenTransactionResponse::from(transaction);
+
+        Ok(warp::reply::json(&(res)))
+    }
+    .boxed()
+}
+
+pub fn post_tokens_events(
+    service_id: ServiceId,
+    input: PostTonTokenTransactionEventsRequest,
+    ctx: Context,
+) -> BoxFuture<'static, Result<impl warp::Reply, warp::Rejection>> {
+    async move {
+        let transactions_events = ctx
+            .ton_service
+            .search_token_events(&service_id, &input.event_status)
+            .await?;
+        let events: Vec<_> = transactions_events
+            .into_iter()
+            .map(AccountTokenTransactionEventResponse::from)
+            .collect();
+        let res = TonTokenEventsResponse {
+            status: TonStatus::Ok,
+            data: Some(TokenEventsResponse {
+                count: events.len() as i32,
+                items: events,
+            }),
+            error_message: None,
+        };
+
+        Ok(warp::reply::json(&(res)))
+    }
+    .boxed()
+}
+
+pub fn post_tokens_events_mark(
+    service_id: ServiceId,
+    input: PostTonTokenMarkEventsRequest,
+    ctx: Context,
+) -> BoxFuture<'static, Result<impl warp::Reply, warp::Rejection>> {
+    async move {
+        ctx.ton_service
+            .mark_token_event(&service_id, &input.id)
+            .await?;
+        let res = MarkTokenEventsResponse {
+            status: TonStatus::Ok,
+            error_message: None,
+        };
+
+        Ok(warp::reply::json(&(res)))
+    }
+    .boxed()
+}
+
+pub fn get_tokens_address_balance(
+    address: Address,
+    service_id: ServiceId,
+    ctx: Context,
+) -> BoxFuture<'static, Result<impl warp::Reply, warp::Rejection>> {
+    async move {
+        let addresses = ctx
+            .ton_service
+            .get_token_address_balance(&service_id, &address)
+            .await
+            .map(|a| {
+                a.into_iter()
+                    .map(TokenBalanceResponse::from)
+                    .collect::<Vec<TokenBalanceResponse>>()
+            });
+        let res = AccountTokenBalanceResponse::from(addresses);
+
+        Ok(warp::reply::json(&(res)))
+    }
+    .boxed()
+}
+
+pub fn post_tokens_transactions_create(
+    service_id: ServiceId,
+    input: PostTonTokenTransactionSendRequest,
+    ctx: Context,
+) -> BoxFuture<'static, Result<impl warp::Reply, warp::Rejection>> {
+    async move {
+        let transaction = ctx
+            .ton_service
+            .create_token_transaction(&service_id, &input.into())
+            .await
+            .map(From::from);
+        let res = AccountTokenTransactionResponse::from(transaction);
+        Ok(warp::reply::json(&(res)))
+    }
+    .boxed()
+}

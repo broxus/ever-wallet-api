@@ -101,7 +101,12 @@ mod filters {
                     .or(get_transactions_mh(ctx.clone()))
                     .or(get_transactions_h(ctx.clone()))
                     .or(post_events(ctx.clone()))
-                    .or(post_events_mark(ctx)),
+                    .or(post_events_mark(ctx.clone()))
+                    .or(get_tokens_address_balance(ctx.clone()))
+                    .or(post_tokens_transactions_create(ctx.clone()))
+                    .or(get_tokens_transactions_mh(ctx.clone()))
+                    .or(post_tokens_events(ctx.clone()))
+                    .or(post_tokens_events_mark(ctx.clone())),
             )
             .boxed()
     }
@@ -187,6 +192,60 @@ mod filters {
             .and(auth_by_key_get(ctx.auth_service.clone()))
             .and(with_ctx(ctx))
             .and_then(controllers::get_transactions_h)
+            .boxed()
+    }
+
+    pub fn get_tokens_address_balance(ctx: Context) -> BoxedFilter<(impl warp::Reply,)> {
+        warp::path!("tokens" / "address")
+            .and(warp::path::param())
+            .and(warp::path::end())
+            .and(warp::get())
+            .and(auth_by_key_get(ctx.auth_service.clone()))
+            .and(with_ctx(ctx))
+            .and_then(controllers::get_tokens_address_balance)
+            .boxed()
+    }
+
+    pub fn get_tokens_transactions_mh(ctx: Context) -> BoxedFilter<(impl warp::Reply,)> {
+        warp::path("tokens")
+            .and(warp::path("transactions"))
+            .and(warp::path("mh"))
+            .and(warp::path::param())
+            .and(warp::path::end())
+            .and(warp::get())
+            .and(auth_by_key_get(ctx.auth_service.clone()))
+            .and(with_ctx(ctx))
+            .and_then(controllers::get_tokens_transactions_mh)
+            .boxed()
+    }
+
+    pub fn post_tokens_transactions_create(ctx: Context) -> BoxedFilter<(impl warp::Reply,)> {
+        warp::path!("tokens" / "transactions" / "create")
+            .and(warp::path::end())
+            .and(warp::post())
+            .and(auth_by_key(ctx.auth_service.clone()).untuple_one())
+            .and(with_ctx(ctx))
+            .and_then(controllers::post_tokens_transactions_create)
+            .boxed()
+    }
+
+    pub fn post_tokens_events(ctx: Context) -> BoxedFilter<(impl warp::Reply,)> {
+        warp::path!("tokens" / "events")
+            .and(warp::path::end())
+            .and(warp::post())
+            .and(auth_by_key(ctx.auth_service.clone()).untuple_one())
+            .and(with_ctx(ctx))
+            .and_then(controllers::post_tokens_events)
+            .boxed()
+    }
+
+    pub fn post_tokens_events_mark(ctx: Context) -> BoxedFilter<(impl warp::Reply,)> {
+        warp::path!("tokens" / "events" / "mark")
+            .and(warp::path::end())
+            .and(warp::post())
+            .and(auth_by_key(ctx.auth_service.clone()).untuple_one())
+            .and(with_ctx(ctx))
+            .and_then(controllers::post_tokens_events_mark)
             .boxed()
     }
 

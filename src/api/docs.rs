@@ -18,6 +18,7 @@ pub fn swagger() -> String {
         tags: {
             addresses,
             transactions,
+            tokens,
             events,
         },
         paths: {
@@ -56,7 +57,7 @@ pub fn swagger() -> String {
                     200: responses::AccountTransactionResponse,
                 }
             },
-            ("transactions" / "mh"): {
+            ("transactions" / "mh" / String): {
                 GET: {
                     tags: { transactions },
                     summary: "Get transaction",
@@ -64,12 +65,21 @@ pub fn swagger() -> String {
                     200: responses::AccountTransactionResponse,
                 }
             },
-            ("transactions" / "h"): {
+            ("transactions" / "h" / String): {
                 GET: {
                     tags: { transactions },
                     summary: "Get transaction",
                     description: "Get transaction by transaction hash.",
                     200: responses::AccountTransactionResponse,
+                }
+            },
+            ("events" ): {
+                POST: {
+                    tags: { events },
+                    summary: "Get events",
+                    description: "Get events.",
+                    body: requests::PostTonTransactionEventsRequest,
+                    200: responses::TonEventsResponse,
                 }
             },
             ("events" / "mark" ): {
@@ -79,6 +89,49 @@ pub fn swagger() -> String {
                     description: "Mark event by id.",
                     body: requests::PostTonMarkEventsRequest,
                     200: responses::MarkEventsResponse,
+                }
+            },
+             ("tokens" / "address" / String): {
+                GET: {
+                    tags: { addresses, tokens },
+                    summary: "Address tokens balances",
+                    description: "Get  address tokens balances.",
+                    200: responses::AccountTokenBalanceResponse,
+                }
+            },
+            ("tokens" / "transactions" / "create"): {
+                POST: {
+                    tags: { transactions, tokens },
+                    summary: "Create token transaction",
+                    description: "Send token transaction.",
+                    body: requests::PostTonTokenTransactionSendRequest,
+                    200: responses::AccountTokenTransactionResponse,
+                }
+            },
+            ("tokens" / "transactions" / "mh" / String): {
+                GET: {
+                    tags: { transactions, tokens  },
+                    summary: "Get tokens transaction",
+                    description: "Get tokens transaction by message hash.",
+                    200: responses::AccountTokenTransactionResponse,
+                }
+            },
+            ("tokens" / "events" ): {
+                POST: {
+                    tags: { events, tokens },
+                    summary: "Get token events",
+                    description: "Get token events.",
+                    body: requests::PostTonTokenTransactionEventsRequest,
+                    200: responses::TonTokenEventsResponse,
+                }
+            },
+            ("tokens" / "events" / "mark" ): {
+                POST: {
+                    tags: { events, tokens },
+                    summary: "Mark tokens event",
+                    description: "Mark tokens event by id.",
+                    body: requests::PostTonTokenMarkEventsRequest,
+                    200: responses::MarkTokenEventsResponse,
                 }
             },
         }

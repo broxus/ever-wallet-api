@@ -5,7 +5,11 @@ use crate::models::account_enums::TonEventStatus;
 use crate::models::address::{Address, CreateAddress};
 use crate::models::owners_cache::OwnersCache;
 use crate::models::service_id::ServiceId;
-use crate::models::sqlx::{AddressDb, TransactionDb, TransactionEventDb};
+use crate::models::sqlx::{
+    AddressDb, TokenBalanceFromDb, TokenTransactionEventDb, TokenTransactionFromDb, TransactionDb,
+    TransactionEventDb,
+};
+use crate::models::token_transactions::TokenTransactionSend;
 use crate::models::transactions::TransactionSend;
 use crate::prelude::ServiceError;
 use crate::sqlx_client::SqlxClient;
@@ -52,6 +56,31 @@ pub trait TonService: Send + Sync + 'static {
         service_id: &ServiceId,
         id: &Uuid,
     ) -> Result<Vec<TransactionEventDb>, ServiceError>;
+    async fn get_tokens_transaction_by_mh(
+        &self,
+        service_id: &ServiceId,
+        message_hash: &str,
+    ) -> Result<TokenTransactionFromDb, ServiceError>;
+    async fn search_token_events(
+        &self,
+        service_id: &ServiceId,
+        event_status: &TonEventStatus,
+    ) -> Result<Vec<TokenTransactionEventDb>, ServiceError>;
+    async fn mark_token_event(
+        &self,
+        service_id: &ServiceId,
+        id: &Uuid,
+    ) -> Result<Vec<TokenTransactionEventDb>, ServiceError>;
+    async fn get_token_address_balance(
+        &self,
+        service_id: &ServiceId,
+        address: &Address,
+    ) -> Result<Vec<TokenBalanceFromDb>, ServiceError>;
+    async fn create_token_transaction(
+        &self,
+        service_id: &ServiceId,
+        input: &TokenTransactionSend,
+    ) -> Result<TokenTransactionFromDb, ServiceError>;
 }
 
 pub struct TonServiceImpl {
@@ -125,6 +154,41 @@ impl TonService for TonServiceImpl {
         service_id: &ServiceId,
         id: &Uuid,
     ) -> Result<Vec<TransactionEventDb>, ServiceError> {
+        todo!()
+    }
+    async fn get_tokens_transaction_by_mh(
+        &self,
+        service_id: &ServiceId,
+        message_hash: &str,
+    ) -> Result<TokenTransactionFromDb, ServiceError> {
+        todo!()
+    }
+    async fn search_token_events(
+        &self,
+        service_id: &ServiceId,
+        event_status: &TonEventStatus,
+    ) -> Result<Vec<TokenTransactionEventDb>, ServiceError> {
+        todo!()
+    }
+    async fn mark_token_event(
+        &self,
+        service_id: &ServiceId,
+        id: &Uuid,
+    ) -> Result<Vec<TokenTransactionEventDb>, ServiceError> {
+        todo!()
+    }
+    async fn get_token_address_balance(
+        &self,
+        service_id: &ServiceId,
+        address: &Address,
+    ) -> Result<Vec<TokenBalanceFromDb>, ServiceError> {
+        todo!()
+    }
+    async fn create_token_transaction(
+        &self,
+        service_id: &ServiceId,
+        input: &TokenTransactionSend,
+    ) -> Result<TokenTransactionFromDb, ServiceError> {
         todo!()
     }
 }

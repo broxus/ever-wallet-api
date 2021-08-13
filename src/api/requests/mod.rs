@@ -6,6 +6,7 @@ use crate::models::account_enums::{
     AccountAddressType, AccountType, TonEventStatus, TransactionSendOutputType,
 };
 use crate::models::address::{Address, CreateAddress};
+use crate::models::token_transactions::{TokenTransactionSend, TokenTransactionSendOutput};
 use crate::models::transactions::{TransactionSend, TransactionSendOutput};
 
 #[derive(Debug, Deserialize, Serialize, Clone, opg::OpgModel, derive_more::Constructor)]
@@ -59,11 +60,39 @@ impl From<PostTonTransactionSendRequest> for TransactionSend {
     }
 }
 
+#[derive(Debug, Deserialize, Serialize, Clone, opg::OpgModel)]
+#[serde(rename_all = "camelCase")]
+#[opg("PostTonTokenTransactionSendRequest")]
+pub struct PostTonTokenTransactionSendRequest {
+    #[opg("id", string)]
+    pub id: Uuid,
+    pub from_address: Address,
+    pub root_address: String,
+    pub outputs: Vec<PostTokenTonTransactionSendOutputRequest>,
+}
+
+impl From<PostTonTokenTransactionSendRequest> for TokenTransactionSend {
+    fn from(c: PostTonTokenTransactionSendRequest) -> Self {
+        TokenTransactionSend {
+            id: c.id,
+            from_address: c.from_address,
+            root_address: c.root_address,
+            outputs: c.outputs.into_iter().map(From::from).collect(),
+        }
+    }
+}
+
 #[derive(Debug, Deserialize, Serialize, Clone, opg::OpgModel, derive_more::Constructor)]
 #[serde(rename_all = "camelCase")]
 #[opg("PostTonMarkEventsRequest")]
 pub struct PostTonMarkEventsRequest {
-    #[opg("id", string)]
+    pub id: Uuid,
+}
+
+#[derive(Debug, Deserialize, Serialize, Clone, opg::OpgModel, derive_more::Constructor)]
+#[serde(rename_all = "camelCase")]
+#[opg("PostTonTokenMarkEventsRequest")]
+pub struct PostTonTokenMarkEventsRequest {
     pub id: Uuid,
 }
 
@@ -71,6 +100,13 @@ pub struct PostTonMarkEventsRequest {
 #[serde(rename_all = "camelCase")]
 #[opg("PostTonTransactionEventsRequest")]
 pub struct PostTonTransactionEventsRequest {
+    pub event_status: TonEventStatus,
+}
+
+#[derive(Debug, Deserialize, Serialize, Clone, opg::OpgModel)]
+#[serde(rename_all = "camelCase")]
+#[opg("PostTonTokenTransactionEventsRequest")]
+pub struct PostTonTokenTransactionEventsRequest {
     pub event_status: TonEventStatus,
 }
 
@@ -90,6 +126,24 @@ impl From<PostTonTransactionSendOutputRequest> for TransactionSendOutput {
             recipient_address: c.recipient_address,
             value: c.value,
             output_type: c.output_type,
+        }
+    }
+}
+
+#[derive(Debug, Deserialize, Serialize, Clone, opg::OpgModel)]
+#[serde(rename_all = "camelCase")]
+#[opg("PostTonTransactionSendOutputRequest")]
+pub struct PostTokenTonTransactionSendOutputRequest {
+    pub recipient_address: Address,
+    #[opg("value", string)]
+    pub value: BigDecimal,
+}
+
+impl From<PostTokenTonTransactionSendOutputRequest> for TokenTransactionSendOutput {
+    fn from(c: PostTokenTonTransactionSendOutputRequest) -> Self {
+        TokenTransactionSendOutput {
+            recipient_address: c.recipient_address,
+            value: c.value,
         }
     }
 }
