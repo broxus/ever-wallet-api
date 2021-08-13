@@ -7,8 +7,10 @@ use ton_block::MsgAddressInt;
 use crate::models::address::Address;
 use crate::models::sqlx::AddressDb;
 
-#[derive(Debug, Deserialize, Serialize, Clone, opg::OpgModel, Eq, PartialEq)]
+#[derive(Debug, Deserialize, Serialize, Clone, opg::OpgModel, Eq, PartialEq, sqlx::Type)]
 #[opg("AccountType")]
+#[sqlx(type_name = "twa_account_type")]
+#[sqlx(rename_all = "PascalCase")]
 pub enum AccountType {
     HighloadWallet,
     Wallet,
