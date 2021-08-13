@@ -101,7 +101,7 @@ mod filters {
                     .or(get_transactions_mh(ctx.clone()))
                     .or(get_transactions_h(ctx.clone()))
                     .or(post_events(ctx.clone()))
-                    .or(post_events_mark(ctx.clone())),
+                    .or(post_events_mark(ctx)),
             )
             .boxed()
     }

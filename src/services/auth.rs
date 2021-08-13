@@ -1,7 +1,6 @@
 use async_trait::async_trait;
 use chrono::{NaiveDateTime, Utc};
-use dexpa::errors::log_error;
-use hmac::{Hmac, Mac};
+use hmac::{Hmac, Mac, NewMac};
 use http::{header::HeaderValue, HeaderMap};
 use sha2::Sha256;
 
@@ -80,11 +79,11 @@ impl AuthService for AuthServiceImpl {
             )));
         }
 
-        let mut mac = HmacSha256::new_varkey(&key.secret.as_bytes())
+        let mut mac = HmacSha256::new_from_slice(key.secret.as_bytes())
             .map_err(|_| ServiceError::Auth("Secret is not hmac sha256".to_string()))?;
 
         let signing_phrase = format!("{}{}{}", timestamp_ms, path.as_str(), body);
-        mac.input(&signing_phrase.as_bytes());
+        mac.update(signing_phrase.as_bytes());
 
         let sign_header = headers
             .get("sign")

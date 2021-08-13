@@ -35,12 +35,12 @@ pub trait TonService: Send + Sync + 'static {
     async fn get_transaction_by_mh(
         &self,
         service_id: &ServiceId,
-        message_hash: &String,
+        message_hash: &str,
     ) -> Result<TransactionDb, ServiceError>;
     async fn get_transaction_by_h(
         &self,
         service_id: &ServiceId,
-        transaction_hash: &String,
+        transaction_hash: &str,
     ) -> Result<TransactionDb, ServiceError>;
     async fn search_events(
         &self,
@@ -102,14 +102,14 @@ impl TonService for TonServiceImpl {
     async fn get_transaction_by_mh(
         &self,
         service_id: &ServiceId,
-        message_hash: &String,
+        message_hash: &str,
     ) -> Result<TransactionDb, ServiceError> {
         todo!()
     }
     async fn get_transaction_by_h(
         &self,
         service_id: &ServiceId,
-        transaction_hash: &String,
+        transaction_hash: &str,
     ) -> Result<TransactionDb, ServiceError> {
         todo!()
     }
