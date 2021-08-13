@@ -19,6 +19,7 @@ use crate::models::owners_cache::OwnersCache;
 use crate::services::{AuthServiceImpl, TonServiceImpl};
 use crate::settings::{Config, ConfigExt};
 use crate::sqlx_client::SqlxClient;
+use opg::ParameterIn::Path;
 
 #[allow(unused)]
 mod api;
@@ -37,7 +38,7 @@ pub async fn start_server() -> StdResult<()> {
     let global_config = ton_indexer::GlobalConfig::from_file(&app_config.global_config)?;
 
     // Prepare logger
-    stackdriver_logger::init_with_cargo!();
+    init_logger(&config.logger_settings)?;
 
     std::panic::set_hook(Box::new(handle_panic));
     let _guard = sentry::init(
@@ -71,14 +72,14 @@ pub async fn start_server() -> StdResult<()> {
     log::debug!("tokens caching");
     log::debug!("Finish tokens caching");
 
+    let engine = TonIndexer::new(config.indexer.clone(), global_config).await?;
+    engine.start().await?;
+
     log::debug!("start server");
 
     tokio::spawn(http_service(config.server_addr, ton_service, auth_service));
 
     tokio::spawn(dexpa::net::healthcheck_service(config.healthcheck_addr));
-
-    let engine = TonIndexer::new(config.indexer.clone(), global_config).await?;
-    engine.start().await?;
 
     future::pending().await
 }
@@ -96,4 +97,10 @@ impl ApplicationConfig {
         let config: Self = config.try_into()?;
         Ok(config)
     }
+}
+
+fn init_logger(config: &serde_yaml::Value) -> Result<()> {
+    let config = serde_yaml::from_value(config.clone())?;
+    log4rs::config::init_raw_config(config)?;
+    Ok(())
 }

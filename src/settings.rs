@@ -15,6 +15,8 @@ pub struct Config {
     pub db_pool_size: u32,
     pub redis_addr: String,
     pub indexer: IndexerConfig,
+    #[serde(default = "default_logger_settings")]
+    pub logger_settings: serde_yaml::Value,
 }
 
 impl ConfigExt for Config {
@@ -45,4 +47,25 @@ pub trait ConfigExt: Sized {
     fn from_file<P>(path: &P) -> Result<Self>
     where
         P: AsRef<Path>;
+}
+
+fn default_logger_settings() -> serde_yaml::Value {
+    const DEFAULT_LOG4RS_SETTINGS: &str = r##"
+    appenders:
+      stdout:
+        kind: console
+        encoder:
+          pattern: "{d(%Y-%m-%d %H:%M:%S %Z)(utc)} - {h({l})} {M} = {m} {n}"
+    root:
+      level: error
+      appenders:
+        - stdout
+    loggers:
+      relay:
+        level: info
+        appenders:
+          - stdout
+        additive: false
+    "##;
+    serde_yaml::from_str(DEFAULT_LOG4RS_SETTINGS).unwrap()
 }

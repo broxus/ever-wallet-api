@@ -21,6 +21,7 @@ hmac = "*"
 http = "0.2"
 hyper = { version = "0.14" }
 log = { version = "0.4", features = ["std", "serde"] }
+log4rs = "1.0"
 pin-project = "0.4"
 opg = { version = "0.0", features = ["uuid"] }
 r2d2 = "0.8.9"
@@ -33,7 +34,6 @@ serde_json = "1.0"
 serde_yaml = "0.8.17"
 sha2 = "*"
 snafu = "*"
-stackdriver_logger = { git = "https://github.com/dexpa/stackdriver-logger" }
 tokio = { version = "1", features = ["full"] }
 uuid = { version = "0.8", features = ["v4", "serde"] }
 url = { version = "2.2.0", features = ["serde"] }
