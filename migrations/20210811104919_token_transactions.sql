@@ -36,19 +36,19 @@ CREATE INDEX token_transactions_created_at_idx ON token_transactions (created_at
 CREATE UNIQUE INDEX token_transactions_t_hash_a_wi_hex_d_idx ON token_transactions (transaction_hash, account_workchain_id, account_hex, direction)
     WHERE transaction_hash IS NOT NULL;
 
-create function update_token_balances_on_insert_in_token_transactions() returns trigger
+create or replace function update_token_balances_on_insert_in_token_transactions() returns trigger
     language plpgsql
 as
 $$
 BEGIN
     INSERT INTO token_balances (service_id,
-                          account_workchain_id,
-                          account_hex,
-                          balance,
-                          root_address,
-                          created_at,
-                          updated_at
-                          )
+                                account_workchain_id,
+                                account_hex,
+                                balance,
+                                root_address,
+                                created_at,
+                                updated_at
+    )
     VALUES (NEW.service_id,
             NEW.account_workchain_id,
             NEW.account_hex,
@@ -57,7 +57,7 @@ BEGIN
             NEW.created_at,
             NEW.updated_at)
     ON CONFLICT (account_workchain_id, account_hex, root_address) DO UPDATE
-        SET balance = token_balances.balance + NEW.value, updated_at = NEW.updated_at
+        SET balance = token_balances.balance + CASE WHEN NEW.status = 'Done' THEN NEW.value ELSE 0 END , updated_at = NEW.updated_at
     WHERE token_balances.account_workchain_id = NEW.account_workchain_id
       AND token_balances.account_hex = NEW.account_hex
       AND token_balances.root_address = NEW.root_address;
@@ -70,3 +70,37 @@ create trigger update_token_balances_trg
     on token_transactions
     for each row
 execute procedure update_token_balances_on_insert_in_token_transactions();
+
+CREATE OR REPLACE FUNCTION update_token_balance_on_update() RETURNS TRIGGER AS
+$$
+BEGIN
+    LOCK TABLE token_balances IN SHARE ROW EXCLUSIVE MODE;
+    UPDATE token_balances
+    SET (balance, updated_at) = (balance + CASE WHEN NEW.status = 'Done' THEN NEW.value ELSE 0 END - CASE WHEN OLD.status = 'Done' THEN OLD.value ELSE 0 END, current_timestamp)
+    WHERE account_hex = NEW.account_hex AND account_workchain_id = NEW.account_workchain_id AND root_address = NEW.root_address;
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER token_transactions_tg_update_update_token_balance
+    AFTER UPDATE
+    ON token_transactions
+    FOR EACH ROW
+EXECUTE PROCEDURE update_token_balance_on_update();
+
+CREATE OR REPLACE FUNCTION update_token_balance_on_delete() RETURNS TRIGGER AS
+$$
+BEGIN
+    LOCK TABLE token_balances IN SHARE ROW EXCLUSIVE MODE;
+    UPDATE token_balances
+    SET (balance, updated_at) = (balance -  CASE WHEN OLD.status = 'Done' THEN OLD.value ELSE 0 END, current_timestamp)
+    WHERE account_hex = OLD.account_hex AND account_workchain_id = OLD.account_workchain_id AND root_address = OLD.root_address;
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER token_transactions_tg_delete_update_token_balance
+    AFTER DELETE
+    ON token_transactions
+    FOR EACH ROW
+EXECUTE PROCEDURE update_token_balance_on_delete();
