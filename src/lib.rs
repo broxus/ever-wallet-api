@@ -11,7 +11,7 @@ use r2d2_redis::RedisConnectionManager;
 use sqlx::postgres::PgPoolOptions;
 
 use crate::api::http_service;
-use crate::client::{TonApiClient, TonApiClientImpl};
+use crate::client::TonApiClientImpl;
 use crate::indexer::TonIndexer;
 use crate::models::owners_cache::OwnersCache;
 use crate::services::{AuthServiceImpl, TonServiceImpl};

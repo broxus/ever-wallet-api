@@ -1,6 +1,5 @@
 pub use futures::prelude::*;
 
-use http::StatusCode;
 use r2d2::{Pool, PooledConnection};
 use r2d2_redis::RedisConnectionManager;
 use sqlx::Error;

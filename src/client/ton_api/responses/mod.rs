@@ -1,17 +1,11 @@
-use std::str::FromStr;
-
 use bigdecimal::BigDecimal;
-use nekoton_utils::pack_std_smc_addr;
-use ton_block::MsgAddressInt;
 use uuid::Uuid;
 
 use crate::models::account_enums::{
-    AccountType, AddressResponse, TonEventStatus, TonTokenTransactionStatus,
-    TonTransactionDirection, TonTransactionStatus,
+    AccountType, TonTokenTransactionStatus, TonTransactionDirection, TonTransactionStatus,
 };
-use crate::models::address::{Address, CreateAddressInDb};
+use crate::models::address::CreateAddressInDb;
 use crate::models::service_id::ServiceId;
-use crate::models::sqlx::{TokenTransactionEventDb, TransactionEventDb};
 use crate::models::token_transactions::CreateSendTokenTransaction;
 use crate::models::transactions::CreateSendTransaction;
 

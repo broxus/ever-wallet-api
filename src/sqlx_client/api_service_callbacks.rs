@@ -1,7 +1,4 @@
-use crate::models::account_enums::AccountType;
-use crate::models::address::CreateAddressInDb;
 use crate::models::service_id::ServiceId;
-use crate::models::sqlx::AddressDb;
 use crate::prelude::ServiceError;
 use crate::sqlx_client::SqlxClient;
 

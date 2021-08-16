@@ -4,13 +4,11 @@ pub use self::responses::*;
 
 use async_trait::async_trait;
 use bigdecimal::BigDecimal;
-use chrono::Utc;
 use ton_block::MsgAddressInt;
-use uuid::Uuid;
 
-use crate::models::address::{CreateAddress, CreateAddressInDb};
-use crate::models::token_transactions::{CreateSendTokenTransaction, TokenTransactionSend};
-use crate::models::transactions::{CreateSendTransaction, TransactionSend};
+use crate::models::address::CreateAddress;
+use crate::models::token_transactions::TokenTransactionSend;
+use crate::models::transactions::TransactionSend;
 use crate::prelude::ServiceError;
 
 #[async_trait]
