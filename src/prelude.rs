@@ -1,5 +1,6 @@
 pub use futures::prelude::*;
 
+use http::StatusCode;
 use r2d2::{Pool, PooledConnection};
 use r2d2_redis::RedisConnectionManager;
 use sqlx::Error;
@@ -25,6 +26,12 @@ impl From<sqlx::Error> for ServiceError {
             Error::RowNotFound => ServiceError::NotFound("database row".to_string()),
             _ => ServiceError::Other(anyhow::Error::new(e)),
         }
+    }
+}
+
+impl From<reqwest::Error> for ServiceError {
+    fn from(e: reqwest::Error) -> Self {
+        ServiceError::Other(anyhow::Error::new(e))
     }
 }
 

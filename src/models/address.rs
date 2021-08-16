@@ -25,6 +25,9 @@ pub struct Address(pub String);
 pub struct CreateAddress {
     pub account_type: Option<AccountType>,
     pub workchain_id: Option<i32>,
+    pub custodians: Option<i32>,
+    pub confirmations: Option<i32>,
+    pub custodians_public_keys: Option<serde_json::Value>,
 }
 
 #[derive(Clone, Debug, serde::Serialize, serde::Deserialize, Eq, PartialEq)]

@@ -4,18 +4,21 @@ use async_trait::async_trait;
 use ton_block::MsgAddressInt;
 use uuid::Uuid;
 
+use crate::client::TonApiClient;
 use crate::models::account_enums::TonEventStatus;
-use crate::models::address::{Address, CreateAddress};
+use crate::models::address::{Address, CreateAddress, CreateAddressInDb};
 use crate::models::owners_cache::OwnersCache;
 use crate::models::service_id::ServiceId;
 use crate::models::sqlx::{
     AddressDb, TokenBalanceFromDb, TokenTransactionEventDb, TokenTransactionFromDb, TransactionDb,
     TransactionEventDb,
 };
-use crate::models::token_transactions::TokenTransactionSend;
-use crate::models::transactions::TransactionSend;
+use crate::models::token_transactions::{CreateSendTokenTransaction, TokenTransactionSend};
+use crate::models::transactions::{CreateSendTransaction, TransactionSend};
 use crate::prelude::ServiceError;
 use crate::sqlx_client::SqlxClient;
+use nekoton_utils::unpack_std_smc_addr;
+use std::sync::Arc;
 
 #[async_trait]
 pub trait TonService: Send + Sync + 'static {
@@ -89,13 +92,19 @@ pub trait TonService: Send + Sync + 'static {
 pub struct TonServiceImpl {
     sqlx_client: SqlxClient,
     owners_cache: OwnersCache,
+    ton_api_client: Arc<dyn TonApiClient>,
 }
 
 impl TonServiceImpl {
-    pub fn new(sqlx_client: SqlxClient, owners_cache: OwnersCache) -> Self {
+    pub fn new(
+        sqlx_client: SqlxClient,
+        owners_cache: OwnersCache,
+        ton_api_client: Arc<dyn TonApiClient>,
+    ) -> Self {
         Self {
             sqlx_client,
             owners_cache,
+            ton_api_client,
         }
     }
 }
@@ -107,14 +116,18 @@ impl TonService for TonServiceImpl {
         service_id: &ServiceId,
         input: &CreateAddress,
     ) -> Result<AddressDb, ServiceError> {
-        todo!()
+        let payload = self.ton_api_client.get_address(input).await?;
+        self.sqlx_client
+            .create_address(CreateAddressInDb::new(payload, *service_id))
+            .await
     }
     async fn check_address(
         &self,
         service_id: &ServiceId,
         address: &Address,
     ) -> Result<bool, ServiceError> {
-        todo!()
+        Ok(MsgAddressInt::from_str(&address.0).is_ok()
+            || (unpack_std_smc_addr(&address.0, true).is_ok()))
     }
     async fn get_address_balance(
         &self,
@@ -137,7 +150,13 @@ impl TonService for TonServiceImpl {
         service_id: &ServiceId,
         input: &TransactionSend,
     ) -> Result<TransactionDb, ServiceError> {
-        todo!()
+        let payload = self.ton_api_client.prepare_transaction(input).await?;
+        let result = self
+            .sqlx_client
+            .create_send_transaction(CreateSendTransaction::new(payload.clone(), *service_id))
+            .await?;
+        self.ton_api_client.send_transaction(&payload).await?;
+        Ok(result)
     }
 
     async fn get_transaction_by_mh(
@@ -220,6 +239,15 @@ impl TonService for TonServiceImpl {
         service_id: &ServiceId,
         input: &TokenTransactionSend,
     ) -> Result<TokenTransactionFromDb, ServiceError> {
-        todo!()
+        let payload = self.ton_api_client.prepare_token_transaction(input).await?;
+        let result = self
+            .sqlx_client
+            .create_send_token_transaction(CreateSendTokenTransaction::new(
+                payload.clone(),
+                *service_id,
+            ))
+            .await?;
+        self.ton_api_client.send_token_transaction(&payload).await?;
+        Ok(result)
     }
 }

@@ -11,11 +11,6 @@ pub struct TokenTransactionSend {
     pub id: Uuid,
     pub from_address: Address,
     pub root_address: String,
-    pub outputs: Vec<TokenTransactionSendOutput>,
-}
-
-#[derive(Debug, Deserialize, Serialize, Clone)]
-pub struct TokenTransactionSendOutput {
     pub recipient_address: Address,
     pub value: BigDecimal,
 }

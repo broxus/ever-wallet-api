@@ -44,14 +44,6 @@ impl From<AddressDb> for AddressResponse {
         }
     }
 }
-//
-// #[derive(Debug, Deserialize, Serialize, Clone, opg::OpgModel, PartialEq, Eq, sqlx::Type)]
-// #[opg("TonTransactionType")]
-// #[sqlx(type_name = "twa_account_status", rename_all = "PascalCase")]
-// pub enum TonTransactionType {
-//     In,
-//     Out,
-// }
 
 #[derive(Debug, Deserialize, Serialize, Clone, opg::OpgModel, PartialEq, Eq)]
 #[opg("TonStatus")]
@@ -77,6 +69,16 @@ pub enum TonTokenTransactionStatus {
     New,
     Done,
     Error,
+}
+
+impl From<TonTokenTransactionStatus> for TonTransactionStatus {
+    fn from(t: TonTokenTransactionStatus) -> Self {
+        match t {
+            TonTokenTransactionStatus::New => Self::New,
+            TonTokenTransactionStatus::Done => Self::Done,
+            TonTokenTransactionStatus::Error => Self::Error,
+        }
+    }
 }
 
 #[derive(Debug, Deserialize, Serialize, Clone, opg::OpgModel, PartialEq, Eq, sqlx::Type, Copy)]

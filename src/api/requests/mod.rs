@@ -6,15 +6,8 @@ use crate::models::account_enums::{
     AccountAddressType, AccountType, TonEventStatus, TransactionSendOutputType,
 };
 use crate::models::address::{Address, CreateAddress};
-use crate::models::token_transactions::{TokenTransactionSend, TokenTransactionSendOutput};
+use crate::models::token_transactions::TokenTransactionSend;
 use crate::models::transactions::{TransactionSend, TransactionSendOutput};
-
-#[derive(Debug, Deserialize, Serialize, Clone, opg::OpgModel, derive_more::Constructor)]
-#[serde(rename_all = "camelCase")]
-#[opg("AccountAddressRequest")]
-pub struct AccountAddressRequest {
-    pub address_type: AccountAddressType,
-}
 
 #[derive(Debug, Deserialize, Serialize, Clone, opg::OpgModel, derive_more::Constructor)]
 #[serde(rename_all = "camelCase")]
@@ -22,6 +15,10 @@ pub struct AccountAddressRequest {
 pub struct CreateAddressRequest {
     pub account_type: Option<AccountType>,
     pub workchain_id: Option<i32>,
+    pub custodians: Option<i32>,
+    pub confirmations: Option<i32>,
+    #[opg("custodiansPublicKeys", any)]
+    pub custodians_public_keys: Option<serde_json::Value>,
 }
 
 impl From<CreateAddressRequest> for CreateAddress {
@@ -29,6 +26,9 @@ impl From<CreateAddressRequest> for CreateAddress {
         CreateAddress {
             account_type: c.account_type,
             workchain_id: c.workchain_id,
+            custodians: c.custodians,
+            confirmations: c.confirmations,
+            custodians_public_keys: c.custodians_public_keys,
         }
     }
 }
@@ -44,7 +44,6 @@ pub struct BalanceRequest {
 #[serde(rename_all = "camelCase")]
 #[opg("PostTonTransactionSendRequest")]
 pub struct PostTonTransactionSendRequest {
-    #[opg("id", string)]
     pub id: Uuid,
     pub from_address: Address,
     pub outputs: Vec<PostTonTransactionSendOutputRequest>,
@@ -64,11 +63,12 @@ impl From<PostTonTransactionSendRequest> for TransactionSend {
 #[serde(rename_all = "camelCase")]
 #[opg("PostTonTokenTransactionSendRequest")]
 pub struct PostTonTokenTransactionSendRequest {
-    #[opg("id", string)]
     pub id: Uuid,
     pub from_address: Address,
     pub root_address: String,
-    pub outputs: Vec<PostTokenTonTransactionSendOutputRequest>,
+    pub recipient_address: Address,
+    #[opg("value", string)]
+    pub value: BigDecimal,
 }
 
 impl From<PostTonTokenTransactionSendRequest> for TokenTransactionSend {
@@ -77,7 +77,8 @@ impl From<PostTonTokenTransactionSendRequest> for TokenTransactionSend {
             id: c.id,
             from_address: c.from_address,
             root_address: c.root_address,
-            outputs: c.outputs.into_iter().map(From::from).collect(),
+            recipient_address: c.recipient_address,
+            value: c.value,
         }
     }
 }
@@ -126,24 +127,6 @@ impl From<PostTonTransactionSendOutputRequest> for TransactionSendOutput {
             recipient_address: c.recipient_address,
             value: c.value,
             output_type: c.output_type,
-        }
-    }
-}
-
-#[derive(Debug, Deserialize, Serialize, Clone, opg::OpgModel)]
-#[serde(rename_all = "camelCase")]
-#[opg("PostTonTransactionSendOutputRequest")]
-pub struct PostTokenTonTransactionSendOutputRequest {
-    pub recipient_address: Address,
-    #[opg("value", string)]
-    pub value: BigDecimal,
-}
-
-impl From<PostTokenTonTransactionSendOutputRequest> for TokenTransactionSendOutput {
-    fn from(c: PostTokenTonTransactionSendOutputRequest) -> Self {
-        TokenTransactionSendOutput {
-            recipient_address: c.recipient_address,
-            value: c.value,
         }
     }
 }
