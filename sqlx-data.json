@@ -1,5 +1,63 @@
 {
   "db": "PostgreSQL",
+  "10eee935829d032c8430fc5df7f83b54205f9533f9e17f06a3a08cb4d6e02c4d": {
+    "query": "SELECT service_id as \"service_id: _\", account_workchain_id, account_hex, balance, root_address, created_at, updated_at\n                FROM token_balances\n                WHERE service_id = $1 AND account_workchain_id = $2 AND account_hex = $3 ",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "service_id: _",
+          "type_info": "Uuid"
+        },
+        {
+          "ordinal": 1,
+          "name": "account_workchain_id",
+          "type_info": "Int4"
+        },
+        {
+          "ordinal": 2,
+          "name": "account_hex",
+          "type_info": "Varchar"
+        },
+        {
+          "ordinal": 3,
+          "name": "balance",
+          "type_info": "Numeric"
+        },
+        {
+          "ordinal": 4,
+          "name": "root_address",
+          "type_info": "Varchar"
+        },
+        {
+          "ordinal": 5,
+          "name": "created_at",
+          "type_info": "Timestamp"
+        },
+        {
+          "ordinal": 6,
+          "name": "updated_at",
+          "type_info": "Timestamp"
+        }
+      ],
+      "parameters": {
+        "Left": [
+          "Uuid",
+          "Int4",
+          "Text"
+        ]
+      },
+      "nullable": [
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false
+      ]
+    }
+  },
   "114e12636dd21dcd8ee83cb6019e310c5fb47520e56834e3864456467ed64006": {
     "query": "\n            SELECT id,\n                service_id as \"service_id: _\",\n                transaction_id,\n                message_hash,\n                account_workchain_id,\n                account_hex,\n                balance_change,\n                transaction_direction as \"transaction_direction: _\",\n                transaction_status as \"transaction_status: _\",\n                event_status as \"event_status: _\",\n                created_at, updated_at\n            FROM transaction_events\n            WHERE service_id = $1 AND message_hash = $2 AND account_workchain_id = $3 AND account_hex = $4",
     "describe": {
@@ -1021,6 +1079,66 @@
         true,
         true,
         true,
+        false,
+        false,
+        false,
+        false
+      ]
+    }
+  },
+  "4a678bf15a0e55d5042795ff424bf3c3f232df49a211549c2527e3003b334d43": {
+    "query": "INSERT INTO token_balances\n                (service_id, account_workchain_id, account_hex, balance, root_address)\n                VALUES ($1, $2, $3, $4, $5)\n                RETURNING\n                service_id as \"service_id: _\", account_workchain_id, account_hex, balance, root_address, created_at, updated_at\n",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "service_id: _",
+          "type_info": "Uuid"
+        },
+        {
+          "ordinal": 1,
+          "name": "account_workchain_id",
+          "type_info": "Int4"
+        },
+        {
+          "ordinal": 2,
+          "name": "account_hex",
+          "type_info": "Varchar"
+        },
+        {
+          "ordinal": 3,
+          "name": "balance",
+          "type_info": "Numeric"
+        },
+        {
+          "ordinal": 4,
+          "name": "root_address",
+          "type_info": "Varchar"
+        },
+        {
+          "ordinal": 5,
+          "name": "created_at",
+          "type_info": "Timestamp"
+        },
+        {
+          "ordinal": 6,
+          "name": "updated_at",
+          "type_info": "Timestamp"
+        }
+      ],
+      "parameters": {
+        "Left": [
+          "Uuid",
+          "Int4",
+          "Varchar",
+          "Numeric",
+          "Varchar"
+        ]
+      },
+      "nullable": [
+        false,
+        false,
+        false,
         false,
         false,
         false,
@@ -3601,6 +3719,65 @@
         false,
         false,
         true,
+        false,
+        false,
+        false,
+        false,
+        false
+      ]
+    }
+  },
+  "eddc4a03595d835065196419598143d7beab7186e6ddcc7431b4762ade34fccb": {
+    "query": "SELECT service_id as \"service_id: _\", account_workchain_id, account_hex, balance, root_address, created_at, updated_at\n                FROM token_balances\n                WHERE service_id = $1 AND account_workchain_id = $2 AND account_hex = $3 and root_address = $4",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "service_id: _",
+          "type_info": "Uuid"
+        },
+        {
+          "ordinal": 1,
+          "name": "account_workchain_id",
+          "type_info": "Int4"
+        },
+        {
+          "ordinal": 2,
+          "name": "account_hex",
+          "type_info": "Varchar"
+        },
+        {
+          "ordinal": 3,
+          "name": "balance",
+          "type_info": "Numeric"
+        },
+        {
+          "ordinal": 4,
+          "name": "root_address",
+          "type_info": "Varchar"
+        },
+        {
+          "ordinal": 5,
+          "name": "created_at",
+          "type_info": "Timestamp"
+        },
+        {
+          "ordinal": 6,
+          "name": "updated_at",
+          "type_info": "Timestamp"
+        }
+      ],
+      "parameters": {
+        "Left": [
+          "Uuid",
+          "Int4",
+          "Text",
+          "Text"
+        ]
+      },
+      "nullable": [
+        false,
+        false,
         false,
         false,
         false,
