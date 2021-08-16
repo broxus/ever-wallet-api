@@ -2,10 +2,7 @@ use bigdecimal::BigDecimal;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
-use crate::models::account_enums::{
-    TonTokenTransactionStatus, TonTransactionDirection, TonTransactionStatus,
-    TransactionSendOutputType,
-};
+use crate::models::account_enums::{TonTokenTransactionStatus, TonTransactionDirection};
 use crate::models::address::Address;
 use crate::models::service_id::ServiceId;
 
@@ -41,8 +38,8 @@ pub struct UpdateSendTokenTransaction {
     pub transaction_hash: Option<String>,
     pub payload: Option<Vec<u8>>,
     pub block_hash: Option<String>,
-    pub block_time: Option<u32>,
-    pub status: TonTransactionStatus,
+    pub block_time: Option<i32>,
+    pub status: TonTokenTransactionStatus,
     pub error: Option<String>,
 }
 
@@ -59,7 +56,7 @@ pub struct CreateReceiveTokenTransaction {
     pub payload: Option<Vec<u8>>,
     pub error: Option<String>,
     pub block_hash: String,
-    pub block_time: u32,
+    pub block_time: i32,
     pub direction: TonTransactionDirection,
     pub status: TonTokenTransactionStatus,
 }

@@ -1,10 +1,3 @@
-use std::collections::HashMap;
-
-use bigdecimal::BigDecimal;
-use sqlx::postgres::PgArguments;
-use sqlx::Arguments;
-use sqlx::Row;
-
 use crate::models::account_enums::AccountType;
 use crate::models::address::CreateAddressInDb;
 use crate::models::service_id::ServiceId;

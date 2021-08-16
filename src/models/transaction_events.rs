@@ -1,11 +1,7 @@
 use bigdecimal::BigDecimal;
-use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
-use crate::models::account_enums::{
-    TonEventStatus, TonTransactionDirection, TonTransactionStatus, TransactionSendOutputType,
-};
-use crate::models::address::Address;
+use crate::models::account_enums::{TonEventStatus, TonTransactionDirection, TonTransactionStatus};
 use crate::models::service_id::ServiceId;
 
 #[derive(Clone, Debug, serde::Serialize, serde::Deserialize, Eq, PartialEq)]

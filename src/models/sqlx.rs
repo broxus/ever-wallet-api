@@ -121,7 +121,7 @@ pub struct TokenTransactionFromDb {
     pub payload: Option<Vec<u8>>,
     pub error: Option<String>,
     pub block_hash: Option<String>,
-    pub block_time: Option<u32>,
+    pub block_time: Option<i32>,
     pub direction: TonTransactionDirection,
     pub status: TonTokenTransactionStatus,
     pub created_at: NaiveDateTime,

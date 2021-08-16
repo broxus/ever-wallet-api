@@ -3,6 +3,7 @@ use sqlx::PgPool;
 mod addresses;
 mod keys;
 mod token_owners;
+mod token_transactions;
 mod transactions;
 mod transactions_events;
 

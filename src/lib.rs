@@ -19,7 +19,6 @@ use crate::models::owners_cache::OwnersCache;
 use crate::services::{AuthServiceImpl, TonServiceImpl};
 use crate::settings::{Config, ConfigExt};
 use crate::sqlx_client::SqlxClient;
-use opg::ParameterIn::Path;
 
 #[allow(unused)]
 mod api;
@@ -68,7 +67,6 @@ pub async fn start_server() -> StdResult<()> {
         sqlx_client.clone(),
         redis_pool.clone(),
     ));
-    let sqlx_client_clone = sqlx_client.clone();
     log::debug!("tokens caching");
     log::debug!("Finish tokens caching");
 

@@ -1,16 +1,10 @@
-use std::str::FromStr;
-
 use anyhow::Result;
-use itertools::Itertools;
-use sqlx::postgres::PgArguments;
-use sqlx::Arguments;
-use sqlx::Row;
 
 use crate::models::account_enums::TonEventStatus;
 use crate::models::account_enums::TonTransactionDirection;
 use crate::models::account_enums::TonTransactionStatus;
 use crate::models::service_id::ServiceId;
-use crate::models::sqlx::{TransactionDb, TransactionEventDb};
+use crate::models::sqlx::TransactionEventDb;
 use crate::models::transaction_events::{
     CreateReceiveTransactionEvent, CreateSendTransactionEvent, UpdateSendTransactionEvent,
 };

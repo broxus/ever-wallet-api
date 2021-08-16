@@ -458,7 +458,7 @@ pub struct AccountTokenTransactionDataResponse {
     pub root_address: String,
     pub error: Option<String>,
     pub block_hash: Option<String>,
-    pub block_time: Option<u32>,
+    pub block_time: Option<i32>,
     pub direction: TonTransactionDirection,
     pub status: TonTokenTransactionStatus,
     #[opg("UTC timestamp in milliseconds", integer, format = "int64")]
