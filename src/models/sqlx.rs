@@ -155,7 +155,7 @@ pub struct TokenTransactionEventDb {
     pub value: BigDecimal,
     pub root_address: String,
     pub transaction_direction: TonTransactionDirection,
-    pub transaction_status: TonTransactionStatus,
+    pub transaction_status: TonTokenTransactionStatus,
     pub event_status: TonEventStatus,
     pub created_at: NaiveDateTime,
     pub updated_at: NaiveDateTime,

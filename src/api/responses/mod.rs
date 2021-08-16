@@ -186,7 +186,7 @@ pub struct AccountTokenTransactionEventResponse {
     pub value: BigDecimal,
     pub root_address: String,
     pub transaction_direction: TonTransactionDirection,
-    pub transaction_status: TonTransactionStatus,
+    pub transaction_status: TonTokenTransactionStatus,
     pub event_status: TonEventStatus,
     #[opg("UTC timestamp in milliseconds", integer, format = "int64")]
     pub created_at: i64,

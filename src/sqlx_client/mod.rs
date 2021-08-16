@@ -4,6 +4,7 @@ mod addresses;
 mod keys;
 mod token_owners;
 mod token_transactions;
+mod token_transactions_events;
 mod transactions;
 mod transactions_events;
 
