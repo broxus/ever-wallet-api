@@ -1,4 +1,4 @@
-use std::net::{SocketAddr, SocketAddrV4};
+use std::net::SocketAddr;
 
 use config::{Config as RawConfig, ConfigError, Environment};
 use serde::Deserialize;
@@ -7,7 +7,6 @@ use serde::Deserialize;
 pub struct Config {
     pub server_addr: SocketAddr,
     pub healthcheck_addr: SocketAddr,
-    pub node_addr: SocketAddrV4,
     pub database_url: String,
     pub db_pool_size: u32,
     pub redis_addr: String,
