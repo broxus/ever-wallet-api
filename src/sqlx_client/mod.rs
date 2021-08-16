@@ -1,6 +1,7 @@
 use sqlx::PgPool;
 
 mod addresses;
+mod api_service_callbacks;
 mod keys;
 mod token_balances;
 mod token_owners;
