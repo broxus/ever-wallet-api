@@ -44,6 +44,8 @@ sqlx = { version = "0.5", features = ["runtime-tokio-native-tls", "postgres", "u
 indexmap = "*"
 urlencoding = "2.1.0"
 
+stackdriver_logger = { git = "https://github.com/dexpa/stackdriver-logger" }
+
 thiserror = "1.0.26"
 itertools = "0.10.1"
 lru = "0.6.5"

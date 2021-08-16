@@ -2,22 +2,19 @@
 #![allow(clippy::too_many_arguments)]
 #![allow(clippy::inconsistent_struct_constructor)]
 
-use std::path::PathBuf;
 use std::sync::Arc;
 
-use anyhow::Result;
 use dexpa::errors::*;
 use dexpa::utils::handle_panic;
 use futures::prelude::*;
 use r2d2_redis::RedisConnectionManager;
-use serde::Deserialize;
 use sqlx::postgres::PgPoolOptions;
 
 use crate::api::http_service;
 use crate::indexer::TonIndexer;
 use crate::models::owners_cache::OwnersCache;
 use crate::services::{AuthServiceImpl, TonServiceImpl};
-use crate::settings::{Config, ConfigExt};
+use crate::settings::Config;
 use crate::sqlx_client::SqlxClient;
 
 #[allow(unused)]
@@ -31,13 +28,9 @@ mod settings;
 mod sqlx_client;
 
 pub async fn start_server() -> StdResult<()> {
-    let app_config = ApplicationConfig::from_env()?;
-
-    let config = Config::from_file(&app_config.service_config)?;
-    let global_config = ton_indexer::GlobalConfig::from_file(&app_config.global_config)?;
-
+    let config = get_config();
     // Prepare logger
-    init_logger(&config.logger_settings)?;
+    stackdriver_logger::init_with_cargo!();
 
     std::panic::set_hook(Box::new(handle_panic));
     let _guard = sentry::init(
@@ -70,8 +63,8 @@ pub async fn start_server() -> StdResult<()> {
     log::debug!("tokens caching");
     log::debug!("Finish tokens caching");
 
-    let engine = TonIndexer::new(config.indexer.clone(), global_config).await?;
-    engine.start().await?;
+    //let engine = TonIndexer::new(config.indexer.clone(), global_config).await?;
+    //engine.start().await?;
 
     log::debug!("start server");
 
@@ -82,23 +75,6 @@ pub async fn start_server() -> StdResult<()> {
     future::pending().await
 }
 
-#[derive(Deserialize)]
-struct ApplicationConfig {
-    service_config: PathBuf,
-    global_config: PathBuf,
-}
-
-impl ApplicationConfig {
-    fn from_env() -> Result<Self> {
-        let mut config = config::Config::new();
-        config.merge(config::Environment::new())?;
-        let config: Self = config.try_into()?;
-        Ok(config)
-    }
-}
-
-fn init_logger(config: &serde_yaml::Value) -> Result<()> {
-    let config = serde_yaml::from_value(config.clone())?;
-    log4rs::config::init_raw_config(config)?;
-    Ok(())
+fn get_config() -> Config {
+    settings::Config::new().unwrap_or_else(|e| panic!("Error parsing config: {}", e))
 }

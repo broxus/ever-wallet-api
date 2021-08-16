@@ -52,8 +52,6 @@ impl ton_indexer::Subscriber for TonSubscriber {
             return Ok(());
         }
 
-        todo!();
-
-        Ok(())
+        todo!()
     }
 }
