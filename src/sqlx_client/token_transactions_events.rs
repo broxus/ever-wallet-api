@@ -188,6 +188,36 @@ impl SqlxClient {
         .await
         .map_err(From::from)
     }
+
+    pub async fn get_token_transaction_events(
+        &self,
+        service_id: ServiceId,
+        event_status: TonEventStatus,
+    ) -> Result<Vec<TokenTransactionEventDb>, ServiceError> {
+        sqlx::query_as!(
+            TokenTransactionEventDb,
+            r#"
+            SELECT id,
+                service_id as "service_id: _",
+                token_transaction_id,
+                message_hash,
+                account_workchain_id,
+                account_hex,
+                value,
+                root_address,
+                transaction_direction as "transaction_direction: _",
+                transaction_status as "transaction_status: _",
+                event_status as "event_status: _",
+                created_at, updated_at
+            FROM token_transaction_events
+            WHERE service_id = $1 AND event_status = $2"#,
+            service_id as ServiceId,
+            event_status as TonEventStatus,
+        )
+        .fetch_all(&self.pool)
+        .await
+        .map_err(From::from)
+    }
 }
 
 #[cfg(test)]

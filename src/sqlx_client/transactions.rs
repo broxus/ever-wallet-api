@@ -125,8 +125,8 @@ impl SqlxClient {
 
     pub async fn get_transaction_by_mh(
         &self,
-        message_hash: String,
         service_id: ServiceId,
+        message_hash: &str,
     ) -> Result<TransactionDb, ServiceError> {
         sqlx::query_as!(TransactionDb,
                 r#"
@@ -146,8 +146,8 @@ impl SqlxClient {
 
     pub async fn get_transaction_by_h(
         &self,
-        transaction_hash: String,
         service_id: ServiceId,
+        transaction_hash: &str,
     ) -> Result<TransactionDb, ServiceError> {
         sqlx::query_as!(TransactionDb,
                 r#"

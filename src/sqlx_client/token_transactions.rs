@@ -102,8 +102,8 @@ impl SqlxClient {
 
     pub async fn get_token_transaction_by_mh(
         &self,
-        message_hash: String,
         service_id: ServiceId,
+        message_hash: &str,
     ) -> Result<TokenTransactionFromDb, ServiceError> {
         sqlx::query_as!(TokenTransactionFromDb,
                 r#"
@@ -121,8 +121,8 @@ impl SqlxClient {
 
     pub async fn get_token_transaction_by_h(
         &self,
-        transaction_hash: String,
         service_id: ServiceId,
+        transaction_hash: &str,
     ) -> Result<TokenTransactionFromDb, ServiceError> {
         sqlx::query_as!(TokenTransactionFromDb,
                 r#"

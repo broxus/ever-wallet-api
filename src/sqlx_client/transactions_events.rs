@@ -118,8 +118,8 @@ impl SqlxClient {
 
     pub async fn get_transaction_event_by_mh(
         &self,
-        message_hash: String,
         service_id: ServiceId,
+        message_hash: String,
         account_workchain_id: i32,
         account_hex: String,
     ) -> Result<TransactionEventDb, ServiceError> {
@@ -178,6 +178,35 @@ impl SqlxClient {
             account_hex,
         )
         .fetch_one(&self.pool)
+        .await
+        .map_err(From::from)
+    }
+
+    pub async fn get_transaction_events(
+        &self,
+        service_id: ServiceId,
+        event_status: TonEventStatus,
+    ) -> Result<Vec<TransactionEventDb>, ServiceError> {
+        sqlx::query_as!(
+            TransactionEventDb,
+            r#"
+            SELECT id,
+                service_id as "service_id: _",
+                transaction_id,
+                message_hash,
+                account_workchain_id,
+                account_hex,
+                balance_change,
+                transaction_direction as "transaction_direction: _",
+                transaction_status as "transaction_status: _",
+                event_status as "event_status: _",
+                created_at, updated_at
+            FROM transaction_events
+            WHERE service_id = $1 AND event_status = $2"#,
+            service_id as ServiceId,
+            event_status as TonEventStatus,
+        )
+        .fetch_all(&self.pool)
         .await
         .map_err(From::from)
     }

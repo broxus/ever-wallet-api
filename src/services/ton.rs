@@ -1,4 +1,7 @@
+use std::str::FromStr;
+
 use async_trait::async_trait;
+use ton_block::MsgAddressInt;
 use uuid::Uuid;
 
 use crate::models::account_enums::TonEventStatus;
@@ -118,7 +121,16 @@ impl TonService for TonServiceImpl {
         service_id: &ServiceId,
         address: &Address,
     ) -> Result<AddressDb, ServiceError> {
-        todo!()
+        let account = MsgAddressInt::from_str(&address.0).map_err(|_| {
+            ServiceError::WrongInput(format!("Can not parse Address workchain and hex"))
+        })?;
+        self.sqlx_client
+            .get_address(
+                *service_id,
+                account.workchain_id(),
+                account.address().to_hex_string(),
+            )
+            .await
     }
     async fn create_transaction(
         &self,
@@ -133,21 +145,27 @@ impl TonService for TonServiceImpl {
         service_id: &ServiceId,
         message_hash: &str,
     ) -> Result<TransactionDb, ServiceError> {
-        todo!()
+        self.sqlx_client
+            .get_transaction_by_mh(*service_id, message_hash)
+            .await
     }
     async fn get_transaction_by_h(
         &self,
         service_id: &ServiceId,
         transaction_hash: &str,
     ) -> Result<TransactionDb, ServiceError> {
-        todo!()
+        self.sqlx_client
+            .get_transaction_by_h(*service_id, transaction_hash)
+            .await
     }
     async fn search_events(
         &self,
         service_id: &ServiceId,
         event_status: &TonEventStatus,
     ) -> Result<Vec<TransactionEventDb>, ServiceError> {
-        todo!()
+        self.sqlx_client
+            .get_transaction_events(*service_id, *event_status)
+            .await
     }
     async fn mark_event(
         &self,
@@ -161,14 +179,18 @@ impl TonService for TonServiceImpl {
         service_id: &ServiceId,
         message_hash: &str,
     ) -> Result<TokenTransactionFromDb, ServiceError> {
-        todo!()
+        self.sqlx_client
+            .get_token_transaction_by_mh(*service_id, message_hash)
+            .await
     }
     async fn search_token_events(
         &self,
         service_id: &ServiceId,
         event_status: &TonEventStatus,
     ) -> Result<Vec<TokenTransactionEventDb>, ServiceError> {
-        todo!()
+        self.sqlx_client
+            .get_token_transaction_events(*service_id, *event_status)
+            .await
     }
     async fn mark_token_event(
         &self,
@@ -182,7 +204,16 @@ impl TonService for TonServiceImpl {
         service_id: &ServiceId,
         address: &Address,
     ) -> Result<Vec<TokenBalanceFromDb>, ServiceError> {
-        todo!()
+        let account = MsgAddressInt::from_str(&address.0).map_err(|_| {
+            ServiceError::WrongInput(format!("Can not parse address workchain and hex"))
+        })?;
+        self.sqlx_client
+            .get_token_balances(
+                *service_id,
+                account.workchain_id(),
+                account.address().to_hex_string(),
+            )
+            .await
     }
     async fn create_token_transaction(
         &self,

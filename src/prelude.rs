@@ -13,6 +13,8 @@ pub enum ServiceError {
     Auth(String),
     #[error("`{0}` not found")]
     NotFound(String),
+    #[error("Wrong Input - `{0}`")]
+    WrongInput(String),
     #[error(transparent)]
     Other(#[from] anyhow::Error),
 }
@@ -62,6 +64,20 @@ impl<'a> From<&'a ServiceError> for http::Response<hyper::Body> {
                 .body(
                     serde_json::json!({
                         "code": "403",
+                        "description": "Request forbidden",
+                        "message": err.to_string()
+                    })
+                    .to_string()
+                    .into(),
+                )
+                .unwrap(),
+
+            ServiceError::WrongInput(_) => http::Response::builder()
+                .status(StatusCode::UNPROCESSABLE_ENTITY)
+                .header("Content-Type", "application/json")
+                .body(
+                    serde_json::json!({
+                        "code": "422",
                         "description": "Request forbidden",
                         "message": err.to_string()
                     })

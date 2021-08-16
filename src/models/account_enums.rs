@@ -79,7 +79,7 @@ pub enum TonTokenTransactionStatus {
     Error,
 }
 
-#[derive(Debug, Deserialize, Serialize, Clone, opg::OpgModel, PartialEq, Eq, sqlx::Type)]
+#[derive(Debug, Deserialize, Serialize, Clone, opg::OpgModel, PartialEq, Eq, sqlx::Type, Copy)]
 #[opg("TonEventStatus")]
 #[sqlx(type_name = "twa_transaction_event_status", rename_all = "PascalCase")]
 pub enum TonEventStatus {
