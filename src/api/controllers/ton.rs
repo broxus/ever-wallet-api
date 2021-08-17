@@ -57,8 +57,8 @@ pub fn get_address_balance(
             .ton_service
             .get_address_balance(&service_id, &address)
             .await
-            .map(AddressResponse::from);
-        let res = AccountAddressResponse::from(address);
+            .map(|(a, b)| PostAddressBalanceDataResponse::new(a, b));
+        let res = AddressBalanceResponse::from(address);
 
         Ok(warp::reply::json(&(res)))
     }
@@ -240,7 +240,7 @@ pub fn get_tokens_address_balance(
             .await
             .map(|a| {
                 a.into_iter()
-                    .map(TokenBalanceResponse::from)
+                    .map(|(a, b)| TokenBalanceResponse::new(a, b))
                     .collect::<Vec<TokenBalanceResponse>>()
             });
         let res = AccountTokenBalanceResponse::from(addresses);

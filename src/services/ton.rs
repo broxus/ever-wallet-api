@@ -8,13 +8,14 @@ use uuid::Uuid;
 
 use crate::client::{CallbackClient, TonApiClient};
 use crate::models::account_enums::TonEventStatus;
-use crate::models::address::{Address, CreateAddress, CreateAddressInDb};
+use crate::models::address::{Address, CreateAddress, CreateAddressInDb, NetworkAddressData};
 use crate::models::owners_cache::OwnersCache;
 use crate::models::service_id::ServiceId;
 use crate::models::sqlx::{
     AddressDb, TokenBalanceFromDb, TokenTransactionEventDb, TokenTransactionFromDb, TransactionDb,
     TransactionEventDb,
 };
+use crate::models::token_balance::NetworkTokenAddressData;
 use crate::models::token_transactions::{
     CreateReceiveTokenTransaction, CreateSendTokenTransaction, TokenTransactionSend,
     UpdateSendTokenTransaction,
@@ -37,7 +38,7 @@ pub trait TonService: Send + Sync + 'static {
         &self,
         service_id: &ServiceId,
         address: &Address,
-    ) -> Result<AddressDb, ServiceError>;
+    ) -> Result<(AddressDb, NetworkAddressData), ServiceError>;
     async fn create_send_transaction(
         &self,
         service_id: &ServiceId,
@@ -45,7 +46,6 @@ pub trait TonService: Send + Sync + 'static {
     ) -> Result<TransactionDb, ServiceError>;
     async fn create_receive_transaction(
         &self,
-        service_id: &ServiceId,
         input: &CreateReceiveTransaction,
     ) -> Result<TransactionDb, ServiceError>;
     async fn get_transaction_by_mh(
@@ -87,7 +87,7 @@ pub trait TonService: Send + Sync + 'static {
         &self,
         service_id: &ServiceId,
         address: &Address,
-    ) -> Result<Vec<TokenBalanceFromDb>, ServiceError>;
+    ) -> Result<Vec<(TokenBalanceFromDb, NetworkTokenAddressData)>, ServiceError>;
     async fn create_send_token_transaction(
         &self,
         service_id: &ServiceId,
@@ -95,7 +95,6 @@ pub trait TonService: Send + Sync + 'static {
     ) -> Result<TokenTransactionFromDb, ServiceError>;
     async fn create_receive_token_transaction(
         &self,
-        service_id: &ServiceId,
         input: &CreateReceiveTokenTransaction,
     ) -> Result<TokenTransactionFromDb, ServiceError>;
 }
@@ -143,17 +142,20 @@ impl TonService for TonServiceImpl {
         &self,
         service_id: &ServiceId,
         address: &Address,
-    ) -> Result<AddressDb, ServiceError> {
+    ) -> Result<(AddressDb, NetworkAddressData), ServiceError> {
         let account = MsgAddressInt::from_str(&address.0).map_err(|_| {
             ServiceError::WrongInput(format!("Can not parse Address workchain and hex"))
         })?;
-        self.sqlx_client
+        let address = self
+            .sqlx_client
             .get_address(
                 *service_id,
                 account.workchain_id(),
                 account.address().to_hex_string(),
             )
-            .await
+            .await?;
+        let network = self.ton_api_client.get_balance(account).await?;
+        Ok((address, network))
     }
     async fn create_send_transaction(
         &self,
@@ -205,7 +207,6 @@ impl TonService for TonServiceImpl {
 
     async fn create_receive_transaction(
         &self,
-        service_id: &ServiceId,
         input: &CreateReceiveTransaction,
     ) -> Result<TransactionDb, ServiceError> {
         let address = self
@@ -218,7 +219,7 @@ impl TonService for TonServiceImpl {
             .create_receive_transaction(input.clone(), address.service_id)
             .await?;
 
-        if let Ok(url) = self.sqlx_client.get_callback(*service_id).await {
+        if let Ok(url) = self.sqlx_client.get_callback(address.service_id).await {
             let event_status = match self.callback_client.send(url, event.clone().into()).await {
                 Err(e) => {
                     log::error!("{}", e);
@@ -318,17 +319,28 @@ impl TonService for TonServiceImpl {
         &self,
         service_id: &ServiceId,
         address: &Address,
-    ) -> Result<Vec<TokenBalanceFromDb>, ServiceError> {
+    ) -> Result<Vec<(TokenBalanceFromDb, NetworkTokenAddressData)>, ServiceError> {
         let account = MsgAddressInt::from_str(&address.0).map_err(|_| {
             ServiceError::WrongInput(format!("Can not parse address workchain and hex"))
         })?;
-        self.sqlx_client
+        let balances = self
+            .sqlx_client
             .get_token_balances(
                 *service_id,
                 account.workchain_id(),
                 account.address().to_hex_string(),
             )
-            .await
+            .await?;
+
+        let mut result = vec![];
+        for balance in balances {
+            let network = self
+                .ton_api_client
+                .get_token_balance(account.clone(), balance.root_address.clone())
+                .await?;
+            result.push((balance, network));
+        }
+        Ok(result)
     }
     async fn create_send_token_transaction(
         &self,
@@ -384,7 +396,6 @@ impl TonService for TonServiceImpl {
 
     async fn create_receive_token_transaction(
         &self,
-        service_id: &ServiceId,
         input: &CreateReceiveTokenTransaction,
     ) -> Result<TokenTransactionFromDb, ServiceError> {
         let address = self
@@ -401,7 +412,7 @@ impl TonService for TonServiceImpl {
             .create_receive_token_transaction(input.clone(), address.service_id)
             .await?;
 
-        if let Ok(url) = self.sqlx_client.get_callback(*service_id).await {
+        if let Ok(url) = self.sqlx_client.get_callback(address.service_id).await {
             let event_status = match self.callback_client.send(url, event.clone().into()).await {
                 Err(e) => {
                     log::error!("{}", e);

@@ -45,7 +45,7 @@ pub fn swagger() -> String {
                     tags: { addresses },
                     summary: "Address balance",
                     description: "Get address balance.",
-                    200: responses::AccountAddressResponse,
+                    200: responses::AddressBalanceResponse,
                 }
             },
             ("transactions" / "create"): {

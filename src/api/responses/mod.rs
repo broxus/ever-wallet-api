@@ -10,12 +10,13 @@ use crate::models::account_enums::{
     AccountStatus, AccountType, AddressResponse, TonEventStatus, TonStatus,
     TonTokenTransactionStatus, TonTransactionDirection, TonTransactionStatus,
 };
-use crate::models::address::Address;
+use crate::models::address::{Address, NetworkAddressData};
 use crate::models::service_id::ServiceId;
 use crate::models::sqlx::{
-    TokenBalanceFromDb, TokenTransactionEventDb, TokenTransactionFromDb, TransactionDb,
+    AddressDb, TokenBalanceFromDb, TokenTransactionEventDb, TokenTransactionFromDb, TransactionDb,
     TransactionEventDb,
 };
+use crate::models::token_balance::NetworkTokenAddressData;
 use crate::prelude::ServiceError;
 
 #[derive(Debug, Deserialize, Serialize, Clone, opg::OpgModel)]
@@ -219,10 +220,12 @@ impl From<TokenTransactionEventDb> for AccountTokenTransactionEventResponse {
 #[opg("TokenBalanceResponse")]
 pub struct TokenBalanceResponse {
     pub service_id: ServiceId,
-    pub account_workchain_id: i32,
-    pub account_hex: String,
+    pub address: AddressResponse,
     #[opg("balance", string)]
     pub balance: BigDecimal,
+    #[opg("networkBalance", string)]
+    pub network_balance: BigDecimal,
+    pub account_status: AccountStatus,
     pub root_address: String,
     #[opg("UTC timestamp in milliseconds", integer, format = "int64")]
     pub created_at: i64,
@@ -230,16 +233,26 @@ pub struct TokenBalanceResponse {
     pub updated_at: i64,
 }
 
-impl From<TokenBalanceFromDb> for TokenBalanceResponse {
-    fn from(c: TokenBalanceFromDb) -> Self {
-        TokenBalanceResponse {
-            service_id: c.service_id,
-            account_workchain_id: c.account_workchain_id,
-            account_hex: c.account_hex,
-            balance: c.balance,
-            root_address: c.root_address,
-            created_at: c.created_at.timestamp_millis(),
-            updated_at: c.updated_at.timestamp_millis(),
+impl TokenBalanceResponse {
+    pub fn new(a: TokenBalanceFromDb, b: NetworkTokenAddressData) -> Self {
+        let account =
+            MsgAddressInt::from_str(&format!("{}:{}", a.account_workchain_id, a.account_hex))
+                .unwrap();
+        let base64url = Address(pack_std_smc_addr(true, &account, false).unwrap());
+
+        Self {
+            service_id: a.service_id,
+            address: AddressResponse {
+                workchain_id: a.account_workchain_id,
+                hex: Address(a.account_hex),
+                base64url,
+            },
+            balance: a.balance,
+            account_status: b.account_status,
+            network_balance: b.network_balance,
+            root_address: a.root_address,
+            created_at: a.created_at.timestamp_millis(),
+            updated_at: a.updated_at.timestamp_millis(),
         }
     }
 }
@@ -269,6 +282,7 @@ impl From<Result<AddressResponse, ServiceError>> for AccountAddressResponse {
         }
     }
 }
+
 #[derive(Debug, Deserialize, Serialize, Clone, opg::OpgModel)]
 #[serde(rename_all = "camelCase")]
 #[opg("AccountAddressResponse")]
@@ -528,13 +542,13 @@ impl From<Result<PostAddressValidResponse, ServiceError>> for PostCheckedAddress
 
 #[derive(Debug, Deserialize, Serialize, Clone, opg::OpgModel)]
 #[serde(rename_all = "camelCase")]
-#[opg("PostAddressBalanceResponse")]
-pub struct PostAddressBalanceResponse {
+#[opg("AddressBalanceResponse")]
+pub struct AddressBalanceResponse {
     pub status: TonStatus,
     pub data: Option<PostAddressBalanceDataResponse>,
 }
 
-impl From<Result<PostAddressBalanceDataResponse, ServiceError>> for PostAddressBalanceResponse {
+impl From<Result<PostAddressBalanceDataResponse, ServiceError>> for AddressBalanceResponse {
     fn from(r: Result<PostAddressBalanceDataResponse, ServiceError>) -> Self {
         match r {
             Ok(data) => Self {
@@ -553,7 +567,6 @@ impl From<Result<PostAddressBalanceDataResponse, ServiceError>> for PostAddressB
 #[serde(rename_all = "camelCase")]
 #[opg("PostAddressBalanceDataResponse")]
 pub struct PostAddressBalanceDataResponse {
-    #[opg("id", string)]
     pub id: Uuid,
     pub address: AddressResponse,
     pub account_type: AccountType,
@@ -569,4 +582,29 @@ pub struct PostAddressBalanceDataResponse {
     pub created_at: i64,
     #[opg("UTC timestamp in milliseconds", integer, format = "int64")]
     pub updated_at: i64,
+}
+
+impl PostAddressBalanceDataResponse {
+    pub fn new(a: AddressDb, b: NetworkAddressData) -> Self {
+        let account = MsgAddressInt::from_str(&format!("{}:{}", a.workchain_id, a.hex)).unwrap();
+        let base64url = Address(pack_std_smc_addr(true, &account, false).unwrap());
+
+        Self {
+            id: a.id,
+            address: AddressResponse {
+                workchain_id: a.workchain_id,
+                hex: Address(a.hex),
+                base64url,
+            },
+            account_type: a.account_type,
+            balance: a.balance,
+            account_status: b.account_status,
+            network_balance: b.network_balance,
+            last_transaction_hash: b.last_transaction_hash,
+            last_transaction_lt: b.last_transaction_lt,
+            sync_u_time: b.sync_u_time,
+            created_at: a.created_at.timestamp_millis(),
+            updated_at: a.updated_at.timestamp_millis(),
+        }
+    }
 }

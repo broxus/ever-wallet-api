@@ -16,7 +16,7 @@ pub enum AccountType {
     SafeMultisig,
 }
 
-#[derive(Debug, Deserialize, Serialize, Clone, opg::OpgModel, sqlx::Type)]
+#[derive(Debug, Deserialize, Serialize, Clone, opg::OpgModel, sqlx::Type, Eq, PartialEq)]
 #[opg("AccountStatus")]
 #[sqlx(type_name = "twa_account_status", rename_all = "PascalCase")]
 pub enum AccountStatus {

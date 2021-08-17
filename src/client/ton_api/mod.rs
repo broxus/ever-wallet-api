@@ -3,10 +3,10 @@ mod responses;
 pub use self::responses::*;
 
 use async_trait::async_trait;
-use bigdecimal::BigDecimal;
 use ton_block::MsgAddressInt;
 
-use crate::models::address::CreateAddress;
+use crate::models::address::{CreateAddress, NetworkAddressData};
+use crate::models::token_balance::NetworkTokenAddressData;
 use crate::models::token_transactions::TokenTransactionSend;
 use crate::models::transactions::TransactionSend;
 use crate::prelude::ServiceError;
@@ -14,12 +14,13 @@ use crate::prelude::ServiceError;
 #[async_trait]
 pub trait TonApiClient: Send + Sync {
     async fn get_address(&self, payload: &CreateAddress) -> Result<CreatedAddress, ServiceError>;
-    async fn get_balance(&self, address: MsgAddressInt) -> Result<BigDecimal, ServiceError>;
+    async fn get_balance(&self, address: MsgAddressInt)
+        -> Result<NetworkAddressData, ServiceError>;
     async fn get_token_balance(
         &self,
         address: MsgAddressInt,
         root_address: String,
-    ) -> Result<BigDecimal, ServiceError>;
+    ) -> Result<NetworkTokenAddressData, ServiceError>;
     async fn prepare_transaction(
         &self,
         transaction: &TransactionSend,
@@ -43,14 +44,17 @@ impl TonApiClient for TonApiClientImpl {
     async fn get_address(&self, payload: &CreateAddress) -> Result<CreatedAddress, ServiceError> {
         todo!()
     }
-    async fn get_balance(&self, address: MsgAddressInt) -> Result<BigDecimal, ServiceError> {
+    async fn get_balance(
+        &self,
+        address: MsgAddressInt,
+    ) -> Result<NetworkAddressData, ServiceError> {
         todo!()
     }
     async fn get_token_balance(
         &self,
         address: MsgAddressInt,
         root_address: String,
-    ) -> Result<BigDecimal, ServiceError> {
+    ) -> Result<NetworkTokenAddressData, ServiceError> {
         todo!()
     }
     async fn prepare_transaction(
