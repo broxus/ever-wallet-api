@@ -55,6 +55,28 @@ pub struct UpdateSendTransaction {
     pub error: Option<String>,
 }
 
+impl UpdateSendTransaction {
+    pub fn error(error: String) -> Self {
+        Self {
+            transaction_hash: None,
+            transaction_lt: None,
+            transaction_timeout: None,
+            transaction_scan_lt: None,
+            sender_workchain_id: None,
+            sender_hex: None,
+            messages: None,
+            data: None,
+            original_value: None,
+            original_outputs: None,
+            value: None,
+            fee: None,
+            balance_change: None,
+            status: TonTransactionStatus::Error,
+            error: Some(error),
+        }
+    }
+}
+
 #[derive(Clone, Debug, serde::Serialize, serde::Deserialize, Eq, PartialEq)]
 pub struct CreateReceiveTransaction {
     pub id: Uuid,

@@ -3,6 +3,7 @@ use uuid::Uuid;
 
 use crate::models::account_enums::{TonEventStatus, TonTransactionDirection, TonTransactionStatus};
 use crate::models::service_id::ServiceId;
+use crate::models::sqlx::TransactionDb;
 
 #[derive(Clone, Debug, serde::Serialize, serde::Deserialize, Eq, PartialEq)]
 pub struct CreateSendTransactionEvent {
@@ -17,10 +18,35 @@ pub struct CreateSendTransactionEvent {
     pub event_status: TonEventStatus,
 }
 
+impl CreateSendTransactionEvent {
+    pub fn new(payload: TransactionDb) -> Self {
+        Self {
+            id: Default::default(),
+            service_id: payload.service_id,
+            transaction_id: payload.id,
+            message_hash: payload.message_hash,
+            account_workchain_id: payload.account_workchain_id,
+            account_hex: payload.account_hex,
+            transaction_direction: TonTransactionDirection::Send,
+            transaction_status: TonTransactionStatus::New,
+            event_status: TonEventStatus::New,
+        }
+    }
+}
+
 #[derive(Clone, Debug, serde::Serialize, serde::Deserialize, Eq, PartialEq)]
 pub struct UpdateSendTransactionEvent {
     pub balance_change: Option<BigDecimal>,
     pub transaction_status: TonTransactionStatus,
+}
+
+impl UpdateSendTransactionEvent {
+    pub fn new(payload: TransactionDb) -> Self {
+        Self {
+            transaction_status: payload.status,
+            balance_change: payload.balance_change,
+        }
+    }
 }
 
 #[derive(Clone, Debug, serde::Serialize, serde::Deserialize, Eq, PartialEq)]
@@ -35,4 +61,21 @@ pub struct CreateReceiveTransactionEvent {
     pub transaction_direction: TonTransactionDirection,
     pub transaction_status: TonTransactionStatus,
     pub event_status: TonEventStatus,
+}
+
+impl CreateReceiveTransactionEvent {
+    pub fn new(payload: TransactionDb) -> Self {
+        Self {
+            id: Default::default(),
+            service_id: payload.service_id,
+            transaction_id: payload.id,
+            message_hash: payload.message_hash,
+            account_workchain_id: payload.account_workchain_id,
+            account_hex: payload.account_hex,
+            balance_change: payload.balance_change,
+            transaction_direction: TonTransactionDirection::Receive,
+            transaction_status: TonTransactionStatus::Done,
+            event_status: TonEventStatus::New,
+        }
+    }
 }

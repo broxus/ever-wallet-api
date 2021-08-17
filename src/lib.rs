@@ -11,7 +11,7 @@ use r2d2_redis::RedisConnectionManager;
 use sqlx::postgres::PgPoolOptions;
 
 use crate::api::http_service;
-use crate::client::TonApiClientImpl;
+use crate::client::{CallbackClientImpl, TonApiClientImpl};
 use crate::indexer::TonIndexer;
 use crate::models::owners_cache::OwnersCache;
 use crate::services::{AuthServiceImpl, TonServiceImpl};
@@ -54,11 +54,13 @@ pub async fn start_server() -> StdResult<()> {
     let config = Arc::new(config);
     let sqlx_client = SqlxClient::new(pool);
     let ton_api_client = Arc::new(TonApiClientImpl::new());
+    let callback_client = Arc::new(CallbackClientImpl::new());
     let owners_hash = OwnersCache::new(sqlx_client.clone()).await?;
     let ton_service = Arc::new(TonServiceImpl::new(
         sqlx_client.clone(),
         owners_hash.clone(),
         ton_api_client.clone(),
+        callback_client.clone(),
     ));
     let auth_service = Arc::new(AuthServiceImpl::new(
         sqlx_client.clone(),

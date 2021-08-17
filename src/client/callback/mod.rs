@@ -18,6 +18,14 @@ pub struct CallbackClientImpl {
     client: reqwest::Client,
 }
 
+impl CallbackClientImpl {
+    pub fn new() -> Self {
+        Self {
+            client: reqwest::ClientBuilder::new().build().unwrap(),
+        }
+    }
+}
+
 #[async_trait]
 impl CallbackClient for CallbackClientImpl {
     async fn send(
