@@ -47,6 +47,24 @@ impl SqlxClient {
             .await
             .map_err(From::from)
     }
+    pub async fn get_token_balance_by_workchain_hex(
+        &self,
+        account_workchain_id: i32,
+        account_hex: String,
+        root_address: String,
+    ) -> Result<TokenBalanceFromDb, ServiceError> {
+        sqlx::query_as!(TokenBalanceFromDb,
+                r#"SELECT service_id as "service_id: _", account_workchain_id, account_hex, balance, root_address, created_at, updated_at
+                FROM token_balances
+                WHERE account_workchain_id = $1 AND account_hex = $2 and root_address = $3"#,
+                account_workchain_id,
+                account_hex,
+                root_address
+            )
+            .fetch_one(&self.pool)
+            .await
+            .map_err(From::from)
+    }
     pub async fn get_token_balances(
         &self,
         service_id: ServiceId,

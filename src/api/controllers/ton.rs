@@ -258,7 +258,7 @@ pub fn post_tokens_transactions_create(
     async move {
         let transaction = ctx
             .ton_service
-            .create_token_transaction(&service_id, &input.into())
+            .create_send_token_transaction(&service_id, &input.into())
             .await
             .map(From::from);
         let res = AccountTokenTransactionResponse::from(transaction);

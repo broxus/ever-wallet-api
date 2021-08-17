@@ -612,6 +612,64 @@
       ]
     }
   },
+  "360413903546da5311999f0665280dc8c1e82fb74be273da9ae8f3debd2dafcf": {
+    "query": "SELECT service_id as \"service_id: _\", account_workchain_id, account_hex, balance, root_address, created_at, updated_at\n                FROM token_balances\n                WHERE account_workchain_id = $1 AND account_hex = $2 and root_address = $3",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "service_id: _",
+          "type_info": "Uuid"
+        },
+        {
+          "ordinal": 1,
+          "name": "account_workchain_id",
+          "type_info": "Int4"
+        },
+        {
+          "ordinal": 2,
+          "name": "account_hex",
+          "type_info": "Varchar"
+        },
+        {
+          "ordinal": 3,
+          "name": "balance",
+          "type_info": "Numeric"
+        },
+        {
+          "ordinal": 4,
+          "name": "root_address",
+          "type_info": "Varchar"
+        },
+        {
+          "ordinal": 5,
+          "name": "created_at",
+          "type_info": "Timestamp"
+        },
+        {
+          "ordinal": 6,
+          "name": "updated_at",
+          "type_info": "Timestamp"
+        }
+      ],
+      "parameters": {
+        "Left": [
+          "Int4",
+          "Text",
+          "Text"
+        ]
+      },
+      "nullable": [
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false
+      ]
+    }
+  },
   "37533fe51965073d986d9ab4a6d715a57a529115acdbb1eaf5285086e54c1e26": {
     "query": "\n            SELECT id, service_id as \"service_id: _\", transaction_hash, message_hash, account_workchain_id, account_hex,\n            value, root_address, payload, error, block_hash, block_time, direction as \"direction: _\", status as \"status: _\", created_at, updated_at\n            FROM token_transactions\n            WHERE service_id = $1 AND message_hash = $2",
     "describe": {

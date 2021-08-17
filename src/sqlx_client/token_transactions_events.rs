@@ -1,14 +1,8 @@
 use anyhow::Result;
 
 use crate::models::account_enums::TonEventStatus;
-use crate::models::account_enums::TonTokenTransactionStatus;
-use crate::models::account_enums::TonTransactionDirection;
 use crate::models::service_id::ServiceId;
 use crate::models::sqlx::TokenTransactionEventDb;
-use crate::models::token_transaction_events::{
-    CreateReceiveTokenTransactionEvent, CreateSendTokenTransactionEvent,
-    UpdateSendTokenTransactionEvent,
-};
 use crate::prelude::ServiceError;
 use crate::sqlx_client::SqlxClient;
 

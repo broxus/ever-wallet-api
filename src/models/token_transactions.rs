@@ -53,7 +53,6 @@ impl UpdateSendTokenTransaction {
 #[derive(Clone, Debug, serde::Serialize, serde::Deserialize, Eq, PartialEq)]
 pub struct CreateReceiveTokenTransaction {
     pub id: Uuid,
-    pub service_id: ServiceId,
     pub transaction_hash: Option<String>,
     pub message_hash: String,
     pub account_workchain_id: i32,

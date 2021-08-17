@@ -149,6 +149,7 @@ impl SqlxClient {
     pub async fn create_receive_token_transaction(
         &self,
         payload: CreateReceiveTokenTransaction,
+        service_id: ServiceId,
     ) -> Result<(TokenTransactionFromDb, TokenTransactionEventDb), ServiceError> {
         let mut tx = self.pool.begin().await.map_err(ServiceError::from)?;
         let transaction = sqlx::query_as!(TokenTransactionFromDb,
@@ -159,7 +160,7 @@ impl SqlxClient {
             RETURNING id, service_id as "service_id: _", transaction_hash, message_hash, account_workchain_id, account_hex,
             value, root_address, payload, error, block_hash, block_time, direction as "direction: _", status as "status: _", created_at, updated_at"#,
                 payload.id,
-                payload.service_id as ServiceId,
+                service_id as ServiceId,
                 payload.transaction_hash,
                 payload.message_hash,
                 payload.account_workchain_id,

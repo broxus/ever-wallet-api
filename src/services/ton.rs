@@ -16,9 +16,9 @@ use crate::models::sqlx::{
     TransactionEventDb,
 };
 use crate::models::token_transactions::{
-    CreateSendTokenTransaction, TokenTransactionSend, UpdateSendTokenTransaction,
+    CreateReceiveTokenTransaction, CreateSendTokenTransaction, TokenTransactionSend,
+    UpdateSendTokenTransaction,
 };
-use crate::models::transaction_events::CreateSendTransactionEvent;
 use crate::models::transactions::{
     CreateReceiveTransaction, CreateSendTransaction, TransactionSend, UpdateSendTransaction,
 };
@@ -92,10 +92,15 @@ pub trait TonService: Send + Sync + 'static {
         service_id: &ServiceId,
         address: &Address,
     ) -> Result<Vec<TokenBalanceFromDb>, ServiceError>;
-    async fn create_token_transaction(
+    async fn create_send_token_transaction(
         &self,
         service_id: &ServiceId,
         input: &TokenTransactionSend,
+    ) -> Result<TokenTransactionFromDb, ServiceError>;
+    async fn create_receive_token_transaction(
+        &self,
+        service_id: &ServiceId,
+        input: &CreateReceiveTokenTransaction,
     ) -> Result<TokenTransactionFromDb, ServiceError>;
 }
 
@@ -321,7 +326,7 @@ impl TonService for TonServiceImpl {
             )
             .await
     }
-    async fn create_token_transaction(
+    async fn create_send_token_transaction(
         &self,
         service_id: &ServiceId,
         input: &TokenTransactionSend,
@@ -379,6 +384,50 @@ impl TonService for TonServiceImpl {
             ))
             .await?;
         self.ton_api_client.send_token_transaction(&payload).await?;
+        Ok(transaction)
+    }
+
+    async fn create_receive_token_transaction(
+        &self,
+        service_id: &ServiceId,
+        input: &CreateReceiveTokenTransaction,
+    ) -> Result<TokenTransactionFromDb, ServiceError> {
+        let address = self
+            .sqlx_client
+            .get_token_balance_by_workchain_hex(
+                input.account_workchain_id,
+                input.account_hex.clone(),
+                input.root_address.clone(),
+            )
+            .await?;
+
+        let (mut transaction, mut event) = self
+            .sqlx_client
+            .create_receive_token_transaction(input.clone(), address.service_id)
+            .await?;
+
+        if let Ok(url) = self.sqlx_client.get_callback(*service_id).await {
+            let event_status = match self.callback_client.send(url, event.clone().into()).await {
+                Err(e) => {
+                    log::error!("{}", e);
+                    TonEventStatus::Error
+                }
+                Ok(_) => TonEventStatus::Notified,
+            };
+            if let Err(e) = self
+                .sqlx_client
+                .update_event_status_of_transaction_event(
+                    event.message_hash,
+                    event.account_workchain_id,
+                    event.account_hex,
+                    event_status,
+                )
+                .await
+            {
+                log::error!("{}", e);
+            }
+        }
+
         Ok(transaction)
     }
 }
