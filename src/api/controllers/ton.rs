@@ -31,14 +31,14 @@ pub fn post_address_create(
 }
 
 pub fn post_address_check(
-    service_id: ServiceId,
+    _service_id: ServiceId,
     input: PostAddressBalanceRequest,
     ctx: Context,
 ) -> BoxFuture<'static, Result<impl warp::Reply, warp::Rejection>> {
     async move {
         let address = ctx
             .ton_service
-            .check_address(&service_id, &input.address)
+            .check_address(&input.address)
             .await
             .map(PostAddressValidResponse::new);
         let res = PostCheckedAddressResponse::from(address);

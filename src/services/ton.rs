@@ -32,11 +32,7 @@ pub trait TonService: Send + Sync + 'static {
         service_id: &ServiceId,
         input: &CreateAddress,
     ) -> Result<AddressDb, ServiceError>;
-    async fn check_address(
-        &self,
-        service_id: &ServiceId,
-        address: &Address,
-    ) -> Result<bool, ServiceError>;
+    async fn check_address(&self, address: &Address) -> Result<bool, ServiceError>;
     async fn get_address_balance(
         &self,
         service_id: &ServiceId,
@@ -71,7 +67,7 @@ pub trait TonService: Send + Sync + 'static {
         &self,
         service_id: &ServiceId,
         id: &Uuid,
-    ) -> Result<Vec<TransactionEventDb>, ServiceError>;
+    ) -> Result<TransactionEventDb, ServiceError>;
     async fn get_tokens_transaction_by_mh(
         &self,
         service_id: &ServiceId,
@@ -86,7 +82,7 @@ pub trait TonService: Send + Sync + 'static {
         &self,
         service_id: &ServiceId,
         id: &Uuid,
-    ) -> Result<Vec<TokenTransactionEventDb>, ServiceError>;
+    ) -> Result<TokenTransactionEventDb, ServiceError>;
     async fn get_token_address_balance(
         &self,
         service_id: &ServiceId,
@@ -139,11 +135,7 @@ impl TonService for TonServiceImpl {
             .create_address(CreateAddressInDb::new(payload, *service_id))
             .await
     }
-    async fn check_address(
-        &self,
-        service_id: &ServiceId,
-        address: &Address,
-    ) -> Result<bool, ServiceError> {
+    async fn check_address(&self, address: &Address) -> Result<bool, ServiceError> {
         Ok(MsgAddressInt::from_str(&address.0).is_ok()
             || (unpack_std_smc_addr(&address.0, true).is_ok()))
     }
@@ -221,7 +213,7 @@ impl TonService for TonServiceImpl {
             .get_address_by_workchain_hex(input.account_workchain_id, input.account_hex.clone())
             .await?;
 
-        let (mut transaction, mut event) = self
+        let (transaction, event) = self
             .sqlx_client
             .create_receive_transaction(input.clone(), address.service_id)
             .await?;
@@ -282,8 +274,14 @@ impl TonService for TonServiceImpl {
         &self,
         service_id: &ServiceId,
         id: &Uuid,
-    ) -> Result<Vec<TransactionEventDb>, ServiceError> {
-        todo!()
+    ) -> Result<TransactionEventDb, ServiceError> {
+        self.sqlx_client
+            .update_event_status_of_transaction_event_by_id(
+                *service_id,
+                *id,
+                TonEventStatus::Notified,
+            )
+            .await
     }
     async fn get_tokens_transaction_by_mh(
         &self,
@@ -307,8 +305,14 @@ impl TonService for TonServiceImpl {
         &self,
         service_id: &ServiceId,
         id: &Uuid,
-    ) -> Result<Vec<TokenTransactionEventDb>, ServiceError> {
-        todo!()
+    ) -> Result<TokenTransactionEventDb, ServiceError> {
+        self.sqlx_client
+            .update_event_status_of_token_transaction_event_by_id(
+                *service_id,
+                *id,
+                TonEventStatus::Notified,
+            )
+            .await
     }
     async fn get_token_address_balance(
         &self,
@@ -375,15 +379,6 @@ impl TonService for TonServiceImpl {
             }
         }
 
-        let payload = self.ton_api_client.prepare_token_transaction(input).await?;
-        let result = self
-            .sqlx_client
-            .create_send_token_transaction(CreateSendTokenTransaction::new(
-                payload.clone(),
-                *service_id,
-            ))
-            .await?;
-        self.ton_api_client.send_token_transaction(&payload).await?;
         Ok(transaction)
     }
 
@@ -401,7 +396,7 @@ impl TonService for TonServiceImpl {
             )
             .await?;
 
-        let (mut transaction, mut event) = self
+        let (transaction, event) = self
             .sqlx_client
             .create_receive_token_transaction(input.clone(), address.service_id)
             .await?;
