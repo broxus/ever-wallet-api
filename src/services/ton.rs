@@ -6,8 +6,8 @@ use nekoton_utils::unpack_std_smc_addr;
 use ton_block::MsgAddressInt;
 use uuid::Uuid;
 
-use crate::client::{CallbackClient, TonApiClient};
-use crate::models::account_enums::TonEventStatus;
+use crate::client::{CallbackClient, TonClient};
+use crate::models::account_enums::{AccountStatus, TonEventStatus};
 use crate::models::address::{Address, CreateAddress, CreateAddressInDb, NetworkAddressData};
 use crate::models::owners_cache::OwnersCache;
 use crate::models::service_id::ServiceId;
@@ -102,7 +102,7 @@ pub trait TonService: Send + Sync + 'static {
 pub struct TonServiceImpl {
     sqlx_client: SqlxClient,
     owners_cache: OwnersCache,
-    ton_api_client: Arc<dyn TonApiClient>,
+    ton_api_client: Arc<dyn TonClient>,
     callback_client: Arc<dyn CallbackClient>,
 }
 
@@ -110,7 +110,7 @@ impl TonServiceImpl {
     pub fn new(
         sqlx_client: SqlxClient,
         owners_cache: OwnersCache,
-        ton_api_client: Arc<dyn TonApiClient>,
+        ton_api_client: Arc<dyn TonClient>,
         callback_client: Arc<dyn CallbackClient>,
     ) -> Self {
         Self {
@@ -129,7 +129,7 @@ impl TonService for TonServiceImpl {
         service_id: &ServiceId,
         input: &CreateAddress,
     ) -> Result<AddressDb, ServiceError> {
-        let payload = self.ton_api_client.get_address(input).await?;
+        let payload = self.ton_api_client.create_address(input).await?;
         self.sqlx_client
             .create_address(CreateAddressInDb::new(payload, *service_id))
             .await
@@ -154,7 +154,7 @@ impl TonService for TonServiceImpl {
                 account.address().to_hex_string(),
             )
             .await?;
-        let network = self.ton_api_client.get_balance(account).await?;
+        let network = self.ton_api_client.get_address_info(account).await?;
         Ok((address, network))
     }
     async fn create_send_transaction(
@@ -162,6 +162,25 @@ impl TonService for TonServiceImpl {
         service_id: &ServiceId,
         input: &TransactionSend,
     ) -> Result<TransactionDb, ServiceError> {
+        let account = MsgAddressInt::from_str(&input.from_address.0).map_err(|_| {
+            ServiceError::WrongInput(format!("Can not parse Address workchain and hex"))
+        })?;
+        let network = self
+            .ton_api_client
+            .get_address_info(account.clone())
+            .await?;
+        if network.account_status == AccountStatus::UnInit {
+            let address = self
+                .sqlx_client
+                .get_address(
+                    *service_id,
+                    account.workchain_id(),
+                    account.address().to_hex_string(),
+                )
+                .await?;
+            self.ton_api_client.deploy_address_contract(address).await?;
+        }
+
         let payload = self.ton_api_client.prepare_transaction(input).await?;
         let (mut transaction, mut event) = self
             .sqlx_client
@@ -336,7 +355,7 @@ impl TonService for TonServiceImpl {
         for balance in balances {
             let network = self
                 .ton_api_client
-                .get_token_balance(account.clone(), balance.root_address.clone())
+                .get_token_address_info(account.clone(), balance.root_address.clone())
                 .await?;
             result.push((balance, network));
         }
@@ -347,6 +366,28 @@ impl TonService for TonServiceImpl {
         service_id: &ServiceId,
         input: &TokenTransactionSend,
     ) -> Result<TokenTransactionFromDb, ServiceError> {
+        let account = MsgAddressInt::from_str(&input.from_address.0).map_err(|_| {
+            ServiceError::WrongInput(format!("Can not parse Address workchain and hex"))
+        })?;
+        let network = self
+            .ton_api_client
+            .get_token_address_info(account.clone(), input.root_address.clone())
+            .await?;
+        if network.account_status == AccountStatus::UnInit {
+            let address = self
+                .sqlx_client
+                .get_token_balance(
+                    *service_id,
+                    account.workchain_id(),
+                    account.address().to_hex_string(),
+                    input.root_address.clone(),
+                )
+                .await?;
+            self.ton_api_client
+                .deploy_token_address_contract(address)
+                .await?;
+        }
+
         let payload = self.ton_api_client.prepare_token_transaction(input).await?;
         let (mut transaction, mut event) = self
             .sqlx_client
