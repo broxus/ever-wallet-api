@@ -80,7 +80,6 @@ impl UpdateSendTransaction {
 #[derive(Clone, Debug, serde::Serialize, serde::Deserialize, Eq, PartialEq)]
 pub struct CreateReceiveTransaction {
     pub id: Uuid,
-    pub service_id: ServiceId,
     pub message_hash: String,
     pub transaction_hash: Option<String>,
     pub transaction_lt: Option<BigDecimal>,

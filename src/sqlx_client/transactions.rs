@@ -160,6 +160,7 @@ impl SqlxClient {
     pub async fn create_receive_transaction(
         &self,
         payload: CreateReceiveTransaction,
+        service_id: ServiceId,
     ) -> Result<(TransactionDb, TransactionEventDb), ServiceError> {
         let mut tx = self.pool.begin().await.map_err(ServiceError::from)?;
 
@@ -173,7 +174,7 @@ impl SqlxClient {
                 original_value, original_outputs, value, fee, balance_change, direction as "direction: _", status as "status: _",
                 error, aborted, bounce, created_at, updated_at"#,
                 payload.id,
-                payload.service_id as ServiceId,
+                service_id as ServiceId,
                 payload.message_hash,
                 payload.transaction_hash,
                 payload.transaction_lt,
