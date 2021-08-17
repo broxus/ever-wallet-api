@@ -37,6 +37,18 @@ pub struct UpdateSendTokenTransaction {
     pub status: TonTokenTransactionStatus,
     pub error: Option<String>,
 }
+impl UpdateSendTokenTransaction {
+    pub fn error(error: String) -> Self {
+        Self {
+            transaction_hash: None,
+            payload: None,
+            block_hash: None,
+            block_time: None,
+            status: TonTokenTransactionStatus::Error,
+            error: Some(error),
+        }
+    }
+}
 
 #[derive(Clone, Debug, serde::Serialize, serde::Deserialize, Eq, PartialEq)]
 pub struct CreateReceiveTokenTransaction {

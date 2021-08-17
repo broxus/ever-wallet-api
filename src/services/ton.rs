@@ -15,7 +15,9 @@ use crate::models::sqlx::{
     AddressDb, TokenBalanceFromDb, TokenTransactionEventDb, TokenTransactionFromDb, TransactionDb,
     TransactionEventDb,
 };
-use crate::models::token_transactions::{CreateSendTokenTransaction, TokenTransactionSend};
+use crate::models::token_transactions::{
+    CreateSendTokenTransaction, TokenTransactionSend, UpdateSendTokenTransaction,
+};
 use crate::models::transaction_events::CreateSendTransactionEvent;
 use crate::models::transactions::{CreateSendTransaction, TransactionSend, UpdateSendTransaction};
 use crate::prelude::ServiceError;
@@ -278,6 +280,50 @@ impl TonService for TonServiceImpl {
         input: &TokenTransactionSend,
     ) -> Result<TokenTransactionFromDb, ServiceError> {
         let payload = self.ton_api_client.prepare_token_transaction(input).await?;
+        let (mut transaction, mut event) = self
+            .sqlx_client
+            .create_send_token_transaction(CreateSendTokenTransaction::new(
+                payload.clone(),
+                *service_id,
+            ))
+            .await?;
+        if let Err(e) = self.ton_api_client.send_token_transaction(&payload).await {
+            let result = self
+                .sqlx_client
+                .update_send_token_transaction(
+                    transaction.message_hash,
+                    transaction.account_workchain_id,
+                    transaction.account_hex,
+                    transaction.root_address,
+                    UpdateSendTokenTransaction::error(e.to_string()),
+                )
+                .await?;
+            transaction = result.0;
+            event = result.1;
+        }
+        if let Ok(url) = self.sqlx_client.get_callback(*service_id).await {
+            let event_status = match self.callback_client.send(url, event.clone().into()).await {
+                Err(e) => {
+                    log::error!("{}", e);
+                    TonEventStatus::Error
+                }
+                Ok(_) => TonEventStatus::Notified,
+            };
+            if let Err(e) = self
+                .sqlx_client
+                .update_event_status_of_token_transaction_event(
+                    event.message_hash,
+                    event.account_workchain_id,
+                    event.account_hex,
+                    event_status,
+                )
+                .await
+            {
+                log::error!("{}", e);
+            }
+        }
+
+        let payload = self.ton_api_client.prepare_token_transaction(input).await?;
         let result = self
             .sqlx_client
             .create_send_token_transaction(CreateSendTokenTransaction::new(
@@ -286,6 +332,6 @@ impl TonService for TonServiceImpl {
             ))
             .await?;
         self.ton_api_client.send_token_transaction(&payload).await?;
-        Ok(result)
+        Ok(transaction)
     }
 }
