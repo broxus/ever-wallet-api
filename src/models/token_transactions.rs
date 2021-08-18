@@ -13,6 +13,8 @@ pub struct TokenTransactionSend {
     pub root_address: String,
     pub recipient_address: Address,
     pub value: BigDecimal,
+    pub notify_receiver: bool,
+    pub fee: BigDecimal,
 }
 
 #[derive(Clone, Debug, serde::Serialize, serde::Deserialize, Eq, PartialEq)]

@@ -6,7 +6,7 @@ use nekoton_utils::unpack_std_smc_addr;
 use ton_block::MsgAddressInt;
 use uuid::Uuid;
 
-use crate::client::{CallbackClient, TonClient};
+use crate::client::{AccountTransactionEvent, CallbackClient, TonClient};
 use crate::models::account_enums::{AccountStatus, TonEventStatus};
 use crate::models::address::{Address, CreateAddress, CreateAddressInDb, NetworkAddressData};
 use crate::models::owners_cache::OwnersCache;
@@ -120,6 +120,52 @@ impl TonServiceImpl {
             callback_client,
         }
     }
+    async fn notify_token(&self, service_id: ServiceId, payload: AccountTransactionEvent) {
+        if let Ok(url) = self.sqlx_client.get_callback(service_id).await {
+            let event_status = match self.callback_client.send(url, payload.clone()).await {
+                Err(e) => {
+                    log::error!("{}", e);
+                    TonEventStatus::Error
+                }
+                Ok(_) => TonEventStatus::Notified,
+            };
+            if let Err(e) = self
+                .sqlx_client
+                .update_event_status_of_token_transaction_event(
+                    payload.message_hash,
+                    payload.account.workchain_id,
+                    payload.account.hex.0,
+                    event_status,
+                )
+                .await
+            {
+                log::error!("{}", e);
+            }
+        }
+    }
+    async fn notify(&self, service_id: ServiceId, payload: AccountTransactionEvent) {
+        if let Ok(url) = self.sqlx_client.get_callback(service_id).await {
+            let event_status = match self.callback_client.send(url, payload.clone()).await {
+                Err(e) => {
+                    log::error!("{}", e);
+                    TonEventStatus::Error
+                }
+                Ok(_) => TonEventStatus::Notified,
+            };
+            if let Err(e) = self
+                .sqlx_client
+                .update_event_status_of_transaction_event(
+                    payload.message_hash,
+                    payload.account.workchain_id,
+                    payload.account.hex.0,
+                    event_status,
+                )
+                .await
+            {
+                log::error!("{}", e);
+            }
+        }
+    }
 }
 
 #[async_trait]
@@ -199,27 +245,7 @@ impl TonService for TonServiceImpl {
             transaction = result.0;
             event = result.1;
         }
-        if let Ok(url) = self.sqlx_client.get_callback(*service_id).await {
-            let event_status = match self.callback_client.send(url, event.clone().into()).await {
-                Err(e) => {
-                    log::error!("{}", e);
-                    TonEventStatus::Error
-                }
-                Ok(_) => TonEventStatus::Notified,
-            };
-            if let Err(e) = self
-                .sqlx_client
-                .update_event_status_of_transaction_event(
-                    event.message_hash,
-                    event.account_workchain_id,
-                    event.account_hex,
-                    event_status,
-                )
-                .await
-            {
-                log::error!("{}", e);
-            }
-        }
+        self.notify(*service_id, event.into()).await;
 
         Ok(transaction)
     }
@@ -238,27 +264,7 @@ impl TonService for TonServiceImpl {
             .create_receive_transaction(input.clone(), address.service_id)
             .await?;
 
-        if let Ok(url) = self.sqlx_client.get_callback(address.service_id).await {
-            let event_status = match self.callback_client.send(url, event.clone().into()).await {
-                Err(e) => {
-                    log::error!("{}", e);
-                    TonEventStatus::Error
-                }
-                Ok(_) => TonEventStatus::Notified,
-            };
-            if let Err(e) = self
-                .sqlx_client
-                .update_event_status_of_transaction_event(
-                    event.message_hash,
-                    event.account_workchain_id,
-                    event.account_hex,
-                    event_status,
-                )
-                .await
-            {
-                log::error!("{}", e);
-            }
-        }
+        self.notify(address.service_id, event.into()).await;
 
         Ok(transaction)
     }
@@ -369,6 +375,21 @@ impl TonService for TonServiceImpl {
         let account = MsgAddressInt::from_str(&input.from_address.0).map_err(|_| {
             ServiceError::WrongInput(format!("Can not parse Address workchain and hex"))
         })?;
+        let address = self
+            .sqlx_client
+            .get_address(
+                *service_id,
+                account.workchain_id(),
+                account.address().to_hex_string(),
+            )
+            .await?;
+        if address.balance < input.fee {
+            return Err(ServiceError::WrongInput(format!(
+                "Address balance is not enough to pay fee for token transfer. Balance: {}. Fee: {}",
+                address.balance, input.fee
+            )));
+        }
+
         let network = self
             .ton_api_client
             .get_token_address_info(account.clone(), input.root_address.clone())
@@ -410,27 +431,8 @@ impl TonService for TonServiceImpl {
             transaction = result.0;
             event = result.1;
         }
-        if let Ok(url) = self.sqlx_client.get_callback(*service_id).await {
-            let event_status = match self.callback_client.send(url, event.clone().into()).await {
-                Err(e) => {
-                    log::error!("{}", e);
-                    TonEventStatus::Error
-                }
-                Ok(_) => TonEventStatus::Notified,
-            };
-            if let Err(e) = self
-                .sqlx_client
-                .update_event_status_of_token_transaction_event(
-                    event.message_hash,
-                    event.account_workchain_id,
-                    event.account_hex,
-                    event_status,
-                )
-                .await
-            {
-                log::error!("{}", e);
-            }
-        }
+
+        self.notify_token(*service_id, event.into()).await;
 
         Ok(transaction)
     }
@@ -453,27 +455,7 @@ impl TonService for TonServiceImpl {
             .create_receive_token_transaction(input.clone(), address.service_id)
             .await?;
 
-        if let Ok(url) = self.sqlx_client.get_callback(address.service_id).await {
-            let event_status = match self.callback_client.send(url, event.clone().into()).await {
-                Err(e) => {
-                    log::error!("{}", e);
-                    TonEventStatus::Error
-                }
-                Ok(_) => TonEventStatus::Notified,
-            };
-            if let Err(e) = self
-                .sqlx_client
-                .update_event_status_of_transaction_event(
-                    event.message_hash,
-                    event.account_workchain_id,
-                    event.account_hex,
-                    event_status,
-                )
-                .await
-            {
-                log::error!("{}", e);
-            }
-        }
+        self.notify_token(address.service_id, event.into()).await;
 
         Ok(transaction)
     }

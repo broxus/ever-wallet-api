@@ -1,3 +1,5 @@
+use std::str::FromStr;
+
 use bigdecimal::BigDecimal;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
@@ -8,6 +10,7 @@ use crate::models::account_enums::{
 use crate::models::address::{Address, CreateAddress};
 use crate::models::token_transactions::TokenTransactionSend;
 use crate::models::transactions::{TransactionSend, TransactionSendOutput};
+use crate::prelude::TOKEN_FEE;
 
 #[derive(Debug, Deserialize, Serialize, Clone, opg::OpgModel, derive_more::Constructor)]
 #[serde(rename_all = "camelCase")]
@@ -69,6 +72,9 @@ pub struct PostTonTokenTransactionSendRequest {
     pub recipient_address: Address,
     #[opg("value", string)]
     pub value: BigDecimal,
+    pub notify_receiver: Option<bool>,
+    #[opg("fee", string, optional)]
+    pub fee: Option<BigDecimal>,
 }
 
 impl From<PostTonTokenTransactionSendRequest> for TokenTransactionSend {
@@ -79,6 +85,8 @@ impl From<PostTonTokenTransactionSendRequest> for TokenTransactionSend {
             root_address: c.root_address,
             recipient_address: c.recipient_address,
             value: c.value,
+            notify_receiver: c.notify_receiver.unwrap_or(false),
+            fee: c.fee.unwrap_or(BigDecimal::from_str(TOKEN_FEE).unwrap()),
         }
     }
 }

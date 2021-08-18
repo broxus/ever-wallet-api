@@ -96,3 +96,5 @@ impl<'a> From<&'a ServiceError> for http::Response<hyper::Body> {
 }
 
 impl warp::reject::Reject for ServiceError {}
+
+pub const TOKEN_FEE: &str = "500000000";
