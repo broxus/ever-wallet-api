@@ -50,6 +50,13 @@ pub trait TonService: Send + Sync + 'static {
         &self,
         input: &CreateReceiveTransaction,
     ) -> Result<TransactionDb, ServiceError>;
+    async fn update_sent_transaction(
+        &self,
+        message_hash: String,
+        account_workchain_id: i32,
+        account_hex: String,
+        input: &UpdateSendTransaction,
+    ) -> Result<TransactionDb, ServiceError>;
     async fn get_transaction_by_mh(
         &self,
         service_id: &ServiceId,
@@ -98,6 +105,14 @@ pub trait TonService: Send + Sync + 'static {
     async fn create_receive_token_transaction(
         &self,
         input: &CreateReceiveTokenTransaction,
+    ) -> Result<TokenTransactionFromDb, ServiceError>;
+    async fn update_sent_token_transaction(
+        &self,
+        message_hash: String,
+        account_workchain_id: i32,
+        account_hex: String,
+        root_address: String,
+        input: &UpdateSendTokenTransaction,
     ) -> Result<TokenTransactionFromDb, ServiceError>;
 }
 
@@ -276,6 +291,33 @@ impl TonService for TonServiceImpl {
         let (transaction, event) = self
             .sqlx_client
             .create_receive_transaction(input.clone(), address.service_id)
+            .await?;
+
+        self.notify(address.service_id, event.into()).await;
+
+        Ok(transaction)
+    }
+
+    async fn update_sent_transaction(
+        &self,
+        message_hash: String,
+        account_workchain_id: i32,
+        account_hex: String,
+        input: &UpdateSendTransaction,
+    ) -> Result<TransactionDb, ServiceError> {
+        let address = self
+            .sqlx_client
+            .get_address_by_workchain_hex(account_workchain_id, account_hex.clone())
+            .await?;
+
+        let (transaction, event) = self
+            .sqlx_client
+            .update_send_transaction(
+                message_hash,
+                account_workchain_id,
+                account_hex,
+                input.clone(),
+            )
             .await?;
 
         self.notify(address.service_id, event.into()).await;
@@ -483,6 +525,39 @@ impl TonService for TonServiceImpl {
         let (transaction, event) = self
             .sqlx_client
             .create_receive_token_transaction(input.clone(), address.service_id)
+            .await?;
+
+        self.notify_token(address.service_id, event.into()).await;
+
+        Ok(transaction)
+    }
+
+    async fn update_sent_token_transaction(
+        &self,
+        message_hash: String,
+        account_workchain_id: i32,
+        account_hex: String,
+        root_address: String,
+        input: &UpdateSendTokenTransaction,
+    ) -> Result<TokenTransactionFromDb, ServiceError> {
+        let address = self
+            .sqlx_client
+            .get_token_balance_by_workchain_hex(
+                account_workchain_id,
+                account_hex.clone(),
+                root_address.clone(),
+            )
+            .await?;
+
+        let (transaction, event) = self
+            .sqlx_client
+            .update_send_token_transaction(
+                message_hash,
+                account_workchain_id,
+                account_hex,
+                root_address,
+                input.clone(),
+            )
             .await?;
 
         self.notify_token(address.service_id, event.into()).await;
