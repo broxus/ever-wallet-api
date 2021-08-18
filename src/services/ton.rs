@@ -217,24 +217,36 @@ impl TonService for TonServiceImpl {
             .ton_api_client
             .get_address_info(account.clone())
             .await?;
+        let address = self
+            .sqlx_client
+            .get_address(
+                *service_id,
+                account.workchain_id(),
+                account.address().to_hex_string(),
+            )
+            .await?;
         if network.account_status == AccountStatus::UnInit {
-            let address = self
-                .sqlx_client
-                .get_address(
-                    *service_id,
-                    account.workchain_id(),
-                    account.address().to_hex_string(),
-                )
+            self.ton_api_client
+                .deploy_address_contract(address.clone())
                 .await?;
-            self.ton_api_client.deploy_address_contract(address).await?;
         }
-
-        let payload = self.ton_api_client.prepare_transaction(input).await?;
+        let payload = self
+            .ton_api_client
+            .prepare_transaction(
+                input,
+                address.public_key.clone(),
+                address.private_key.clone(),
+            )
+            .await?;
         let (mut transaction, mut event) = self
             .sqlx_client
             .create_send_transaction(CreateSendTransaction::new(payload.clone(), *service_id))
             .await?;
-        if let Err(e) = self.ton_api_client.send_transaction(&payload).await {
+        if let Err(e) = self
+            .ton_api_client
+            .send_transaction(&payload, address.public_key, address.private_key)
+            .await
+        {
             let result = self
                 .sqlx_client
                 .update_send_transaction(
@@ -398,7 +410,7 @@ impl TonService for TonServiceImpl {
             .get_token_address_info(account.clone(), input.root_address.clone())
             .await?;
         if network.account_status == AccountStatus::UnInit {
-            let address = self
+            let token_balance = self
                 .sqlx_client
                 .get_token_balance(
                     *service_id,
@@ -408,11 +420,22 @@ impl TonService for TonServiceImpl {
                 )
                 .await?;
             self.ton_api_client
-                .deploy_token_address_contract(address)
+                .deploy_token_address_contract(
+                    token_balance,
+                    address.public_key.clone(),
+                    address.private_key.clone(),
+                )
                 .await?;
         }
 
-        let payload = self.ton_api_client.prepare_token_transaction(input).await?;
+        let payload = self
+            .ton_api_client
+            .prepare_token_transaction(
+                input,
+                address.public_key.clone(),
+                address.private_key.clone(),
+            )
+            .await?;
         let (mut transaction, mut event) = self
             .sqlx_client
             .create_send_token_transaction(CreateSendTokenTransaction::new(
@@ -420,7 +443,11 @@ impl TonService for TonServiceImpl {
                 *service_id,
             ))
             .await?;
-        if let Err(e) = self.ton_api_client.send_token_transaction(&payload).await {
+        if let Err(e) = self
+            .ton_api_client
+            .send_token_transaction(&payload, address.public_key, address.private_key)
+            .await
+        {
             let result = self
                 .sqlx_client
                 .update_send_token_transaction(

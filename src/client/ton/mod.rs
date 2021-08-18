@@ -29,19 +29,32 @@ pub trait TonClient: Send + Sync {
     async fn prepare_transaction(
         &self,
         transaction: &TransactionSend,
+        public_key: String,
+        private_key: String,
     ) -> Result<SentTransaction, ServiceError>;
-    async fn send_transaction(&self, transaction: &SentTransaction) -> Result<(), ServiceError>;
+    async fn send_transaction(
+        &self,
+        transaction: &SentTransaction,
+        public_key: String,
+        private_key: String,
+    ) -> Result<(), ServiceError>;
     async fn prepare_token_transaction(
         &self,
         transaction: &TokenTransactionSend,
+        public_key: String,
+        private_key: String,
     ) -> Result<SentTokenTransaction, ServiceError>;
     async fn send_token_transaction(
         &self,
         transaction: &SentTokenTransaction,
+        public_key: String,
+        private_key: String,
     ) -> Result<(), ServiceError>;
     async fn deploy_token_address_contract(
         &self,
         address: TokenBalanceFromDb,
+        public_key: String,
+        private_key: String,
     ) -> Result<(), ServiceError>;
 }
 
@@ -75,27 +88,40 @@ impl TonClient for TonClientImpl {
     async fn prepare_transaction(
         &self,
         transaction: &TransactionSend,
+        public_key: String,
+        private_key: String,
     ) -> Result<SentTransaction, ServiceError> {
         todo!()
     }
-    async fn send_transaction(&self, transaction: &SentTransaction) -> Result<(), ServiceError> {
+    async fn send_transaction(
+        &self,
+        transaction: &SentTransaction,
+        public_key: String,
+        private_key: String,
+    ) -> Result<(), ServiceError> {
         todo!()
     }
     async fn prepare_token_transaction(
         &self,
         transaction: &TokenTransactionSend,
+        public_key: String,
+        private_key: String,
     ) -> Result<SentTokenTransaction, ServiceError> {
         todo!()
     }
     async fn send_token_transaction(
         &self,
         transaction: &SentTokenTransaction,
+        public_key: String,
+        private_key: String,
     ) -> Result<(), ServiceError> {
         todo!()
     }
     async fn deploy_token_address_contract(
         &self,
         address: TokenBalanceFromDb,
+        public_key: String,
+        private_key: String,
     ) -> Result<(), ServiceError> {
         todo!()
     }

@@ -75,6 +75,8 @@ pub struct SentTokenTransaction {
     pub account_hex: String,
     pub value: BigDecimal,
     pub root_address: String,
+    pub notify_receiver: bool,
+    pub fee: BigDecimal,
 }
 
 impl CreateSendTokenTransaction {
