@@ -16,10 +16,12 @@ use crate::models::sqlx::{
     TransactionEventDb,
 };
 use crate::models::token_balance::NetworkTokenAddressData;
+use crate::models::token_transaction_events::TokenTransactionsEventsSearch;
 use crate::models::token_transactions::{
     CreateReceiveTokenTransaction, CreateSendTokenTransaction, TokenTransactionSend,
     UpdateSendTokenTransaction,
 };
+use crate::models::transaction_events::TransactionsEventsSearch;
 use crate::models::transactions::{
     CreateReceiveTransaction, CreateSendTransaction, TransactionSend, UpdateSendTransaction,
 };
@@ -61,7 +63,7 @@ pub trait TonService: Send + Sync + 'static {
     async fn search_events(
         &self,
         service_id: &ServiceId,
-        event_status: &TonEventStatus,
+        payload: &TransactionsEventsSearch,
     ) -> Result<Vec<TransactionEventDb>, ServiceError>;
     async fn mark_event(
         &self,
@@ -76,7 +78,7 @@ pub trait TonService: Send + Sync + 'static {
     async fn search_token_events(
         &self,
         service_id: &ServiceId,
-        event_status: &TonEventStatus,
+        payload: &TokenTransactionsEventsSearch,
     ) -> Result<Vec<TokenTransactionEventDb>, ServiceError>;
     async fn mark_token_event(
         &self,
@@ -290,10 +292,10 @@ impl TonService for TonServiceImpl {
     async fn search_events(
         &self,
         service_id: &ServiceId,
-        event_status: &TonEventStatus,
+        payload: &TransactionsEventsSearch,
     ) -> Result<Vec<TransactionEventDb>, ServiceError> {
         self.sqlx_client
-            .get_transaction_events(*service_id, *event_status)
+            .get_all_transaction_events(*service_id, payload)
             .await
     }
     async fn mark_event(
@@ -321,12 +323,13 @@ impl TonService for TonServiceImpl {
     async fn search_token_events(
         &self,
         service_id: &ServiceId,
-        event_status: &TonEventStatus,
+        payload: &TokenTransactionsEventsSearch,
     ) -> Result<Vec<TokenTransactionEventDb>, ServiceError> {
         self.sqlx_client
-            .get_token_transaction_events(*service_id, *event_status)
+            .get_all_token_transaction_events(*service_id, payload)
             .await
     }
+
     async fn mark_token_event(
         &self,
         service_id: &ServiceId,

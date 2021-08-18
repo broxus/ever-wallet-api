@@ -79,3 +79,18 @@ impl CreateReceiveTransactionEvent {
         }
     }
 }
+
+#[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
+pub struct TransactionsEventsSearch {
+    pub limit: i64,
+    pub offset: i64,
+    pub created_at_ge: Option<i64>,
+    pub created_at_le: Option<i64>,
+    pub transaction_id: Option<Uuid>,
+    pub message_hash: Option<String>,
+    pub account_workchain_id: Option<i32>,
+    pub account_hex: Option<String>,
+    pub transaction_direction: Option<TonTransactionDirection>,
+    pub transaction_status: Option<TonTransactionStatus>,
+    pub event_status: Option<TonEventStatus>,
+}

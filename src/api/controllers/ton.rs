@@ -126,7 +126,7 @@ pub fn post_events(
     async move {
         let transactions_events = ctx
             .ton_service
-            .search_events(&service_id, &input.event_status)
+            .search_events(&service_id, &input.into())
             .await?;
         let events: Vec<_> = transactions_events
             .into_iter()
@@ -189,7 +189,7 @@ pub fn post_tokens_events(
     async move {
         let transactions_events = ctx
             .ton_service
-            .search_token_events(&service_id, &input.event_status)
+            .search_token_events(&service_id, &input.into())
             .await?;
         let events: Vec<_> = transactions_events
             .into_iter()

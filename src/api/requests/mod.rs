@@ -5,12 +5,15 @@ use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
 use crate::models::account_enums::{
-    AccountAddressType, AccountType, TonEventStatus, TransactionSendOutputType,
+    AccountAddressType, AccountType, TonEventStatus, TonTokenTransactionStatus,
+    TonTransactionDirection, TonTransactionStatus, TransactionSendOutputType,
 };
 use crate::models::address::{Address, CreateAddress};
+use crate::models::token_transaction_events::TokenTransactionsEventsSearch;
 use crate::models::token_transactions::TokenTransactionSend;
+use crate::models::transaction_events::TransactionsEventsSearch;
 use crate::models::transactions::{TransactionSend, TransactionSendOutput};
-use crate::prelude::TOKEN_FEE;
+use crate::prelude::{MAX_LIMIT_SEARCH, TOKEN_FEE};
 
 #[derive(Debug, Deserialize, Serialize, Clone, opg::OpgModel, derive_more::Constructor)]
 #[serde(rename_all = "camelCase")]
@@ -109,14 +112,72 @@ pub struct PostTonTokenMarkEventsRequest {
 #[serde(rename_all = "camelCase")]
 #[opg("PostTonTransactionEventsRequest")]
 pub struct PostTonTransactionEventsRequest {
-    pub event_status: TonEventStatus,
+    pub limit: Option<i64>,
+    pub offset: Option<i64>,
+    pub created_at_ge: Option<i64>,
+    pub created_at_le: Option<i64>,
+    pub transaction_id: Option<Uuid>,
+    pub message_hash: Option<String>,
+    pub account_workchain_id: Option<i32>,
+    pub account_hex: Option<String>,
+    pub transaction_direction: Option<TonTransactionDirection>,
+    pub transaction_status: Option<TonTransactionStatus>,
+    pub event_status: Option<TonEventStatus>,
+}
+
+impl From<PostTonTransactionEventsRequest> for TransactionsEventsSearch {
+    fn from(c: PostTonTransactionEventsRequest) -> Self {
+        TransactionsEventsSearch {
+            limit: c.limit.unwrap_or(MAX_LIMIT_SEARCH),
+            offset: c.offset.unwrap_or(0),
+            created_at_ge: c.created_at_ge,
+            created_at_le: c.created_at_le,
+            transaction_id: c.transaction_id,
+            message_hash: c.message_hash,
+            account_workchain_id: c.account_workchain_id,
+            account_hex: c.account_hex,
+            transaction_direction: c.transaction_direction,
+            transaction_status: c.transaction_status,
+            event_status: c.event_status,
+        }
+    }
 }
 
 #[derive(Debug, Deserialize, Serialize, Clone, opg::OpgModel)]
 #[serde(rename_all = "camelCase")]
 #[opg("PostTonTokenTransactionEventsRequest")]
 pub struct PostTonTokenTransactionEventsRequest {
-    pub event_status: TonEventStatus,
+    pub limit: Option<i64>,
+    pub offset: Option<i64>,
+    pub created_at_ge: Option<i64>,
+    pub created_at_le: Option<i64>,
+    pub token_transaction_id: Option<Uuid>,
+    pub message_hash: Option<String>,
+    pub account_workchain_id: Option<i32>,
+    pub account_hex: Option<String>,
+    pub root_address: Option<String>,
+    pub transaction_direction: Option<TonTransactionDirection>,
+    pub transaction_status: Option<TonTokenTransactionStatus>,
+    pub event_status: Option<TonEventStatus>,
+}
+
+impl From<PostTonTokenTransactionEventsRequest> for TokenTransactionsEventsSearch {
+    fn from(c: PostTonTokenTransactionEventsRequest) -> Self {
+        TokenTransactionsEventsSearch {
+            limit: c.limit.unwrap_or(MAX_LIMIT_SEARCH),
+            offset: c.offset.unwrap_or(0),
+            created_at_ge: c.created_at_ge,
+            created_at_le: c.created_at_le,
+            token_transaction_id: c.token_transaction_id,
+            message_hash: c.message_hash,
+            account_workchain_id: c.account_workchain_id,
+            account_hex: c.account_hex,
+            root_address: c.root_address,
+            transaction_direction: c.transaction_direction,
+            transaction_status: c.transaction_status,
+            event_status: c.event_status,
+        }
+    }
 }
 
 #[derive(Debug, Deserialize, Serialize, Clone, opg::OpgModel)]

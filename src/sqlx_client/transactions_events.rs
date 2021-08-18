@@ -1,11 +1,15 @@
-use anyhow::Result;
+use itertools::Itertools;
+use sqlx::postgres::PgArguments;
+use sqlx::Arguments;
+use sqlx::Row;
+use uuid::Uuid;
 
 use crate::models::account_enums::TonEventStatus;
 use crate::models::service_id::ServiceId;
 use crate::models::sqlx::TransactionEventDb;
+use crate::models::transaction_events::TransactionsEventsSearch;
 use crate::prelude::ServiceError;
 use crate::sqlx_client::SqlxClient;
-use sentry::types::Uuid;
 
 impl SqlxClient {
     pub async fn get_transaction_event_by_mh(
@@ -105,15 +109,20 @@ impl SqlxClient {
         .map_err(From::from)
     }
 
-    pub async fn get_transaction_events(
+    pub async fn get_all_transaction_events(
         &self,
         service_id: ServiceId,
-        event_status: TonEventStatus,
+        input: &TransactionsEventsSearch,
     ) -> Result<Vec<TransactionEventDb>, ServiceError> {
-        sqlx::query_as!(
-            TransactionEventDb,
-            r#"
-            SELECT id,
+        let mut args = PgArguments::default();
+        args.add(service_id.inner());
+        let mut args_len = 1;
+
+        let updates = filter_transaction_query(&mut args, &mut args_len, input);
+
+        let query: String = format!(
+            r#"SELECT
+                id,
                 service_id as "service_id: _",
                 transaction_id,
                 message_hash,
@@ -123,16 +132,113 @@ impl SqlxClient {
                 transaction_direction as "transaction_direction: _",
                 transaction_status as "transaction_status: _",
                 event_status as "event_status: _",
-                created_at, updated_at
-            FROM transaction_events
-            WHERE service_id = $1 AND event_status = $2"#,
-            service_id as ServiceId,
-            event_status as TonEventStatus,
-        )
-        .fetch_all(&self.pool)
-        .await
-        .map_err(From::from)
+                created_at,
+                updated_at
+                FROM transaction_events WHERE service_id = $1 {} ORDER BY created_at DESC OFFSET ${} LIMIT ${}"#,
+            updates.iter().format(""),
+            args_len + 1,
+            args_len + 2
+        );
+
+        args.add(input.offset);
+        args.add(input.limit);
+        let transactions = sqlx::query_with(&query, args).fetch_all(&self.pool).await?;
+
+        let res = transactions
+            .iter()
+            .map(|x| TransactionEventDb {
+                id: x.get(0),
+                service_id: x.get(1),
+                transaction_id: x.get(2),
+                message_hash: x.get(3),
+                account_workchain_id: x.get(4),
+                account_hex: x.get(5),
+                balance_change: x.get(6),
+                transaction_direction: x.get(7),
+                transaction_status: x.get(8),
+                event_status: x.get(9),
+                created_at: x.get(10),
+                updated_at: x.get(11),
+            })
+            .collect::<Vec<_>>();
+        Ok(res)
     }
+}
+
+pub fn filter_transaction_query(
+    args: &mut PgArguments,
+    args_len: &mut i32,
+    input: &TransactionsEventsSearch,
+) -> Vec<String> {
+    let TransactionsEventsSearch {
+        created_at_ge,
+        created_at_le,
+        transaction_id,
+        message_hash,
+        account_workchain_id,
+        account_hex,
+        transaction_direction,
+        transaction_status,
+        event_status,
+        ..
+    } = input.clone();
+    let mut updates = Vec::new();
+
+    if let Some(transaction_id) = transaction_id {
+        updates.push(format!(" AND transaction_id = ${} ", *args_len + 1,));
+        *args_len += 1;
+        args.add(transaction_id)
+    }
+
+    if let Some(message_hash) = message_hash {
+        updates.push(format!(" AND message_hash = ${} ", *args_len + 1,));
+        *args_len += 1;
+        args.add(message_hash)
+    }
+
+    if let Some(account_workchain_id) = account_workchain_id {
+        updates.push(format!(" AND account_workchain_id = ${} ", *args_len + 1,));
+        *args_len += 1;
+        args.add(account_workchain_id)
+    }
+
+    if let Some(account_hex) = account_hex {
+        updates.push(format!(" AND account_hex = ${} ", *args_len + 1,));
+        *args_len += 1;
+        args.add(account_hex)
+    }
+
+    if let Some(transaction_direction) = transaction_direction {
+        updates.push(format!(" AND transaction_direction = ${} ", *args_len + 1,));
+        *args_len += 1;
+        args.add(transaction_direction)
+    }
+
+    if let Some(transaction_status) = transaction_status {
+        updates.push(format!(" AND transaction_status = ${} ", *args_len + 1,));
+        *args_len += 1;
+        args.add(transaction_status)
+    }
+
+    if let Some(event_status) = event_status {
+        updates.push(format!(" AND event_status = ${} ", *args_len + 1,));
+        *args_len += 1;
+        args.add(event_status)
+    }
+
+    if let Some(created_at_ge) = created_at_ge {
+        updates.push(format!(" AND created_at >= ${} ", *args_len + 1,));
+        *args_len += 1;
+        args.add(created_at_ge)
+    }
+
+    if let Some(created_at_le) = created_at_le {
+        updates.push(format!(" AND created_at <= ${} ", *args_len + 1,));
+        *args_len += 1;
+        args.add(created_at_le)
+    }
+
+    updates
 }
 
 #[cfg(test)]
