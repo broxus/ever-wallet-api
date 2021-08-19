@@ -3,6 +3,7 @@ use std::sync::Arc;
 
 use anyhow::Result;
 use chrono::Utc;
+use nekoton_abi::LastTransactionId;
 use parking_lot::Mutex;
 use serde::Deserialize;
 use tokio::sync::mpsc;
@@ -24,7 +25,7 @@ pub struct TonIndexer {
     ton_subscriber: Arc<TonSubscriber>,
 
     account_observer: Arc<AccountObserver>,
-    ext_in_msg_cache: Mutex<HashMap<UInt256, i64>>,
+    pending_messages: Mutex<HashMap<UInt256, u32>>,
 
     initialized: tokio::sync::Mutex<bool>,
 }
@@ -51,12 +52,12 @@ impl TonIndexer {
             account_observer: Arc::new(AccountObserver {
                 tx: account_transaction_tx,
             }),
-            ext_in_msg_cache: Mutex::new(HashMap::new()),
+            pending_messages: Mutex::new(HashMap::new()),
             initialized: Default::default(),
         });
 
         engine.start_listening_accounts_transactions(account_transaction_rx);
-        engine.start_ext_in_msg_cache_watcher();
+        engine.start_pending_messages_watcher();
 
         Ok(engine)
     }
@@ -88,8 +89,7 @@ impl TonIndexer {
 
         let mut last_transaction_hash = None;
         let mut last_transaction_lt = None;
-        if let nekoton_abi::LastTransactionId::Exact(transaction_id) = contract.last_transaction_id
-        {
+        if let LastTransactionId::Exact(transaction_id) = contract.last_transaction_id {
             last_transaction_hash = Some(transaction_id.hash);
             last_transaction_lt = Some(transaction_id.lt)
         }
@@ -151,10 +151,13 @@ impl TonIndexer {
         token_wallet.get_version()
     }
 
-    pub async fn send_ton_message(&self, message: &ton_block::Message) -> Result<()> {
+    pub async fn send_ton_message(
+        &self,
+        message: &ton_block::Message,
+        expire_at: u32,
+    ) -> Result<()> {
         let to = match message.header() {
             ton_block::CommonMsgInfo::ExtInMsgInfo(header) => {
-                self.add_ext_in_msg_to_cache(message)?;
                 ton_block::AccountIdPrefixFull::prefix(&header.dst)?
             }
             _ => return Err(EngineError::ExternalTonMessageExpected.into()),
@@ -163,9 +166,19 @@ impl TonIndexer {
         let cells = message.write_to_new_cell()?.into();
         let serialized = ton_types::serialize_toc(&cells)?;
 
-        self.ton_engine
+        self.add_pending_message(message, expire_at)?;
+
+        match self
+            .ton_engine
             .broadcast_external_message(&to, &serialized)
             .await
+        {
+            Ok(()) => Ok(()),
+            Err(e) => {
+                self.cancel_pending_message(message)?;
+                Err(e)
+            }
+        }
     }
 
     pub fn add_account_subscription<I>(&self, accounts: I)
@@ -198,8 +211,8 @@ impl TonIndexer {
                     .and_then(|data| data.read_struct().ok())
                 {
                     if let ton_block::CommonMsgInfo::ExtInMsgInfo(header) = in_msg.header() {
-                        if let Err(err) = engine.remove_ext_in_msg_from_cache(&in_msg) {
-                            todo!()
+                        if let Err(err) = engine.cancel_pending_message(&in_msg) {
+                            // TODO: update status for sent transaction
                         }
                         log::info!("Message: {:#?}", in_msg);
                     }
@@ -213,28 +226,32 @@ impl TonIndexer {
         });
     }
 
-    fn add_ext_in_msg_to_cache(&self, message: &ton_block::Message) -> Result<()> {
-        let mut msg_cache = self.ext_in_msg_cache.lock();
-        match msg_cache.entry(message.hash()?) {
+    fn add_pending_message(&self, message: &ton_block::Message, expire_at: u32) -> Result<()> {
+        let mut msg_cache = self.pending_messages.lock();
+        match msg_cache.entry(message.serialize()?.repr_hash()) {
             hash_map::Entry::Vacant(entry) => {
-                entry.insert(Utc::now().timestamp() + 60);
+                entry.insert(expire_at);
             }
             hash_map::Entry::Occupied(_) => {
-                return Err(EngineError::ExternalTonMessageExistInCache.into());
+                return Err(EngineError::PendingMessageExist.into());
             }
         };
         Ok(())
     }
 
-    fn remove_ext_in_msg_from_cache(&self, message: &ton_block::Message) -> Result<()> {
-        let mut msg_cache = self.ext_in_msg_cache.lock();
-        if let None = msg_cache.remove(&message.hash()?) {
-            return Err(EngineError::ExternalTonMessageNotExistInCache.into());
+    fn cancel_pending_message(&self, message: &ton_block::Message) -> Result<()> {
+        let mut msg_cache = self.pending_messages.lock();
+        if msg_cache
+            .remove(&message.serialize()?.repr_hash())
+            .is_none()
+        {
+            return Err(EngineError::PendingMessageNotExist.into());
         }
+
         Ok(())
     }
 
-    fn start_ext_in_msg_cache_watcher(self: &Arc<Self>) {
+    fn start_pending_messages_watcher(self: &Arc<Self>) {
         let engine = Arc::downgrade(self);
 
         tokio::spawn(async move {
@@ -243,18 +260,15 @@ impl TonIndexer {
             while let Some(engine) = engine.upgrade() {
                 interval.tick().await;
 
-                let now = Utc::now().timestamp();
-                let mut msg_cache = engine.ext_in_msg_cache.lock();
+                let now = Utc::now().timestamp() as u32;
 
-                msg_cache.retain(|_, expired| {
-                    let mut keep = true;
-                    if now > *expired {
-                        // TODO: Mark sent transaction as bad
-
-                        keep = false;
+                let mut msg_cache = engine.pending_messages.lock();
+                msg_cache.retain(|_, expire_at| {
+                    let expired = now > *expire_at;
+                    if expired {
+                        // TODO: mark send transaction as expired
                     }
-
-                    keep
+                    !expired
                 });
             }
         });
@@ -298,8 +312,8 @@ enum EngineError {
     AlreadyInitialized,
     #[error("External ton message expected")]
     ExternalTonMessageExpected,
-    #[error("External ton message to send is already in cache")]
-    ExternalTonMessageExistInCache,
-    #[error("Received external ton message is not in cache")]
-    ExternalTonMessageNotExistInCache,
+    #[error("Pending message exist")]
+    PendingMessageExist,
+    #[error("Pending message not exist")]
+    PendingMessageNotExist,
 }
