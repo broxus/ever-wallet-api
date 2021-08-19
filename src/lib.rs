@@ -28,6 +28,7 @@ mod redis;
 mod services;
 mod settings;
 mod sqlx_client;
+mod utils;
 
 pub async fn start_server() -> StdResult<()> {
     let config = get_config();

@@ -22,6 +22,7 @@ http = "0.2"
 hyper = { version = "0.14" }
 log = { version = "0.4", features = ["std", "serde"] }
 log4rs = "1.0"
+once_cell = "1.8"
 pin-project = "0.4"
 opg = { version = "0.0", features = ["uuid"] }
 r2d2 = "0.8.9"
