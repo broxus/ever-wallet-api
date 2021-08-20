@@ -939,137 +939,6 @@
       ]
     }
   },
-  "387f6d1869a67366759197690e8f0c13d15793c4f9e08411107a0e84de19bd5e": {
-    "query": "\n            SELECT id,\n                service_id as \"service_id: _\",\n                transaction_id,\n                message_hash,\n                account_workchain_id,\n                account_hex,\n                balance_change,\n                transaction_direction as \"transaction_direction: _\",\n                transaction_status as \"transaction_status: _\",\n                event_status as \"event_status: _\",\n                created_at, updated_at\n            FROM transaction_events\n            WHERE service_id = $1 AND event_status = $2",
-    "describe": {
-      "columns": [
-        {
-          "ordinal": 0,
-          "name": "id",
-          "type_info": "Uuid"
-        },
-        {
-          "ordinal": 1,
-          "name": "service_id: _",
-          "type_info": "Uuid"
-        },
-        {
-          "ordinal": 2,
-          "name": "transaction_id",
-          "type_info": "Uuid"
-        },
-        {
-          "ordinal": 3,
-          "name": "message_hash",
-          "type_info": "Varchar"
-        },
-        {
-          "ordinal": 4,
-          "name": "account_workchain_id",
-          "type_info": "Int4"
-        },
-        {
-          "ordinal": 5,
-          "name": "account_hex",
-          "type_info": "Varchar"
-        },
-        {
-          "ordinal": 6,
-          "name": "balance_change",
-          "type_info": "Numeric"
-        },
-        {
-          "ordinal": 7,
-          "name": "transaction_direction: _",
-          "type_info": {
-            "Custom": {
-              "name": "twa_transaction_direction",
-              "kind": {
-                "Enum": [
-                  "Send",
-                  "Receive"
-                ]
-              }
-            }
-          }
-        },
-        {
-          "ordinal": 8,
-          "name": "transaction_status: _",
-          "type_info": {
-            "Custom": {
-              "name": "twa_transaction_status",
-              "kind": {
-                "Enum": [
-                  "New",
-                  "Done",
-                  "PartiallyDone",
-                  "Error"
-                ]
-              }
-            }
-          }
-        },
-        {
-          "ordinal": 9,
-          "name": "event_status: _",
-          "type_info": {
-            "Custom": {
-              "name": "twa_transaction_event_status",
-              "kind": {
-                "Enum": [
-                  "New",
-                  "Notified",
-                  "Error"
-                ]
-              }
-            }
-          }
-        },
-        {
-          "ordinal": 10,
-          "name": "created_at",
-          "type_info": "Timestamp"
-        },
-        {
-          "ordinal": 11,
-          "name": "updated_at",
-          "type_info": "Timestamp"
-        }
-      ],
-      "parameters": {
-        "Left": [
-          "Uuid",
-          {
-            "Custom": {
-              "name": "twa_transaction_event_status",
-              "kind": {
-                "Enum": [
-                  "New",
-                  "Notified",
-                  "Error"
-                ]
-              }
-            }
-          }
-        ]
-      },
-      "nullable": [
-        false,
-        false,
-        false,
-        false,
-        false,
-        false,
-        true,
-        false,
-        false,
-        false,
-        false,
-        false
-      ]
-    }
-  },
   "3af4382d2c97cb6143d46a8477e6070a2f963234f8dd141b0d601f7498262a46": {
     "query": "\n            UPDATE token_transaction_events SET event_status = $1\n            WHERE message_hash = $2 AND account_workchain_id = $3 AND account_hex = $4\n            RETURNING id,\n                service_id as \"service_id: _\",\n                token_transaction_id,\n                message_hash,\n                account_workchain_id,\n                account_hex,\n                value,\n                root_address,\n                transaction_direction as \"transaction_direction: _\",\n                transaction_status as \"transaction_status: _\",\n                event_status as \"event_status: _\",\n                created_at, updated_at",
     "describe": {
@@ -3031,6 +2900,113 @@
         true,
         true,
         false,
+        false,
+        false,
+        false
+      ]
+    }
+  },
+  "bea373addcff988470868b63ed5630b82402146a833bb310ae665a86f0f8fa52": {
+    "query": "SELECT id, service_id as \"service_id: _\", workchain_id, hex, base64url, public_key, private_key, account_type as \"account_type: _\", custodians, confirmations, custodians_public_keys, balance, created_at, updated_at\n                FROM address",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "id",
+          "type_info": "Uuid"
+        },
+        {
+          "ordinal": 1,
+          "name": "service_id: _",
+          "type_info": "Uuid"
+        },
+        {
+          "ordinal": 2,
+          "name": "workchain_id",
+          "type_info": "Int4"
+        },
+        {
+          "ordinal": 3,
+          "name": "hex",
+          "type_info": "Varchar"
+        },
+        {
+          "ordinal": 4,
+          "name": "base64url",
+          "type_info": "Varchar"
+        },
+        {
+          "ordinal": 5,
+          "name": "public_key",
+          "type_info": "Varchar"
+        },
+        {
+          "ordinal": 6,
+          "name": "private_key",
+          "type_info": "Varchar"
+        },
+        {
+          "ordinal": 7,
+          "name": "account_type: _",
+          "type_info": {
+            "Custom": {
+              "name": "twa_account_type",
+              "kind": {
+                "Enum": [
+                  "HighloadWallet",
+                  "Wallet",
+                  "SafeMultisig"
+                ]
+              }
+            }
+          }
+        },
+        {
+          "ordinal": 8,
+          "name": "custodians",
+          "type_info": "Int4"
+        },
+        {
+          "ordinal": 9,
+          "name": "confirmations",
+          "type_info": "Int4"
+        },
+        {
+          "ordinal": 10,
+          "name": "custodians_public_keys",
+          "type_info": "Jsonb"
+        },
+        {
+          "ordinal": 11,
+          "name": "balance",
+          "type_info": "Numeric"
+        },
+        {
+          "ordinal": 12,
+          "name": "created_at",
+          "type_info": "Timestamp"
+        },
+        {
+          "ordinal": 13,
+          "name": "updated_at",
+          "type_info": "Timestamp"
+        }
+      ],
+      "parameters": {
+        "Left": []
+      },
+      "nullable": [
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        true,
+        true,
+        true,
         false,
         false,
         false
