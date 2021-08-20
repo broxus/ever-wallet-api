@@ -1,35 +1,44 @@
 use anyhow::Result;
+use nekoton::transport::models::ExistingContract;
 use nekoton_abi::{ExecutionOutput, FunctionExt, GenTimings, LastTransactionId, TransactionId};
+use ton_block::{Account, AccountStuff, ShardAccount};
 
-pub struct ExistingContract {
-    pub account: ton_block::AccountStuff,
-    pub last_transaction_id: LastTransactionId,
+pub trait ExistingContractExt {
+    fn from_shard_account(shard_account: &ShardAccount) -> Result<Option<ExistingContract>>;
+    fn from_shard_account_opt(
+        shard_account: &Option<ShardAccount>,
+    ) -> Result<Option<ExistingContract>>;
+
+    fn run_local(
+        &self,
+        function: &ton_abi::Function,
+        input: &[ton_abi::Token],
+    ) -> Result<Vec<ton_abi::Token>>;
 }
 
-impl ExistingContract {
-    pub fn from_shard_account_opt(
-        shard_account: &Option<ton_block::ShardAccount>,
-    ) -> Result<Option<Self>> {
+impl ExistingContractExt for ExistingContract {
+    fn from_shard_account(shard_account: &ShardAccount) -> Result<Option<Self>> {
+        Ok(match shard_account.read_account()? {
+            Account::Account(account) => Some(Self {
+                account,
+                timings: GenTimings::Unknown,
+                last_transaction_id: LastTransactionId::Exact(TransactionId {
+                    lt: shard_account.last_trans_lt(),
+                    hash: *shard_account.last_trans_hash(),
+                }),
+            }),
+            Account::AccountNone => None,
+        })
+    }
+
+    fn from_shard_account_opt(shard_account: &Option<ShardAccount>) -> Result<Option<Self>> {
         match shard_account {
             Some(shard_account) => Self::from_shard_account(shard_account),
             None => Ok(None),
         }
     }
 
-    pub fn from_shard_account(shard_account: &ton_block::ShardAccount) -> Result<Option<Self>> {
-        Ok(match shard_account.read_account()? {
-            ton_block::Account::Account(account) => Some(Self {
-                account,
-                last_transaction_id: LastTransactionId::Exact(TransactionId {
-                    lt: shard_account.last_trans_lt(),
-                    hash: *shard_account.last_trans_hash(),
-                }),
-            }),
-            ton_block::Account::AccountNone => None,
-        })
-    }
-
-    pub fn run_local(
+    fn run_local(
         &self,
         function: &ton_abi::Function,
         input: &[ton_abi::Token],
@@ -39,7 +48,7 @@ impl ExistingContract {
             result_code,
         } = function.run_local(
             self.account.clone(),
-            GenTimings::Unknown,
+            self.timings,
             &self.last_transaction_id,
             input,
         )?;

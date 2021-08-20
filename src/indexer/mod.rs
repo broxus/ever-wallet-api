@@ -3,6 +3,8 @@ use std::sync::Arc;
 
 use anyhow::Result;
 use chrono::Utc;
+use nekoton::core::models::RootTokenContractDetails;
+use nekoton::core::token_wallet::RootTokenContractState;
 use nekoton_abi::LastTransactionId;
 use parking_lot::Mutex;
 use serde::Deserialize;
@@ -103,6 +105,20 @@ impl TonIndexer {
             last_transaction_hash,
             sync_u_time: 0,
         })
+    }
+
+    pub async fn get_token_address(&self, owner: OwnerInfo) -> Result<MsgAddressInt> {
+        let root_account = UInt256::from_be_bytes(&owner.root_address.address().get_bytestring(0));
+        let root_contract = self
+            .ton_subscriber
+            .get_contract_state(root_account)
+            .await?
+            .unwrap();
+
+        let state = RootTokenContractState(&root_contract);
+        let RootTokenContractDetails { version, .. } = state.guess_details()?;
+
+        state.get_wallet_address(version, &owner.root_address, None)
     }
 
     pub async fn get_token_address_info(&self, account: UInt256) -> Result<TokenAddressInfo> {
