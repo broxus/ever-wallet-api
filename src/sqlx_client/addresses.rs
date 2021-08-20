@@ -68,4 +68,14 @@ impl SqlxClient {
             .await
             .map_err(From::from)
     }
+
+    pub async fn get_all_addresses(&self) -> Result<Vec<AddressDb>, ServiceError> {
+        sqlx::query_as!(AddressDb,
+                r#"SELECT id, service_id as "service_id: _", workchain_id, hex, base64url, public_key, private_key, account_type as "account_type: _", custodians, confirmations, custodians_public_keys, balance, created_at, updated_at
+                FROM address"#
+            )
+            .fetch_all(&self.pool)
+            .await
+            .map_err(From::from)
+    }
 }
