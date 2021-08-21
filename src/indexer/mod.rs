@@ -4,23 +4,26 @@ use std::sync::Arc;
 use anyhow::Result;
 use chrono::Utc;
 use nekoton::core::models::RootTokenContractDetails;
-use nekoton::core::token_wallet::RootTokenContractState;
+use nekoton::core::token_wallet::{RootTokenContractState, TokenWalletContractState};
 use nekoton_abi::LastTransactionId;
 use parking_lot::Mutex;
 use serde::Deserialize;
 use tokio::sync::mpsc;
-use ton_block::{GetRepresentationHash, Serializable};
+use ton_block::{MsgAddressInt, Serializable};
 use ton_types::UInt256;
 
 use self::models::*;
-use self::ton_contracts::*;
 use self::ton_subscriber::*;
-use dexpa::macros::failure::err_msg;
-use hyper::service::make_service_fn;
+
+use crate::models::owners_cache::*;
 
 mod models;
-mod ton_contracts;
 mod ton_subscriber;
+
+pub const TOKEN_WALLET_CODE_HASH: [u8; 32] = [
+    44, 127, 188, 81, 97, 200, 223, 145, 75, 25, 193, 126, 27, 104, 81, 113, 32, 159, 175, 201, 32,
+    0, 153, 178, 193, 252, 136, 125, 89, 93, 42, 227,
+];
 
 pub struct TonIndexer {
     ton_engine: Arc<ton_indexer::Engine>,
@@ -78,16 +81,15 @@ impl TonIndexer {
     }
 
     pub async fn get_ton_address_info(&self, account: UInt256) -> Result<TonAddressInfo> {
-        let contract = self
-            .ton_subscriber
-            .get_contract_state(account)
-            .await?
-            .unwrap();
+        let contract = match self.ton_subscriber.get_contract_state(account).await? {
+            Some(contract) => contract,
+            None => return Err(EngineError::AccountNotFound(account.to_hex_string()).into()),
+        };
 
         let workchain_id = contract.account.addr.workchain_id();
         let hex = contract.account.addr.address().to_hex_string();
         let account_status = contract.account.storage.state;
-        let network_balance = contract.account.storage.balance.grams.value();
+        let network_balance = contract.account.storage.balance.grams.0;
 
         let mut last_transaction_hash = None;
         let mut last_transaction_lt = None;
@@ -103,38 +105,23 @@ impl TonIndexer {
             account_status,
             last_transaction_lt,
             last_transaction_hash,
-            sync_u_time: 0,
         })
     }
 
-    pub async fn get_token_address(&self, owner: OwnerInfo) -> Result<MsgAddressInt> {
-        let root_account = UInt256::from_be_bytes(&owner.root_address.address().get_bytestring(0));
-        let root_contract = self
-            .ton_subscriber
-            .get_contract_state(root_account)
-            .await?
-            .unwrap();
-
-        let state = RootTokenContractState(&root_contract);
-        let RootTokenContractDetails { version, .. } = state.guess_details()?;
-
-        state.get_wallet_address(version, &owner.root_address, None)
-    }
-
     pub async fn get_token_address_info(&self, account: UInt256) -> Result<TokenAddressInfo> {
-        let contract = self
-            .ton_subscriber
-            .get_contract_state(account)
-            .await?
-            .unwrap();
+        let contract = match self.ton_subscriber.get_contract_state(account).await? {
+            Some(contract) => contract,
+            None => return Err(EngineError::AccountNotFound(account.to_hex_string()).into()),
+        };
 
-        let token_wallet = TonTokenWalletContract(&contract);
-        let root_address = token_wallet.get_details()?.root_address;
+        let token_wallet = TokenWalletContractState(&contract);
+        let version = token_wallet.get_version()?;
+        let root_address = token_wallet.get_details(version)?.root_address;
+        let network_balance = token_wallet.get_balance(version)?;
 
         let workchain_id = contract.account.addr.workchain_id();
         let hex = contract.account.addr.address().to_hex_string();
         let account_status = contract.account.storage.state;
-        let network_balance = contract.account.storage.balance.grams.value();
 
         let mut last_transaction_hash = None;
         let mut last_transaction_lt = None;
@@ -152,19 +139,20 @@ impl TonIndexer {
             account_status,
             last_transaction_lt,
             last_transaction_hash,
-            sync_u_time: 0,
         })
     }
 
-    pub async fn get_version(&self, account: UInt256) -> Result<u32> {
-        let contract = self
-            .ton_subscriber
-            .get_contract_state(account)
-            .await?
-            .unwrap();
+    pub async fn get_token_address(&self, owner: OwnerInfo) -> Result<MsgAddressInt> {
+        let root_account = UInt256::from_be_bytes(&owner.root_address.address().get_bytestring(0));
+        let root_contract = match self.ton_subscriber.get_contract_state(root_account).await? {
+            Some(contract) => contract,
+            None => return Err(EngineError::AccountNotFound(root_account.to_hex_string()).into()),
+        };
 
-        let token_wallet = TonTokenWalletContract(&contract);
-        token_wallet.get_version()
+        let state = RootTokenContractState(&root_contract);
+        let RootTokenContractDetails { version, .. } = state.guess_details()?;
+
+        state.get_wallet_address(version, &owner.owner_address, None)
     }
 
     pub async fn send_ton_message(
@@ -220,6 +208,22 @@ impl TonIndexer {
 
                 log::info!("Transaction: {:#?}", transaction);
 
+                if TOKEN_WALLET_CODE_HASH.as_ref() == {
+                    let contract = engine
+                        .ton_subscriber
+                        .get_contract_state(transaction.account)
+                        .await
+                        .unwrap()
+                        .unwrap();
+
+                    let state = TokenWalletContractState(&contract);
+
+                    state.get_code_hash().unwrap().as_slice()
+                } {
+                    // TODO: something
+                    log::info!("Token transaction found!");
+                }
+
                 if let Some(in_msg) = transaction
                     .transaction
                     .in_msg
@@ -227,14 +231,24 @@ impl TonIndexer {
                     .and_then(|data| data.read_struct().ok())
                 {
                     if let ton_block::CommonMsgInfo::ExtInMsgInfo(header) = in_msg.header() {
-                        if let Err(err) = engine.cancel_pending_message(&in_msg) {
-                            // TODO: update status for sent transaction
-                        }
-                        log::info!("Message: {:#?}", in_msg);
+                        match engine.cancel_pending_message(&in_msg) {
+                            Ok(()) => {
+                                log::info!(
+                                    "Message canceled: {:?}",
+                                    &in_msg.serialize().unwrap().repr_hash()
+                                );
+                            }
+                            Err(e) => {
+                                log::error!("Failed to cancel message: {:?}", e);
+                                // TODO: somehow handle?
+                            }
+                        };
+
+                        // TODO: update sent transaction
+                    } else {
+                        // TODO: Create receive transaction
                     }
                 }
-
-                // TODO: Create receive transaction
             }
 
             rx.close();
@@ -244,12 +258,13 @@ impl TonIndexer {
 
     fn add_pending_message(&self, message: &ton_block::Message, expire_at: u32) -> Result<()> {
         let mut msg_cache = self.pending_messages.lock();
-        match msg_cache.entry(message.serialize()?.repr_hash()) {
+        let msg_hash = message.serialize()?.repr_hash();
+        match msg_cache.entry(msg_hash) {
             hash_map::Entry::Vacant(entry) => {
                 entry.insert(expire_at);
             }
             hash_map::Entry::Occupied(_) => {
-                return Err(EngineError::PendingMessageExist.into());
+                return Err(EngineError::PendingMessageExist(msg_hash.to_hex_string()).into());
             }
         };
         Ok(())
@@ -257,11 +272,12 @@ impl TonIndexer {
 
     fn cancel_pending_message(&self, message: &ton_block::Message) -> Result<()> {
         let mut msg_cache = self.pending_messages.lock();
+        let msg_hash = message.serialize()?.repr_hash();
         if msg_cache
             .remove(&message.serialize()?.repr_hash())
             .is_none()
         {
-            return Err(EngineError::PendingMessageNotExist.into());
+            return Err(EngineError::PendingMessageNotExist(msg_hash.to_hex_string()).into());
         }
 
         Ok(())
@@ -279,10 +295,11 @@ impl TonIndexer {
                 let now = Utc::now().timestamp() as u32;
 
                 let mut msg_cache = engine.pending_messages.lock();
-                msg_cache.retain(|_, expire_at| {
+                msg_cache.retain(|msg_hash, expire_at| {
                     let expired = now > *expire_at;
                     if expired {
                         // TODO: mark send transaction as expired
+                        log::error!("Transaction expired: {:#?}", msg_hash);
                     }
                     !expired
                 });
@@ -328,8 +345,10 @@ enum EngineError {
     AlreadyInitialized,
     #[error("External ton message expected")]
     ExternalTonMessageExpected,
-    #[error("Pending message exist")]
-    PendingMessageExist,
-    #[error("Pending message not exist")]
-    PendingMessageNotExist,
+    #[error("Pending message hash `{0}` exist")]
+    PendingMessageExist(String),
+    #[error("Pending message hash `{0}` not exist")]
+    PendingMessageNotExist(String),
+    #[error("Account `{0}` not found")]
+    AccountNotFound(String),
 }

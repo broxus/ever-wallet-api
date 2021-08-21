@@ -4,9 +4,10 @@ use std::sync::atomic::{AtomicBool, AtomicU32, Ordering};
 use std::sync::{Arc, Weak};
 
 use anyhow::{Context, Result};
+use nekoton::transport::models::ExistingContract;
 use parking_lot::Mutex;
 use tokio::sync::{watch, Notify};
-use ton_block::{BinTreeType, Deserializable, HashmapAugType};
+use ton_block::{Deserializable, HashmapAugType};
 use ton_indexer::utils::{BlockIdExtExtension, BlockProofStuff, BlockStuff, ShardStateStuff};
 use ton_indexer::EngineStatus;
 use ton_types::{HashmapType, UInt256};

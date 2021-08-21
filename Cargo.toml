@@ -63,7 +63,7 @@ ton_types = { git = "https://github.com/broxus/ton-labs-types" }
 tiny-adnl = { git = "https://github.com/broxus/tiny-adnl" }
 
 # Nekoton SDK
-nekoton = { git = "https://github.com/broxus/nekoton.git" }
+nekoton = { git = "https://github.com/broxus/nekoton.git", default-features = false }
 nekoton-abi = { git = "https://github.com/broxus/nekoton.git", features = ["derive"] }
 nekoton-utils = { git = "https://github.com/broxus/nekoton.git" }
 
