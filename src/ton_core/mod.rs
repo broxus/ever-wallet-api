@@ -16,6 +16,8 @@ use self::models::*;
 use self::ton_subscriber::*;
 
 use crate::models::owners_cache::*;
+use crate::models::token_transactions::*;
+use crate::models::transactions::*;
 
 mod models;
 mod ton_subscriber;
@@ -25,20 +27,23 @@ pub const TOKEN_WALLET_CODE_HASH: [u8; 32] = [
     0, 153, 178, 193, 252, 136, 125, 89, 93, 42, 227,
 ];
 
-pub struct TonIndexer {
+pub struct TonCore {
     ton_engine: Arc<ton_indexer::Engine>,
     ton_subscriber: Arc<TonSubscriber>,
 
     account_observer: Arc<AccountObserver>,
     pending_messages: Mutex<HashMap<UInt256, u32>>,
 
+    receive_transaction_tx: ReceiveTransactionTx,
+
     initialized: tokio::sync::Mutex<bool>,
 }
 
-impl TonIndexer {
+impl TonCore {
     pub async fn new(
-        config: IndexerConfig,
+        config: TonCoreConfig,
         global_config: ton_indexer::GlobalConfig,
+        receive_transaction_tx: ReceiveTransactionTx,
     ) -> Result<Arc<Self>> {
         let ton_subscriber = TonSubscriber::new();
 
@@ -58,6 +63,7 @@ impl TonIndexer {
                 tx: account_transaction_tx,
             }),
             pending_messages: Mutex::new(HashMap::new()),
+            receive_transaction_tx,
             initialized: Default::default(),
         });
 
@@ -208,7 +214,8 @@ impl TonIndexer {
 
                 log::info!("Transaction: {:#?}", transaction);
 
-                if TOKEN_WALLET_CODE_HASH.as_ref() == {
+                // Temp example to find token
+                /*if TOKEN_WALLET_CODE_HASH.as_ref() == {
                     let contract = engine
                         .ton_subscriber
                         .get_contract_state(transaction.account)
@@ -219,10 +226,7 @@ impl TonIndexer {
                     let state = TokenWalletContractState(&contract);
 
                     state.get_code_hash().unwrap().as_slice()
-                } {
-                    // TODO: something
-                    log::info!("Token transaction found!");
-                }
+                } {}*/
 
                 if let Some(in_msg) = transaction
                     .transaction
@@ -233,20 +237,34 @@ impl TonIndexer {
                     if let ton_block::CommonMsgInfo::ExtInMsgInfo(header) = in_msg.header() {
                         match engine.cancel_pending_message(&in_msg) {
                             Ok(()) => {
-                                log::info!(
-                                    "Message canceled: {:?}",
-                                    &in_msg.serialize().unwrap().repr_hash()
-                                );
+                                /*if !token {
+                                    let transaction = UpdateSentTransaction {};
+                                    engine.receive_transaction_tx.send(
+                                        ReceiveTransaction::UpdateSent(transaction),
+                                    );
+                                } else {
+                                    let transaction = UpdateSentTokenTransaction {};
+                                    engine.receive_transaction_tx.send(
+                                        ReceiveTransaction::UpdateSentToken(transaction),
+                                    );
+                                }*/
                             }
                             Err(e) => {
-                                log::error!("Failed to cancel message: {:?}", e);
-                                // TODO: somehow handle?
+                                // TODO: somehow handle if received message not exist
                             }
                         };
-
-                        // TODO: update sent transaction
                     } else {
-                        // TODO: Create receive transaction
+                        /*if !token {
+                            let transaction = CreateReceiveTransaction {};
+                            engine.receive_transaction_tx.send(
+                                ReceiveTransaction::Create(transaction),
+                            );
+                        } else {
+                            let transaction = CreateReceiveTokenTransaction {};
+                            engine.receive_transaction_tx.send(
+                                ReceiveTransaction::CreateToken(transaction),
+                            );
+                        }*/
                     }
                 }
             }
@@ -299,7 +317,7 @@ impl TonIndexer {
                     let expired = now > *expire_at;
                     if expired {
                         // TODO: mark send transaction as expired
-                        log::error!("Transaction expired: {:#?}", msg_hash);
+                        log::warn!("Transaction expired: {:#?}", msg_hash);
                     }
                     !expired
                 });
@@ -335,9 +353,19 @@ impl TransactionsSubscription for AccountObserver {
 }
 
 #[derive(Deserialize, Clone)]
-pub struct IndexerConfig {
+pub struct TonCoreConfig {
     pub ton_indexer: ton_indexer::NodeConfig,
 }
+
+pub enum ReceiveTransaction {
+    Create(CreateReceiveTransaction),
+    CreateToken(CreateReceiveTokenTransaction),
+    UpdateSent(UpdateSentTransaction),
+    UpdateSentToken(UpdateSentTokenTransaction),
+}
+
+pub type ReceiveTransactionTx = mpsc::UnboundedSender<ReceiveTransaction>;
+pub type ReceiveTransactionRx = mpsc::UnboundedReceiver<ReceiveTransaction>;
 
 #[derive(thiserror::Error, Debug)]
 enum EngineError {

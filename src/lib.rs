@@ -9,25 +9,26 @@ use dexpa::utils::handle_panic;
 use futures::prelude::*;
 use r2d2_redis::RedisConnectionManager;
 use sqlx::postgres::PgPoolOptions;
+use tokio::sync::mpsc;
 
 use crate::api::http_service;
 use crate::client::{CallbackClientImpl, TonClientImpl};
-use crate::indexer::TonIndexer;
 use crate::models::owners_cache::OwnersCache;
-use crate::services::{AuthServiceImpl, TonServiceImpl};
+use crate::services::{AuthServiceImpl, TonService, TonServiceImpl};
 use crate::settings::Config;
 use crate::sqlx_client::SqlxClient;
+use crate::ton_core::{ReceiveTransaction, ReceiveTransactionRx, TonCore};
 
 #[allow(unused)]
 mod api;
 mod client;
-mod indexer;
 mod models;
 mod prelude;
 mod redis;
 mod services;
 mod settings;
 mod sqlx_client;
+mod ton_core;
 mod utils;
 
 pub async fn start_server() -> StdResult<()> {
@@ -70,8 +71,20 @@ pub async fn start_server() -> StdResult<()> {
     log::debug!("tokens caching");
     log::debug!("Finish tokens caching");
 
-    //let engine = TonIndexer::new(config.indexer.clone(), global_config).await?;
-    //engine.start().await?;
+    let (receive_transaction_tx, receive_transaction_rx) = mpsc::unbounded_channel();
+
+    /*let ton_core = TonCore::new(
+        config.indexer.clone(),
+        global_config,
+        ReceiveTransactionSender::new(receive_transaction_tx, receive_token_transaction_tx),
+    )
+    .await?;
+    ton_core.start().await?;*/
+
+    tokio::spawn(start_listening_receive_transactions(
+        ton_service.clone(),
+        receive_transaction_rx,
+    ));
 
     log::debug!("start server");
 
@@ -84,4 +97,49 @@ pub async fn start_server() -> StdResult<()> {
 
 fn get_config() -> Config {
     settings::Config::new().unwrap_or_else(|e| panic!("Error parsing config: {}", e))
+}
+
+async fn start_listening_receive_transactions(
+    ton_service: Arc<TonServiceImpl>,
+    mut rx: ReceiveTransactionRx,
+) {
+    tokio::spawn(async move {
+        while let Some(transaction) = rx.recv().await {
+            match transaction {
+                ReceiveTransaction::Create(transaction) => {
+                    let _transaction_db =
+                        ton_service.create_receive_transaction(&transaction).await;
+                }
+                ReceiveTransaction::CreateToken(transaction) => {
+                    let _transaction_db = ton_service
+                        .create_receive_token_transaction(&transaction)
+                        .await;
+                }
+                ReceiveTransaction::UpdateSent(transaction) => {
+                    let _transaction_db = ton_service
+                        .update_sent_transaction(
+                            transaction.message_hash,
+                            transaction.account_workchain_id,
+                            transaction.account_hex,
+                            &transaction.input,
+                        )
+                        .await;
+                }
+                ReceiveTransaction::UpdateSentToken(transaction) => {
+                    let _transaction_db = ton_service
+                        .update_sent_token_transaction(
+                            transaction.message_hash,
+                            transaction.account_workchain_id,
+                            transaction.account_hex,
+                            transaction.root_address,
+                            &transaction.input,
+                        )
+                        .await;
+                }
+            }
+        }
+
+        rx.close();
+        while rx.recv().await.is_some() {}
+    });
 }

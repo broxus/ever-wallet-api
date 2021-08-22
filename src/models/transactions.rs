@@ -77,6 +77,13 @@ impl UpdateSendTransaction {
     }
 }
 
+pub struct UpdateSentTransaction {
+    pub message_hash: String,
+    pub account_workchain_id: i32,
+    pub account_hex: String,
+    pub input: UpdateSendTransaction,
+}
+
 #[derive(Clone, Debug, serde::Serialize, serde::Deserialize, Eq, PartialEq)]
 pub struct CreateReceiveTransaction {
     pub id: Uuid,
