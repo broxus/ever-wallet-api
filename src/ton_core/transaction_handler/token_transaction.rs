@@ -5,7 +5,7 @@ use bigdecimal::BigDecimal;
 use nekoton::core::models::{TokenIncomingTransfer, TokenWalletDetails, TokenWalletTransaction};
 use num_bigint::BigUint;
 use ton_block::MsgAddressInt;
-use ton_types::UInt256;
+use ton_types::{AccountId, UInt256};
 use uuid::Uuid;
 
 use crate::models::account_enums::{TonTokenTransactionStatus, TonTransactionDirection};
@@ -50,7 +50,12 @@ async fn internal_transfer_send(
     token_transaction_ctx: TokenTransactionContext,
     parse_ctx: ParseContext<'_>,
 ) -> Result<ReceiveTokenTransaction> {
-    let sender_address = MsgAddressInt::from_str(&token_transaction_ctx.account.to_hex_string())?;
+    let sender_address = MsgAddressInt::with_standart(
+        None,
+        ton_block::BASE_WORKCHAIN_ID as i8,
+        AccountId::from(token_transaction_ctx.account),
+    )?;
+
     let sender_info = get_token_wallet_info(
         &sender_address,
         &token_transaction_ctx.shard_accounts,
@@ -85,7 +90,12 @@ async fn internal_transfer_receive(
     token_transfer: TokenIncomingTransfer,
     parse_ctx: ParseContext<'_>,
 ) -> Result<ReceiveTokenTransaction> {
-    let receiver_address = MsgAddressInt::from_str(&token_transaction_ctx.account.to_hex_string())?;
+    let receiver_address = MsgAddressInt::with_standart(
+        None,
+        ton_block::BASE_WORKCHAIN_ID as i8,
+        AccountId::from(token_transaction_ctx.account),
+    )?;
+
     let receiver_info = get_token_wallet_info(
         &receiver_address,
         &token_transaction_ctx.shard_accounts,
@@ -93,7 +103,6 @@ async fn internal_transfer_receive(
     )
     .await?;
 
-    // let amount = BigDecimal::from(token_transfer.tokens.into());
     let amount = BigDecimal::new(token_transfer.tokens.into(), 0);
 
     let mut transaction = CreateReceiveTokenTransaction {
@@ -125,7 +134,12 @@ async fn internal_transfer_bounced(
     token_transaction_ctx: TokenTransactionContext,
     parse_ctx: ParseContext<'_>,
 ) -> Result<ReceiveTokenTransaction> {
-    let sender_address = MsgAddressInt::from_str(&token_transaction_ctx.account.to_hex_string())?;
+    let sender_address = MsgAddressInt::with_standart(
+        None,
+        ton_block::BASE_WORKCHAIN_ID as i8,
+        AccountId::from(token_transaction_ctx.account),
+    )?;
+
     let sender_info = get_token_wallet_info(
         &sender_address,
         &token_transaction_ctx.shard_accounts,
@@ -160,7 +174,12 @@ async fn internal_transfer_mint(
     tokens: BigUint,
     parse_ctx: ParseContext<'_>,
 ) -> Result<ReceiveTokenTransaction> {
-    let receiver_address = MsgAddressInt::from_str(&token_transaction_ctx.account.to_hex_string())?;
+    let receiver_address = MsgAddressInt::with_standart(
+        None,
+        ton_block::BASE_WORKCHAIN_ID as i8,
+        AccountId::from(token_transaction_ctx.account),
+    )?;
+
     let receiver_info = get_token_wallet_info(
         &receiver_address,
         &token_transaction_ctx.shard_accounts,
@@ -168,7 +187,6 @@ async fn internal_transfer_mint(
     )
     .await?;
 
-    //let amount = BigDecimal::new(tokens.into(), receiver_info.scale as i64);
     let amount = BigDecimal::new(tokens.into(), 0);
 
     let mut transaction = CreateReceiveTokenTransaction {

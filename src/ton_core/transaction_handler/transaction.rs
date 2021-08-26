@@ -5,6 +5,7 @@ use bigdecimal::BigDecimal;
 use num_traits::FromPrimitive;
 use serde::{Deserialize, Serialize};
 use ton_block::{CommonMsgInfo, MsgAddressIntOrNone, TransactionDescr};
+use ton_types::AccountId;
 use uuid::Uuid;
 
 use crate::models::account_enums::{TonTransactionDirection, TonTransactionStatus};
@@ -21,7 +22,11 @@ pub async fn handle_transaction(
         .as_ref()
         .and_then(|data| data.read_struct().ok())
     {
-        let account_address = MsgAddressInt::from_str(&transaction_ctx.account.to_hex_string())?;
+        let account_address = MsgAddressInt::with_standart(
+            None,
+            ton_block::BASE_WORKCHAIN_ID as i8,
+            AccountId::from(transaction_ctx.account),
+        )?;
 
         let mut messages = Vec::new();
         let mut transaction_value: u128 = Default::default();
