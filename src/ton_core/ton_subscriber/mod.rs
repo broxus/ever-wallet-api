@@ -4,9 +4,10 @@ use std::sync::atomic::{AtomicBool, AtomicU32, Ordering};
 use std::sync::{Arc, Weak};
 
 use anyhow::{Context, Result};
-use nekoton::transport::models::ExistingContract;
+use nekoton::transport::models::{ExistingContract, RawContractState};
 use parking_lot::Mutex;
-use tokio::sync::{watch, Notify};
+use tiny_adnl::utils::*;
+use tokio::sync::{oneshot, watch, Notify};
 use ton_block::{Deserializable, HashmapAugType};
 use ton_indexer::utils::{BlockIdExtExtension, BlockProofStuff, BlockStuff, ShardStateStuff};
 use ton_indexer::EngineStatus;
@@ -14,12 +15,18 @@ use ton_types::{HashmapType, UInt256};
 
 use crate::utils::*;
 
+/*struct Test {
+    expired: u32,
+    tx: oneshot::Sender,
+}*/
+
 pub struct TonSubscriber {
     ready: AtomicBool,
     ready_signal: Notify,
     current_utime: AtomicU32,
     state_subscriptions: Mutex<HashMap<UInt256, StateSubscription>>,
     mc_block_awaiters: Mutex<Vec<Box<dyn BlockAwaiter>>>,
+    //pending_messages: Mutex<HashMap<(UInt256, UInt256), u32>>,
 }
 
 impl TonSubscriber {
@@ -38,7 +45,7 @@ impl TonSubscriber {
         Ok(())
     }
 
-    pub async fn get_contract_state(&self, account: UInt256) -> Result<Option<ExistingContract>> {
+    pub async fn get_contract_state(&self, account: UInt256) -> Result<RawContractState> {
         let mut state_rx = match self.state_subscriptions.lock().entry(account) {
             hash_map::Entry::Vacant(entry) => {
                 let (state_tx, state_rx) = watch::channel(None);
@@ -61,7 +68,12 @@ impl TonSubscriber {
             None => None,
         };
 
-        Ok(shard_account)
+        let state = match shard_account {
+            Some(state) => RawContractState::Exists(state),
+            None => RawContractState::NotExists,
+        };
+
+        Ok(state)
     }
 
     pub fn add_transactions_subscription<I, T>(&self, accounts: I, subscription: &Arc<T>)
@@ -116,6 +128,7 @@ impl TonSubscriber {
         &self,
         block: &ton_block::Block,
         shard_state: &ton_block::ShardStateUnsplit,
+        block_hash: &UInt256,
     ) -> Result<()> {
         let block_info = block.info.read_struct()?;
         let extra = block.extra.read_struct()?;
@@ -134,9 +147,13 @@ impl TonSubscriber {
                 return true;
             }
 
-            if let Err(e) =
-                subscription.handle_block(&shard_accounts, &block_info, &account_blocks, account)
-            {
+            if let Err(e) = subscription.handle_block(
+                &shard_accounts,
+                &block_info,
+                &account_blocks,
+                account,
+                block_hash,
+            ) {
                 log::error!("Failed to handle block: {:?}", e);
             }
 
@@ -187,7 +204,7 @@ impl ton_indexer::Subscriber for TonSubscriber {
         if block.id().is_masterchain() {
             self.handle_masterchain_block(block.block())?;
         } else {
-            self.handle_shard_block(block.block(), shard_state.state())?;
+            self.handle_shard_block(block.block(), shard_state.state(), &block.id().root_hash)?;
         }
 
         Ok(())
@@ -220,6 +237,7 @@ impl StateSubscription {
         block_info: &ton_block::BlockInfo,
         account_blocks: &ton_block::ShardAccountBlocks,
         account: &UInt256,
+        block_hash: &UInt256,
     ) -> Result<()> {
         if self.transaction_subscriptions.is_empty() {
             return Ok(());
@@ -255,15 +273,16 @@ impl StateSubscription {
                 }
             };
 
-            // Skip non-ordinary or aborted transactions
+            // Skip non-ordinary
             let transaction_info = match transaction.description.read_struct() {
-                Ok(ton_block::TransactionDescr::Ordinary(info)) if !info.aborted => info,
+                Ok(ton_block::TransactionDescr::Ordinary(info)) => info,
                 _ => continue,
             };
 
             let ctx = TxContext {
                 shard_accounts,
                 block_info,
+                block_hash,
                 account,
                 transaction_hash: &hash,
                 transaction_info: &transaction_info,
@@ -296,6 +315,64 @@ impl StateSubscription {
     }
 }
 
+#[derive(Copy, Clone, Eq, PartialEq)]
+enum StateSubscriptionStatus {
+    Alive,
+    PartlyAlive,
+    Stopped,
+}
+
+pub type ShardAccountsMap = FxHashMap<ton_block::ShardIdent, ton_block::ShardAccounts>;
+
+/// Helper trait to reduce boilerplate for getting accounts from shards state
+pub trait ShardAccountsMapExt {
+    /// Looks for a suitable shard and tries to extract information about the contract from it
+    fn find_account(&self, account: &UInt256) -> Result<Option<ExistingContract>>;
+}
+
+impl<T> ShardAccountsMapExt for &T
+where
+    T: ShardAccountsMapExt,
+{
+    fn find_account(&self, account: &UInt256) -> Result<Option<ExistingContract>> {
+        T::find_account(self, account)
+    }
+}
+
+impl ShardAccountsMapExt for ShardAccountsMap {
+    fn find_account(&self, account: &UInt256) -> Result<Option<ExistingContract>> {
+        // Search suitable shard for account by prefix.
+        // NOTE: In **most** cases suitable shard will be found
+        let item = self
+            .iter()
+            .find(|(shard_ident, _)| contains_account(shard_ident, account));
+
+        match item {
+            // Search account in shard state
+            Some((_, shard)) => match shard
+                .get(account)
+                .and_then(|account| ExistingContract::from_shard_account_opt(&account))?
+            {
+                // Account found
+                Some(contract) => Ok(Some(contract)),
+                // Account was not found (it never had any transactions) or there is not AccountStuff in it
+                None => Ok(None),
+            },
+            // Exceptional situation when no suitable shard was found
+            None => {
+                Err(TonSubscriberError::InvalidContractAddress).context("No suitable shard found")
+            }
+        }
+    }
+}
+
+impl ShardAccountsMapExt for ton_block::ShardAccounts {
+    fn find_account(&self, account: &UInt256) -> Result<Option<ExistingContract>> {
+        self.get(account)
+            .and_then(|account| ExistingContract::from_shard_account_opt(&account))
+    }
+}
+
 pub trait BlockAwaiter: Send + Sync {
     fn handle_block(&mut self, block: &ton_block::Block) -> Result<()>;
 }
@@ -304,17 +381,11 @@ pub trait TransactionsSubscription: Send + Sync {
     fn handle_transaction(&self, ctx: TxContext<'_>) -> Result<()>;
 }
 
-#[derive(Copy, Clone, Eq, PartialEq)]
-enum StateSubscriptionStatus {
-    Alive,
-    PartlyAlive,
-    Stopped,
-}
-
 #[derive(Copy, Clone, Debug)]
 pub struct TxContext<'a> {
     pub shard_accounts: &'a ton_block::ShardAccounts,
     pub block_info: &'a ton_block::BlockInfo,
+    pub block_hash: &'a UInt256,
     pub account: &'a UInt256,
     pub transaction_hash: &'a UInt256,
     pub transaction_info: &'a ton_block::TransactionDescrOrdinary,
@@ -323,3 +394,9 @@ pub struct TxContext<'a> {
 
 type ShardAccountTx = watch::Sender<Option<ton_block::ShardAccount>>;
 type ShardAccountRx = watch::Receiver<Option<ton_block::ShardAccount>>;
+
+#[derive(thiserror::Error, Debug)]
+enum TonSubscriberError {
+    #[error("Invalid contract address")]
+    InvalidContractAddress,
+}

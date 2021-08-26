@@ -67,6 +67,8 @@ pub struct CreateReceiveTokenTransaction {
     pub message_hash: String,
     pub account_workchain_id: i32,
     pub account_hex: String,
+    pub sender_workchain_id: Option<i32>,
+    pub sender_hex: Option<String>,
     pub value: BigDecimal,
     pub root_address: String,
     pub payload: Option<Vec<u8>>,

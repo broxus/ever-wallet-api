@@ -17,7 +17,10 @@ use crate::models::owners_cache::OwnersCache;
 use crate::services::{AuthServiceImpl, TonService, TonServiceImpl};
 use crate::settings::Config;
 use crate::sqlx_client::SqlxClient;
-use crate::ton_core::{ReceiveTransaction, ReceiveTransactionRx, TonCore};
+use crate::ton_core::{
+    ReceiveTokenTransaction, ReceiveTokenTransactionRx, ReceiveTransaction, ReceiveTransactionRx,
+    TonCore,
+};
 
 #[allow(unused)]
 mod api;
@@ -57,10 +60,10 @@ pub async fn start_server() -> StdResult<()> {
     let sqlx_client = SqlxClient::new(pool);
     let ton_api_client = Arc::new(TonClientImpl::new());
     let callback_client = Arc::new(CallbackClientImpl::new());
-    let owners_hash = OwnersCache::new(sqlx_client.clone()).await?;
+    let owners_cache = OwnersCache::new(sqlx_client.clone()).await?;
     let ton_service = Arc::new(TonServiceImpl::new(
         sqlx_client.clone(),
-        owners_hash.clone(),
+        owners_cache.clone(),
         ton_api_client.clone(),
         callback_client.clone(),
     ));
@@ -72,11 +75,14 @@ pub async fn start_server() -> StdResult<()> {
     log::debug!("Finish tokens caching");
 
     let (receive_transaction_tx, receive_transaction_rx) = mpsc::unbounded_channel();
+    let (receive_token_transaction_tx, receive_token_transaction_rx) = mpsc::unbounded_channel();
 
     /*let ton_core = TonCore::new(
-        config.indexer.clone(),
+        config.ton_core.clone(),
         global_config,
-        ReceiveTransactionSender::new(receive_transaction_tx, receive_token_transaction_tx),
+        owners_cache,
+        receive_transaction_tx,
+        receive_token_transaction_tx,
     )
     .await?;
     ton_core.start().await?;*/
@@ -84,6 +90,11 @@ pub async fn start_server() -> StdResult<()> {
     tokio::spawn(start_listening_receive_transactions(
         ton_service.clone(),
         receive_transaction_rx,
+    ));
+
+    tokio::spawn(start_listening_receive_token_transactions(
+        ton_service.clone(),
+        receive_token_transaction_rx,
     ));
 
     log::debug!("start server");
@@ -110,11 +121,6 @@ async fn start_listening_receive_transactions(
                     let _transaction_db =
                         ton_service.create_receive_transaction(&transaction).await;
                 }
-                ReceiveTransaction::CreateToken(transaction) => {
-                    let _transaction_db = ton_service
-                        .create_receive_token_transaction(&transaction)
-                        .await;
-                }
                 ReceiveTransaction::UpdateSent(transaction) => {
                     let _transaction_db = ton_service
                         .update_sent_transaction(
@@ -125,7 +131,27 @@ async fn start_listening_receive_transactions(
                         )
                         .await;
                 }
-                ReceiveTransaction::UpdateSentToken(transaction) => {
+            }
+        }
+
+        rx.close();
+        while rx.recv().await.is_some() {}
+    });
+}
+
+async fn start_listening_receive_token_transactions(
+    ton_service: Arc<TonServiceImpl>,
+    mut rx: ReceiveTokenTransactionRx,
+) {
+    tokio::spawn(async move {
+        while let Some(transaction) = rx.recv().await {
+            match transaction {
+                ReceiveTokenTransaction::Create(transaction) => {
+                    let _transaction_db = ton_service
+                        .create_receive_token_transaction(&transaction)
+                        .await;
+                }
+                ReceiveTokenTransaction::UpdateSent(transaction) => {
                     let _transaction_db = ton_service
                         .update_sent_token_transaction(
                             transaction.message_hash,

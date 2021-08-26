@@ -37,6 +37,7 @@ impl OwnersCache {
                     ))
                     .trust_me(),
                     root_address: MsgAddressInt::from_str(&got.root_address).trust_me(),
+                    code_hash: got.code_hash,
                 }
             }
         };
@@ -51,6 +52,7 @@ impl OwnersCache {
             owner_account_workchain_id: value.owner_address.workchain_id(),
             owner_account_hex: value.owner_address.address().to_hex_string(),
             root_address: value.root_address.to_string(),
+            code_hash: value.code_hash,
             created_at: chrono::Utc::now().naive_utc(), //doesn't matter
         };
         if let Err(e) = self.db.new_token_owner(&owner).await {
@@ -63,6 +65,7 @@ impl OwnersCache {
 pub struct OwnerInfo {
     pub owner_address: MsgAddressInt,
     pub root_address: MsgAddressInt,
+    pub code_hash: Vec<u8>,
 }
 
 impl OwnersCache {
@@ -80,6 +83,7 @@ impl OwnersCache {
                     ))
                     .unwrap(),
                     root_address: MsgAddressInt::from_str(&x.root_address).unwrap(),
+                    code_hash: x.code_hash,
                 },
             );
         });

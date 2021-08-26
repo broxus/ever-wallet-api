@@ -151,5 +151,6 @@ pub struct TokenOwnerFromDb {
     pub owner_account_workchain_id: i32,
     pub owner_account_hex: String,
     pub root_address: String,
+    pub code_hash: Vec<u8>,
     pub created_at: NaiveDateTime,
 }

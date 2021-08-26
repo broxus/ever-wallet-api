@@ -40,14 +40,14 @@ pub struct CreateSendTransaction {
 pub struct UpdateSendTransaction {
     pub transaction_hash: Option<String>,
     pub transaction_lt: Option<BigDecimal>,
-    pub transaction_timeout: Option<i64>,
+    pub transaction_timeout: Option<i64>, // TODO: remove
     pub transaction_scan_lt: Option<i64>,
     pub sender_workchain_id: Option<i32>,
     pub sender_hex: Option<String>,
     pub messages: Option<serde_json::Value>,
     pub data: Option<serde_json::Value>,
     pub original_value: Option<BigDecimal>,
-    pub original_outputs: Option<serde_json::Value>,
+    pub original_outputs: Option<serde_json::Value>, // TODO: remove
     pub value: Option<BigDecimal>,
     pub fee: Option<BigDecimal>,
     pub balance_change: Option<BigDecimal>,
