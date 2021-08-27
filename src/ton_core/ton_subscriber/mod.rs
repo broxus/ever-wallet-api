@@ -178,10 +178,9 @@ impl TonSubscriber {
                 }
 
                 if block_utime > state.expired_at {
-                    if let Some(tx) = &state.tx {
+                    if let Some(tx) = state.tx.take() {
                         tx.send((*account, *hash, PendingMessageStatus::Expired))
                             .ok();
-                        state.tx = None;
                     }
                 }
 

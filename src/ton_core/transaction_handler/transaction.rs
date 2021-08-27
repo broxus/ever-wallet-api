@@ -1,5 +1,6 @@
 use anyhow::Result;
 use bigdecimal::BigDecimal;
+use nekoton::core::models::TransactionError;
 use num_traits::FromPrimitive;
 use serde::{Deserialize, Serialize};
 use ton_block::{CommonMsgInfo, MsgAddressIntOrNone, TransactionDescr};
@@ -9,132 +10,159 @@ use uuid::Uuid;
 use crate::models::account_enums::{TonTransactionDirection, TonTransactionStatus};
 use crate::ton_core::*;
 
-pub async fn handle_transaction(
-    transaction_ctx: TransactionContext,
-) -> Result<Option<ReceiveTransaction>> {
-    let mut parsed = None;
+pub async fn handle_transaction(transaction_ctx: TransactionContext) -> Result<ReceiveTransaction> {
+    let data = transaction_ctx.transaction.clone();
 
-    if let Some(in_msg) = transaction_ctx
-        .transaction
-        .in_msg
-        .as_ref()
-        .and_then(|data| data.read_struct().ok())
+    let desc = if let ton_block::TransactionDescr::Ordinary(desc) =
+        data.description
+            .read_struct()
+            .map_err(|_| TransactionError::InvalidStructure)?
     {
-        let account_address = MsgAddressInt::with_standart(
+        desc
+    } else {
+        return Err(TransactionError::Unsupported.into());
+    };
+
+    let in_msg = match &data.in_msg {
+        Some(message) => message
+            .read_struct()
+            .map(nekoton::core::models::Message::from)
+            .map_err(|_| TransactionError::InvalidStructure)?,
+        None => return Err(TransactionError::Unsupported.into()),
+    };
+
+    let raw_in_msg = match &data.in_msg {
+        Some(message) => message
+            .read_struct()
+            .map_err(|_| TransactionError::InvalidStructure)?,
+        None => return Err(TransactionError::Unsupported.into()),
+    };
+
+    let (account_workchain_id, account_hex) = {
+        let address = MsgAddressInt::with_standart(
             None,
             ton_block::BASE_WORKCHAIN_ID as i8,
             AccountId::from(transaction_ctx.account),
         )?;
+        (address.workchain_id(), address.address().to_hex_string())
+    };
 
-        let mut messages = Vec::new();
-        let mut transaction_value: u128 = Default::default();
-        transaction_ctx
-            .transaction
-            .out_msgs
-            .iterate(|ton_block::InRefValue(item)| {
-                let dst = item
-                    .header()
-                    .get_dst_address()
-                    .ok_or(TonCoreError::WrongTransaction)?;
+    let (sender_workchain_id, sender_hex) = match in_msg.src {
+        Some(address) => (
+            Some(address.workchain_id()),
+            Some(address.address().to_hex_string()),
+        ),
+        None => (None, None),
+    };
 
-                let fee = item.get_fee()?.ok_or(TonCoreError::WrongTransaction)?.0;
-                let fee = BigDecimal::from_u128(fee).ok_or(TonCoreError::WrongTransaction)?;
+    let messages = Some(serde_json::to_value(get_messages(&data)?)?);
 
-                let value = item
-                    .get_value()
-                    .ok_or(TonCoreError::WrongTransaction)?
-                    .grams
-                    .0;
-                transaction_value += value;
-                let value = BigDecimal::from_u128(value).ok_or(TonCoreError::WrongTransaction)?;
+    let fee = BigDecimal::from_u64(nekoton::core::utils::compute_total_transaction_fees(
+        &data, &desc,
+    ));
 
-                messages.push(Message {
-                    fee,
-                    value,
-                    recipient: MessageRecipient {
-                        hex: dst.address().to_hex_string(),
-                        base64url: nekoton_utils::pack_std_smc_addr(true, &dst, false)?,
-                        workchain_id: dst.workchain_id(),
-                    },
-                    message_hash: item.hash()?.to_hex_string(),
-                });
+    let balance_change = BigDecimal::from_i64(nekoton::core::utils::compute_balance_change(&data));
 
-                Ok(true)
-            })?;
+    let value = BigDecimal::from_u64(in_msg.value);
+    let message_hash = raw_in_msg.hash()?.to_hex_string();
+    let transaction_lt = BigDecimal::from_u64(data.lt);
+    let transaction_scan_lt = Some(transaction_ctx.transaction.lt as i64);
+    let transaction_hash = Some(transaction_ctx.transaction_hash.to_hex_string());
 
-        let transaction_sescription = match transaction_ctx.transaction.description.read_struct()? {
-            TransactionDescr::Ordinary(description) => description,
-            _ => return Err(TonCoreError::WrongTransaction.into()),
-        };
-        let fee = BigDecimal::from_u64(nekoton::core::utils::compute_total_transaction_fees(
-            &transaction_ctx.transaction,
-            &transaction_sescription,
-        ));
-
-        parsed = match in_msg.header() {
-            CommonMsgInfo::IntMsgInfo(message_header) => {
-                let (sender_workchain_id, sender_hex) = match &message_header.src {
-                    MsgAddressIntOrNone::Some(addr) => (
-                        Some(addr.get_workchain_id()),
-                        Some(addr.address().to_hex_string()),
-                    ),
-                    MsgAddressIntOrNone::None => (None, None),
-                };
-
-                Some(ReceiveTransaction::Create(CreateReceiveTransaction {
-                    id: Uuid::new_v4(),
-                    message_hash: in_msg.hash()?.to_hex_string(),
-                    transaction_hash: Some(transaction_ctx.transaction_hash.to_hex_string()),
-                    transaction_lt: BigDecimal::from_u64(transaction_ctx.transaction.lt),
+    let parsed = match raw_in_msg.header() {
+        CommonMsgInfo::IntMsgInfo(_) => {
+            ReceiveTransaction::Create(CreateReceiveTransaction {
+                id: Uuid::new_v4(),
+                message_hash,
+                transaction_hash,
+                transaction_lt,
+                transaction_timeout: None,
+                transaction_scan_lt,
+                sender_workchain_id,
+                sender_hex,
+                account_workchain_id,
+                account_hex,
+                messages,
+                data: None,             // TODO
+                original_value: None,   // TODO
+                original_outputs: None, // TODO
+                value,
+                fee,
+                balance_change,
+                direction: TonTransactionDirection::Receive,
+                status: TonTransactionStatus::New,
+                error: None,
+                aborted: desc.aborted,
+                bounce: in_msg.bounce,
+            })
+        }
+        CommonMsgInfo::ExtInMsgInfo(_) => {
+            ReceiveTransaction::UpdateSent(UpdateSentTransaction {
+                message_hash,
+                account_workchain_id,
+                account_hex,
+                input: UpdateSendTransaction {
+                    transaction_hash,
+                    transaction_lt,
                     transaction_timeout: None,
-                    transaction_scan_lt: Some(transaction_ctx.transaction.lt as i64),
+                    transaction_scan_lt,
                     sender_workchain_id,
                     sender_hex,
-                    account_workchain_id: account_address.workchain_id(),
-                    account_hex: account_address.address().to_hex_string(),
-                    messages: None,
-                    data: None,
-                    original_value: None,
-                    original_outputs: None,
-                    value: BigDecimal::from_u128(transaction_value),
+                    messages,
+                    data: None,             // TODO
+                    original_value: None,   // TODO
+                    original_outputs: None, // TODO
+                    value,
                     fee,
-                    balance_change: None, // TODO: -(value) - fee
-                    direction: TonTransactionDirection::Receive,
-                    status: TonTransactionStatus::New,
+                    balance_change,
+                    status: TonTransactionStatus::Done,
                     error: None,
-                    aborted: false,
-                    bounce: false,
-                }))
-            }
-            CommonMsgInfo::ExtInMsgInfo(_) => {
-                Some(ReceiveTransaction::UpdateSent(UpdateSentTransaction {
-                    message_hash: in_msg.hash()?.to_hex_string(),
-                    account_workchain_id: account_address.workchain_id(),
-                    account_hex: account_address.address().to_hex_string(),
-                    input: UpdateSendTransaction {
-                        transaction_hash: Some(transaction_ctx.transaction_hash.to_hex_string()),
-                        transaction_lt: BigDecimal::from_u64(transaction_ctx.transaction.lt),
-                        transaction_timeout: None,
-                        transaction_scan_lt: Some(transaction_ctx.transaction.lt as i64),
-                        sender_workchain_id: None,
-                        sender_hex: None,
-                        messages: Some(serde_json::to_value(messages)?),
-                        data: None,           // TODO
-                        original_value: None, // TODO
-                        original_outputs: None,
-                        value: BigDecimal::from_u128(transaction_value),
-                        fee,
-                        balance_change: None, // TODO: value - fee (for out -value-fee)
-                        status: TonTransactionStatus::Done,
-                        error: None,
-                    },
-                }))
-            }
-            CommonMsgInfo::ExtOutMsgInfo(_) => return Err(TonCoreError::WrongTransaction.into()),
-        };
-    }
+                },
+            })
+        }
+        CommonMsgInfo::ExtOutMsgInfo(_) => return Err(TonCoreError::WrongTransaction.into()),
+    };
 
     Ok(parsed)
+}
+
+fn get_messages(data: &ton_block::Transaction) -> Result<Vec<Message>> {
+    let mut out_msgs = Vec::new();
+    data.out_msgs
+        .iterate(|ton_block::InRefValue(item)| {
+            let dst = item
+                .header()
+                .get_dst_address()
+                .ok_or(TransactionError::InvalidStructure)?;
+
+            let fee =
+                BigDecimal::from_u128(item.get_fee()?.ok_or(TransactionError::InvalidStructure)?.0)
+                    .ok_or(TransactionError::InvalidStructure)?;
+
+            let value = BigDecimal::from_u128(
+                item.get_value()
+                    .ok_or(TransactionError::InvalidStructure)?
+                    .grams
+                    .0,
+            )
+            .ok_or(TransactionError::InvalidStructure)?;
+
+            out_msgs.push(Message {
+                fee,
+                value,
+                recipient: MessageRecipient {
+                    hex: dst.address().to_hex_string(),
+                    base64url: nekoton_utils::pack_std_smc_addr(true, &dst, false)?,
+                    workchain_id: dst.workchain_id(),
+                },
+                message_hash: item.hash()?.to_hex_string(),
+            });
+
+            Ok(true)
+        })
+        .map_err(|_| TransactionError::InvalidStructure)?;
+
+    Ok(out_msgs)
 }
 
 #[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]

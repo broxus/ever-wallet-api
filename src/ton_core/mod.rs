@@ -258,14 +258,13 @@ impl TonCore {
                         let hash = in_msg.hash().unwrap_or_default();
                         let state = cache.get_mut(&(transaction_ctx.account, hash));
                         if let Some(state) = state {
-                            if let Some(tx) = &state.tx {
+                            if let Some(tx) = state.tx.take() {
                                 tx.send((
                                     transaction_ctx.account,
                                     hash,
                                     PendingMessageStatus::Delivered,
                                 ))
                                 .ok();
-                                state.tx = None;
                             }
                         }
                     }
@@ -273,9 +272,7 @@ impl TonCore {
 
                 match handle_transaction(transaction_ctx).await {
                     Ok(transaction) => {
-                        if let Some(transaction) = transaction {
-                            engine.transaction_producer.send(transaction).ok();
-                        }
+                        engine.transaction_producer.send(transaction).ok();
                     }
                     Err(e) => {
                         log::error!("Failed to handle received transaction: {}", e);
