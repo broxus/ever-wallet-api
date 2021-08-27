@@ -5,6 +5,7 @@ pub use self::responses::*;
 use async_trait::async_trait;
 use ton_block::MsgAddressInt;
 
+use crate::models::account_enums::AccountType;
 use crate::models::address::{CreateAddress, NetworkAddressData};
 use crate::models::sqlx::{AddressDb, TokenBalanceFromDb};
 use crate::models::token_balance::NetworkTokenAddressData;
@@ -31,30 +32,35 @@ pub trait TonClient: Send + Sync {
         transaction: &TransactionSend,
         public_key: String,
         private_key: String,
+        account_type: AccountType,
     ) -> Result<SentTransaction, ServiceError>;
     async fn send_transaction(
         &self,
         transaction: &SentTransaction,
         public_key: String,
         private_key: String,
+        account_type: AccountType,
     ) -> Result<(), ServiceError>;
     async fn prepare_token_transaction(
         &self,
         transaction: &TokenTransactionSend,
         public_key: String,
         private_key: String,
+        account_type: AccountType,
     ) -> Result<SentTokenTransaction, ServiceError>;
     async fn send_token_transaction(
         &self,
         transaction: &SentTokenTransaction,
         public_key: String,
         private_key: String,
+        account_type: AccountType,
     ) -> Result<(), ServiceError>;
     async fn deploy_token_address_contract(
         &self,
         address: TokenBalanceFromDb,
         public_key: String,
         private_key: String,
+        account_type: AccountType,
     ) -> Result<(), ServiceError>;
 }
 
@@ -90,6 +96,7 @@ impl TonClient for TonClientImpl {
         transaction: &TransactionSend,
         public_key: String,
         private_key: String,
+        account_type: AccountType,
     ) -> Result<SentTransaction, ServiceError> {
         todo!()
     }
@@ -98,6 +105,7 @@ impl TonClient for TonClientImpl {
         transaction: &SentTransaction,
         public_key: String,
         private_key: String,
+        account_type: AccountType,
     ) -> Result<(), ServiceError> {
         todo!()
     }
@@ -106,6 +114,7 @@ impl TonClient for TonClientImpl {
         transaction: &TokenTransactionSend,
         public_key: String,
         private_key: String,
+        account_type: AccountType,
     ) -> Result<SentTokenTransaction, ServiceError> {
         todo!()
     }
@@ -114,6 +123,7 @@ impl TonClient for TonClientImpl {
         transaction: &SentTokenTransaction,
         public_key: String,
         private_key: String,
+        account_type: AccountType,
     ) -> Result<(), ServiceError> {
         todo!()
     }
@@ -122,6 +132,7 @@ impl TonClient for TonClientImpl {
         address: TokenBalanceFromDb,
         public_key: String,
         private_key: String,
+        account_type: AccountType,
     ) -> Result<(), ServiceError> {
         todo!()
     }

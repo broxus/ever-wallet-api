@@ -251,6 +251,7 @@ impl TonService for TonServiceImpl {
                 input,
                 address.public_key.clone(),
                 address.private_key.clone(),
+                address.account_type,
             )
             .await?;
         let (mut transaction, mut event) = self
@@ -259,7 +260,12 @@ impl TonService for TonServiceImpl {
             .await?;
         if let Err(e) = self
             .ton_api_client
-            .send_transaction(&payload, address.public_key, address.private_key)
+            .send_transaction(
+                &payload,
+                address.public_key.clone(),
+                address.private_key.clone(),
+                address.account_type,
+            )
             .await
         {
             let result = self
@@ -466,6 +472,7 @@ impl TonService for TonServiceImpl {
                     token_balance,
                     address.public_key.clone(),
                     address.private_key.clone(),
+                    address.account_type,
                 )
                 .await?;
         }
@@ -476,6 +483,7 @@ impl TonService for TonServiceImpl {
                 input,
                 address.public_key.clone(),
                 address.private_key.clone(),
+                address.account_type,
             )
             .await?;
         let (mut transaction, mut event) = self
@@ -487,7 +495,12 @@ impl TonService for TonServiceImpl {
             .await?;
         if let Err(e) = self
             .ton_api_client
-            .send_token_transaction(&payload, address.public_key, address.private_key)
+            .send_token_transaction(
+                &payload,
+                address.public_key,
+                address.private_key,
+                address.account_type,
+            )
             .await
         {
             let result = self
