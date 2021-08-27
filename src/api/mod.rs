@@ -100,11 +100,13 @@ mod filters {
                     .or(post_transactions_create(ctx.clone()))
                     .or(get_transactions_mh(ctx.clone()))
                     .or(get_transactions_h(ctx.clone()))
+                    .or(get_transactions_id(ctx.clone()))
                     .or(post_events(ctx.clone()))
                     .or(post_events_mark(ctx.clone()))
                     .or(get_tokens_address_balance(ctx.clone()))
                     .or(post_tokens_transactions_create(ctx.clone()))
                     .or(get_tokens_transactions_mh(ctx.clone()))
+                    .or(get_tokens_transactions_id(ctx.clone()))
                     .or(post_tokens_events(ctx.clone()))
                     .or(post_tokens_events_mark(ctx.clone())),
             )
@@ -195,6 +197,18 @@ mod filters {
             .boxed()
     }
 
+    pub fn get_transactions_id(ctx: Context) -> BoxedFilter<(impl warp::Reply,)> {
+        warp::path("transactions")
+            .and(warp::path("id"))
+            .and(warp::path::param())
+            .and(warp::path::end())
+            .and(warp::get())
+            .and(auth_by_key_get(ctx.auth_service.clone()))
+            .and(with_ctx(ctx))
+            .and_then(controllers::get_transactions_id)
+            .boxed()
+    }
+
     pub fn get_tokens_address_balance(ctx: Context) -> BoxedFilter<(impl warp::Reply,)> {
         warp::path!("tokens" / "address")
             .and(warp::path::param())
@@ -216,6 +230,19 @@ mod filters {
             .and(auth_by_key_get(ctx.auth_service.clone()))
             .and(with_ctx(ctx))
             .and_then(controllers::get_tokens_transactions_mh)
+            .boxed()
+    }
+
+    pub fn get_tokens_transactions_id(ctx: Context) -> BoxedFilter<(impl warp::Reply,)> {
+        warp::path("tokens")
+            .and(warp::path("transactions"))
+            .and(warp::path("id"))
+            .and(warp::path::param())
+            .and(warp::path::end())
+            .and(warp::get())
+            .and(auth_by_key_get(ctx.auth_service.clone()))
+            .and(with_ctx(ctx))
+            .and_then(controllers::get_tokens_transactions_id)
             .boxed()
     }
 

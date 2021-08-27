@@ -1,13 +1,16 @@
+use std::collections::HashMap;
+use std::sync::Arc;
+
 use async_trait::async_trait;
 use chrono::{NaiveDateTime, Utc};
 use hmac::{Hmac, Mac, NewMac};
 use http::{header::HeaderValue, HeaderMap};
+use parking_lot::Mutex;
 use sha2::Sha256;
 
 use crate::models::key::Key;
 use crate::models::service_id::ServiceId;
-use crate::prelude::{RedisPool, ServiceError};
-use crate::redis::{KeysRepoCache, KeysRepoCacheImpl, RedisExecutorImpl};
+use crate::prelude::ServiceError;
 use crate::sqlx_client::SqlxClient;
 
 type HmacSha256 = Hmac<Sha256>;
@@ -27,15 +30,34 @@ pub trait AuthService: Send + Sync + 'static {
 #[derive(Clone)]
 pub struct AuthServiceImpl {
     sqlx_client: SqlxClient,
-    redis_executor: RedisExecutorImpl,
+    keys_hash: Arc<Mutex<HashMap<String, Key>>>,
 }
 
 impl AuthServiceImpl {
-    pub fn new(sqlx_client: SqlxClient, redis_pool: RedisPool) -> Self {
+    pub fn new(sqlx_client: SqlxClient) -> Self {
         Self {
             sqlx_client,
-            redis_executor: RedisExecutorImpl::new(redis_pool),
+            keys_hash: Default::default(),
         }
+    }
+    async fn get_key(&self, api_key: &str) -> Result<Key, ServiceError> {
+        let cached_key = {
+            let lock = self.keys_hash.lock();
+            lock.get(api_key).cloned()
+        };
+
+        if let Some(key) = cached_key {
+            return Ok(key);
+        }
+
+        let key: Key = self.sqlx_client.get_key(api_key).await?;
+
+        {
+            let mut lock = self.keys_hash.lock();
+            lock.insert(api_key.to_string(), key.clone());
+        }
+
+        Ok(key)
     }
 }
 
@@ -53,7 +75,7 @@ impl AuthService for AuthServiceImpl {
             .to_str()
             .map_err(|_| ServiceError::Auth("API-KEY Header Not Found".to_string()))?;
 
-        let key = { get_key(&self.sqlx_client, &self.redis_executor, api_key).await? };
+        let key = self.get_key(&api_key).await?;
 
         let timestamp_header = headers
             .get("timestamp")
@@ -99,37 +121,4 @@ impl AuthService for AuthServiceImpl {
 
         Ok(key.service_id)
     }
-}
-
-async fn get_key(
-    sqlx_client: &SqlxClient,
-    redis_executor: &RedisExecutorImpl,
-    api_key: &str,
-) -> Result<Key, ServiceError> {
-    let cached_key = {
-        let mut redis_conn = redis_executor.get_connection()?;
-        let mut keys_repo_cache = KeysRepoCacheImpl::new(&mut redis_conn);
-
-        keys_repo_cache.get(api_key).unwrap_or_else(|e| {
-            log::error!("{}", &e);
-            None
-        })
-    };
-
-    if let Some(key) = cached_key {
-        return Ok(key);
-    }
-
-    let key: Key = sqlx_client.get_key(api_key).await?;
-
-    if let Err(err) = {
-        let mut redis_conn = redis_executor.get_connection()?;
-        let mut keys_repo_cache = KeysRepoCacheImpl::new(&mut redis_conn);
-
-        keys_repo_cache.set(&key)
-    } {
-        log::error!("{}", &err);
-    }
-
-    Ok(key)
 }

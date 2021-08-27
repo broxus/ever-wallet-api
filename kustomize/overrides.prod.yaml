@@ -22,8 +22,6 @@ spec:
           env:
             - name: RUST_LOG
               value: "ton_wallet_api_rs=info,dexpa=debug,warp=debug"
-            - name: REDIS_ADDR
-              value: "redis://redis:6379"
             - name: DB_USER
               valueFrom:
                 secretKeyRef:

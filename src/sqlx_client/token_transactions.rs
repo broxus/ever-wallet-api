@@ -237,6 +237,25 @@ impl SqlxClient {
             .map_err(From::from)
     }
 
+    pub async fn get_token_transaction_by_id(
+        &self,
+        service_id: ServiceId,
+        id: &uuid::Uuid,
+    ) -> Result<TokenTransactionFromDb, ServiceError> {
+        sqlx::query_as!(TokenTransactionFromDb,
+                r#"
+            SELECT id, service_id as "service_id: _", transaction_hash, message_hash, account_workchain_id, account_hex,
+            value, root_address, payload, error, block_hash, block_time, direction as "direction: _", status as "status: _", created_at, updated_at
+            FROM token_transactions
+            WHERE service_id = $1 AND id = $2"#,
+                service_id as ServiceId,
+                id,
+            )
+            .fetch_one(&self.pool)
+            .await
+            .map_err(From::from)
+    }
+
     pub async fn get_token_transaction_by_h(
         &self,
         service_id: ServiceId,

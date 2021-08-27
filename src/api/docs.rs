@@ -73,6 +73,14 @@ pub fn swagger() -> String {
                     200: responses::AccountTransactionResponse,
                 }
             },
+            ("transactions" / "id" / String): {
+                GET: {
+                    tags: { transactions },
+                    summary: "Get transaction",
+                    description: "Get transaction by id.",
+                    200: responses::AccountTransactionResponse,
+                }
+            },
             ("events" ): {
                 POST: {
                     tags: { events },
@@ -113,6 +121,14 @@ pub fn swagger() -> String {
                     tags: { transactions, tokens  },
                     summary: "Get tokens transaction",
                     description: "Get tokens transaction by message hash.",
+                    200: responses::AccountTokenTransactionResponse,
+                }
+            },
+            ("tokens" / "transactions" / "id" / String): {
+                GET: {
+                    tags: { transactions, tokens },
+                    summary: "Get tokens transaction",
+                    description: "Get tokens transaction by id.",
                     200: responses::AccountTokenTransactionResponse,
                 }
             },

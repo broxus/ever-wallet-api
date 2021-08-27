@@ -7,7 +7,6 @@ use std::sync::Arc;
 use dexpa::errors::*;
 use dexpa::utils::handle_panic;
 use futures::prelude::*;
-use r2d2_redis::RedisConnectionManager;
 use sqlx::postgres::PgPoolOptions;
 use tokio::sync::mpsc;
 
@@ -27,7 +26,6 @@ mod api;
 mod client;
 mod models;
 mod prelude;
-mod redis;
 mod services;
 mod settings;
 mod sqlx_client;
@@ -50,12 +48,6 @@ pub async fn start_server() -> StdResult<()> {
         .await
         .expect("fail pg pool");
 
-    let redis_manager = RedisConnectionManager::new(config.redis_addr.as_str())
-        .expect("Can not create redis manager");
-    let redis_pool = r2d2::Pool::builder()
-        .build(redis_manager)
-        .expect("Can not connect to redis");
-
     let config = Arc::new(config);
     let sqlx_client = SqlxClient::new(pool);
     let ton_api_client = Arc::new(TonClientImpl::new());
@@ -67,10 +59,7 @@ pub async fn start_server() -> StdResult<()> {
         ton_api_client.clone(),
         callback_client.clone(),
     ));
-    let auth_service = Arc::new(AuthServiceImpl::new(
-        sqlx_client.clone(),
-        redis_pool.clone(),
-    ));
+    let auth_service = Arc::new(AuthServiceImpl::new(sqlx_client.clone()));
     log::debug!("tokens caching");
     log::debug!("Finish tokens caching");
 
