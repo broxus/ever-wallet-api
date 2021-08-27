@@ -146,7 +146,7 @@ async fn internal_transfer_bounced(
     .await?;
 
     let mut transaction = UpdateSentTokenTransaction {
-        message_hash: "".to_string(),
+        message_hash: token_transaction_ctx.message_hash.to_hex_string(),
         account_workchain_id: sender_address.workchain_id(),
         account_hex: sender_address.address().to_hex_string(),
         root_address: sender_info.root_address.to_string(),
