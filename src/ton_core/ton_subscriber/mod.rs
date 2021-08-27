@@ -7,18 +7,14 @@ use anyhow::{Context, Result};
 use nekoton::transport::models::{ExistingContract, RawContractState};
 use parking_lot::Mutex;
 use tiny_adnl::utils::*;
-use tokio::sync::{oneshot, watch, Notify};
+use tokio::sync::{watch, Notify};
 use ton_block::{Deserializable, HashmapAugType};
 use ton_indexer::utils::{BlockIdExtExtension, BlockProofStuff, BlockStuff, ShardStateStuff};
 use ton_indexer::EngineStatus;
 use ton_types::{HashmapType, UInt256};
 
+use crate::ton_core::*;
 use crate::utils::*;
-
-/*struct Test {
-    expired: u32,
-    tx: oneshot::Sender,
-}*/
 
 pub struct TonSubscriber {
     ready: AtomicBool,
@@ -26,17 +22,18 @@ pub struct TonSubscriber {
     current_utime: AtomicU32,
     state_subscriptions: Mutex<HashMap<UInt256, StateSubscription>>,
     mc_block_awaiters: Mutex<Vec<Box<dyn BlockAwaiter>>>,
-    //pending_messages: Mutex<HashMap<(UInt256, UInt256), u32>>,
+    pending_messages: Arc<Mutex<PendingMessagesCache>>,
 }
 
 impl TonSubscriber {
-    pub fn new() -> Arc<Self> {
+    pub fn new(pending_messages_cache: Arc<Mutex<PendingMessagesCache>>) -> Arc<Self> {
         Arc::new(Self {
             ready: AtomicBool::new(false),
             ready_signal: Notify::new(),
             current_utime: AtomicU32::new(0),
             state_subscriptions: Mutex::new(HashMap::new()),
             mc_block_awaiters: Mutex::new(Vec::with_capacity(4)),
+            pending_messages: pending_messages_cache,
         })
     }
 
@@ -136,7 +133,6 @@ impl TonSubscriber {
         let shard_accounts = shard_state.read_accounts()?;
 
         let mut blocks = self.state_subscriptions.lock();
-
         blocks.retain(|account, subscription| {
             let subscription_status = subscription.update_status();
             if subscription_status == StateSubscriptionStatus::Stopped {
@@ -173,6 +169,24 @@ impl TonSubscriber {
                     keep = false;
                 }
             }
+
+            let block_utime = block_info.gen_utime().0;
+            let mut cache = self.pending_messages.lock();
+            cache.retain(|(account, hash), state| {
+                if !contains_account(block_info.shard(), account) {
+                    return true;
+                }
+
+                if block_utime > state.expired_at {
+                    if let Some(tx) = &state.tx {
+                        tx.send((*account, *hash, PendingMessageStatus::Expired))
+                            .ok();
+                        state.tx = None;
+                    }
+                }
+
+                true
+            });
 
             keep
         });

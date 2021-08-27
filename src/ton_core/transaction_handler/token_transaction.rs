@@ -1,5 +1,3 @@
-use std::str::FromStr;
-
 use anyhow::Result;
 use bigdecimal::BigDecimal;
 use nekoton::core::models::{TokenIncomingTransfer, TokenWalletDetails, TokenWalletTransaction};
