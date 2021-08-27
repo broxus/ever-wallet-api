@@ -9,7 +9,6 @@ pub struct Config {
     pub healthcheck_addr: SocketAddr,
     pub database_url: String,
     pub db_pool_size: u32,
-    pub redis_addr: String,
 }
 
 impl Config {

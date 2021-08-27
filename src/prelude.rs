@@ -1,11 +1,7 @@
 pub use futures::prelude::*;
 
 use r2d2::{Pool, PooledConnection};
-use r2d2_redis::RedisConnectionManager;
 use sqlx::Error;
-
-pub type RedisPool = Pool<RedisConnectionManager>;
-pub type RedisPooledConnection = PooledConnection<RedisConnectionManager>;
 
 #[derive(thiserror::Error, Debug)]
 pub enum ServiceError {
