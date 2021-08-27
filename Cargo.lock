@@ -3046,6 +3046,16 @@ dependencies = [
  "cpufeatures 0.1.5",
  "digest 0.9.0",
  "opaque-debug 0.3.0",
+ "sha2-asm",
+]
+
+[[package]]
+name = "sha2-asm"
+version = "0.6.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "bf27176fb5d15398e3a479c652c20459d9dac830dedd1fa55b42a77dbcdbfcea"
+dependencies = [
+ "cc",
 ]
 
 [[package]]
@@ -3395,7 +3405,7 @@ dependencies = [
 [[package]]
 name = "tiny-adnl"
 version = "0.1.0"
-source = "git+https://github.com/broxus/tiny-adnl#d4f8f57b119b80fe767f360b02e52d2267c10e01"
+source = "git+https://github.com/broxus/tiny-adnl#d200176a26a8c0d1f1188be43d4b94a1cccaf2c9"
 dependencies = [
  "aes",
  "anyhow",
@@ -3587,7 +3597,7 @@ dependencies = [
 [[package]]
 name = "ton-indexer"
 version = "0.1.0"
-source = "git+https://github.com/broxus/ton-indexer.git#05eccafcc686d438c1e52f954b29b132c36738a1"
+source = "git+https://github.com/broxus/ton-indexer.git#ca7221ae3a00e08f70d66a2232be807a14abf058"
 dependencies = [
  "anyhow",
  "async-trait",
