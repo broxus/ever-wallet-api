@@ -280,6 +280,26 @@ impl SqlxClient {
             .await
             .map_err(From::from)
     }
+    pub async fn get_transaction_by_id(
+        &self,
+        service_id: ServiceId,
+        id: &uuid::Uuid,
+    ) -> Result<TransactionDb, ServiceError> {
+        sqlx::query_as!(TransactionDb,
+                r#"
+            SELECT id, service_id as "service_id: _", message_hash, transaction_hash, transaction_lt, transaction_timeout,
+                transaction_scan_lt, sender_workchain_id, sender_hex, account_workchain_id, account_hex, messages, data,
+                original_value, original_outputs, value, fee, balance_change, direction as "direction: _", status as "status: _",
+                error, aborted, bounce, created_at, updated_at
+            FROM transactions
+            WHERE service_id = $1 AND id = $2"#,
+                service_id as ServiceId,
+                id,
+            )
+            .fetch_one(&self.pool)
+            .await
+            .map_err(From::from)
+    }
 }
 
 #[cfg(test)]

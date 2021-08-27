@@ -118,6 +118,24 @@ pub fn get_transactions_h(
     .boxed()
 }
 
+pub fn get_transactions_id(
+    id: uuid::Uuid,
+    service_id: ServiceId,
+    ctx: Context,
+) -> BoxFuture<'static, Result<impl warp::Reply, warp::Rejection>> {
+    async move {
+        let transaction = ctx
+            .ton_service
+            .get_transaction_by_id(&service_id, &id)
+            .await
+            .map(From::from);
+        let res = AccountTransactionResponse::from(transaction);
+
+        Ok(warp::reply::json(&(res)))
+    }
+    .boxed()
+}
+
 pub fn post_events(
     service_id: ServiceId,
     input: PostTonTransactionEventsRequest,
@@ -172,6 +190,24 @@ pub fn get_tokens_transactions_mh(
         let transaction = ctx
             .ton_service
             .get_tokens_transaction_by_mh(&service_id, &message_hash)
+            .await
+            .map(From::from);
+        let res = AccountTokenTransactionResponse::from(transaction);
+
+        Ok(warp::reply::json(&(res)))
+    }
+    .boxed()
+}
+
+pub fn get_tokens_transactions_id(
+    id: uuid::Uuid,
+    service_id: ServiceId,
+    ctx: Context,
+) -> BoxFuture<'static, Result<impl warp::Reply, warp::Rejection>> {
+    async move {
+        let transaction = ctx
+            .ton_service
+            .get_tokens_transaction_by_id(&service_id, &id)
             .await
             .map(From::from);
         let res = AccountTokenTransactionResponse::from(transaction);

@@ -67,6 +67,11 @@ pub trait TonService: Send + Sync + 'static {
         service_id: &ServiceId,
         transaction_hash: &str,
     ) -> Result<TransactionDb, ServiceError>;
+    async fn get_transaction_by_id(
+        &self,
+        service_id: &ServiceId,
+        id: &uuid::Uuid,
+    ) -> Result<TransactionDb, ServiceError>;
     async fn search_events(
         &self,
         service_id: &ServiceId,
@@ -81,6 +86,11 @@ pub trait TonService: Send + Sync + 'static {
         &self,
         service_id: &ServiceId,
         message_hash: &str,
+    ) -> Result<TokenTransactionFromDb, ServiceError>;
+    async fn get_tokens_transaction_by_id(
+        &self,
+        service_id: &ServiceId,
+        id: &uuid::Uuid,
     ) -> Result<TokenTransactionFromDb, ServiceError>;
     async fn search_token_events(
         &self,
@@ -349,6 +359,15 @@ impl TonService for TonServiceImpl {
             .get_transaction_by_h(*service_id, transaction_hash)
             .await
     }
+    async fn get_transaction_by_id(
+        &self,
+        service_id: &ServiceId,
+        id: &uuid::Uuid,
+    ) -> Result<TransactionDb, ServiceError> {
+        self.sqlx_client
+            .get_transaction_by_id(*service_id, id)
+            .await
+    }
     async fn search_events(
         &self,
         service_id: &ServiceId,
@@ -378,6 +397,15 @@ impl TonService for TonServiceImpl {
     ) -> Result<TokenTransactionFromDb, ServiceError> {
         self.sqlx_client
             .get_token_transaction_by_mh(*service_id, message_hash)
+            .await
+    }
+    async fn get_tokens_transaction_by_id(
+        &self,
+        service_id: &ServiceId,
+        id: &uuid::Uuid,
+    ) -> Result<TokenTransactionFromDb, ServiceError> {
+        self.sqlx_client
+            .get_token_transaction_by_id(*service_id, id)
             .await
     }
     async fn search_token_events(
