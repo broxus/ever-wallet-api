@@ -2,11 +2,16 @@
 #![allow(clippy::too_many_arguments)]
 #![allow(clippy::inconsistent_struct_constructor)]
 
+use std::net::SocketAddr;
+use std::path::PathBuf;
+use std::str::FromStr;
 use std::sync::Arc;
 
+use anyhow::Result;
 use dexpa::errors::*;
 use dexpa::utils::handle_panic;
 use futures::prelude::*;
+use serde::Deserialize;
 use sqlx::postgres::PgPoolOptions;
 use tokio::sync::mpsc;
 
@@ -14,7 +19,7 @@ use crate::api::http_service;
 use crate::client::{CallbackClientImpl, TonClientImpl};
 use crate::models::owners_cache::OwnersCache;
 use crate::services::{AuthServiceImpl, TonService, TonServiceImpl};
-use crate::settings::Config;
+use crate::settings::{Config, ConfigExt};
 use crate::sqlx_client::SqlxClient;
 use crate::ton_core::{
     ReceiveTokenTransaction, ReceiveTokenTransactionRx, ReceiveTransaction, ReceiveTransactionRx,
@@ -33,9 +38,12 @@ mod ton_core;
 mod utils;
 
 pub async fn start_server() -> StdResult<()> {
-    let config = get_config();
-    // Prepare logger
-    stackdriver_logger::init_with_cargo!();
+    let config = ApplicationConfig::from_env()?;
+
+    let service_config = Config::from_file(&config.service_config)?;
+    let global_config = ton_indexer::GlobalConfig::from_file(&config.global_config)?;
+
+    init_logger(&service_config.logger_settings)?;
 
     std::panic::set_hook(Box::new(handle_panic));
     let _guard = sentry::init(
@@ -43,12 +51,11 @@ pub async fn start_server() -> StdResult<()> {
     );
 
     let pool = PgPoolOptions::new()
-        .max_connections(config.db_pool_size)
-        .connect(&config.database_url)
+        .max_connections(service_config.db_pool_size)
+        .connect(&service_config.database_url)
         .await
         .expect("fail pg pool");
 
-    let config = Arc::new(config);
     let sqlx_client = SqlxClient::new(pool);
     let ton_api_client = Arc::new(TonClientImpl::new());
     let callback_client = Arc::new(CallbackClientImpl::new());
@@ -66,15 +73,15 @@ pub async fn start_server() -> StdResult<()> {
     let (receive_transaction_tx, receive_transaction_rx) = mpsc::unbounded_channel();
     let (receive_token_transaction_tx, receive_token_transaction_rx) = mpsc::unbounded_channel();
 
-    /*let ton_core = TonCore::new(
-        config.ton_core.clone(),
+    let ton_core = TonCore::new(
+        service_config.ton_core,
         global_config,
         owners_cache,
         receive_transaction_tx,
         receive_token_transaction_tx,
     )
     .await?;
-    ton_core.start().await?;*/
+    ton_core.start().await?;
 
     tokio::spawn(start_listening_receive_transactions(
         ton_service.clone(),
@@ -88,15 +95,36 @@ pub async fn start_server() -> StdResult<()> {
 
     log::debug!("start server");
 
-    tokio::spawn(http_service(config.server_addr, ton_service, auth_service));
+    log::info!("START");
+    ton_core
+    let server_addr: SocketAddr = service_config.server_addr.parse()?;
+    tokio::spawn(http_service(server_addr, ton_service, auth_service));
 
-    tokio::spawn(dexpa::net::healthcheck_service(config.healthcheck_addr));
+    let healthcheck_addr: SocketAddr = service_config.healthcheck_addr.parse()?;
+    tokio::spawn(dexpa::net::healthcheck_service(healthcheck_addr));
 
     future::pending().await
 }
 
-fn get_config() -> Config {
-    settings::Config::new().unwrap_or_else(|e| panic!("Error parsing config: {}", e))
+#[derive(Deserialize)]
+struct ApplicationConfig {
+    service_config: PathBuf,
+    global_config: PathBuf,
+}
+
+impl ApplicationConfig {
+    fn from_env() -> Result<Self> {
+        let mut config = config::Config::new();
+        config.merge(config::Environment::new())?;
+        let config: Self = config.try_into()?;
+        Ok(config)
+    }
+}
+
+fn init_logger(config: &serde_yaml::Value) -> Result<()> {
+    let config = serde_yaml::from_value(config.clone())?;
+    log4rs::config::init_raw_config(config)?;
+    Ok(())
 }
 
 async fn start_listening_receive_transactions(

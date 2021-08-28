@@ -45,8 +45,6 @@ indexmap = "*"
 urlencoding = "2.1.0"
 ed25519-dalek = "1.0"
 
-stackdriver_logger = { git = "https://github.com/dexpa/stackdriver-logger" }
-
 thiserror = "1.0.26"
 itertools = "0.10.1"
 lru = "0.6.5"
