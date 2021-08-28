@@ -7,8 +7,6 @@ use serde::{Deserialize, Serialize};
 
 use super::TonCoreConfig;
 
-const MAX_DB_MEMTABLES_SIZE: usize = 256 * 1024 * 1024;
-
 pub async fn get_node_config(config: &TonCoreConfig) -> Result<ton_indexer::NodeConfig> {
     let ip = external_ip::ConsensusBuilder::new()
         .add_sources(external_ip::get_http_sources::<external_ip::Sources>())
@@ -34,8 +32,8 @@ pub async fn get_node_config(config: &TonCoreConfig) -> Result<ton_indexer::Node
         rocks_db_path: config.rocks_db_path.clone(),
         file_db_path: config.file_db_path.clone(),
         shard_state_cache_enabled: false,
-        initial_sync_before: 300,
-        max_db_memtables_size: MAX_DB_MEMTABLES_SIZE,
+        old_blocks_policy: Default::default(),
+        max_db_memory_usage: Default::default(),
     })
 }
 
