@@ -95,8 +95,6 @@ pub async fn start_server() -> StdResult<()> {
 
     log::debug!("start server");
 
-    log::info!("START");
-    ton_core
     let server_addr: SocketAddr = service_config.server_addr.parse()?;
     tokio::spawn(http_service(server_addr, ton_service, auth_service));
 
