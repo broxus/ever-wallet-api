@@ -532,6 +532,4 @@ enum TonCoreError {
     PendingMessageNotExist(String, String),
     #[error("Account `{0}` not found")]
     AccountNotFound(String),
-    #[error("Failed to handle transaction")]
-    WrongTransaction,
 }

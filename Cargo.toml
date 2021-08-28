@@ -43,6 +43,7 @@ lazy_static = "1.4.0"
 sqlx = { version = "0.5", features = ["runtime-tokio-native-tls", "postgres", "uuid", "bigdecimal", "offline", "chrono", "json"] }
 indexmap = "*"
 urlencoding = "2.1.0"
+ed25519-dalek = "1.0"
 
 stackdriver_logger = { git = "https://github.com/dexpa/stackdriver-logger" }
 

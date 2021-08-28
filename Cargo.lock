@@ -779,7 +779,7 @@ version = "3.1.10"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0b166c9e378360dd5a6666a9604bb4f54ae0cac39023ffbac425e917a2a04fef"
 dependencies = [
- "num-bigint 0.4.0",
+ "num-bigint 0.4.1",
  "num-traits",
  "proc-macro2 1.0.28",
  "quote 1.0.9",
@@ -1505,9 +1505,9 @@ checksum = "7fb9b38af92608140b86b693604b9ffcc5824240a484d1ecd4795bacb2fe88f3"
 
 [[package]]
 name = "lock_api"
-version = "0.4.4"
+version = "0.4.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0382880606dff6d15c9476c416d18690b72742aa7b605bb6dd6ec9030fbf07eb"
+checksum = "712a4d093c9976e24e7dbca41db895dabcbac38eb5f4045393d17a95bdfb1109"
 dependencies = [
  "scopeguard",
 ]
@@ -1705,8 +1705,8 @@ dependencies = [
 
 [[package]]
 name = "nekoton"
-version = "0.4.0"
-source = "git+https://github.com/broxus/nekoton.git#1babb99f8765cf2ccbbfedac436900df33de996f"
+version = "0.5.0"
+source = "git+https://github.com/broxus/nekoton.git#3e9967c2faf803c1f9b82c01bf4eb73969cf2014"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -1750,8 +1750,8 @@ dependencies = [
 
 [[package]]
 name = "nekoton-abi"
-version = "0.3.0"
-source = "git+https://github.com/broxus/nekoton.git#1babb99f8765cf2ccbbfedac436900df33de996f"
+version = "0.5.0"
+source = "git+https://github.com/broxus/nekoton.git#3e9967c2faf803c1f9b82c01bf4eb73969cf2014"
 dependencies = [
  "anyhow",
  "base64 0.13.0",
@@ -1776,8 +1776,8 @@ dependencies = [
 
 [[package]]
 name = "nekoton-contracts"
-version = "0.3.0"
-source = "git+https://github.com/broxus/nekoton.git#1babb99f8765cf2ccbbfedac436900df33de996f"
+version = "0.5.0"
+source = "git+https://github.com/broxus/nekoton.git#3e9967c2faf803c1f9b82c01bf4eb73969cf2014"
 dependencies = [
  "once_cell",
  "ton_abi",
@@ -1786,8 +1786,8 @@ dependencies = [
 
 [[package]]
 name = "nekoton-derive"
-version = "0.3.0"
-source = "git+https://github.com/broxus/nekoton.git#1babb99f8765cf2ccbbfedac436900df33de996f"
+version = "0.5.0"
+source = "git+https://github.com/broxus/nekoton.git#3e9967c2faf803c1f9b82c01bf4eb73969cf2014"
 dependencies = [
  "either",
  "proc-macro2 1.0.28",
@@ -1797,8 +1797,8 @@ dependencies = [
 
 [[package]]
 name = "nekoton-utils"
-version = "0.3.0"
-source = "git+https://github.com/broxus/nekoton.git#1babb99f8765cf2ccbbfedac436900df33de996f"
+version = "0.5.0"
+source = "git+https://github.com/broxus/nekoton.git#3e9967c2faf803c1f9b82c01bf4eb73969cf2014"
 dependencies = [
  "anyhow",
  "base64 0.13.0",
@@ -1894,7 +1894,7 @@ version = "0.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "43db66d1170d347f9a065114077f7dccb00c1b9478c89384490a3425279a4606"
 dependencies = [
- "num-bigint 0.4.0",
+ "num-bigint 0.4.1",
  "num-complex 0.4.0",
  "num-integer",
  "num-iter",
@@ -1927,9 +1927,9 @@ dependencies = [
 
 [[package]]
 name = "num-bigint"
-version = "0.4.0"
+version = "0.4.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4e0d047c1062aa51e256408c560894e5251f08925980e53cf1aa5bd00eec6512"
+checksum = "76e97c412795abf6c24ba30055a8f20642ea57ca12875220b854cfa501bf1e48"
 dependencies = [
  "autocfg",
  "num-integer",
@@ -2027,7 +2027,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d41702bd167c2df5520b384281bc111a4b5efcf7fbc4c9c222c815b07e0a6a6a"
 dependencies = [
  "autocfg",
- "num-bigint 0.4.0",
+ "num-bigint 0.4.1",
  "num-integer",
  "num-traits",
 ]
@@ -2053,9 +2053,9 @@ dependencies = [
 
 [[package]]
 name = "object"
-version = "0.26.1"
+version = "0.26.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ee2766204889d09937d00bfbb7fec56bb2a199e2ade963cab19185d8a6104c7c"
+checksum = "39f37e50073ccad23b6d09bcb5b263f4e76d3bb6038e4a3c08e52162ffa8abc2"
 dependencies = [
  "memchr",
 ]
@@ -2157,9 +2157,9 @@ checksum = "30fceb411f9a12ff9222c5f824026be368ff15dc2f13468d850c7d3f502205d6"
 
 [[package]]
 name = "parking_lot"
-version = "0.11.1"
+version = "0.11.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6d7744ac029df22dca6284efe4e898991d28e3085c706c972bcd7da4a27a15eb"
+checksum = "7d17b78036a60663b797adeaee46f5c9dfebb86948d1255007a1d6be0271ff99"
 dependencies = [
  "instant",
  "lock_api",
@@ -2168,9 +2168,9 @@ dependencies = [
 
 [[package]]
 name = "parking_lot_core"
-version = "0.8.3"
+version = "0.8.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "fa7a782938e745763fe6907fc6ba86946d72f49fe7e21de074e08128a99fb018"
+checksum = "467fce6df07c66afb48b6284f13c724a1d5a13cbfcfdf5d5ce572c8313e0c722"
 dependencies = [
  "cfg-if",
  "instant",
@@ -3010,9 +3010,9 @@ dependencies = [
 
 [[package]]
 name = "shlex"
-version = "1.0.0"
+version = "1.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "42a568c8f2cd051a4d283bd6eb0343ac214c1b0f1ac19f93e1175b2dee38c73d"
+checksum = "43b2853a4d09f215c24cc5489c992ce46052d359b5109343cbafbf26bc62f8a3"
 
 [[package]]
 name = "signal-hook-registry"
@@ -3591,6 +3591,7 @@ dependencies = [
  "config",
  "derive_more",
  "dexpa",
+ "ed25519-dalek",
  "env_logger 0.8.4",
  "futures",
  "hex",
@@ -3639,8 +3640,8 @@ dependencies = [
 
 [[package]]
 name = "ton_abi"
-version = "1.0.1"
-source = "git+https://github.com/broxus/ton-labs-abi#9a6ef0e75f47fb3d3143876c40222d663ca6658b"
+version = "2.1.0"
+source = "git+https://github.com/broxus/ton-labs-abi#615e77fa4e98a56e129dc27694de39a32070fe30"
 dependencies = [
  "anyhow",
  "base64 0.13.0",

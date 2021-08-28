@@ -1,4 +1,5 @@
 mod responses;
+mod ton_wallet;
 
 pub use self::responses::*;
 
@@ -82,6 +83,18 @@ impl TonClient for TonClientImpl {
         todo!()
     }
     async fn deploy_address_contract(&self, address: AddressDb) -> Result<(), ServiceError> {
+        let signed_message = match address.account_type {
+            AccountType::HighloadWallet => {
+                todo!()
+            }
+            AccountType::Wallet => {
+                todo!()
+            }
+            AccountType::SafeMultisig => ton_wallet::multisig::prepare_deploy(address)?,
+        };
+
+        //self.ton_core.send_ton_message(signed_message.message, signed_message.expire_at);
+
         todo!()
     }
     async fn get_token_address_info(

@@ -120,7 +120,7 @@ pub async fn handle_transaction(transaction_ctx: TransactionContext) -> Result<R
                 },
             })
         }
-        CommonMsgInfo::ExtOutMsgInfo(_) => return Err(TonCoreError::WrongTransaction.into()),
+        CommonMsgInfo::ExtOutMsgInfo(_) => return Err(TransactionError::InvalidStructure.into()),
     };
 
     Ok(parsed)
