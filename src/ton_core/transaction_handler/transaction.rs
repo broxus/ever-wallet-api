@@ -3,7 +3,7 @@ use bigdecimal::BigDecimal;
 use nekoton::core::models::TransactionError;
 use num_traits::FromPrimitive;
 use serde::{Deserialize, Serialize};
-use ton_block::{CommonMsgInfo, MsgAddressIntOrNone, TransactionDescr};
+use ton_block::CommonMsgInfo;
 use ton_types::AccountId;
 use uuid::Uuid;
 

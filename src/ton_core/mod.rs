@@ -1,4 +1,5 @@
 use std::collections::{hash_map, HashMap};
+use std::path::PathBuf;
 use std::sync::Arc;
 
 use anyhow::Result;
@@ -13,6 +14,7 @@ use ton_block::{CommonMsgInfo, GetRepresentationHash, MsgAddressInt, Serializabl
 use ton_types::UInt256;
 
 use self::models::*;
+use self::settings::*;
 use self::ton_subscriber::*;
 use self::transaction_handler::token_transaction::*;
 use self::transaction_handler::transaction::*;
@@ -22,6 +24,7 @@ use crate::models::token_transactions::*;
 use crate::models::transactions::*;
 
 mod models;
+mod settings;
 mod ton_subscriber;
 mod transaction_handler;
 
@@ -54,8 +57,9 @@ impl TonCore {
         let pending_messages_cache = Arc::new(Mutex::new(HashMap::new()));
         let ton_subscriber = TonSubscriber::new(pending_messages_cache.clone());
 
+        let node_config = get_node_config(&config).await?;
         let ton_engine = ton_indexer::Engine::new(
-            config.ton_indexer,
+            node_config,
             global_config,
             vec![ton_subscriber.clone() as Arc<dyn ton_indexer::Subscriber>],
         )
@@ -485,7 +489,10 @@ impl TransactionsSubscription for TokenTransactionObserver {
 
 #[derive(Deserialize, Clone)]
 pub struct TonCoreConfig {
-    pub ton_indexer: ton_indexer::NodeConfig,
+    pub port: u16,
+    pub rocks_db_path: PathBuf,
+    pub file_db_path: PathBuf,
+    pub keys_path: PathBuf,
 }
 
 pub enum ReceiveTransaction {
@@ -515,7 +522,7 @@ pub struct PendingMessageState {
 }
 
 #[derive(PartialEq)]
-enum PendingMessageStatus {
+pub enum PendingMessageStatus {
     Delivered,
     Expired,
 }

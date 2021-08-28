@@ -4,7 +4,6 @@
 
 use std::net::SocketAddr;
 use std::path::PathBuf;
-use std::str::FromStr;
 use std::sync::Arc;
 
 use anyhow::Result;
@@ -97,9 +96,6 @@ pub async fn start_server() -> StdResult<()> {
 
     let server_addr: SocketAddr = service_config.server_addr.parse()?;
     tokio::spawn(http_service(server_addr, ton_service, auth_service));
-
-    let healthcheck_addr: SocketAddr = service_config.healthcheck_addr.parse()?;
-    tokio::spawn(dexpa::net::healthcheck_service(healthcheck_addr));
 
     future::pending().await
 }

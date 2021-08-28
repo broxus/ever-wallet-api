@@ -9,7 +9,6 @@ use crate::ton_core::TonCoreConfig;
 #[derive(Deserialize, Clone)]
 pub struct Config {
     pub server_addr: String,
-    pub healthcheck_addr: String,
     pub database_url: String,
     pub db_pool_size: u32,
     pub ton_core: TonCoreConfig,
@@ -19,8 +18,8 @@ pub struct Config {
 
 impl ConfigExt for Config {
     fn from_file<P>(path: &P) -> Result<Self>
-        where
-            P: AsRef<Path>,
+    where
+        P: AsRef<Path>,
     {
         let file = File::open(path)?;
         let reader = std::io::BufReader::new(file);
@@ -31,8 +30,8 @@ impl ConfigExt for Config {
 
 impl ConfigExt for ton_indexer::GlobalConfig {
     fn from_file<P>(path: &P) -> Result<Self>
-        where
-            P: AsRef<Path>,
+    where
+        P: AsRef<Path>,
     {
         let file = std::fs::File::open(path)?;
         let reader = std::io::BufReader::new(file);
@@ -43,8 +42,8 @@ impl ConfigExt for ton_indexer::GlobalConfig {
 
 pub trait ConfigExt: Sized {
     fn from_file<P>(path: &P) -> Result<Self>
-        where
-            P: AsRef<Path>;
+    where
+        P: AsRef<Path>;
 }
 
 fn default_logger_settings() -> serde_yaml::Value {
@@ -55,11 +54,11 @@ fn default_logger_settings() -> serde_yaml::Value {
         encoder:
           pattern: "{d(%Y-%m-%d %H:%M:%S %Z)(utc)} - {h({l})} {M} = {m} {n}"
     root:
-      level: error
+      level: info
       appenders:
         - stdout
     loggers:
-      relay:
+      ton_wallet_api:
         level: info
         appenders:
           - stdout
