@@ -1,8 +1,7 @@
-use anyhow::Result;
+/*use anyhow::Result;
 use nekoton::core::InternalMessage;
 use nekoton_abi::{BigUint128, BigUint256, MessageBuilder};
 use nekoton_utils::TrustMe;
-use num_bigint::BigUint;
 use ton_block::MsgAddressInt;
 
 pub fn prepare_deploy(
@@ -35,3 +34,4 @@ pub fn prepare_deploy(
         body,
     })
 }
+*/

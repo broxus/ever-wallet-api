@@ -1,9 +1,13 @@
 use std::convert::TryFrom;
+use std::str::FromStr;
 use std::sync::Arc;
 
 use async_trait::async_trait;
 use bigdecimal::BigDecimal;
-use ed25519_dalek::{Keypair, PublicKey, SecretKey, Signer};
+use ed25519_dalek::{Keypair, Signer};
+use nekoton::core::models::RootTokenContractDetails;
+use nekoton::core::token_wallet::{RootTokenContractState, TokenWalletContractState};
+use nekoton_abi::LastTransactionId;
 use nekoton_utils::TrustMe;
 use num_traits::FromPrimitive;
 use ton_block::{AccountState, MsgAddressInt};
@@ -86,6 +90,29 @@ impl TonClientImpl {
     pub fn new(ton_core: Arc<TonCore>) -> Self {
         Self { ton_core }
     }
+
+    fn parse_account_state(&self, account_state: &AccountState) -> AccountStatus {
+        match account_state {
+            AccountState::AccountUninit => AccountStatus::UnInit,
+            AccountState::AccountActive(_) => AccountStatus::Active,
+            AccountState::AccountFrozen(_) => AccountStatus::Frozen,
+        }
+    }
+
+    fn parse_last_transaction(
+        &self,
+        last_transaction: &LastTransactionId,
+    ) -> (Option<String>, Option<String>) {
+        let (last_transaction_hash, last_transaction_lt) = match last_transaction {
+            LastTransactionId::Exact(transaction_id) => (
+                Some(transaction_id.hash.to_hex_string()),
+                Some(transaction_id.lt.to_string()),
+            ),
+            LastTransactionId::Inexact { .. } => (None, None),
+        };
+
+        (last_transaction_hash, last_transaction_lt)
+    }
 }
 
 #[async_trait]
@@ -101,34 +128,28 @@ impl TonClient for TonClientImpl {
         address: MsgAddressInt,
     ) -> Result<NetworkAddressData, ServiceError> {
         let account = UInt256::from_be_bytes(&address.address().get_bytestring(0));
-        let addr_info = self.ton_core.get_ton_address_info(account).await?;
+        let contract = self.ton_core.get_contract_state(account).await?;
 
-        let workchain_id = addr_info.workchain_id;
-        let hex = addr_info.hex;
-
-        let account_status = match addr_info.account_status {
-            AccountState::AccountUninit => AccountStatus::UnInit,
-            AccountState::AccountActive(_) => AccountStatus::Active,
-            AccountState::AccountFrozen(_) => AccountStatus::Frozen,
-        };
-
-        let network_balance =
-            BigDecimal::from_u128(addr_info.network_balance).ok_or_else(|| {
-                ServiceError::NotFound(format!("Failed to get balance for {}", address))
+        let account_status = self.parse_account_state(&contract.account.storage.state);
+        let network_balance = BigDecimal::from_u128(contract.account.storage.balance.grams.0)
+            .ok_or_else(|| {
+                ServiceError::Other(anyhow::anyhow!(
+                    "Failed to get balance for account `{}`",
+                    account.to_hex_string()
+                ))
             })?;
-        let last_transaction_hash = addr_info
-            .last_transaction_hash
-            .map(|hash| hash.to_hex_string());
-        let last_transaction_lt = addr_info.last_transaction_lt.map(|lt| lt.to_string());
+
+        let (last_transaction_hash, last_transaction_lt) =
+            self.parse_last_transaction(&contract.last_transaction_id);
 
         Ok(NetworkAddressData {
-            workchain_id,
-            hex,
+            workchain_id: contract.account.addr.workchain_id(),
+            hex: contract.account.addr.address().to_hex_string(),
             account_status,
             network_balance,
             last_transaction_hash,
             last_transaction_lt,
-            sync_u_time: 0, // TODO
+            sync_u_time: 0,
         })
     }
     async fn deploy_address_contract(&self, address: AddressDb) -> Result<(), ServiceError> {
@@ -201,7 +222,45 @@ impl TonClient for TonClientImpl {
         address: MsgAddressInt,
         root_address: String,
     ) -> Result<NetworkTokenAddressData, ServiceError> {
-        todo!()
+        let root_account = UInt256::from_be_bytes(
+            &MsgAddressInt::from_str(&root_address)?
+                .address()
+                .get_bytestring(0),
+        );
+        let root_contract = self.ton_core.get_contract_state(root_account).await?;
+
+        let root_contract_state = RootTokenContractState(&root_contract);
+        let RootTokenContractDetails { version, .. } = root_contract_state.guess_details()?;
+
+        let token_wallet_address =
+            root_contract_state.get_wallet_address(version, &address, None)?;
+
+        let token_wallet_account =
+            UInt256::from_be_bytes(&token_wallet_address.address().get_bytestring(0));
+        let token_contract = self
+            .ton_core
+            .get_contract_state(token_wallet_account)
+            .await?;
+
+        let token_wallet = TokenWalletContractState(&token_contract);
+        let version = token_wallet.get_version()?;
+
+        let network_balance = BigDecimal::new(token_wallet.get_balance(version)?.into(), 0); // TODO
+        let account_status = self.parse_account_state(&token_contract.account.storage.state);
+
+        let (last_transaction_hash, last_transaction_lt) =
+            self.parse_last_transaction(&token_contract.last_transaction_id);
+
+        Ok(NetworkTokenAddressData {
+            workchain_id: token_wallet_address.workchain_id(),
+            hex: token_wallet_address.address().to_hex_string(),
+            root_address,
+            network_balance,
+            account_status,
+            last_transaction_hash,
+            last_transaction_lt,
+            sync_u_time: 0,
+        })
     }
     async fn prepare_token_transaction(
         &self,

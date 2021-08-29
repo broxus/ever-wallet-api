@@ -101,7 +101,7 @@ async fn internal_transfer_receive(
     )
     .await?;
 
-    let amount = BigDecimal::new(token_transfer.tokens.into(), 0);
+    let amount = BigDecimal::new(token_transfer.tokens.into(), 0); // TODO
 
     let mut transaction = CreateReceiveTokenTransaction {
         id: Uuid::new_v4(),
@@ -185,7 +185,7 @@ async fn internal_transfer_mint(
     )
     .await?;
 
-    let amount = BigDecimal::new(tokens.into(), 0);
+    let amount = BigDecimal::new(tokens.into(), 0); // TODO
 
     let mut transaction = CreateReceiveTokenTransaction {
         id: Uuid::new_v4(),

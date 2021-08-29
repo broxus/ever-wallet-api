@@ -3,17 +3,14 @@ use std::path::PathBuf;
 use std::sync::Arc;
 
 use anyhow::Result;
-use nekoton::core::models::{RootTokenContractDetails, TokenWalletTransaction, TokenWalletVersion};
-use nekoton::core::token_wallet::{RootTokenContractState, TokenWalletContractState};
+use nekoton::core::models::{TokenWalletTransaction, TokenWalletVersion};
 use nekoton::transport::models::{ExistingContract, RawContractState};
-use nekoton_abi::LastTransactionId;
 use parking_lot::Mutex;
 use serde::Deserialize;
 use tokio::sync::mpsc;
 use ton_block::{CommonMsgInfo, GetRepresentationHash, MsgAddressInt, Serializable};
 use ton_types::UInt256;
 
-use self::models::*;
 use self::settings::*;
 use self::ton_subscriber::*;
 use self::transaction_handler::token_transaction::*;
@@ -106,94 +103,13 @@ impl TonCore {
         Ok(())
     }
 
-    pub async fn get_account_state(&self, account: UInt256) -> Result<ExistingContract> {
+    pub async fn get_contract_state(&self, account: UInt256) -> Result<ExistingContract> {
         match self.ton_subscriber.get_contract_state(account).await? {
             RawContractState::Exists(contract) => Ok(contract),
             RawContractState::NotExists => {
                 Err(TonCoreError::AccountNotFound(account.to_hex_string()).into())
             }
         }
-    }
-
-    pub async fn get_ton_address_info(&self, account: UInt256) -> Result<TonAddressInfo> {
-        let contract = match self.ton_subscriber.get_contract_state(account).await? {
-            RawContractState::Exists(contract) => contract,
-            RawContractState::NotExists => {
-                return Err(TonCoreError::AccountNotFound(account.to_hex_string()).into())
-            }
-        };
-
-        let workchain_id = contract.account.addr.workchain_id();
-        let hex = contract.account.addr.address().to_hex_string();
-        let account_status = contract.account.storage.state;
-        let network_balance = contract.account.storage.balance.grams.0;
-
-        let mut last_transaction_hash = None;
-        let mut last_transaction_lt = None;
-        if let LastTransactionId::Exact(transaction_id) = contract.last_transaction_id {
-            last_transaction_hash = Some(transaction_id.hash);
-            last_transaction_lt = Some(transaction_id.lt)
-        }
-
-        Ok(TonAddressInfo {
-            workchain_id,
-            hex,
-            network_balance,
-            account_status,
-            last_transaction_lt,
-            last_transaction_hash,
-        })
-    }
-
-    pub async fn get_token_address_info(&self, account: UInt256) -> Result<TokenAddressInfo> {
-        let contract = match self.ton_subscriber.get_contract_state(account).await? {
-            RawContractState::Exists(contract) => contract,
-            RawContractState::NotExists => {
-                return Err(TonCoreError::AccountNotFound(account.to_hex_string()).into());
-            }
-        };
-
-        let token_wallet = TokenWalletContractState(&contract);
-        let version = token_wallet.get_version()?;
-        let root_address = token_wallet.get_details(version)?.root_address;
-        let network_balance = token_wallet.get_balance(version)?;
-
-        let workchain_id = contract.account.addr.workchain_id();
-        let hex = contract.account.addr.address().to_hex_string();
-        let account_status = contract.account.storage.state;
-
-        let mut last_transaction_hash = None;
-        let mut last_transaction_lt = None;
-        if let nekoton_abi::LastTransactionId::Exact(transaction_id) = contract.last_transaction_id
-        {
-            last_transaction_hash = Some(transaction_id.hash);
-            last_transaction_lt = Some(transaction_id.lt)
-        }
-
-        Ok(TokenAddressInfo {
-            workchain_id,
-            hex,
-            root_address,
-            network_balance,
-            account_status,
-            last_transaction_lt,
-            last_transaction_hash,
-        })
-    }
-
-    pub async fn get_token_address(&self, owner: OwnerInfo) -> Result<MsgAddressInt> {
-        let root_account = UInt256::from_be_bytes(&owner.root_address.address().get_bytestring(0));
-        let root_contract = match self.ton_subscriber.get_contract_state(root_account).await? {
-            RawContractState::Exists(contract) => contract,
-            RawContractState::NotExists => {
-                return Err(TonCoreError::AccountNotFound(root_account.to_hex_string()).into());
-            }
-        };
-
-        let state = RootTokenContractState(&root_contract);
-        let RootTokenContractDetails { version, .. } = state.guess_details()?;
-
-        state.get_wallet_address(version, &owner.owner_address, None)
     }
 
     pub async fn send_ton_message(

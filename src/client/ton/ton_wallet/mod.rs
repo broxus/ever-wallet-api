@@ -1,18 +1,13 @@
 use std::convert::TryFrom;
 
 use anyhow::Result;
-use ed25519_dalek::{Keypair, PublicKey, SecretKey, Signer};
+use ed25519_dalek::{PublicKey, SecretKey};
 use nekoton::core::models::Expiration;
 use nekoton::core::ton_wallet::MultisigType;
-use nekoton::crypto::SignedMessage;
 
 use crate::models::account_enums::AccountType;
 use crate::models::sqlx::AddressDb;
 use crate::prelude::ServiceError;
-
-//pub mod highload_wallet_v2;
-//pub mod safe_multisig;
-//pub mod wallet_v3;
 
 pub const DEFAULT_EXPIRATION_TIMEOUT: u32 = 60;
 pub const MULTISIG_TYPE: MultisigType = MultisigType::SafeMultisigWallet;
@@ -84,10 +79,4 @@ impl TryFrom<AddressDb> for PrepareDeploy {
             account_type,
         })
     }
-}
-
-#[derive(thiserror::Error, Debug)]
-enum TonWalletError {
-    #[error("Already initialized")]
-    AlreadyInitialized,
 }
