@@ -1,0 +1,17 @@
+steps:
+  - name: $CONFIG_BUILDER
+    args: ['bash', '/root/entrypoint.sh']
+    timeout: 3600s
+
+timeout: 6000s
+
+logsBucket: 'gs://dexpa-175115-gitlab-runner-logs'
+
+artifacts:
+  objects:
+    location: 'gs://binaries.dexpa.io/$CONFIG_GROUP/$CONFIG_APPLICATION/$IMAGE_VERSION'
+    paths: [
+        'target/release/$BINARY_NAME',
+        'migrations',
+        'sqlx-data.json'
+    ]
