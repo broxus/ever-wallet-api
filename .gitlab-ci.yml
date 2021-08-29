@@ -5,7 +5,7 @@ stages:
 cloudbuild:rust-artifact:
   stage: cloudbuild
   variables:
-    CONFIG_BUILDER: gcr.io/dexpa-175115/rust/rust-builder:stable-release
+    CONFIG_BUILDER: gcr.io/dexpa-175115/rust/rust-builder:stable
     BINARY_NAME: ton-wallet-api
     CONFIG_APPLICATION: $CI_PROJECT_NAME
     CONFIG_GROUP: $CI_PROJECT_NAMESPACE
