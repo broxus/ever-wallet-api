@@ -15,4 +15,4 @@ cloudbuild:rust-artifact:
     - export IMAGE_VERSION=$CI_COMMIT_REF_SLUG/$COMMIT_TIME
     - envsubst < cloudbuild-template.yaml > cloudbuild.yaml
   script:
-    - gcloud builds submit --config cloudbuild.yaml .
+    - gcloud builds submit --machine-type=e2-highcpu-8 --config cloudbuild.yaml .
