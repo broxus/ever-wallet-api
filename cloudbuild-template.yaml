@@ -2,6 +2,8 @@ steps:
   - name: $CONFIG_BUILDER
     args: ['bash', '/root/entrypoint.sh']
     timeout: 3600s
+  - name: 'gcr.io/cloud-builders/gsutil'
+    args: ['-m', 'cp', '-r', 'migrations/*', 'gs://binaries.dexpa.io/$CONFIG_GROUP/$CONFIG_APPLICATION/$IMAGE_VERSION/migrations']
 
 timeout: 6000s
 
@@ -12,6 +14,5 @@ artifacts:
     location: 'gs://binaries.dexpa.io/$CONFIG_GROUP/$CONFIG_APPLICATION/$IMAGE_VERSION'
     paths: [
         'target/release/$BINARY_NAME',
-        'migrations',
         'sqlx-data.json'
     ]
