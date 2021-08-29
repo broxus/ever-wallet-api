@@ -49,6 +49,9 @@ pub async fn start_server() -> StdResult<()> {
         sentry::ClientOptions::default().add_integration(sentry_panic::PanicIntegration::default()),
     );
 
+    let (receive_transaction_tx, receive_transaction_rx) = mpsc::unbounded_channel();
+    let (receive_token_transaction_tx, receive_token_transaction_rx) = mpsc::unbounded_channel();
+
     let pool = PgPoolOptions::new()
         .max_connections(service_config.db_pool_size)
         .connect(&service_config.database_url)
@@ -56,9 +59,17 @@ pub async fn start_server() -> StdResult<()> {
         .expect("fail pg pool");
 
     let sqlx_client = SqlxClient::new(pool);
-    let ton_api_client = Arc::new(TonClientImpl::new());
     let callback_client = Arc::new(CallbackClientImpl::new());
     let owners_cache = OwnersCache::new(sqlx_client.clone()).await?;
+    let ton_core = TonCore::new(
+        service_config.ton_core,
+        global_config,
+        owners_cache.clone(),
+        receive_transaction_tx,
+        receive_token_transaction_tx,
+    )
+    .await?;
+    let ton_api_client = Arc::new(TonClientImpl::new(ton_core.clone()));
     let ton_service = Arc::new(TonServiceImpl::new(
         sqlx_client.clone(),
         owners_cache.clone(),
@@ -66,21 +77,11 @@ pub async fn start_server() -> StdResult<()> {
         callback_client.clone(),
     ));
     let auth_service = Arc::new(AuthServiceImpl::new(sqlx_client.clone()));
+
+    ton_core.start().await?;
+
     log::debug!("tokens caching");
     log::debug!("Finish tokens caching");
-
-    let (receive_transaction_tx, receive_transaction_rx) = mpsc::unbounded_channel();
-    let (receive_token_transaction_tx, receive_token_transaction_rx) = mpsc::unbounded_channel();
-
-    let ton_core = TonCore::new(
-        service_config.ton_core,
-        global_config,
-        owners_cache,
-        receive_transaction_tx,
-        receive_token_transaction_tx,
-    )
-    .await?;
-    ton_core.start().await?;
 
     tokio::spawn(start_listening_receive_transactions(
         ton_service.clone(),

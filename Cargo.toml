@@ -66,6 +66,7 @@ tiny-adnl = { git = "https://github.com/broxus/tiny-adnl" }
 nekoton = { git = "https://github.com/broxus/nekoton.git", default-features = false }
 nekoton-abi = { git = "https://github.com/broxus/nekoton.git", features = ["derive"] }
 nekoton-utils = { git = "https://github.com/broxus/nekoton.git" }
+nekoton-contracts = { git = "https://github.com/broxus/nekoton.git" }
 
 # Indexer engine
 ton-indexer = { git = "https://github.com/broxus/ton-indexer.git" }

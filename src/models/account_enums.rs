@@ -22,6 +22,7 @@ pub enum AccountType {
 pub enum AccountStatus {
     Active,
     UnInit,
+    Frozen,
 }
 
 #[derive(Debug, Deserialize, Serialize, Clone, opg::OpgModel)]

@@ -3680,6 +3680,7 @@ dependencies = [
  "lru",
  "nekoton",
  "nekoton-abi",
+ "nekoton-contracts",
  "nekoton-utils",
  "num-bigint 0.3.2",
  "num-traits",

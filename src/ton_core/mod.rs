@@ -5,7 +5,7 @@ use std::sync::Arc;
 use anyhow::Result;
 use nekoton::core::models::{RootTokenContractDetails, TokenWalletTransaction, TokenWalletVersion};
 use nekoton::core::token_wallet::{RootTokenContractState, TokenWalletContractState};
-use nekoton::transport::models::RawContractState;
+use nekoton::transport::models::{ExistingContract, RawContractState};
 use nekoton_abi::LastTransactionId;
 use parking_lot::Mutex;
 use serde::Deserialize;
@@ -106,6 +106,15 @@ impl TonCore {
         Ok(())
     }
 
+    pub async fn get_account_state(&self, account: UInt256) -> Result<ExistingContract> {
+        match self.ton_subscriber.get_contract_state(account).await? {
+            RawContractState::Exists(contract) => Ok(contract),
+            RawContractState::NotExists => {
+                Err(TonCoreError::AccountNotFound(account.to_hex_string()).into())
+            }
+        }
+    }
+
     pub async fn get_ton_address_info(&self, account: UInt256) -> Result<TonAddressInfo> {
         let contract = match self.ton_subscriber.get_contract_state(account).await? {
             RawContractState::Exists(contract) => contract,
@@ -190,13 +199,13 @@ impl TonCore {
     pub async fn send_ton_message(
         &self,
         message: &ton_block::Message,
-        account: UInt256,
         expire_at: u32,
     ) -> Result<()> {
-        let to = match message.header() {
-            ton_block::CommonMsgInfo::ExtInMsgInfo(header) => {
-                ton_block::AccountIdPrefixFull::prefix(&header.dst)?
-            }
+        let (account, to) = match message.header() {
+            ton_block::CommonMsgInfo::ExtInMsgInfo(header) => (
+                UInt256::from_be_bytes(&header.dst.address().get_bytestring(0)),
+                ton_block::AccountIdPrefixFull::prefix(&header.dst)?,
+            ),
             _ => return Err(TonCoreError::ExternalTonMessageExpected.into()),
         };
 
