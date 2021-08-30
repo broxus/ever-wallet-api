@@ -1,14 +1,14 @@
 use std::str::FromStr;
 use std::sync::Arc;
 
+use aes::Aes128;
 use async_trait::async_trait;
+use block_modes::block_padding::NoPadding;
+use block_modes::{BlockMode, Cbc};
 use nekoton_utils::unpack_std_smc_addr;
+use sha2::{Digest, Sha256};
 use ton_block::MsgAddressInt;
 use uuid::Uuid;
-use aes::Aes128;
-use block_modes::{BlockMode, Cbc};
-use block_modes::block_padding::NoPadding;
-use sha2::{Sha256, Digest};
 
 use crate::client::{AccountTransactionEvent, CallbackClient, TonClient};
 use crate::models::account_enums::{AccountStatus, TonEventStatus};
@@ -230,7 +230,6 @@ impl TonServiceImpl {
         let mut buf = private_key.to_vec();
         cipher.decrypt(&mut buf).unwrap().to_vec()
     }
-
 }
 
 #[async_trait]
@@ -288,7 +287,10 @@ impl TonService for TonServiceImpl {
                 account.address().to_hex_string(),
             )
             .await?;
-        if network.account_status == AccountStatus::UnInit {
+
+        todo!()
+
+        /*if network.account_status == AccountStatus::UnInit {
             self.ton_api_client
                 .deploy_address_contract(address.clone())
                 .await?;
@@ -330,7 +332,7 @@ impl TonService for TonServiceImpl {
         }
         self.notify(*service_id, event.into()).await;
 
-        Ok(transaction)
+        Ok(transaction)*/
     }
 
     async fn create_receive_transaction(
@@ -486,7 +488,9 @@ impl TonService for TonServiceImpl {
             )
             .await?;
 
-        let mut result = vec![];
+        todo!()
+
+        /*let mut result = vec![];
         for balance in balances {
             let network = self
                 .ton_api_client
@@ -494,7 +498,7 @@ impl TonService for TonServiceImpl {
                 .await?;
             result.push((balance, network));
         }
-        Ok(result)
+        Ok(result)*/
     }
     async fn create_send_token_transaction(
         &self,
@@ -519,7 +523,9 @@ impl TonService for TonServiceImpl {
             )));
         }
 
-        let network = self
+        todo!()
+
+        /*let network = self
             .ton_api_client
             .get_token_address_info(account.clone(), input.root_address.clone())
             .await?;
@@ -585,7 +591,7 @@ impl TonService for TonServiceImpl {
 
         self.notify_token(*service_id, event.into()).await;
 
-        Ok(transaction)
+        Ok(transaction)*/
     }
 
     async fn create_receive_token_transaction(
