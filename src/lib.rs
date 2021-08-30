@@ -39,8 +39,8 @@ mod utils;
 pub async fn start_server() -> StdResult<()> {
     let config = ApplicationConfig::from_env()?;
 
-    let service_config = Config::from_file(&config.service_config)?;
     let global_config = ton_indexer::GlobalConfig::from_file(&config.global_config)?;
+    let service_config = Config::from_file(&config.service_config)?.load_env();
 
     init_logger(&service_config.logger_settings)?;
 

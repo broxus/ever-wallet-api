@@ -48,6 +48,7 @@ indexmap = "*"
 urlencoding = "2.1.0"
 ed25519-dalek = "1.0"
 external-ip = "4.1.0"
+regex = "1.5.4"
 
 thiserror = "1.0.26"
 itertools = "0.10.1"

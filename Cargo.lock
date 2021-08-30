@@ -3708,6 +3708,7 @@ dependencies = [
  "pin-project 0.4.28",
  "r2d2",
  "rand 0.7.3",
+ "regex",
  "reqwest",
  "sentry 0.23.0",
  "sentry-panic 0.23.0",

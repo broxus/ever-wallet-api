@@ -1,7 +1,10 @@
+use std::borrow::Cow;
+use std::env;
 use std::fs::File;
 use std::path::Path;
 
 use anyhow::Result;
+use regex::{Captures, Regex};
 use serde::Deserialize;
 
 use crate::ton_core::TonCoreConfig;
@@ -17,6 +20,13 @@ pub struct Config {
     pub secret: String,
 }
 
+impl Config {
+    pub fn load_env(mut self) -> Self {
+        self.database_url = expand_env(&self.database_url).into_owned();
+        self
+    }
+}
+
 impl ConfigExt for Config {
     fn from_file<P>(path: &P) -> Result<Self>
     where
@@ -24,7 +34,7 @@ impl ConfigExt for Config {
     {
         let file = File::open(path)?;
         let reader = std::io::BufReader::new(file);
-        let config = serde_yaml::from_reader(reader)?;
+        let config: Config = serde_yaml::from_reader(reader)?;
         Ok(config)
     }
 }
@@ -66,4 +76,12 @@ fn default_logger_settings() -> serde_yaml::Value {
         additive: false
     "##;
     serde_yaml::from_str(DEFAULT_LOG4RS_SETTINGS).unwrap()
+}
+
+pub fn expand_env(raw_config: &str) -> Cow<str> {
+    let re = Regex::new(r"\$\{([a-zA-Z_][0-9a-zA-Z_]*)\}").unwrap();
+    re.replace_all(&raw_config, |caps: &Captures| match env::var(&caps[1]) {
+        Ok(val) => val,
+        Err(_) => (&caps[0]).to_string(),
+    })
 }
