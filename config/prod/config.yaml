@@ -1,8 +1,8 @@
 ---
 server_addr: "0.0.0.0:8080"
-database_url: "postgresql://$(DB_USER):$(DB_PASSWORD)@$(DB_HOST)/$(DB_NAME)"
+database_url: "postgresql://${DB_USER}:${DB_PASSWORD}@${DB_HOST}/${DB_NAME}"
 db_pool_size: 5
-secret: "$(API_SECRET)"
+secret: "${API_SECRET}"
 ton_core:
   port: 30310
   rocks_db_path: "/var/ton/ton-wallet-api/data/rocksdb"
