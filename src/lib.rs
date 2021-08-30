@@ -75,7 +75,7 @@ pub async fn start_server() -> StdResult<()> {
         owners_cache.clone(),
         ton_api_client.clone(),
         callback_client.clone(),
-        service_config.secret.clone()
+        service_config.secret.clone(),
     ));
     let auth_service = Arc::new(AuthServiceImpl::new(sqlx_client.clone()));
 

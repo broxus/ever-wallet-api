@@ -10,8 +10,11 @@ use sha2::{Digest, Sha256};
 use ton_block::MsgAddressInt;
 use uuid::Uuid;
 
-use crate::client::{AccountTransactionEvent, CallbackClient, TonClient};
-use crate::models::account_enums::{AccountStatus, TonEventStatus};
+use crate::client::{
+    AccountTransactionEvent, AddressDeploy, CallbackClient, DeploySafeMultisigWallet, DeployWallet,
+    TonClient,
+};
+use crate::models::account_enums::{AccountStatus, AccountType, TonEventStatus};
 use crate::models::address::{Address, CreateAddress, CreateAddressInDb, NetworkAddressData};
 use crate::models::owners_cache::OwnersCache;
 use crate::models::service_id::ServiceId;
@@ -288,19 +291,47 @@ impl TonService for TonServiceImpl {
             )
             .await?;
 
-        todo!()
+        let public_key = hex::decode(address.public_key.clone()).unwrap_or_default();
+        let secret = self.decrypt_private_key(address.private_key.clone()).await;
+        if network.account_status == AccountStatus::UnInit {
+            let address = match address.account_type {
+                AccountType::HighloadWallet => AddressDeploy::HighloadWallet(DeployWallet {
+                    public_key: public_key.clone(),
+                    secret: secret.clone(),
+                    workchain: address.workchain_id as i8,
+                }),
+                AccountType::Wallet => AddressDeploy::WalletV3(DeployWallet {
+                    public_key: public_key.clone(),
+                    secret: secret.clone(),
+                    workchain: address.workchain_id as i8,
+                }),
+                AccountType::SafeMultisig => {
+                    let owners: Vec<String> = address
+                        .custodians_public_keys
+                        .map(|pks| serde_json::from_value(pks).unwrap_or_default())
+                        .unwrap_or_default();
+                    let owners = owners
+                        .into_iter()
+                        .map(|o| hex::decode(o).unwrap_or_default())
+                        .collect();
+                    AddressDeploy::SafeMultisig(DeploySafeMultisigWallet {
+                        public_key: public_key.clone(),
+                        secret: secret.clone(),
+                        workchain: address.workchain_id as i8,
+                        owners,
+                        req_confirms: address.custodians.unwrap_or_default() as u8,
+                    })
+                }
+            };
 
-        /*if network.account_status == AccountStatus::UnInit {
-            self.ton_api_client
-                .deploy_address_contract(address.clone())
-                .await?;
+            self.ton_api_client.deploy_address_contract(address).await?;
         }
         let payload = self
             .ton_api_client
             .prepare_transaction(
                 input,
-                address.public_key.clone(),
-                address.private_key.clone(),
+                public_key.clone(),
+                secret.clone(),
                 address.account_type,
             )
             .await?;
@@ -332,7 +363,7 @@ impl TonService for TonServiceImpl {
         }
         self.notify(*service_id, event.into()).await;
 
-        Ok(transaction)*/
+        Ok(transaction)
     }
 
     async fn create_receive_transaction(
@@ -488,17 +519,19 @@ impl TonService for TonServiceImpl {
             )
             .await?;
 
-        todo!()
-
-        /*let mut result = vec![];
+        let mut result = vec![];
         for balance in balances {
+            let root_address = MsgAddressInt::from_str(&balance.root_address).map_err(|_| {
+                ServiceError::WrongInput(format!("Can not parse root address workchain and hex"))
+            })?;
+
             let network = self
                 .ton_api_client
-                .get_token_address_info(account.clone(), balance.root_address.clone())
+                .get_token_address_info(account.clone(), root_address)
                 .await?;
             result.push((balance, network));
         }
-        Ok(result)*/
+        Ok(result)
     }
     async fn create_send_token_transaction(
         &self,
@@ -523,11 +556,13 @@ impl TonService for TonServiceImpl {
             )));
         }
 
-        todo!()
+        let root_address = MsgAddressInt::from_str(&input.root_address).map_err(|_| {
+            ServiceError::WrongInput(format!("Can not parse root address workchain and hex"))
+        })?;
 
-        /*let network = self
+        let network = self
             .ton_api_client
-            .get_token_address_info(account.clone(), input.root_address.clone())
+            .get_token_address_info(account.clone(), root_address.clone())
             .await?;
         if network.account_status == AccountStatus::UnInit {
             let token_balance = self
@@ -591,7 +626,7 @@ impl TonService for TonServiceImpl {
 
         self.notify_token(*service_id, event.into()).await;
 
-        Ok(transaction)*/
+        Ok(transaction)
     }
 
     async fn create_receive_token_transaction(
