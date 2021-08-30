@@ -6,7 +6,7 @@ use serde::Deserialize;
 
 use crate::ton_core::TonCoreConfig;
 
-#[derive(Deserialize, Clone)]
+#[derive(Deserialize, Clone, Debug)]
 pub struct Config {
     pub server_addr: String,
     pub database_url: String,

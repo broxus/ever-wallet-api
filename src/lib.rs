@@ -44,6 +44,8 @@ pub async fn start_server() -> StdResult<()> {
 
     init_logger(&service_config.logger_settings)?;
 
+    log::info!("Service config: {:#?}", service_config);
+
     std::panic::set_hook(Box::new(handle_panic));
     let _guard = sentry::init(
         sentry::ClientOptions::default().add_integration(sentry_panic::PanicIntegration::default()),

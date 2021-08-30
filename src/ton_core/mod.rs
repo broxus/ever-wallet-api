@@ -412,7 +412,7 @@ impl TransactionsSubscription for TokenTransactionObserver {
     }
 }
 
-#[derive(Deserialize, Clone)]
+#[derive(Deserialize, Clone, Debug)]
 pub struct TonCoreConfig {
     pub port: u16,
     pub rocks_db_path: PathBuf,
