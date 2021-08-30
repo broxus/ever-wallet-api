@@ -1,0 +1,9 @@
+---
+server_addr: "0.0.0.0:8080"
+database_url: "postgresql://$(DB_USER):$(DB_PASSWORD)@$(DB_HOST)/$(DB_NAME)"
+db_pool_size: 5
+ton_core:
+  port: 30310
+  rocks_db_path: "/var/ton/ton-wallet-api/data/rocksdb"
+  file_db_path: "/var/ton/ton-wallet-api/data/file"
+  keys_path: "/var/ton/ton-wallet-api/data/keys"

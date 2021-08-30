@@ -4,12 +4,15 @@ stages:
 
 cloudbuild:rust-artifact:
   stage: cloudbuild
+  only:
+    - master
   variables:
     CONFIG_BUILDER: gcr.io/dexpa-175115/rust/rust-builder:stable
     BINARY_NAME: ton-wallet-api
     CONFIG_APPLICATION: $CI_PROJECT_NAME
     CONFIG_GROUP: $CI_PROJECT_NAMESPACE
     IMAGE_NAME: gcr.io/dexpa-175115/$CI_PROJECT_NAMESPACE/$CI_PROJECT_NAME
+    BUILD: test
   before_script:
     - export COMMIT_TIME=$(git show -s --format=%ct $CI_COMMIT_SHA)
     - export IMAGE_VERSION=$CI_COMMIT_REF_SLUG/$COMMIT_TIME

@@ -4,6 +4,8 @@ steps:
     timeout: 3600s
   - name: 'gcr.io/cloud-builders/gsutil'
     args: ['-m', 'cp', '-r', 'migrations/*', 'gs://binaries.dexpa.io/$CONFIG_GROUP/$CONFIG_APPLICATION/$IMAGE_VERSION/migrations']
+  - name: 'gcr.io/cloud-builders/gsutil'
+    args: ['-m', 'cp', '-r', 'config/$BUILD/*', 'gs://binaries.dexpa.io/$CONFIG_GROUP/$CONFIG_APPLICATION/$IMAGE_VERSION/config']
 
 timeout: 6000s
 
