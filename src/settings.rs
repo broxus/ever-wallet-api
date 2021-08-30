@@ -81,7 +81,7 @@ fn default_logger_settings() -> serde_yaml::Value {
 
 pub fn expand_env(raw_config: &str) -> Cow<str> {
     let re = Regex::new(r"\$\{([a-zA-Z_][0-9a-zA-Z_]*)\}").unwrap();
-    re.replace_all(&raw_config, |caps: &Captures| match env::var(&caps[1]) {
+    re.replace_all(raw_config, |caps: &Captures| match env::var(&caps[1]) {
         Ok(val) => val,
         Err(_) => (&caps[0]).to_string(),
     })

@@ -326,14 +326,9 @@ impl TonService for TonServiceImpl {
 
             self.ton_api_client.deploy_address_contract(address).await?;
         }
-        let payload = self
+        let (payload, unsigned_message) = self
             .ton_api_client
-            .prepare_transaction(
-                input,
-                public_key.clone(),
-                secret.clone(),
-                address.account_type,
-            )
+            .prepare_transaction(input, &public_key, address.account_type)
             .await?;
         let (mut transaction, mut event) = self
             .sqlx_client
@@ -341,12 +336,7 @@ impl TonService for TonServiceImpl {
             .await?;
         if let Err(e) = self
             .ton_api_client
-            .send_transaction(
-                &payload,
-                address.public_key.clone(),
-                address.private_key.clone(),
-                address.account_type,
-            )
+            .send_transaction(unsigned_message, &public_key, &secret)
             .await
         {
             let result = self
