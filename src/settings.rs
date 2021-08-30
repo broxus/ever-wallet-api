@@ -23,6 +23,7 @@ pub struct Config {
 impl Config {
     pub fn load_env(mut self) -> Self {
         self.database_url = expand_env(&self.database_url).into_owned();
+        self.secret = expand_env(&self.secret).into_owned();
         self
     }
 }
