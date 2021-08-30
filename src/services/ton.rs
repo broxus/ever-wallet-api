@@ -5,6 +5,10 @@ use async_trait::async_trait;
 use nekoton_utils::unpack_std_smc_addr;
 use ton_block::MsgAddressInt;
 use uuid::Uuid;
+use aes::Aes128;
+use block_modes::{BlockMode, Cbc};
+use block_modes::block_padding::NoPadding;
+use sha2::{Sha256, Digest};
 
 use crate::client::{AccountTransactionEvent, CallbackClient, TonClient};
 use crate::models::account_enums::{AccountStatus, TonEventStatus};
@@ -27,6 +31,8 @@ use crate::models::transactions::{
 };
 use crate::prelude::ServiceError;
 use crate::sqlx_client::SqlxClient;
+
+type Aes128Cbc = Cbc<Aes128, NoPadding>;
 
 #[async_trait]
 pub trait TonService: Send + Sync + 'static {
@@ -131,6 +137,7 @@ pub struct TonServiceImpl {
     owners_cache: OwnersCache,
     ton_api_client: Arc<dyn TonClient>,
     callback_client: Arc<dyn CallbackClient>,
+    secret: String,
 }
 
 impl TonServiceImpl {
@@ -139,12 +146,14 @@ impl TonServiceImpl {
         owners_cache: OwnersCache,
         ton_api_client: Arc<dyn TonClient>,
         callback_client: Arc<dyn CallbackClient>,
+        secret: String,
     ) -> Self {
         Self {
             sqlx_client,
             owners_cache,
             ton_api_client,
             callback_client,
+            secret,
         }
     }
     async fn notify_token(&self, service_id: ServiceId, payload: AccountTransactionEvent) {
@@ -193,6 +202,35 @@ impl TonServiceImpl {
             }
         }
     }
+
+    async fn encrypt_private_key(&self, private_key: &[u8]) -> String {
+        // create sha256 from secret
+        let mut hasher = Sha256::new();
+        hasher.update(&self.secret);
+        let secret_sha256 = hasher.finalize();
+
+        // encrypt address private key
+        let cipher = Aes128Cbc::new_from_slices(&secret_sha256, &secret_sha256).unwrap();
+        let mut buffer = [0u8; 32];
+        let pos = private_key.len();
+        buffer[..pos].copy_from_slice(private_key);
+        let ciphertext = cipher.encrypt(&mut buffer, pos).unwrap();
+        base64::encode(ciphertext)
+    }
+
+    async fn decrypt_private_key(&self, private_key: String) -> Vec<u8> {
+        // create sha256 from secret
+        let mut hasher = Sha256::new();
+        hasher.update(&self.secret);
+        let secret_sha256 = hasher.finalize();
+
+        // decrypt address private key
+        let private_key = base64::decode(private_key).unwrap_or_default();
+        let cipher = Aes128Cbc::new_from_slices(&secret_sha256, &secret_sha256).unwrap();
+        let mut buf = private_key.to_vec();
+        cipher.decrypt(&mut buf).unwrap().to_vec()
+    }
+
 }
 
 #[async_trait]

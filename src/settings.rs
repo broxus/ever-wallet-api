@@ -14,6 +14,7 @@ pub struct Config {
     pub ton_core: TonCoreConfig,
     #[serde(default = "default_logger_settings")]
     pub logger_settings: serde_yaml::Value,
+    pub secret: String,
 }
 
 impl ConfigExt for Config {
