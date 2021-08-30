@@ -4,3 +4,6 @@ secret.toml
 /.idea
 
 .env
+
+/packer/gcp/.gcp_account.json
+/packer/gcp/variables.json

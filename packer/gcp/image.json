@@ -1,0 +1,51 @@
+{
+  "description": "TON Wallet API Image",
+  "builders": [
+    {
+      "name": "gcp",
+      "type": "googlecompute",
+      "account_file": "{{user `gcp_account_file`}}",
+      "project_id": "{{user `gcp_project_id`}}",
+      "source_image_family": "ubuntu-2004-lts",
+      "zone": "{{user `gcp_zone`}}",
+      "image_family": "ton-wallet-api",
+      "image_name": "ton-wallet-api-{{isotime \"20060102t030405\"}}",
+      "preemptible": true,
+      "ssh_username": "packer",
+      "disk_size": "50",
+      "machine_type": "n1-standard-8"
+    }
+  ],
+  "provisioners": [
+    {
+      "type": "shell",
+      "inline": [
+        "mkdir -p /tmp/build/ton-wallet-api"
+      ],
+      "inline_shebang": "/bin/bash -e"
+    },
+
+    {
+      "type": "file",
+      "source": "build.sh",
+      "destination": "/tmp/build/ton-wallet-api/build.sh"
+    },
+    {
+      "type": "file",
+      "source": "scripts",
+      "destination": "/tmp/build/ton-wallet-api"
+    },
+
+    {
+      "type": "shell",
+      "script": "update-machine.sh",
+      "execute_command": "echo '' | {{ .Vars }} sudo -E -S bash '{{ .Path }}'"
+    },
+    {
+      "type": "shell",
+      "inline": [
+        "sudo /tmp/build/ton-wallet-api/build.sh"
+      ]
+    }
+  ]
+}
