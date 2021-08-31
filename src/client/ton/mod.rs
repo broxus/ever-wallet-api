@@ -137,7 +137,7 @@ impl TonClient for TonClientImpl {
             account_type,
             custodians: payload.custodians,
             confirmations: payload.confirmations,
-            custodians_public_keys: payload.custodians_public_keys, // TODO
+            custodians_public_keys: payload.custodians_public_keys,
         })
     }
     async fn get_address_info(
@@ -161,7 +161,7 @@ impl TonClient for TonClientImpl {
             network_balance,
             last_transaction_hash,
             last_transaction_lt,
-            sync_u_time: contract.timings.current_utime() as i64,
+            sync_u_time: contract.timings.current_utime() as i64, // TODO
         })
     }
     async fn deploy_address_contract(
@@ -239,13 +239,13 @@ impl TonClient for TonClientImpl {
             PublicKey::from_bytes(public_key).map_err(|err| ServiceError::Other(err.into()))?;
 
         let address = MsgAddressInt::from_str(&transaction.from_address.0)?;
+        let bounce = transaction.bounce.unwrap_or_default();
 
         let (transfer_action, amount) =
             match account_type {
                 AccountType::HighloadWallet => {
                     let account = UInt256::from_be_bytes(&address.address().get_bytestring(0));
                     let current_state = self.ton_core.get_contract_state(account).await?.account;
-                    let bounce = transaction.bounce.unwrap_or_default();
 
                     let gifts = transaction
                     .outputs
@@ -285,7 +285,6 @@ impl TonClient for TonClientImpl {
                 AccountType::Wallet => {
                     let account = UInt256::from_be_bytes(&address.address().get_bytestring(0));
                     let current_state = self.ton_core.get_contract_state(account).await?.account;
-                    let bounce = transaction.bounce.unwrap_or_default();
 
                     let recipient = transaction.outputs.first().ok_or_else(|| {
                         ServiceError::Other(TonClientError::InvalidRecipient.into())
@@ -314,7 +313,6 @@ impl TonClient for TonClientImpl {
 
                     let destination = MsgAddressInt::from_str(&recipient.recipient_address.0)?;
                     let amount = recipient.value.to_u64().unwrap_or_default();
-                    let bounce = transaction.bounce.unwrap_or_default();
 
                     let has_multiple_owners = match custodians {
                         Some(custodians) => *custodians > 1,
@@ -357,7 +355,7 @@ impl TonClient for TonClientImpl {
             account_hex: address.address().to_hex_string(),
             value: BigDecimal::from_u64(amount).unwrap_or_default(),
             aborted: false,
-            bounce: false,
+            bounce,
         };
 
         Ok((sent_transaction, unsigned_message))
@@ -430,7 +428,7 @@ impl TonClient for TonClientImpl {
             account_status,
             last_transaction_hash,
             last_transaction_lt,
-            sync_u_time: token_wallet_contract_state.timings.current_utime() as i64,
+            sync_u_time: token_wallet_contract_state.timings.current_utime() as i64, // TODO
         })
     }
     async fn prepare_token_transaction(
