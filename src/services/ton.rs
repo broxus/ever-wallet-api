@@ -297,7 +297,12 @@ impl TonService for TonServiceImpl {
         }
         let (payload, unsigned_message) = self
             .ton_api_client
-            .prepare_transaction(input, &public_key, address.account_type)
+            .prepare_transaction(
+                input,
+                &public_key,
+                &address.account_type,
+                &address.custodians,
+            )
             .await?;
         let (mut transaction, mut event) = self
             .sqlx_client

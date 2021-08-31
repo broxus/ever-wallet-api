@@ -50,7 +50,8 @@ pub trait TonClient: Send + Sync {
         &self,
         transaction: TransactionSend,
         public_key: &[u8],
-        account_type: AccountType,
+        account_type: &AccountType,
+        custodians: &Option<i32>,
     ) -> Result<(SentTransaction, Box<dyn UnsignedMessage>), ServiceError>;
     async fn send_transaction(
         &self,
@@ -235,7 +236,8 @@ impl TonClient for TonClientImpl {
         &self,
         transaction: TransactionSend,
         public_key: &[u8],
-        account_type: AccountType,
+        account_type: &AccountType,
+        custodians: &Option<i32>,
     ) -> Result<(SentTransaction, Box<dyn UnsignedMessage>), ServiceError> {
         let public_key =
             PublicKey::from_bytes(public_key).map_err(|err| ServiceError::Other(err.into()))?;
@@ -247,18 +249,19 @@ impl TonClient for TonClientImpl {
                 AccountType::HighloadWallet => {
                     let account = UInt256::from_be_bytes(&address.address().get_bytestring(0));
                     let current_state = self.ton_core.get_contract_state(account).await?.account;
+                    let bounce = transaction.bounce.unwrap_or_default();
 
                     let gifts = transaction
                     .outputs
                     .into_iter()
                     .map(|item| {
-                        let dst = MsgAddressInt::from_str(&item.recipient_address.0)?;
+                        let destination = MsgAddressInt::from_str(&item.recipient_address.0)?;
                         let amount = item.value.to_u64().unwrap_or_default();
 
                         Ok(nekoton::core::ton_wallet::highload_wallet_v2::Gift {
                             flags: 0,
-                            bounce: false,
-                            destination: dst,
+                            bounce,
+                            destination,
                             amount,
                             body: None,
                             state_init: None,
@@ -286,21 +289,22 @@ impl TonClient for TonClientImpl {
                 AccountType::Wallet => {
                     let account = UInt256::from_be_bytes(&address.address().get_bytestring(0));
                     let current_state = self.ton_core.get_contract_state(account).await?.account;
+                    let bounce = transaction.bounce.unwrap_or_default();
 
                     let recipient = transaction.outputs.first().ok_or_else(|| {
                         ServiceError::Other(TonClientError::InvalidRecipient.into())
                     })?;
 
-                    let dst = MsgAddressInt::from_str(&recipient.recipient_address.0)?;
+                    let destination = MsgAddressInt::from_str(&recipient.recipient_address.0)?;
                     let amount = recipient.value.to_u64().unwrap_or_default();
 
                     (
                         nekoton::core::ton_wallet::wallet_v3::prepare_transfer(
                             &public_key,
                             &current_state,
-                            dst,
+                            destination,
                             amount,
-                            false,
+                            bounce,
                             None,
                             Expiration::Timeout(DEFAULT_EXPIRATION_TIMEOUT),
                         )?,
@@ -312,17 +316,27 @@ impl TonClient for TonClientImpl {
                         ServiceError::Other(TonClientError::InvalidRecipient.into())
                     })?;
 
-                    let dst = MsgAddressInt::from_str(&recipient.recipient_address.0)?;
+                    let destination = MsgAddressInt::from_str(&recipient.recipient_address.0)?;
                     let amount = recipient.value.to_u64().unwrap_or_default();
+                    let bounce = transaction.bounce.unwrap_or_default();
+
+                    let has_multiple_owners = match custodians {
+                        Some(custodians) => *custodians > 1,
+                        None => {
+                            return Err(ServiceError::Other(
+                                TonClientError::CustodiansNotFound.into(),
+                            ))
+                        }
+                    };
 
                     (
                         nekoton::core::ton_wallet::multisig::prepare_transfer(
                             &public_key,
-                            false,
+                            has_multiple_owners,
                             address.clone(),
-                            dst,
+                            destination,
                             amount,
-                            false,
+                            bounce,
                             None,
                             Expiration::Timeout(DEFAULT_EXPIRATION_TIMEOUT),
                         )?,
@@ -449,4 +463,6 @@ enum TonClientError {
     InvalidRecipient,
     #[error("Account `{0}` not deployed")]
     AccountNotDeployed(String),
+    #[error("Custodians not found")]
+    CustodiansNotFound,
 }
