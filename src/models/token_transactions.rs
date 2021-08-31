@@ -15,6 +15,7 @@ pub struct TokenTransactionSend {
     pub value: BigDecimal,
     pub notify_receiver: bool,
     pub fee: BigDecimal,
+    pub bounce: Option<bool>,
 }
 
 #[derive(Clone, Debug, serde::Serialize, serde::Deserialize, Eq, PartialEq)]

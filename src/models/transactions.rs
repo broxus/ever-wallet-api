@@ -13,6 +13,7 @@ pub struct TransactionSend {
     pub id: Uuid,
     pub from_address: Address,
     pub outputs: Vec<TransactionSendOutput>,
+    pub bounce: Option<bool>,
 }
 
 #[derive(Debug, Deserialize, Serialize, Clone)]

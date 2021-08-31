@@ -53,6 +53,7 @@ pub struct PostTonTransactionSendRequest {
     pub id: Uuid,
     pub from_address: Address,
     pub outputs: Vec<PostTonTransactionSendOutputRequest>,
+    pub bounce: Option<bool>,
 }
 
 impl From<PostTonTransactionSendRequest> for TransactionSend {
@@ -60,6 +61,7 @@ impl From<PostTonTransactionSendRequest> for TransactionSend {
         TransactionSend {
             id: c.id,
             from_address: c.from_address,
+            bounce: c.bounce,
             outputs: c.outputs.into_iter().map(From::from).collect(),
         }
     }
@@ -76,6 +78,7 @@ pub struct PostTonTokenTransactionSendRequest {
     #[opg("value", string)]
     pub value: BigDecimal,
     pub notify_receiver: Option<bool>,
+    pub bounce: Option<bool>,
     #[opg("fee", string, optional)]
     pub fee: Option<BigDecimal>,
 }
@@ -88,6 +91,7 @@ impl From<PostTonTokenTransactionSendRequest> for TokenTransactionSend {
             root_address: c.root_address,
             recipient_address: c.recipient_address,
             value: c.value,
+            bounce: c.bounce,
             notify_receiver: c.notify_receiver.unwrap_or(false),
             fee: c.fee.unwrap_or(BigDecimal::from_str(TOKEN_FEE).unwrap()),
         }
