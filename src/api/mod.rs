@@ -88,7 +88,8 @@ mod filters {
     }
 
     pub fn api_v4(ctx: Context) -> BoxedFilter<(impl warp::Reply,)> {
-        warp::path!("ton" / "v4")
+        warp::path("ton")
+            .and(warp::path("v4"))
             .and(
                 swagger()
                     .or(post_address_create(ctx.clone()))
