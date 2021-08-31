@@ -21,7 +21,7 @@ pub struct CreateSendTransactionEvent {
 impl CreateSendTransactionEvent {
     pub fn new(payload: TransactionDb) -> Self {
         Self {
-            id: Default::default(),
+            id: Uuid::new_v4(),
             service_id: payload.service_id,
             transaction_id: payload.id,
             message_hash: payload.message_hash,
@@ -66,7 +66,7 @@ pub struct CreateReceiveTransactionEvent {
 impl CreateReceiveTransactionEvent {
     pub fn new(payload: TransactionDb) -> Self {
         Self {
-            id: Default::default(),
+            id: Uuid::new_v4(),
             service_id: payload.service_id,
             transaction_id: payload.id,
             message_hash: payload.message_hash,

@@ -5,7 +5,6 @@
 use std::net::SocketAddr;
 use std::panic::PanicInfo;
 use std::path::PathBuf;
-use std::str::FromStr;
 use std::sync::Arc;
 
 use anyhow::Result;
