@@ -3,8 +3,8 @@ use std::sync::Arc;
 
 use aes::Aes128;
 use async_trait::async_trait;
-use block_modes::block_padding::NoPadding;
-use block_modes::{BlockMode, Cbc};
+use block_modes::block_padding::Pkcs7;
+use block_modes::{BlockMode, Ecb};
 use nekoton_utils::unpack_std_smc_addr;
 use sha2::{Digest, Sha256};
 use ton_block::MsgAddressInt;
@@ -32,7 +32,7 @@ use crate::models::transactions::{
 use crate::prelude::ServiceError;
 use crate::sqlx_client::SqlxClient;
 
-type Aes128Cbc = Cbc<Aes128, NoPadding>;
+type Aes128Ecb = Ecb<Aes128, Pkcs7>;
 
 #[async_trait]
 pub trait TonService: Send + Sync + 'static {
@@ -210,7 +210,7 @@ impl TonServiceImpl {
         let secret_sha256 = hasher.finalize();
 
         // encrypt address private key
-        let cipher = Aes128Cbc::new_from_slices(&secret_sha256, &secret_sha256).unwrap();
+        let cipher = Aes128Ecb::new_from_slices(&secret_sha256, &secret_sha256).unwrap();
         let mut buffer = [0u8; 32];
         let pos = private_key.len();
         buffer[..pos].copy_from_slice(private_key);
@@ -226,7 +226,7 @@ impl TonServiceImpl {
 
         // decrypt address private key
         let private_key = base64::decode(private_key).unwrap_or_default();
-        let cipher = Aes128Cbc::new_from_slices(&secret_sha256, &secret_sha256).unwrap();
+        let cipher = Aes128Ecb::new_from_slices(&secret_sha256, &secret_sha256).unwrap();
         let mut buf = private_key.to_vec();
         cipher.decrypt(&mut buf).unwrap().to_vec()
     }
