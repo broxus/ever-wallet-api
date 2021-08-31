@@ -10,11 +10,8 @@ use sha2::{Digest, Sha256};
 use ton_block::MsgAddressInt;
 use uuid::Uuid;
 
-use crate::client::{
-    AccountTransactionEvent, AddressDeploy, CallbackClient, DeploySafeMultisigWallet, DeployWallet,
-    TonClient,
-};
-use crate::models::account_enums::{AccountStatus, AccountType, TonEventStatus};
+use crate::client::{AccountTransactionEvent, CallbackClient, TonClient};
+use crate::models::account_enums::{AccountStatus, TonEventStatus};
 use crate::models::address::{Address, CreateAddress, CreateAddressInDb, NetworkAddressData};
 use crate::models::owners_cache::OwnersCache;
 use crate::models::service_id::ServiceId;
@@ -294,37 +291,9 @@ impl TonService for TonServiceImpl {
         let public_key = hex::decode(address.public_key.clone()).unwrap_or_default();
         let secret = self.decrypt_private_key(address.private_key.clone()).await;
         if network.account_status == AccountStatus::UnInit {
-            let address = match address.account_type {
-                AccountType::HighloadWallet => AddressDeploy::HighloadWallet(DeployWallet {
-                    public_key: public_key.clone(),
-                    secret: secret.clone(),
-                    workchain: address.workchain_id as i8,
-                }),
-                AccountType::Wallet => AddressDeploy::WalletV3(DeployWallet {
-                    public_key: public_key.clone(),
-                    secret: secret.clone(),
-                    workchain: address.workchain_id as i8,
-                }),
-                AccountType::SafeMultisig => {
-                    let owners: Vec<String> = address
-                        .custodians_public_keys
-                        .map(|pks| serde_json::from_value(pks).unwrap_or_default())
-                        .unwrap_or_default();
-                    let owners = owners
-                        .into_iter()
-                        .map(|o| hex::decode(o).unwrap_or_default())
-                        .collect();
-                    AddressDeploy::SafeMultisig(DeploySafeMultisigWallet {
-                        public_key: public_key.clone(),
-                        secret: secret.clone(),
-                        workchain: address.workchain_id as i8,
-                        owners,
-                        req_confirms: address.custodians.unwrap_or_default() as u8,
-                    })
-                }
-            };
-
-            self.ton_api_client.deploy_address_contract(address).await?;
+            self.ton_api_client
+                .deploy_address_contract(&address, &secret)
+                .await?;
         }
         let (payload, unsigned_message) = self
             .ton_api_client

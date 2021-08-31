@@ -6,7 +6,7 @@ use bigdecimal::{BigDecimal, ToPrimitive};
 use ed25519_dalek::{Keypair, PublicKey, SecretKey, Signer};
 use nekoton::core::models::{Expiration, RootTokenContractDetails};
 use nekoton::core::token_wallet::{RootTokenContractState, TokenWalletContractState};
-use nekoton::core::ton_wallet::{MultisigType, TransferAction, WalletType};
+use nekoton::core::ton_wallet::{MultisigType, TransferAction};
 use nekoton::crypto::UnsignedMessage;
 use num_traits::FromPrimitive;
 use ton_block::MsgAddressInt;
@@ -14,18 +14,16 @@ use ton_types::UInt256;
 
 use crate::models::account_enums::AccountType;
 use crate::models::address::{CreateAddress, NetworkAddressData};
-use crate::models::sqlx::TokenBalanceFromDb;
+use crate::models::sqlx::{AddressDb, TokenBalanceFromDb};
 use crate::models::token_balance::NetworkTokenAddressData;
 use crate::models::token_transactions::TokenTransactionSend;
 use crate::models::transactions::TransactionSend;
 use crate::prelude::ServiceError;
 use crate::ton_core::TonCore;
 
-pub use self::models::*;
 pub use self::responses::*;
 pub use self::utils::*;
 
-mod models;
 mod responses;
 mod utils;
 
@@ -37,7 +35,11 @@ pub trait TonClient: Send + Sync {
         &self,
         address: MsgAddressInt,
     ) -> Result<NetworkAddressData, ServiceError>;
-    async fn deploy_address_contract(&self, address: AddressDeploy) -> Result<(), ServiceError>;
+    async fn deploy_address_contract(
+        &self,
+        address: &AddressDb,
+        secret: &[u8],
+    ) -> Result<(), ServiceError>;
     async fn get_token_address_info(
         &self,
         address: MsgAddressInt,
@@ -164,68 +166,56 @@ impl TonClient for TonClientImpl {
             sync_u_time: contract.timings.current_utime() as i64,
         })
     }
-    async fn deploy_address_contract(&self, address: AddressDeploy) -> Result<(), ServiceError> {
-        let expiration = Expiration::Timeout(DEFAULT_EXPIRATION_TIMEOUT);
+    async fn deploy_address_contract(
+        &self,
+        address: &AddressDb,
+        private_key: &[u8],
+    ) -> Result<(), ServiceError> {
+        let public_key = PublicKey::from_bytes(
+            &hex::decode(&address.public_key).map_err(|err| ServiceError::Other(err.into()))?,
+        )
+        .map_err(|err| ServiceError::Other(err.into()))?;
 
-        let (public_key, secret, unsigned_message) = match address {
-            AddressDeploy::HighloadWallet(wallet) => {
-                let public_key = PublicKey::from_bytes(&wallet.public_key)
-                    .map_err(|err| ServiceError::Other(err.into()))?;
-
-                let secret = SecretKey::from_bytes(&wallet.secret)
-                    .map_err(|err| ServiceError::Other(err.into()))?;
-
-                let unsigned_message =
-                    nekoton::core::ton_wallet::highload_wallet_v2::prepare_deploy(
-                        &public_key,
-                        wallet.workchain,
-                        expiration,
-                    )?;
-
-                (public_key, secret, unsigned_message)
-            }
-            AddressDeploy::WalletV3(wallet) => {
-                let public_key = PublicKey::from_bytes(&wallet.public_key)
-                    .map_err(|err| ServiceError::Other(err.into()))?;
-
-                let secret = SecretKey::from_bytes(&wallet.secret)
-                    .map_err(|err| ServiceError::Other(err.into()))?;
-
-                let unsigned_message = nekoton::core::ton_wallet::wallet_v3::prepare_deploy(
+        let unsigned_message = match address.account_type {
+            AccountType::HighloadWallet => {
+                nekoton::core::ton_wallet::highload_wallet_v2::prepare_deploy(
                     &public_key,
-                    wallet.workchain,
-                    expiration,
-                )?;
-
-                (public_key, secret, unsigned_message)
+                    address.workchain_id as i8,
+                    Expiration::Timeout(DEFAULT_EXPIRATION_TIMEOUT),
+                )?
             }
-            AddressDeploy::SafeMultisig(wallet) => {
-                let public_key = PublicKey::from_bytes(&wallet.public_key)
-                    .map_err(|err| ServiceError::Other(err.into()))?;
-
-                let secret = SecretKey::from_bytes(&wallet.secret)
-                    .map_err(|err| ServiceError::Other(err.into()))?;
-
-                let mut owners = Vec::new();
-                for owner in wallet.owners {
-                    owners.push(
-                        PublicKey::from_bytes(&owner)
-                            .map_err(|err| ServiceError::Other(err.into()))?,
-                    );
-                }
-
-                let unsigned_message = nekoton::core::ton_wallet::multisig::prepare_deploy(
+            AccountType::Wallet => nekoton::core::ton_wallet::wallet_v3::prepare_deploy(
+                &public_key,
+                address.workchain_id as i8,
+                Expiration::Timeout(DEFAULT_EXPIRATION_TIMEOUT),
+            )?,
+            AccountType::SafeMultisig => {
+                let owners: Vec<String> = address
+                    .custodians_public_keys
+                    .clone()
+                    .map(|pks| serde_json::from_value(pks).unwrap_or_default())
+                    .unwrap_or_default();
+                let owners = owners
+                    .into_iter()
+                    .map(|o| hex::decode(o).unwrap_or_default())
+                    .collect::<Vec<Vec<u8>>>();
+                let owners = owners
+                    .into_iter()
+                    .map(|item| PublicKey::from_bytes(&item).unwrap_or_default())
+                    .collect::<Vec<PublicKey>>();
+                nekoton::core::ton_wallet::multisig::prepare_deploy(
                     &public_key,
                     MULTISIG_TYPE,
-                    wallet.workchain,
-                    expiration,
+                    address.workchain_id as i8,
+                    Expiration::Timeout(DEFAULT_EXPIRATION_TIMEOUT),
                     &owners,
-                    wallet.req_confirms,
-                )?;
-
-                (public_key, secret, unsigned_message)
+                    address.custodians.unwrap_or_default() as u8,
+                )?
             }
         };
+
+        let secret =
+            SecretKey::from_bytes(private_key).map_err(|err| ServiceError::Other(err.into()))?;
 
         let key_pair = Keypair {
             secret,
@@ -247,14 +237,13 @@ impl TonClient for TonClientImpl {
         account_type: AccountType,
     ) -> Result<(SentTransaction, Box<dyn UnsignedMessage>), ServiceError> {
         let public_key =
-            PublicKey::from_bytes(&public_key).map_err(|err| ServiceError::Other(err.into()))?;
+            PublicKey::from_bytes(public_key).map_err(|err| ServiceError::Other(err.into()))?;
 
         let address = MsgAddressInt::from_str(&transaction.from_address.0)?;
         let account = UInt256::from_be_bytes(&address.address().get_bytestring(0));
         let state = self.ton_core.get_contract_state(account).await?;
 
-        let mut amount = Default::default();
-        let transfer_action = match account_type {
+        let (transfer_action, amount) = match account_type {
             AccountType::HighloadWallet => {
                 todo!()
             }
@@ -265,17 +254,20 @@ impl TonClient for TonClientImpl {
                     .ok_or_else(|| ServiceError::Other(TonClientError::InvalidRecipient.into()))?;
 
                 let dst = MsgAddressInt::from_str(&recipient.recipient_address.0)?;
-                amount = recipient.value.to_u64().unwrap_or_default();
+                let amount = recipient.value.to_u64().unwrap_or_default();
 
-                nekoton::core::ton_wallet::wallet_v3::prepare_transfer(
-                    &public_key,
-                    &state.account,
-                    dst,
+                (
+                    nekoton::core::ton_wallet::wallet_v3::prepare_transfer(
+                        &public_key,
+                        &state.account,
+                        dst,
+                        amount,
+                        false,
+                        None,
+                        Expiration::Timeout(DEFAULT_EXPIRATION_TIMEOUT),
+                    )?,
                     amount,
-                    false,
-                    None,
-                    Expiration::Timeout(DEFAULT_EXPIRATION_TIMEOUT),
-                )?
+                )
             }
             AccountType::SafeMultisig => {
                 todo!()
