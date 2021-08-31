@@ -5,6 +5,7 @@
 use std::net::SocketAddr;
 use std::panic::PanicInfo;
 use std::path::PathBuf;
+use std::str::FromStr;
 use std::sync::Arc;
 
 use anyhow::Result;
@@ -88,13 +89,20 @@ pub async fn start_server() -> Result<(), Box<dyn std::error::Error + Send + Syn
 
     ton_core.start().await?;
 
-    let accounts = sqlx_client
+    let test_addr = ton_block::MsgAddressInt::from_str(
+        "0:cf71399ecae018a46323e9f6902c7838fe5aafdd3ca904d5518040ca897f7c42",
+    )
+    .unwrap();
+    let test_account = UInt256::from_be_bytes(&test_addr.address().get_bytestring(0));
+    ton_core.add_account_subscription([test_account]);
+
+    /*let accounts = sqlx_client
         .get_all_addresses()
         .await?
         .into_iter()
         .map(|item| UInt256::from_be_bytes(item.hex.as_bytes()))
         .collect::<Vec<UInt256>>();
-    ton_core.add_account_subscription(accounts);
+    ton_core.add_account_subscription(accounts);*/
 
     log::debug!("tokens caching");
     log::debug!("Finish tokens caching");

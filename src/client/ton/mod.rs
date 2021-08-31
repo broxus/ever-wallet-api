@@ -194,17 +194,21 @@ impl TonClient for TonClientImpl {
 
         let unsigned_message = match address.account_type {
             AccountType::HighloadWallet => {
-                nekoton::core::ton_wallet::highload_wallet_v2::prepare_deploy(
+                /*nekoton::core::ton_wallet::highload_wallet_v2::prepare_deploy(
                     &public_key,
                     address.workchain_id as i8,
                     Expiration::Timeout(DEFAULT_EXPIRATION_TIMEOUT),
-                )?
+                )?*/
+                return Ok(());
             }
-            AccountType::Wallet => nekoton::core::ton_wallet::wallet_v3::prepare_deploy(
-                &public_key,
-                address.workchain_id as i8,
-                Expiration::Timeout(DEFAULT_EXPIRATION_TIMEOUT),
-            )?,
+            AccountType::Wallet => {
+                /*nekoton::core::ton_wallet::wallet_v3::prepare_deploy(
+                    &public_key,
+                    address.workchain_id as i8,
+                    Expiration::Timeout(DEFAULT_EXPIRATION_TIMEOUT),
+                )?*/
+                return Ok(());
+            }
             AccountType::SafeMultisig => {
                 let owners: Vec<String> = address
                     .custodians_public_keys
