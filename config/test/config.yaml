@@ -8,3 +8,24 @@ ton_core:
   rocks_db_path: "/var/ton/ton-wallet-api/data/rocksdb"
   file_db_path: "/var/ton/ton-wallet-api/data/file"
   keys_path: "/var/ton/ton-wallet-api/data/keys"
+logger_settings:
+  appenders:
+    stdout:
+      kind: console
+      encoder:
+        pattern: "{d(%Y-%m-%d %H:%M:%S %Z)(utc)} - {h({l})} {M} = {m} {n}"
+    root:
+      level: info
+      appenders:
+        - stdout
+    loggers:
+      ton_wallet_api:
+        level: info
+        appenders:
+          - stdout
+        additive: false
+      warp:
+        level: debug
+        appenders:
+          - stdout
+        additive: false

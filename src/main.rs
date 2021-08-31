@@ -1,9 +1,7 @@
 use std::env;
 
-use dexpa::errors::*;
-
 #[tokio::main(worker_threads = 8)]
-async fn main() -> StdResult<()> {
+async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync + 'static>> {
     let args: Vec<String> = env::args().collect();
 
     match &*args[1] {

@@ -8,8 +8,6 @@ use std::collections::HashMap;
 use std::net::SocketAddr;
 use std::sync::Arc;
 
-use dexpa::currency::*;
-use dexpa::errors::ErrorParams;
 use tokio::sync::{Mutex, RwLock};
 use warp::Filter;
 
@@ -64,7 +62,6 @@ mod filters {
     use warp::filters::BoxedFilter;
     use warp::{Filter, Rejection, Reply};
 
-    use dexpa::errors::{log_error, ErrorParams};
     use hyper::body::Bytes;
 
     use super::controllers::{self, Context};

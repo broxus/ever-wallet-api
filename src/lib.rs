@@ -3,12 +3,11 @@
 #![allow(clippy::inconsistent_struct_constructor)]
 
 use std::net::SocketAddr;
+use std::panic::PanicInfo;
 use std::path::PathBuf;
 use std::sync::Arc;
 
 use anyhow::Result;
-use dexpa::errors::*;
-use dexpa::utils::handle_panic;
 use futures::prelude::*;
 use serde::Deserialize;
 use sqlx::postgres::PgPoolOptions;
@@ -36,7 +35,12 @@ mod sqlx_client;
 mod ton_core;
 mod utils;
 
-pub async fn start_server() -> StdResult<()> {
+pub fn handle_panic(panic_info: &PanicInfo<'_>) {
+    log::error!("{}", panic_info);
+    std::process::exit(1);
+}
+
+pub async fn start_server() -> Result<(), Box<dyn std::error::Error + Send + Sync + 'static>> {
     let config = ApplicationConfig::from_env()?;
 
     let global_config = ton_indexer::GlobalConfig::from_file(&config.global_config)?;
@@ -44,7 +48,7 @@ pub async fn start_server() -> StdResult<()> {
 
     init_logger(&service_config.logger_settings)?;
 
-    log::info!("Service config: {:#?}", service_config);
+    //log::info!("Service config: {:#?}", service_config);
 
     std::panic::set_hook(Box::new(handle_panic));
     let _guard = sentry::init(

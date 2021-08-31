@@ -16,7 +16,6 @@ base64 = "*"
 chrono = { version = "*", features = ["serde"] }
 config = { version = "0.11.0", default-features = false }
 derive_more = "*"
-dexpa = { git = "ssh://git@gitlab.dexpa.io/rust/libdexpa", features = ["sentry-integration", "exchange", "web"] }
 futures = { version = "0.3" }
 rand = "0.7"
 hex = "*"

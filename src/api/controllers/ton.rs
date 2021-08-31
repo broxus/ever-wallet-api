@@ -1,7 +1,6 @@
 use std::collections::HashMap;
 
 use bigdecimal::{BigDecimal, Zero};
-use dexpa::currency::Currency;
 use futures::future::BoxFuture;
 use futures::FutureExt;
 

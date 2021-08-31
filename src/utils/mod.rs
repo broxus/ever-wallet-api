@@ -1,8 +1,6 @@
 use ton_types::UInt256;
 
 pub use self::existing_contract::*;
-use std::future::Future;
-use std::time::Duration;
 
 mod existing_contract;
 
