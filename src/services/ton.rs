@@ -1,7 +1,7 @@
 use std::str::FromStr;
 use std::sync::Arc;
 
-use aes::Aes128;
+use aes::Aes256;
 use async_trait::async_trait;
 use block_modes::block_padding::Pkcs7;
 use block_modes::{BlockMode, Ecb};
@@ -32,7 +32,7 @@ use crate::models::transactions::{
 use crate::prelude::ServiceError;
 use crate::sqlx_client::SqlxClient;
 
-type Aes128Ecb = Ecb<Aes128, Pkcs7>;
+type Aes128Ecb = Ecb<Aes256, Pkcs7>;
 
 #[async_trait]
 pub trait TonService: Send + Sync + 'static {
