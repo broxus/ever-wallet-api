@@ -10,7 +10,7 @@ CREATE TABLE token_transaction_events (
         transaction_direction       twa_transaction_direction NOT NULL,
         transaction_status          twa_token_transaction_status NOT NULL,
         event_status                twa_transaction_event_status NOT NULL,
-        created_at                  TIMESTAMP NOT NULL,
+        created_at                  TIMESTAMP NOT NULL DEFAULT current_timestamp,
         updated_at                  TIMESTAMP NOT NULL DEFAULT current_timestamp,
         CONSTRAINT token_transaction_events_pk PRIMARY KEY (id),
         CONSTRAINT token_transaction_events_to_api_service_fk FOREIGN KEY (service_id) REFERENCES api_service (id),
