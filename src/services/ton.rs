@@ -211,7 +211,7 @@ impl TonServiceImpl {
 
         // encrypt address private key
         let cipher = Aes128Ecb::new_from_slices(&secret_sha256, &secret_sha256).unwrap();
-        let mut buffer = [0u8; 32];
+        let mut buffer = [0u8; 64];
         let pos = private_key.len();
         buffer[..pos].copy_from_slice(private_key);
         let ciphertext = cipher.encrypt(&mut buffer, pos).unwrap();
