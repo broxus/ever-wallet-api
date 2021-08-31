@@ -38,8 +38,8 @@ type Aes128Cbc = Cbc<Aes128, NoPadding>;
 pub trait TonService: Send + Sync + 'static {
     async fn create_address(
         &self,
-        service_id: &ServiceId,
-        input: &CreateAddress,
+        service_id: ServiceId,
+        input: CreateAddress,
     ) -> Result<AddressDb, ServiceError>;
     async fn check_address(&self, address: &Address) -> Result<bool, ServiceError>;
     async fn get_address_balance(
@@ -49,7 +49,7 @@ pub trait TonService: Send + Sync + 'static {
     ) -> Result<(AddressDb, NetworkAddressData), ServiceError>;
     async fn create_send_transaction(
         &self,
-        service_id: &ServiceId,
+        service_id: ServiceId,
         input: TransactionSend,
     ) -> Result<TransactionDb, ServiceError>;
     async fn create_receive_transaction(
@@ -236,12 +236,12 @@ impl TonServiceImpl {
 impl TonService for TonServiceImpl {
     async fn create_address(
         &self,
-        service_id: &ServiceId,
-        input: &CreateAddress,
+        service_id: ServiceId,
+        input: CreateAddress,
     ) -> Result<AddressDb, ServiceError> {
         let payload = self.ton_api_client.create_address(input).await?;
         self.sqlx_client
-            .create_address(CreateAddressInDb::new(payload, *service_id))
+            .create_address(CreateAddressInDb::new(payload, service_id))
             .await
     }
     async fn check_address(&self, address: &Address) -> Result<bool, ServiceError> {
@@ -269,7 +269,7 @@ impl TonService for TonServiceImpl {
     }
     async fn create_send_transaction(
         &self,
-        service_id: &ServiceId,
+        service_id: ServiceId,
         input: TransactionSend,
     ) -> Result<TransactionDb, ServiceError> {
         let account = MsgAddressInt::from_str(&input.from_address.0).map_err(|_| {
@@ -282,7 +282,7 @@ impl TonService for TonServiceImpl {
         let address = self
             .sqlx_client
             .get_address(
-                *service_id,
+                service_id,
                 account.workchain_id(),
                 account.address().to_hex_string(),
             )
@@ -306,7 +306,7 @@ impl TonService for TonServiceImpl {
             .await?;
         let (mut transaction, mut event) = self
             .sqlx_client
-            .create_send_transaction(CreateSendTransaction::new(payload.clone(), *service_id))
+            .create_send_transaction(CreateSendTransaction::new(payload.clone(), service_id))
             .await?;
         if let Err(e) = self
             .ton_api_client
@@ -325,7 +325,7 @@ impl TonService for TonServiceImpl {
             transaction = result.0;
             event = result.1;
         }
-        self.notify(*service_id, event.into()).await;
+        self.notify(service_id, event.into()).await;
 
         Ok(transaction)
     }

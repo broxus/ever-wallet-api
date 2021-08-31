@@ -30,8 +30,7 @@ mod utils;
 
 #[async_trait]
 pub trait TonClient: Send + Sync {
-    async fn create_address(&self, payload: &CreateAddress)
-        -> Result<CreatedAddress, ServiceError>;
+    async fn create_address(&self, payload: CreateAddress) -> Result<CreatedAddress, ServiceError>;
     async fn get_address_info(
         &self,
         address: MsgAddressInt,
@@ -98,10 +97,7 @@ pub const MULTISIG_TYPE: MultisigType = MultisigType::SafeMultisigWallet;
 
 #[async_trait]
 impl TonClient for TonClientImpl {
-    async fn create_address(
-        &self,
-        payload: &CreateAddress,
-    ) -> Result<CreatedAddress, ServiceError> {
+    async fn create_address(&self, payload: CreateAddress) -> Result<CreatedAddress, ServiceError> {
         let generated_key = nekoton::crypto::generate_key(nekoton::crypto::MnemonicType::Labs(0))?;
 
         let Keypair { public, secret } = nekoton::crypto::derive_from_phrase(
@@ -141,7 +137,7 @@ impl TonClient for TonClientImpl {
             account_type,
             custodians: payload.custodians,
             confirmations: payload.confirmations,
-            custodians_public_keys: payload.custodians_public_keys.clone(), // TODO
+            custodians_public_keys: payload.custodians_public_keys, // TODO
         })
     }
     async fn get_address_info(

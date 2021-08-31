@@ -21,7 +21,7 @@ pub fn post_address_create(
     async move {
         let address = ctx
             .ton_service
-            .create_address(&service_id, &input.clone().into())
+            .create_address(service_id, input.into())
             .await
             .map(From::from);
         let res = AccountAddressResponse::from(address);
@@ -73,7 +73,7 @@ pub fn post_transactions_create(
     async move {
         let transaction = ctx
             .ton_service
-            .create_send_transaction(&service_id, input.into())
+            .create_send_transaction(service_id, input.into())
             .await
             .map(From::from);
         let res = AccountTransactionResponse::from(transaction);
