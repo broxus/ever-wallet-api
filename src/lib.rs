@@ -10,10 +10,11 @@ use std::sync::Arc;
 
 use anyhow::Result;
 use futures::prelude::*;
+use nekoton_utils::TrustMe;
 use serde::Deserialize;
 use sqlx::postgres::PgPoolOptions;
 use tokio::sync::mpsc;
-use ton_types::UInt256;
+use ton_types::{AccountId, UInt256};
 
 use crate::api::http_service;
 use crate::client::{CallbackClientImpl, TonClientImpl};
@@ -89,20 +90,19 @@ pub async fn start_server() -> Result<(), Box<dyn std::error::Error + Send + Syn
 
     ton_core.start().await?;
 
-    let test_addr = ton_block::MsgAddressInt::from_str(
-        "0:cf71399ecae018a46323e9f6902c7838fe5aafdd3ca904d5518040ca897f7c42",
-    )
-    .unwrap();
-    let test_account = UInt256::from_be_bytes(&test_addr.address().get_bytestring(0));
-    ton_core.add_account_subscription([test_account]);
-
-    /*let accounts = sqlx_client
+    let accounts = sqlx_client
         .get_all_addresses()
         .await?
         .into_iter()
-        .map(|item| UInt256::from_be_bytes(item.hex.as_bytes()))
+        .map(|item| {
+            UInt256::from_be_bytes(
+                &AccountId::from_string(&item.hex)
+                    .trust_me()
+                    .get_bytestring(0),
+            )
+        })
         .collect::<Vec<UInt256>>();
-    ton_core.add_account_subscription(accounts);*/
+    ton_core.add_account_subscription(accounts);
 
     log::debug!("tokens caching");
     log::debug!("Finish tokens caching");
