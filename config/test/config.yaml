@@ -15,12 +15,12 @@ logger_settings:
       encoder:
         pattern: "{d(%Y-%m-%d %H:%M:%S %Z)(utc)} - {h({l})} {M} = {m} {n}"
   root:
-    level: info
+    level: error
     appenders:
       - stdout
   loggers:
     ton_wallet_api:
-      level: info
+      level: debug
       appenders:
         - stdout
       additive: false
