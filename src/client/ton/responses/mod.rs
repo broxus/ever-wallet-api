@@ -14,8 +14,8 @@ pub struct CreatedAddress {
     pub workchain_id: i32,
     pub hex: String,
     pub base64url: String,
-    pub public_key: String,
-    pub private_key: String,
+    pub public_key: Vec<u8>,
+    pub private_key: Vec<u8>,
     pub account_type: AccountType,
     pub custodians: Option<i32>,
     pub confirmations: Option<i32>,
@@ -23,14 +23,19 @@ pub struct CreatedAddress {
 }
 
 impl CreateAddressInDb {
-    pub fn new(c: CreatedAddress, service_id: ServiceId) -> Self {
+    pub fn new(
+        c: CreatedAddress,
+        service_id: ServiceId,
+        public_key: String,
+        private_key: String,
+    ) -> Self {
         Self {
             service_id,
             workchain_id: c.workchain_id,
             hex: c.hex,
             base64url: c.base64url,
-            public_key: c.public_key,
-            private_key: c.private_key,
+            public_key,
+            private_key,
             account_type: c.account_type,
             custodians: c.custodians,
             confirmations: c.confirmations,

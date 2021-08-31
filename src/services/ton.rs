@@ -240,8 +240,17 @@ impl TonService for TonServiceImpl {
         input: CreateAddress,
     ) -> Result<AddressDb, ServiceError> {
         let payload = self.ton_api_client.create_address(input).await?;
+
+        let public_key = hex::encode(&payload.public_key);
+        let private_key = self.encrypt_private_key(&payload.private_key).await;
+
         self.sqlx_client
-            .create_address(CreateAddressInDb::new(payload, service_id))
+            .create_address(CreateAddressInDb::new(
+                payload,
+                service_id,
+                public_key,
+                private_key,
+            ))
             .await
     }
     async fn check_address(&self, address: &Address) -> Result<bool, ServiceError> {

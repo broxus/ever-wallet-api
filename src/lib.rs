@@ -12,6 +12,7 @@ use futures::prelude::*;
 use serde::Deserialize;
 use sqlx::postgres::PgPoolOptions;
 use tokio::sync::mpsc;
+use ton_types::UInt256;
 
 use crate::api::http_service;
 use crate::client::{CallbackClientImpl, TonClientImpl};
@@ -86,6 +87,14 @@ pub async fn start_server() -> Result<(), Box<dyn std::error::Error + Send + Syn
     let auth_service = Arc::new(AuthServiceImpl::new(sqlx_client.clone()));
 
     ton_core.start().await?;
+
+    let accounts = sqlx_client
+        .get_all_addresses()
+        .await?
+        .into_iter()
+        .map(|item| UInt256::from_be_bytes(item.hex.as_bytes()))
+        .collect::<Vec<UInt256>>();
+    ton_core.add_account_subscription(accounts);
 
     log::debug!("tokens caching");
     log::debug!("Finish tokens caching");

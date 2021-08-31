@@ -13,7 +13,7 @@ use num_traits::FromPrimitive;
 use ton_block::MsgAddressInt;
 use ton_types::UInt256;
 
-use crate::models::account_enums::AccountType;
+use crate::models::account_enums::{AccountStatus, AccountType};
 use crate::models::address::{CreateAddress, NetworkAddressData};
 use crate::models::sqlx::{AddressDb, TokenBalanceFromDb};
 use crate::models::token_balance::NetworkTokenAddressData;
@@ -128,12 +128,17 @@ impl TonClient for TonClientImpl {
             }
         };
 
+        let address_hex = address.address().to_hex_string();
+
+        let account = UInt256::from_be_bytes(address_hex.as_bytes());
+        self.ton_core.add_account_subscription([account]);
+
         Ok(CreatedAddress {
             workchain_id: address.workchain_id(),
-            hex: address.address().to_hex_string(),
+            hex: address_hex,
             base64url: nekoton_utils::pack_std_smc_addr(true, &address, false)?,
-            public_key: hex::encode(public.to_bytes()),
-            private_key: hex::encode(secret.to_bytes()),
+            public_key: public.to_bytes().to_vec(),
+            private_key: secret.to_bytes().to_vec(),
             account_type,
             custodians: payload.custodians,
             confirmations: payload.confirmations,
@@ -145,7 +150,20 @@ impl TonClient for TonClientImpl {
         address: MsgAddressInt,
     ) -> Result<NetworkAddressData, ServiceError> {
         let account = UInt256::from_be_bytes(&address.address().get_bytestring(0));
-        let contract = self.ton_core.get_contract_state(account).await?;
+        let contract = match self.ton_core.get_contract_state(account).await {
+            Ok(contract) => contract,
+            Err(_) => {
+                return Ok(NetworkAddressData {
+                    workchain_id: address.workchain_id(),
+                    hex: address.address().to_hex_string(),
+                    account_status: AccountStatus::UnInit,
+                    network_balance: Default::default(),
+                    last_transaction_hash: None,
+                    last_transaction_lt: None,
+                    sync_u_time: Default::default(),
+                })
+            }
+        };
 
         let account_status = transform_account_state(&contract.account.storage.state);
         let network_balance =
