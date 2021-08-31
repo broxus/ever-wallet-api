@@ -1,6 +1,7 @@
 use std::str::FromStr;
 use std::sync::Arc;
 
+use anyhow::Result;
 use async_trait::async_trait;
 use bigdecimal::{BigDecimal, ToPrimitive};
 use ed25519_dalek::{Keypair, PublicKey, SecretKey, Signer};
@@ -47,7 +48,7 @@ pub trait TonClient: Send + Sync {
     ) -> Result<NetworkTokenAddressData, ServiceError>;
     async fn prepare_transaction(
         &self,
-        transaction: &TransactionSend,
+        transaction: TransactionSend,
         public_key: &[u8],
         account_type: AccountType,
     ) -> Result<(SentTransaction, Box<dyn UnsignedMessage>), ServiceError>;
@@ -232,7 +233,7 @@ impl TonClient for TonClientImpl {
     }
     async fn prepare_transaction(
         &self,
-        transaction: &TransactionSend,
+        transaction: TransactionSend,
         public_key: &[u8],
         account_type: AccountType,
     ) -> Result<(SentTransaction, Box<dyn UnsignedMessage>), ServiceError> {
@@ -240,39 +241,95 @@ impl TonClient for TonClientImpl {
             PublicKey::from_bytes(public_key).map_err(|err| ServiceError::Other(err.into()))?;
 
         let address = MsgAddressInt::from_str(&transaction.from_address.0)?;
-        let account = UInt256::from_be_bytes(&address.address().get_bytestring(0));
-        let state = self.ton_core.get_contract_state(account).await?;
 
-        let (transfer_action, amount) = match account_type {
-            AccountType::HighloadWallet => {
-                todo!()
-            }
-            AccountType::Wallet => {
-                let recipient = transaction
+        let (transfer_action, amount) =
+            match account_type {
+                AccountType::HighloadWallet => {
+                    let account = UInt256::from_be_bytes(&address.address().get_bytestring(0));
+                    let current_state = self.ton_core.get_contract_state(account).await?.account;
+
+                    let gifts = transaction
                     .outputs
-                    .first()
-                    .ok_or_else(|| ServiceError::Other(TonClientError::InvalidRecipient.into()))?;
+                    .into_iter()
+                    .map(|item| {
+                        let dst = MsgAddressInt::from_str(&item.recipient_address.0)?;
+                        let amount = item.value.to_u64().unwrap_or_default();
 
-                let dst = MsgAddressInt::from_str(&recipient.recipient_address.0)?;
-                let amount = recipient.value.to_u64().unwrap_or_default();
+                        Ok(nekoton::core::ton_wallet::highload_wallet_v2::Gift {
+                            flags: 0,
+                            bounce: false,
+                            destination: dst,
+                            amount,
+                            body: None,
+                            state_init: None,
+                        })
+                    })
+                    .collect::<Vec<Result<nekoton::core::ton_wallet::highload_wallet_v2::Gift>>>();
 
-                (
-                    nekoton::core::ton_wallet::wallet_v3::prepare_transfer(
-                        &public_key,
-                        &state.account,
-                        dst,
+                    let gifts = gifts
+                    .into_iter()
+                    .collect::<Result<Vec<nekoton::core::ton_wallet::highload_wallet_v2::Gift>>>(
+                    )?;
+
+                    let amount = gifts.iter().map(|gift| gift.amount).sum();
+
+                    (
+                        nekoton::core::ton_wallet::highload_wallet_v2::prepare_transfer(
+                            &public_key,
+                            &current_state,
+                            gifts,
+                            Expiration::Timeout(DEFAULT_EXPIRATION_TIMEOUT),
+                        )?,
                         amount,
-                        false,
-                        None,
-                        Expiration::Timeout(DEFAULT_EXPIRATION_TIMEOUT),
-                    )?,
-                    amount,
-                )
-            }
-            AccountType::SafeMultisig => {
-                todo!()
-            }
-        };
+                    )
+                }
+                AccountType::Wallet => {
+                    let account = UInt256::from_be_bytes(&address.address().get_bytestring(0));
+                    let current_state = self.ton_core.get_contract_state(account).await?.account;
+
+                    let recipient = transaction.outputs.first().ok_or_else(|| {
+                        ServiceError::Other(TonClientError::InvalidRecipient.into())
+                    })?;
+
+                    let dst = MsgAddressInt::from_str(&recipient.recipient_address.0)?;
+                    let amount = recipient.value.to_u64().unwrap_or_default();
+
+                    (
+                        nekoton::core::ton_wallet::wallet_v3::prepare_transfer(
+                            &public_key,
+                            &current_state,
+                            dst,
+                            amount,
+                            false,
+                            None,
+                            Expiration::Timeout(DEFAULT_EXPIRATION_TIMEOUT),
+                        )?,
+                        amount,
+                    )
+                }
+                AccountType::SafeMultisig => {
+                    let recipient = transaction.outputs.first().ok_or_else(|| {
+                        ServiceError::Other(TonClientError::InvalidRecipient.into())
+                    })?;
+
+                    let dst = MsgAddressInt::from_str(&recipient.recipient_address.0)?;
+                    let amount = recipient.value.to_u64().unwrap_or_default();
+
+                    (
+                        nekoton::core::ton_wallet::multisig::prepare_transfer(
+                            &public_key,
+                            false,
+                            address.clone(),
+                            dst,
+                            amount,
+                            false,
+                            None,
+                            Expiration::Timeout(DEFAULT_EXPIRATION_TIMEOUT),
+                        )?,
+                        amount,
+                    )
+                }
+            };
 
         let unsigned_message = match transfer_action {
             TransferAction::Sign(unsigned_message) => unsigned_message,

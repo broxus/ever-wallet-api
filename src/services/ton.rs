@@ -50,7 +50,7 @@ pub trait TonService: Send + Sync + 'static {
     async fn create_send_transaction(
         &self,
         service_id: &ServiceId,
-        input: &TransactionSend,
+        input: TransactionSend,
     ) -> Result<TransactionDb, ServiceError>;
     async fn create_receive_transaction(
         &self,
@@ -270,7 +270,7 @@ impl TonService for TonServiceImpl {
     async fn create_send_transaction(
         &self,
         service_id: &ServiceId,
-        input: &TransactionSend,
+        input: TransactionSend,
     ) -> Result<TransactionDb, ServiceError> {
         let account = MsgAddressInt::from_str(&input.from_address.0).map_err(|_| {
             ServiceError::WrongInput(format!("Can not parse Address workchain and hex"))

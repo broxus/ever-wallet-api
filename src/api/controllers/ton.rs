@@ -73,7 +73,7 @@ pub fn post_transactions_create(
     async move {
         let transaction = ctx
             .ton_service
-            .create_send_transaction(&service_id, &input.into())
+            .create_send_transaction(&service_id, input.into())
             .await
             .map(From::from);
         let res = AccountTransactionResponse::from(transaction);
