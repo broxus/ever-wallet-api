@@ -23,8 +23,7 @@ pub struct CreateAddressRequest {
     pub workchain_id: Option<i32>,
     pub custodians: Option<i32>,
     pub confirmations: Option<i32>,
-    #[opg("custodiansPublicKeys", any)]
-    pub custodians_public_keys: Option<serde_json::Value>,
+    pub custodians_public_keys: Option<Vec<String>>,
 }
 
 impl From<CreateAddressRequest> for CreateAddress {

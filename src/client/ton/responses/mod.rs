@@ -19,7 +19,7 @@ pub struct CreatedAddress {
     pub account_type: AccountType,
     pub custodians: Option<i32>,
     pub confirmations: Option<i32>,
-    pub custodians_public_keys: Option<serde_json::Value>,
+    pub custodians_public_keys: Option<Vec<String>>,
 }
 
 impl CreateAddressInDb {
@@ -39,7 +39,9 @@ impl CreateAddressInDb {
             account_type: c.account_type,
             custodians: c.custodians,
             confirmations: c.confirmations,
-            custodians_public_keys: c.custodians_public_keys,
+            custodians_public_keys: c
+                .custodians_public_keys
+                .map(|c| serde_json::to_value(c).unwrap_or_default()),
         }
     }
 }

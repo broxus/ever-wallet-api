@@ -29,7 +29,7 @@ pub struct CreateAddress {
     pub workchain_id: Option<i32>,
     pub custodians: Option<i32>,
     pub confirmations: Option<i32>,
-    pub custodians_public_keys: Option<serde_json::Value>,
+    pub custodians_public_keys: Option<Vec<String>>,
 }
 
 #[derive(Clone, Debug, serde::Serialize, serde::Deserialize, Eq, PartialEq)]
