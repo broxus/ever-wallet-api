@@ -13,7 +13,7 @@ use nekoton_utils::TrustMe;
 use serde::Deserialize;
 use sqlx::postgres::PgPoolOptions;
 use tokio::sync::mpsc;
-use ton_types::{AccountId, UInt256};
+use ton_types::UInt256;
 
 use crate::api::http_service;
 use crate::client::{CallbackClientImpl, TonClientImpl};
@@ -49,8 +49,6 @@ pub async fn start_server() -> Result<(), Box<dyn std::error::Error + Send + Syn
     let service_config = Config::from_file(&config.service_config)?.load_env();
 
     init_logger(&service_config.logger_settings)?;
-
-    //log::info!("Service config: {:#?}", service_config);
 
     std::panic::set_hook(Box::new(handle_panic));
     let _guard = sentry::init(
@@ -93,13 +91,7 @@ pub async fn start_server() -> Result<(), Box<dyn std::error::Error + Send + Syn
         .get_all_addresses()
         .await?
         .into_iter()
-        .map(|item| {
-            UInt256::from_be_bytes(
-                &AccountId::from_string(&item.hex)
-                    .trust_me()
-                    .get_bytestring(0),
-            )
-        })
+        .map(|item| UInt256::from_be_bytes(&hex::decode(item.hex).trust_me()))
         .collect::<Vec<UInt256>>();
     ton_core.add_account_subscription(accounts);
 
@@ -153,18 +145,28 @@ async fn start_listening_receive_transactions(
         while let Some(transaction) = rx.recv().await {
             match transaction {
                 ReceiveTransaction::Create(transaction) => {
-                    let _transaction_db =
-                        ton_service.create_receive_transaction(&transaction).await;
+                    match ton_service.create_receive_transaction(&transaction).await {
+                        Ok(_) => {}
+                        Err(err) => {
+                            log::error!("Failed to create receive transaction in db: {:?}", err)
+                        }
+                    }
                 }
                 ReceiveTransaction::UpdateSent(transaction) => {
-                    let _transaction_db = ton_service
+                    match ton_service
                         .update_sent_transaction(
                             transaction.message_hash,
                             transaction.account_workchain_id,
                             transaction.account_hex,
                             &transaction.input,
                         )
-                        .await;
+                        .await
+                    {
+                        Ok(_) => {}
+                        Err(err) => {
+                            log::error!("Failed to update sent transaction in db: {:?}", err)
+                        }
+                    }
                 }
             }
         }

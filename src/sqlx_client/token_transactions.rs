@@ -97,7 +97,7 @@ impl SqlxClient {
             UPDATE token_transactions SET
             (transaction_hash, payload, block_hash, block_time, status, error) =
             ($1, $2, $3, $4, $5, $6)
-            WHERE message_hash = $7 AND account_workchain_id = $8 and account_hex = $9 and direction = 'Send'::twa_transaction_direction and transaction_hash = NULL and root_address = $10
+            WHERE message_hash = $7 AND account_workchain_id = $8 and account_hex = $9 and direction = 'Send'::twa_transaction_direction and transaction_hash is NULL and root_address = $10
             RETURNING id, service_id as "service_id: _", transaction_hash, message_hash, account_workchain_id, account_hex,
             value, root_address, payload, error, block_hash, block_time, direction as "direction: _", status as "status: _", created_at, updated_at"#,
                 payload.transaction_hash,

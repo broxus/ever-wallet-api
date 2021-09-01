@@ -309,11 +309,12 @@ impl TonService for TonServiceImpl {
                 .deploy_address_contract(&address, &secret)
                 .await?;
         }
-        let (payload, unsigned_message) = self
+        let (payload, signed_message) = self
             .ton_api_client
             .prepare_transaction(
                 input,
                 &public_key,
+                &secret,
                 &address.account_type,
                 &address.custodians,
             )
@@ -322,11 +323,7 @@ impl TonService for TonServiceImpl {
             .sqlx_client
             .create_send_transaction(CreateSendTransaction::new(payload.clone(), service_id))
             .await?;
-        if let Err(e) = self
-            .ton_api_client
-            .send_transaction(unsigned_message, &public_key, &secret)
-            .await
-        {
+        if let Err(e) = self.ton_api_client.send_transaction(signed_message).await {
             let result = self
                 .sqlx_client
                 .update_send_transaction(

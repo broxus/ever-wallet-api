@@ -96,7 +96,7 @@ impl SqlxClient {
             UPDATE transactions SET
             (transaction_hash, transaction_lt, transaction_timeout, transaction_scan_lt, sender_workchain_id, sender_hex, messages, data, original_value, original_outputs, value, fee, balance_change, status, error) =
             ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
-            WHERE message_hash = $16 AND account_workchain_id = $17 and account_hex = $18 and direction = 'Send'::twa_transaction_direction and transaction_hash = NULL
+            WHERE message_hash = $16 AND account_workchain_id = $17 and account_hex = $18 and direction = 'Send'::twa_transaction_direction and transaction_hash is NULL
             RETURNING id, service_id as "service_id: _", message_hash, transaction_hash, transaction_lt, transaction_timeout,
                 transaction_scan_lt, sender_workchain_id, sender_hex, account_workchain_id, account_hex, messages, data,
                 original_value, original_outputs, value, fee, balance_change, direction as "direction: _", status as "status: _",
@@ -230,7 +230,7 @@ impl SqlxClient {
                 payload.transaction_status as TonTransactionStatus,
                 payload.event_status as TonEventStatus
             )
-            .fetch_one(&self.pool)
+            .fetch_one(&mut tx)
             .await
             .map_err(ServiceError::from)?;
 

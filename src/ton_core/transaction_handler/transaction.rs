@@ -63,7 +63,7 @@ pub async fn handle_transaction(transaction_ctx: TransactionContext) -> Result<R
 
     let balance_change = BigDecimal::from_i64(nekoton::core::utils::compute_balance_change(&data));
 
-    let value = BigDecimal::from_u64(in_msg.value);
+    let value = BigDecimal::from_u64(in_msg.value); // TODO
     let message_hash = raw_in_msg.hash()?.to_hex_string();
     let transaction_lt = BigDecimal::from_u64(data.lt);
     let transaction_scan_lt = Some(transaction_ctx.transaction.lt as i64);
@@ -90,7 +90,7 @@ pub async fn handle_transaction(transaction_ctx: TransactionContext) -> Result<R
                 fee,
                 balance_change,
                 direction: TonTransactionDirection::Receive,
-                status: TonTransactionStatus::New,
+                status: TonTransactionStatus::Done,
                 error: None,
                 aborted: desc.aborted,
                 bounce: in_msg.bounce,

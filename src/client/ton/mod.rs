@@ -8,9 +8,9 @@ use ed25519_dalek::{Keypair, PublicKey, SecretKey, Signer};
 use nekoton::core::models::{Expiration, RootTokenContractDetails};
 use nekoton::core::token_wallet::{RootTokenContractState, TokenWalletContractState};
 use nekoton::core::ton_wallet::{MultisigType, TransferAction};
-use nekoton::crypto::UnsignedMessage;
+use nekoton::crypto::SignedMessage;
 use num_traits::FromPrimitive;
-use ton_block::MsgAddressInt;
+use ton_block::{GetRepresentationHash, MsgAddressInt};
 use ton_types::UInt256;
 
 use crate::models::account_enums::{AccountStatus, AccountType};
@@ -49,15 +49,11 @@ pub trait TonClient: Send + Sync {
         &self,
         transaction: TransactionSend,
         public_key: &[u8],
+        private_key: &[u8],
         account_type: &AccountType,
         custodians: &Option<i32>,
-    ) -> Result<(SentTransaction, Box<dyn UnsignedMessage>), ServiceError>;
-    async fn send_transaction(
-        &self,
-        unsigned_message: Box<dyn UnsignedMessage>,
-        public_key: &[u8],
-        private_key: &[u8],
-    ) -> Result<(), ServiceError>;
+    ) -> Result<(SentTransaction, SignedMessage), ServiceError>;
+    async fn send_transaction(&self, signed_message: SignedMessage) -> Result<(), ServiceError>;
     async fn prepare_token_transaction(
         &self,
         transaction: &TokenTransactionSend,
@@ -128,14 +124,15 @@ impl TonClient for TonClientImpl {
             }
         };
 
-        let address_hex = address.address().to_hex_string();
-
-        let account = UInt256::from_be_bytes(address_hex.as_bytes());
+        let account = UInt256::from_be_bytes(
+            &hex::decode(address.address().to_hex_string())
+                .map_err(|err| ServiceError::Other(err.into()))?,
+        );
         self.ton_core.add_account_subscription([account]);
 
         Ok(CreatedAddress {
             workchain_id: address.workchain_id(),
-            hex: address_hex,
+            hex: address.address().to_hex_string(),
             base64url: nekoton_utils::pack_std_smc_addr(true, &address, false)?,
             public_key: public.to_bytes().to_vec(),
             private_key: secret.to_bytes().to_vec(),
@@ -254,9 +251,10 @@ impl TonClient for TonClientImpl {
         &self,
         transaction: TransactionSend,
         public_key: &[u8],
+        private_key: &[u8],
         account_type: &AccountType,
         custodians: &Option<i32>,
-    ) -> Result<(SentTransaction, Box<dyn UnsignedMessage>), ServiceError> {
+    ) -> Result<(SentTransaction, SignedMessage), ServiceError> {
         let public_key =
             PublicKey::from_bytes(public_key).map_err(|err| ServiceError::Other(err.into()))?;
 
@@ -370,9 +368,20 @@ impl TonClient for TonClientImpl {
             }
         };
 
+        let secret =
+            SecretKey::from_bytes(private_key).map_err(|err| ServiceError::Other(err.into()))?;
+
+        let key_pair = Keypair {
+            secret,
+            public: public_key,
+        };
+
+        let signature = key_pair.sign(unsigned_message.hash());
+        let signed_message = unsigned_message.sign(&signature.to_bytes())?;
+
         let sent_transaction = SentTransaction {
             id: transaction.id,
-            message_hash: hex::encode(unsigned_message.hash()),
+            message_hash: signed_message.message.hash()?.to_hex_string(),
             account_workchain_id: address.workchain_id(),
             account_hex: address.address().to_hex_string(),
             value: BigDecimal::from_u64(amount).unwrap_or_default(),
@@ -380,24 +389,9 @@ impl TonClient for TonClientImpl {
             bounce,
         };
 
-        Ok((sent_transaction, unsigned_message))
+        Ok((sent_transaction, signed_message))
     }
-    async fn send_transaction(
-        &self,
-        unsigned_message: Box<dyn UnsignedMessage>,
-        public_key: &[u8],
-        private_key: &[u8],
-    ) -> Result<(), ServiceError> {
-        let public =
-            PublicKey::from_bytes(public_key).map_err(|err| ServiceError::Other(err.into()))?;
-        let secret =
-            SecretKey::from_bytes(private_key).map_err(|err| ServiceError::Other(err.into()))?;
-
-        let key_pair = Keypair { secret, public };
-
-        let signature = key_pair.sign(unsigned_message.hash());
-        let signed_message = unsigned_message.sign(&signature.to_bytes())?;
-
+    async fn send_transaction(&self, signed_message: SignedMessage) -> Result<(), ServiceError> {
         self.ton_core
             .send_ton_message(&signed_message.message, signed_message.expire_at)
             .await
