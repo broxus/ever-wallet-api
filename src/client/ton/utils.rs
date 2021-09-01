@@ -1,7 +1,7 @@
 use nekoton_abi::LastTransactionId;
 use ton_block::AccountState;
 
-use crate::models::account_enums::AccountStatus;
+use crate::models::*;
 
 pub fn parse_last_transaction(
     last_transaction: &LastTransactionId,

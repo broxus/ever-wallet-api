@@ -8,9 +8,7 @@ use super::Context;
 use crate::api::requests::*;
 use crate::api::responses::*;
 use crate::api::utils::*;
-use crate::models::account_enums::{AddressResponse, TonStatus};
-use crate::models::address::Address;
-use crate::models::service_id::ServiceId;
+use crate::models::*;
 
 pub fn post_address_create(
     service_id: ServiceId,

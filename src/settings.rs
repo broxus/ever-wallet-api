@@ -7,7 +7,7 @@ use anyhow::Result;
 use regex::{Captures, Regex};
 use serde::Deserialize;
 
-use crate::ton_core::TonCoreConfig;
+use crate::ton_core::*;
 
 #[derive(Deserialize, Clone, Debug)]
 pub struct Config {

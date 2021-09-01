@@ -6,11 +6,7 @@ use serde::{Deserialize, Serialize};
 use ton_block::MsgAddressInt;
 use uuid::Uuid;
 
-use crate::models::account_enums::{
-    AddressResponse, TonEventStatus, TonTransactionDirection, TonTransactionStatus,
-};
-use crate::models::address::Address;
-use crate::models::sqlx::{TokenTransactionEventDb, TransactionEventDb};
+use crate::models::*;
 
 #[derive(Debug, Serialize, Deserialize, Clone, derive_more::Constructor)]
 #[serde(rename_all = "camelCase")]

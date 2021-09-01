@@ -1,9 +1,7 @@
 use bigdecimal::BigDecimal;
 use uuid::Uuid;
 
-use crate::models::account_enums::{TonEventStatus, TonTransactionDirection, TonTransactionStatus};
-use crate::models::service_id::ServiceId;
-use crate::models::sqlx::TransactionDb;
+use crate::models::*;
 
 #[derive(Clone, Debug, serde::Serialize, serde::Deserialize, Eq, PartialEq)]
 pub struct CreateSendTransactionEvent {

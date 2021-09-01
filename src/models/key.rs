@@ -2,7 +2,7 @@ use chrono::NaiveDateTime;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
-use crate::models::service_id::ServiceId;
+use crate::models::*;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Key {

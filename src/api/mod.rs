@@ -67,7 +67,7 @@ mod filters {
     use super::controllers::{self, Context};
     use crate::api::docs;
     use crate::api::utils::BadRequestError;
-    use crate::models::service_id::ServiceId;
+    use crate::models::*;
     use crate::services::AuthService;
 
     pub fn server(ctx: Context) -> BoxedFilter<(impl warp::Reply,)> {

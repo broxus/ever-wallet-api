@@ -3,11 +3,7 @@ use bigdecimal::BigDecimal;
 use chrono::NaiveDateTime;
 use uuid::Uuid;
 
-use crate::models::account_enums::{
-    AccountType, TonEventStatus, TonTokenTransactionStatus, TonTransactionDirection,
-    TonTransactionStatus,
-};
-use crate::models::service_id::ServiceId;
+use crate::models::*;
 
 #[derive(Clone, Debug, serde::Serialize, serde::Deserialize, Eq, PartialEq)]
 pub struct ApiServiceDb {

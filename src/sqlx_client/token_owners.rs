@@ -1,5 +1,5 @@
-use crate::models::sqlx::TokenOwnerFromDb;
-use crate::sqlx_client::SqlxClient;
+use crate::models::*;
+use crate::sqlx_client::*;
 
 impl SqlxClient {
     pub async fn get_token_owner_by_address(

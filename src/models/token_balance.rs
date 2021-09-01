@@ -1,7 +1,6 @@
 use bigdecimal::BigDecimal;
 
-use crate::models::account_enums::AccountStatus;
-use crate::models::service_id::ServiceId;
+use crate::models::*;
 
 #[derive(Clone, Debug, serde::Serialize, serde::Deserialize, Eq, PartialEq)]
 pub struct CreateTokenBalanceInDb {

@@ -13,12 +13,9 @@ use ton_types::UInt256;
 
 use self::settings::*;
 use self::ton_subscriber::*;
-use self::transaction_handler::token_transaction::*;
-use self::transaction_handler::transaction::*;
-
-use crate::models::owners_cache::*;
-use crate::models::token_transactions::*;
-use crate::models::transactions::*;
+use self::transaction_handler::*;
+use crate::models::*;
+use crate::utils::*;
 
 mod models;
 mod settings;
@@ -31,11 +28,11 @@ pub struct TonCore {
 
     owners_cache: OwnersCache,
 
-    transaction_producer: ReceiveTransactionTx,
-    token_transaction_producer: ReceiveTokenTransactionTx,
-
     transaction_observer: Arc<TransactionObserver>,
     token_transaction_observer: Arc<TokenTransactionObserver>,
+
+    transaction_producer: ReceiveTransactionTx,
+    token_transaction_producer: ReceiveTokenTransactionTx,
 
     pending_messages_producer: PendingMessagesTx,
     pending_messages: Arc<Mutex<PendingMessagesCache>>,
@@ -407,7 +404,6 @@ impl TransactionsSubscription for TokenTransactionObserver {
                 .ok();
         }
 
-        // Done
         Ok(())
     }
 }

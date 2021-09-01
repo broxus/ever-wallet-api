@@ -4,8 +4,7 @@ use nekoton_utils::pack_std_smc_addr;
 use serde::{Deserialize, Serialize};
 use ton_block::MsgAddressInt;
 
-use crate::models::address::Address;
-use crate::models::sqlx::AddressDb;
+use crate::models::{Address, AddressDb};
 
 #[derive(Debug, Deserialize, Serialize, Clone, opg::OpgModel, Eq, PartialEq, sqlx::Type, Copy)]
 #[opg("AccountType")]

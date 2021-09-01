@@ -7,7 +7,7 @@ use ton_block::CommonMsgInfo;
 use ton_types::AccountId;
 use uuid::Uuid;
 
-use crate::models::account_enums::{TonTransactionDirection, TonTransactionStatus};
+use crate::models::*;
 use crate::ton_core::*;
 
 pub async fn handle_transaction(transaction_ctx: TransactionContext) -> Result<ReceiveTransaction> {

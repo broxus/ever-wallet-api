@@ -6,8 +6,8 @@ use nekoton_utils::TrustMe;
 use parking_lot::Mutex;
 use ton_block::MsgAddressInt;
 
-use crate::models::sqlx::TokenOwnerFromDb;
-use crate::sqlx_client::SqlxClient;
+use crate::models::sqlx::*;
+use crate::sqlx_client::*;
 
 #[derive(Clone)]
 /// Maps token wallet address to Owner info

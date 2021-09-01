@@ -1,6 +1,6 @@
-use crate::models::key::Key;
-use crate::prelude::ServiceError;
-use crate::sqlx_client::SqlxClient;
+use crate::models::*;
+use crate::prelude::*;
+use crate::sqlx_client::*;
 
 impl SqlxClient {
     pub async fn get_key(&self, api_key: &str) -> Result<Key, ServiceError> {

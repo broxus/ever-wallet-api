@@ -2,7 +2,7 @@
 
 use opg::*;
 
-use crate::api::{requests, responses};
+use crate::api::*;
 
 pub fn swagger() -> String {
     let api = describe_api! {

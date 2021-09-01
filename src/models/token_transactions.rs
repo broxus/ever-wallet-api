@@ -2,9 +2,7 @@ use bigdecimal::BigDecimal;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
-use crate::models::account_enums::{TonTokenTransactionStatus, TonTransactionDirection};
-use crate::models::address::Address;
-use crate::models::service_id::ServiceId;
+use crate::models::*;
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct TokenTransactionSend {
