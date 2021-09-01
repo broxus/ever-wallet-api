@@ -11,27 +11,9 @@ use crate::models::account_enums::{TonTransactionDirection, TonTransactionStatus
 use crate::ton_core::*;
 
 pub async fn handle_transaction(transaction_ctx: TransactionContext) -> Result<ReceiveTransaction> {
-    let data = transaction_ctx.transaction.clone();
+    let transaction = transaction_ctx.transaction.clone();
 
-    let desc = if let ton_block::TransactionDescr::Ordinary(desc) =
-        data.description
-            .read_struct()
-            .map_err(|_| TransactionError::InvalidStructure)?
-    {
-        desc
-    } else {
-        return Err(TransactionError::Unsupported.into());
-    };
-
-    let in_msg = match &data.in_msg {
-        Some(message) => message
-            .read_struct()
-            .map(nekoton::core::models::Message::from)
-            .map_err(|_| TransactionError::InvalidStructure)?,
-        None => return Err(TransactionError::Unsupported.into()),
-    };
-
-    let raw_in_msg = match &data.in_msg {
+    let in_msg = match &transaction.in_msg {
         Some(message) => message
             .read_struct()
             .map_err(|_| TransactionError::InvalidStructure)?,
@@ -47,30 +29,19 @@ pub async fn handle_transaction(transaction_ctx: TransactionContext) -> Result<R
         (address.workchain_id(), address.address().to_hex_string())
     };
 
-    let (sender_workchain_id, sender_hex) = match in_msg.src {
-        Some(address) => (
-            Some(address.workchain_id()),
-            Some(address.address().to_hex_string()),
-        ),
-        None => (None, None),
-    };
-
-    let messages = Some(serde_json::to_value(get_messages(&data)?)?);
-
-    let fee = BigDecimal::from_u64(nekoton::core::utils::compute_total_transaction_fees(
-        &data, &desc,
-    ));
-
-    let balance_change = BigDecimal::from_i64(nekoton::core::utils::compute_balance_change(&data));
-
-    let value = BigDecimal::from_u64(in_msg.value); // TODO
-    let message_hash = raw_in_msg.hash()?.to_hex_string();
-    let transaction_lt = BigDecimal::from_u64(data.lt);
-    let transaction_scan_lt = Some(transaction_ctx.transaction.lt as i64);
+    let message_hash = in_msg.hash()?.to_hex_string();
     let transaction_hash = Some(transaction_ctx.transaction_hash.to_hex_string());
+    let transaction_lt = BigDecimal::from_u64(transaction.lt);
+    let transaction_scan_lt = Some(transaction_ctx.transaction.lt as i64);
+    let (sender_workchain_id, sender_hex) = get_sender_info(&transaction)?;
+    let messages = Some(serde_json::to_value(get_messages(&transaction)?)?);
+    let fee = BigDecimal::from_u64(compute_fees(&transaction));
+    let value = BigDecimal::from_u128(compute_value(&transaction));
+    let balance_change =
+        BigDecimal::from_i64(nekoton::core::utils::compute_balance_change(&transaction));
 
-    let parsed = match raw_in_msg.header() {
-        CommonMsgInfo::IntMsgInfo(_) => {
+    let parsed = match in_msg.header() {
+        CommonMsgInfo::IntMsgInfo(header) => {
             ReceiveTransaction::Create(CreateReceiveTransaction {
                 id: Uuid::new_v4(),
                 message_hash,
@@ -92,8 +63,8 @@ pub async fn handle_transaction(transaction_ctx: TransactionContext) -> Result<R
                 direction: TonTransactionDirection::Receive,
                 status: TonTransactionStatus::Done,
                 error: None,
-                aborted: desc.aborted,
-                bounce: in_msg.bounce,
+                aborted: is_aborted(&transaction),
+                bounce: header.bounce,
             })
         }
         CommonMsgInfo::ExtInMsgInfo(_) => {
@@ -126,9 +97,30 @@ pub async fn handle_transaction(transaction_ctx: TransactionContext) -> Result<R
     Ok(parsed)
 }
 
-fn get_messages(data: &ton_block::Transaction) -> Result<Vec<Message>> {
+fn get_sender_info(
+    transaction: &ton_block::Transaction,
+) -> Result<((Option<i32>, Option<String>))> {
+    let in_msg = match &transaction.in_msg {
+        Some(message) => message
+            .read_struct()
+            .map(nekoton::core::models::Message::from)
+            .map_err(|_| TransactionError::InvalidStructure)?,
+        None => return Err(TransactionError::Unsupported.into()),
+    };
+
+    Ok(match in_msg.src {
+        Some(address) => (
+            Some(address.workchain_id()),
+            Some(address.address().to_hex_string()),
+        ),
+        None => (None, None),
+    })
+}
+
+fn get_messages(transaction: &ton_block::Transaction) -> Result<Vec<Message>> {
     let mut out_msgs = Vec::new();
-    data.out_msgs
+    transaction
+        .out_msgs
         .iterate(|ton_block::InRefValue(item)| {
             let dst = item
                 .header()
@@ -163,6 +155,49 @@ fn get_messages(data: &ton_block::Transaction) -> Result<Vec<Message>> {
         .map_err(|_| TransactionError::InvalidStructure)?;
 
     Ok(out_msgs)
+}
+
+fn compute_value(transaction: &ton_block::Transaction) -> u128 {
+    let mut value = 0;
+
+    if let Some(in_msg) = transaction
+        .in_msg
+        .as_ref()
+        .and_then(|data| data.read_struct().ok())
+    {
+        if let ton_block::CommonMsgInfo::IntMsgInfo(header) = in_msg.header() {
+            value += header.value.grams.0;
+        }
+    }
+
+    let _ = transaction.out_msgs.iterate(|out_msg| {
+        if let CommonMsgInfo::IntMsgInfo(header) = out_msg.0.header() {
+            value += header.value.grams.0;
+        }
+        Ok(true)
+    });
+
+    value
+}
+
+fn compute_fees(transaction: &ton_block::Transaction) -> u64 {
+    let mut fees = 0;
+    if let Ok(ton_block::TransactionDescr::Ordinary(description)) =
+        transaction.description.read_struct()
+    {
+        fees = nekoton::core::utils::compute_total_transaction_fees(&transaction, &description)
+    }
+    fees
+}
+
+fn is_aborted(transaction: &ton_block::Transaction) -> bool {
+    let mut aborted = false;
+    if let Ok(ton_block::TransactionDescr::Ordinary(description)) =
+        transaction.description.read_struct()
+    {
+        aborted = description.aborted
+    }
+    aborted
 }
 
 #[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]

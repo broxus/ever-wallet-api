@@ -190,22 +190,6 @@ impl TonClient for TonClientImpl {
         .map_err(|err| ServiceError::Other(err.into()))?;
 
         let unsigned_message = match address.account_type {
-            AccountType::HighloadWallet => {
-                /*nekoton::core::ton_wallet::highload_wallet_v2::prepare_deploy(
-                    &public_key,
-                    address.workchain_id as i8,
-                    Expiration::Timeout(DEFAULT_EXPIRATION_TIMEOUT),
-                )?*/
-                return Ok(());
-            }
-            AccountType::Wallet => {
-                /*nekoton::core::ton_wallet::wallet_v3::prepare_deploy(
-                    &public_key,
-                    address.workchain_id as i8,
-                    Expiration::Timeout(DEFAULT_EXPIRATION_TIMEOUT),
-                )?*/
-                return Ok(());
-            }
             AccountType::SafeMultisig => {
                 let owners: Vec<String> = address
                     .custodians_public_keys
@@ -228,6 +212,9 @@ impl TonClient for TonClientImpl {
                     &owners,
                     address.custodians.unwrap_or_default() as u8,
                 )?
+            }
+            AccountType::HighloadWallet | AccountType::Wallet => {
+                return Ok(());
             }
         };
 
