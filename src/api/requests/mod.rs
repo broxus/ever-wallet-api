@@ -240,3 +240,10 @@ pub struct TonTransactionStatusRequest {
     #[opg("transactionId", string)]
     pub transaction_id: Uuid,
 }
+
+#[derive(Debug, Deserialize, Serialize, Clone, opg::OpgModel, derive_more::Constructor)]
+#[serde(rename_all = "camelCase")]
+#[opg("MarkAllTransactionEventRequest")]
+pub struct MarkAllTransactionEventRequest {
+    pub event_status: Option<TonEventStatus>,
+}

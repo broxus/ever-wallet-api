@@ -27,8 +27,23 @@ pub struct MarkEventsResponse {
     pub error_message: Option<String>,
 }
 
-impl From<Result<(), ServiceError>> for MarkEventsResponse {
-    fn from(r: Result<(), ServiceError>) -> Self {
+impl From<Result<TransactionEventDb, ServiceError>> for MarkEventsResponse {
+    fn from(r: Result<TransactionEventDb, ServiceError>) -> Self {
+        match r {
+            Ok(_) => Self {
+                status: TonStatus::Ok,
+                error_message: None,
+            },
+            Err(e) => Self {
+                status: TonStatus::Error,
+                error_message: Some(e.to_string()),
+            },
+        }
+    }
+}
+
+impl From<Result<Vec<TransactionEventDb>, ServiceError>> for MarkEventsResponse {
+    fn from(r: Result<Vec<TransactionEventDb>, ServiceError>) -> Self {
         match r {
             Ok(_) => Self {
                 status: TonStatus::Ok,

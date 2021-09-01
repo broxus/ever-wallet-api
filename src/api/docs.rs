@@ -8,7 +8,7 @@ pub fn swagger() -> String {
     let api = describe_api! {
         info: {
             title: "TON api",
-            version: "1.0.0",
+            version: "4.0.0",
             description: r##"This API allows you to use TON api"##,
         },
         servers: {
@@ -96,6 +96,15 @@ pub fn swagger() -> String {
                     summary: "Mark event",
                     description: "Mark event by id.",
                     body: requests::PostTonMarkEventsRequest,
+                    200: responses::MarkEventsResponse,
+                }
+            },
+            ("events" / "mark" / "all" ): {
+                POST: {
+                    tags: { events },
+                    summary: "Mark events",
+                    description: "Mark events by status optional.",
+                    body: requests::MarkAllTransactionEventRequest,
                     200: responses::MarkEventsResponse,
                 }
             },

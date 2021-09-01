@@ -144,19 +144,19 @@ pub fn post_events(
         let transactions_events = ctx
             .ton_service
             .search_events(&service_id, &input.into())
-            .await?;
-        let events: Vec<_> = transactions_events
-            .into_iter()
-            .map(AccountTransactionEventResponse::from)
-            .collect();
-        let res = TonEventsResponse {
-            status: TonStatus::Ok,
-            data: Some(EventsResponse {
-                count: events.len() as i32,
-                items: events,
-            }),
-            error_message: None,
-        };
+            .await
+            .map(|transactions_events| {
+                let events: Vec<_> = transactions_events
+                    .into_iter()
+                    .map(AccountTransactionEventResponse::from)
+                    .collect();
+                EventsResponse {
+                    count: events.len() as i32,
+                    items: events,
+                }
+            });
+
+        let res = TonEventsResponse::from(transactions_events);
 
         Ok(warp::reply::json(&(res)))
     }
@@ -169,12 +169,24 @@ pub fn post_events_mark(
     ctx: Context,
 ) -> BoxFuture<'static, Result<impl warp::Reply, warp::Rejection>> {
     async move {
-        ctx.ton_service.mark_event(&service_id, &input.id).await?;
-        let res = MarkEventsResponse {
-            status: TonStatus::Ok,
-            error_message: None,
-        };
+        let transaction = ctx.ton_service.mark_event(&service_id, &input.id).await;
+        let res = MarkEventsResponse::from(transaction);
+        Ok(warp::reply::json(&(res)))
+    }
+    .boxed()
+}
 
+pub fn post_events_mark_all(
+    service_id: ServiceId,
+    input: MarkAllTransactionEventRequest,
+    ctx: Context,
+) -> BoxFuture<'static, Result<impl warp::Reply, warp::Rejection>> {
+    async move {
+        let transactions = ctx
+            .ton_service
+            .mark_all_events(&service_id, input.event_status)
+            .await;
+        let res = MarkEventsResponse::from(transactions);
         Ok(warp::reply::json(&(res)))
     }
     .boxed()

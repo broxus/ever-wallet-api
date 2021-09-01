@@ -88,6 +88,11 @@ pub trait TonService: Send + Sync + 'static {
         service_id: &ServiceId,
         id: &Uuid,
     ) -> Result<TransactionEventDb, ServiceError>;
+    async fn mark_all_events(
+        &self,
+        service_id: &ServiceId,
+        event_status: Option<TonEventStatus>,
+    ) -> Result<Vec<TransactionEventDb>, ServiceError>;
     async fn get_tokens_transaction_by_mh(
         &self,
         service_id: &ServiceId,
@@ -430,6 +435,19 @@ impl TonService for TonServiceImpl {
             .update_event_status_of_transaction_event_by_id(
                 *service_id,
                 *id,
+                TonEventStatus::Notified,
+            )
+            .await
+    }
+    async fn mark_all_events(
+        &self,
+        service_id: &ServiceId,
+        event_status: Option<TonEventStatus>,
+    ) -> Result<Vec<TransactionEventDb>, ServiceError> {
+        self.sqlx_client
+            .update_event_status_of_transactions_event_by_status(
+                *service_id,
+                event_status,
                 TonEventStatus::Notified,
             )
             .await

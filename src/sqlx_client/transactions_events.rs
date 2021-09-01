@@ -109,6 +109,61 @@ impl SqlxClient {
         .map_err(From::from)
     }
 
+    pub async fn update_event_status_of_transactions_event_by_status(
+        &self,
+        service_id: ServiceId,
+        old_event_status: Option<TonEventStatus>,
+        event_status: TonEventStatus,
+    ) -> Result<Vec<TransactionEventDb>, ServiceError> {
+        let mut args = PgArguments::default();
+        args.add(event_status);
+        args.add(service_id.inner());
+
+        let old = old_event_status
+            .map(|old| {
+                args.add(old);
+                "AND event_status = $3"
+            })
+            .unwrap_or_default();
+        let query = format!(
+            r#"UPDATE transaction_events SET event_status = $1
+            WHERE service_id = $2 {}
+            RETURNING id,
+                service_id as "service_id: _",
+                transaction_id,
+                message_hash,
+                account_workchain_id,
+                account_hex,
+                balance_change,
+                transaction_direction as "transaction_direction: _",
+                transaction_status as "transaction_status: _",
+                event_status as "event_status: _",
+                created_at, updated_at"#,
+            old
+        );
+
+        let transactions = sqlx::query_with(&query, args).fetch_all(&self.pool).await?;
+
+        let res = transactions
+            .iter()
+            .map(|x| TransactionEventDb {
+                id: x.get(0),
+                service_id: x.get(1),
+                transaction_id: x.get(2),
+                message_hash: x.get(3),
+                account_workchain_id: x.get(4),
+                account_hex: x.get(5),
+                balance_change: x.get(6),
+                transaction_direction: x.get(7),
+                transaction_status: x.get(8),
+                event_status: x.get(9),
+                created_at: x.get(10),
+                updated_at: x.get(11),
+            })
+            .collect::<Vec<_>>();
+        Ok(res)
+    }
+
     pub async fn get_all_transaction_events(
         &self,
         service_id: ServiceId,
