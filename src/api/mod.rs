@@ -397,7 +397,7 @@ mod filters {
                  path: warp::path::FullPath,
                  headers: HeaderMap<HeaderValue>| async move {
                     match auth_service
-                        .authenticate("{}".to_string(), path, headers)
+                        .authenticate("".to_string(), path, headers)
                         .await
                     {
                         Ok(service_id) => Ok::<_, Rejection>(service_id),
