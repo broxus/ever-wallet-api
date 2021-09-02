@@ -146,8 +146,7 @@ pub struct AccountTransactionEventResponse {
     pub service_id: ServiceId,
     pub transaction_id: Uuid,
     pub message_hash: String,
-    pub account_workchain_id: i32,
-    pub account_hex: String,
+    pub account: AddressResponse,
     #[opg("balanceChange", string, optional)]
     pub balance_change: Option<BigDecimal>,
     pub transaction_direction: TonTransactionDirection,
@@ -161,13 +160,21 @@ pub struct AccountTransactionEventResponse {
 
 impl From<TransactionEventDb> for AccountTransactionEventResponse {
     fn from(c: TransactionEventDb) -> Self {
+        let account =
+            MsgAddressInt::from_str(&format!("{}:{}", c.account_workchain_id, c.account_hex))
+                .unwrap();
+        let base64url = Address(pack_std_smc_addr(true, &account, false).unwrap());
+
         AccountTransactionEventResponse {
             id: c.id,
             service_id: c.service_id,
             transaction_id: c.transaction_id,
             message_hash: c.message_hash,
-            account_workchain_id: c.account_workchain_id,
-            account_hex: c.account_hex,
+            account: AddressResponse {
+                workchain_id: c.account_workchain_id,
+                hex: Address(c.account_hex),
+                base64url,
+            },
             balance_change: c.balance_change,
             transaction_direction: c.transaction_direction,
             transaction_status: c.transaction_status,
@@ -186,8 +193,7 @@ pub struct AccountTokenTransactionEventResponse {
     pub service_id: ServiceId,
     pub token_transaction_id: Uuid,
     pub message_hash: String,
-    pub account_workchain_id: i32,
-    pub account_hex: String,
+    pub account: AddressResponse,
     #[opg("value", string)]
     pub value: BigDecimal,
     pub root_address: String,
@@ -202,13 +208,21 @@ pub struct AccountTokenTransactionEventResponse {
 
 impl From<TokenTransactionEventDb> for AccountTokenTransactionEventResponse {
     fn from(c: TokenTransactionEventDb) -> Self {
+        let account =
+            MsgAddressInt::from_str(&format!("{}:{}", c.account_workchain_id, c.account_hex))
+                .unwrap();
+        let base64url = Address(pack_std_smc_addr(true, &account, false).unwrap());
+
         AccountTokenTransactionEventResponse {
             id: c.id,
             service_id: c.service_id,
             token_transaction_id: c.token_transaction_id,
             message_hash: c.message_hash,
-            account_workchain_id: c.account_workchain_id,
-            account_hex: c.account_hex,
+            account: AddressResponse {
+                workchain_id: c.account_workchain_id,
+                hex: Address(c.account_hex),
+                base64url,
+            },
             value: c.value,
             root_address: c.root_address,
             transaction_direction: c.transaction_direction,
