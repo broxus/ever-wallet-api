@@ -1,14 +1,12 @@
-use std::collections::{hash_map, HashMap};
 use std::path::PathBuf;
 use std::sync::Arc;
 
 use anyhow::Result;
 use nekoton::core::models::{TokenWalletTransaction, TokenWalletVersion};
 use nekoton::transport::models::{ExistingContract, RawContractState};
-use parking_lot::Mutex;
 use serde::Deserialize;
 use tokio::sync::mpsc;
-use ton_block::{CommonMsgInfo, GetRepresentationHash, MsgAddressInt, Serializable};
+use ton_block::{GetRepresentationHash, MsgAddressInt, Serializable};
 use ton_types::UInt256;
 
 use self::settings::*;
@@ -27,15 +25,13 @@ pub struct TonCore {
     ton_subscriber: Arc<TonSubscriber>,
 
     owners_cache: OwnersCache,
+    messages_queue: Arc<PendingMessagesQueue>,
 
     transaction_observer: Arc<TransactionObserver>,
-    token_transaction_observer: Arc<TokenTransactionObserver>,
-
     transaction_producer: ReceiveTransactionTx,
-    token_transaction_producer: ReceiveTokenTransactionTx,
 
-    pending_messages_producer: PendingMessagesTx,
-    pending_messages: Arc<Mutex<PendingMessagesCache>>,
+    token_transaction_observer: Arc<TokenTransactionObserver>,
+    token_transaction_producer: ReceiveTokenTransactionTx,
 
     initialized: tokio::sync::Mutex<bool>,
 }
@@ -48,10 +44,11 @@ impl TonCore {
         transaction_producer: ReceiveTransactionTx,
         token_transaction_producer: ReceiveTokenTransactionTx,
     ) -> Result<Arc<Self>> {
-        let pending_messages_cache = Arc::new(Mutex::new(HashMap::new()));
-        let ton_subscriber = TonSubscriber::new(pending_messages_cache.clone());
-
         let node_config = get_node_config(&config).await?;
+
+        let messages_queue = PendingMessagesQueue::new(100);
+        let ton_subscriber = TonSubscriber::new(messages_queue.clone());
+
         let ton_engine = ton_indexer::Engine::new(
             node_config,
             global_config,
@@ -62,27 +59,22 @@ impl TonCore {
         let (transaction_tx, transaction_rx) = mpsc::unbounded_channel();
         let (token_transaction_tx, token_transaction_rx) = mpsc::unbounded_channel();
 
-        let (pending_messages_tx, pending_messages_rx) = mpsc::unbounded_channel();
-
         let engine = Arc::new(Self {
             ton_engine,
             owners_cache,
+            messages_queue,
             ton_subscriber,
             transaction_producer,
-            token_transaction_producer,
             transaction_observer: Arc::new(TransactionObserver { tx: transaction_tx }),
+            token_transaction_producer,
             token_transaction_observer: Arc::new(TokenTransactionObserver {
                 tx: token_transaction_tx,
             }),
-            pending_messages_producer: pending_messages_tx,
-            pending_messages: pending_messages_cache,
             initialized: Default::default(),
         });
 
         engine.start_listening_transactions(transaction_rx);
         engine.start_listening_token_transactions(token_transaction_rx);
-
-        engine.start_listening_pending_messages(pending_messages_rx);
 
         Ok(engine)
     }
@@ -111,34 +103,30 @@ impl TonCore {
 
     pub async fn send_ton_message(
         &self,
+        account: &ton_types::UInt256,
         message: &ton_block::Message,
         expire_at: u32,
-    ) -> Result<()> {
-        let (account, to) = match message.header() {
-            ton_block::CommonMsgInfo::ExtInMsgInfo(header) => (
-                UInt256::from_be_bytes(&header.dst.address().get_bytestring(0)),
-                ton_block::AccountIdPrefixFull::prefix(&header.dst)?,
-            ),
+    ) -> Result<MessageStatus> {
+        let to = match message.header() {
+            ton_block::CommonMsgInfo::ExtInMsgInfo(header) => {
+                ton_block::AccountIdPrefixFull::prefix(&header.dst)?
+            }
             _ => return Err(TonCoreError::ExternalTonMessageExpected.into()),
         };
 
         let cells = message.write_to_new_cell()?.into();
         let serialized = ton_types::serialize_toc(&cells)?;
 
-        let message_hash = message.serialize()?.repr_hash();
-        self.add_pending_message(account, message_hash, expire_at)?;
+        let rx = self
+            .messages_queue
+            .add_message(*account, cells.repr_hash(), expire_at)?;
 
-        match self
-            .ton_engine
+        self.ton_engine
             .broadcast_external_message(&to, &serialized)
-            .await
-        {
-            Ok(()) => Ok(()),
-            Err(e) => {
-                self.cancel_pending_message(account, message_hash)?;
-                Err(e)
-            }
-        }
+            .await?;
+
+        let status = rx.await?;
+        Ok(status)
     }
 
     pub fn add_account_subscription<I>(&self, accounts: I)
@@ -171,30 +159,6 @@ impl TonCore {
                 };
 
                 log::info!("Transaction context: {:#?}", transaction_ctx);
-
-                // Find sent transaction and mark as Delivered
-                if let Some(in_msg) = transaction_ctx
-                    .transaction
-                    .in_msg
-                    .as_ref()
-                    .and_then(|data| data.read_struct().ok())
-                {
-                    if let CommonMsgInfo::ExtInMsgInfo(_) = in_msg.header() {
-                        let mut cache = engine.pending_messages.lock();
-                        let hash = in_msg.hash().unwrap_or_default();
-                        let state = cache.get_mut(&(transaction_ctx.account, hash));
-                        if let Some(state) = state {
-                            if let Some(tx) = state.tx.take() {
-                                tx.send((
-                                    transaction_ctx.account,
-                                    hash,
-                                    PendingMessageStatus::Delivered,
-                                ))
-                                .ok();
-                            }
-                        }
-                    }
-                }
 
                 match handle_transaction(transaction_ctx).await {
                     Ok(transaction) => {
@@ -247,70 +211,6 @@ impl TonCore {
             while rx.recv().await.is_some() {}
         });
     }
-
-    fn start_listening_pending_messages(self: &Arc<Self>, mut rx: PendingMessagesRx) {
-        let engine = Arc::downgrade(self);
-
-        tokio::spawn(async move {
-            while let Some((account, hash, status)) = rx.recv().await {
-                let engine = match engine.upgrade() {
-                    Some(engine) => engine,
-                    None => break,
-                };
-
-                if status == PendingMessageStatus::Expired {
-                    engine
-                        .transaction_producer
-                        .send(ReceiveTransaction::UpdateSent(UpdateSentTransaction {
-                            message_hash: hash.to_hex_string(),
-                            account_workchain_id: ton_block::BASE_WORKCHAIN_ID,
-                            account_hex: account.to_hex_string(),
-                            input: UpdateSendTransaction::error("Expired".to_string()),
-                        }))
-                        .ok();
-                }
-
-                if let Err(err) = engine.cancel_pending_message(account, hash) {
-                    log::error!("Failed to cancel pending message: {:?}", err)
-                }
-            }
-
-            rx.close();
-            while rx.recv().await.is_some() {}
-        });
-    }
-
-    fn add_pending_message(&self, account: UInt256, hash: UInt256, expired_at: u32) -> Result<()> {
-        let mut cache = self.pending_messages.lock();
-        match cache.entry((account, hash)) {
-            hash_map::Entry::Vacant(entry) => {
-                entry.insert(PendingMessageState {
-                    expired_at,
-                    tx: Some(self.pending_messages_producer.clone()),
-                });
-            }
-            hash_map::Entry::Occupied(_) => {
-                return Err(TonCoreError::PendingMessageExist(
-                    hash.to_hex_string(),
-                    account.to_hex_string(),
-                )
-                .into());
-            }
-        };
-        Ok(())
-    }
-
-    fn cancel_pending_message(&self, account: UInt256, hash: UInt256) -> Result<()> {
-        let mut cache = self.pending_messages.lock();
-        if cache.remove(&(account, hash)).is_none() {
-            return Err(TonCoreError::PendingMessageNotExist(
-                hash.to_hex_string(),
-                account.to_hex_string(),
-            )
-            .into());
-        }
-        Ok(())
-    }
 }
 
 #[derive(Debug)]
@@ -334,7 +234,6 @@ impl TransactionsSubscription for TransactionObserver {
 
         self.tx.send(transaction)?;
 
-        // Done
         Ok(())
     }
 }
@@ -432,32 +331,12 @@ pub type ReceiveTransactionRx = mpsc::UnboundedReceiver<ReceiveTransaction>;
 pub type ReceiveTokenTransactionTx = mpsc::UnboundedSender<ReceiveTokenTransaction>;
 pub type ReceiveTokenTransactionRx = mpsc::UnboundedReceiver<ReceiveTokenTransaction>;
 
-pub type PendingMessagesTx = mpsc::UnboundedSender<(UInt256, UInt256, PendingMessageStatus)>;
-pub type PendingMessagesRx = mpsc::UnboundedReceiver<(UInt256, UInt256, PendingMessageStatus)>;
-
-pub type PendingMessagesCache = HashMap<(UInt256, UInt256), PendingMessageState>;
-
-pub struct PendingMessageState {
-    expired_at: u32,
-    tx: Option<PendingMessagesTx>,
-}
-
-#[derive(PartialEq)]
-pub enum PendingMessageStatus {
-    Delivered,
-    Expired,
-}
-
 #[derive(thiserror::Error, Debug)]
 enum TonCoreError {
     #[error("Already initialized")]
     AlreadyInitialized,
     #[error("External ton message expected")]
     ExternalTonMessageExpected,
-    #[error("Pending message hash `{0}` exist for account `{1}`")]
-    PendingMessageExist(String, String),
-    #[error("Pending message hash `{0}` not exist for account `{1}`")]
-    PendingMessageNotExist(String, String),
     #[error("Account `{0}` not found")]
     AccountNotFound(String),
 }

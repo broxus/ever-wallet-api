@@ -16,12 +16,16 @@ use ton_types::UInt256;
 use crate::models::*;
 use crate::prelude::*;
 use crate::ton_core::*;
+use crate::utils::*;
 
 pub use self::responses::*;
 pub use self::utils::*;
 
 mod responses;
 mod utils;
+
+pub const DEFAULT_EXPIRATION_TIMEOUT: u32 = 60;
+pub const MULTISIG_TYPE: MultisigType = MultisigType::SafeMultisigWallet;
 
 #[async_trait]
 pub trait TonClient: Send + Sync {
@@ -34,7 +38,7 @@ pub trait TonClient: Send + Sync {
         &self,
         address: &AddressDb,
         secret: &[u8],
-    ) -> Result<(), ServiceError>;
+    ) -> Result<MessageStatus, ServiceError>;
     async fn get_token_address_info(
         &self,
         address: MsgAddressInt,
@@ -48,7 +52,11 @@ pub trait TonClient: Send + Sync {
         account_type: &AccountType,
         custodians: &Option<i32>,
     ) -> Result<(SentTransaction, SignedMessage), ServiceError>;
-    async fn send_transaction(&self, signed_message: SignedMessage) -> Result<(), ServiceError>;
+    async fn send_transaction(
+        &self,
+        account: UInt256,
+        signed_message: SignedMessage,
+    ) -> Result<MessageStatus, ServiceError>;
     async fn prepare_token_transaction(
         &self,
         transaction: &TokenTransactionSend,
@@ -83,9 +91,6 @@ impl TonClientImpl {
     }
 }
 
-pub const DEFAULT_EXPIRATION_TIMEOUT: u32 = 60;
-pub const MULTISIG_TYPE: MultisigType = MultisigType::SafeMultisigWallet;
-
 #[async_trait]
 impl TonClient for TonClientImpl {
     async fn create_address(&self, payload: CreateAddress) -> Result<CreatedAddress, ServiceError> {
@@ -97,7 +102,7 @@ impl TonClient for TonClientImpl {
         )?;
 
         let workchain_id = payload.workchain_id.unwrap_or_default();
-        let account_type = payload.account_type.unwrap_or(AccountType::HighloadWallet);
+        let account_type = payload.account_type.unwrap_or_default();
 
         let address = match account_type {
             AccountType::HighloadWallet => {
@@ -119,9 +124,17 @@ impl TonClient for TonClientImpl {
             }
         };
 
+        let custodians_public_keys = match account_type {
+            AccountType::SafeMultisig => {
+                let mut custodians_public_keys = payload.custodians_public_keys.unwrap_or_default();
+                custodians_public_keys.push(hex::encode(public.to_bytes()));
+                Some(custodians_public_keys)
+            }
+            AccountType::HighloadWallet | AccountType::Wallet => payload.custodians_public_keys,
+        };
+
         let account = UInt256::from_be_bytes(
-            &hex::decode(address.address().to_hex_string())
-                .map_err(|err| ServiceError::Other(err.into()))?,
+            &hex::decode(address.address().to_hex_string()).unwrap_or_default(),
         );
         self.ton_core.add_account_subscription([account]);
 
@@ -134,7 +147,7 @@ impl TonClient for TonClientImpl {
             account_type,
             custodians: payload.custodians,
             confirmations: payload.confirmations,
-            custodians_public_keys: payload.custodians_public_keys,
+            custodians_public_keys,
         })
     }
     async fn get_address_info(
@@ -159,7 +172,7 @@ impl TonClient for TonClientImpl {
 
         let account_status = transform_account_state(&contract.account.storage.state);
         let network_balance =
-            BigDecimal::from_u128(contract.account.storage.balance.grams.0).unwrap_or_default(); // TODO
+            BigDecimal::from_u128(contract.account.storage.balance.grams.0).unwrap_or_default();
 
         let (last_transaction_hash, last_transaction_lt) =
             parse_last_transaction(&contract.last_transaction_id);
@@ -171,18 +184,17 @@ impl TonClient for TonClientImpl {
             network_balance,
             last_transaction_hash,
             last_transaction_lt,
-            sync_u_time: contract.timings.current_utime() as i64, // TODO
+            sync_u_time: contract.timings.current_utime() as i64,
         })
     }
     async fn deploy_address_contract(
         &self,
         address: &AddressDb,
         private_key: &[u8],
-    ) -> Result<(), ServiceError> {
-        let public_key = PublicKey::from_bytes(
-            &hex::decode(&address.public_key).map_err(|err| ServiceError::Other(err.into()))?,
-        )
-        .map_err(|err| ServiceError::Other(err.into()))?;
+    ) -> Result<MessageStatus, ServiceError> {
+        let public_key =
+            PublicKey::from_bytes(&hex::decode(&address.public_key).unwrap_or_default())
+                .unwrap_or_default();
 
         let unsigned_message = match address.account_type {
             AccountType::SafeMultisig => {
@@ -195,21 +207,22 @@ impl TonClient for TonClientImpl {
                     .into_iter()
                     .map(|o| hex::decode(o).unwrap_or_default())
                     .collect::<Vec<Vec<u8>>>();
-                let owners = owners
+                let mut owners = owners
                     .into_iter()
                     .map(|item| PublicKey::from_bytes(&item).unwrap_or_default())
                     .collect::<Vec<PublicKey>>();
+                owners.push(public_key);
                 nekoton::core::ton_wallet::multisig::prepare_deploy(
                     &public_key,
                     MULTISIG_TYPE,
                     address.workchain_id as i8,
                     Expiration::Timeout(DEFAULT_EXPIRATION_TIMEOUT),
                     &owners,
-                    address.custodians.unwrap_or_default() as u8,
+                    address.confirmations.unwrap_or_default() as u8,
                 )?
             }
             AccountType::HighloadWallet | AccountType::Wallet => {
-                return Ok(());
+                return Ok(MessageStatus::Delivered);
             }
         };
 
@@ -224,8 +237,10 @@ impl TonClient for TonClientImpl {
         let signature = key_pair.sign(unsigned_message.hash());
         let signed_message = unsigned_message.sign(&signature.to_bytes())?;
 
+        let account = UInt256::from_be_bytes(&hex::decode(&address.hex).unwrap_or_default());
+
         self.ton_core
-            .send_ton_message(&signed_message.message, signed_message.expire_at)
+            .send_ton_message(&account, &signed_message.message, signed_message.expire_at)
             .await
             .map_err(ServiceError::Other)
     }
@@ -237,23 +252,21 @@ impl TonClient for TonClientImpl {
         account_type: &AccountType,
         custodians: &Option<i32>,
     ) -> Result<(SentTransaction, SignedMessage), ServiceError> {
-        let public_key =
-            PublicKey::from_bytes(public_key).map_err(|err| ServiceError::Other(err.into()))?;
+        let public_key = PublicKey::from_bytes(public_key).unwrap_or_default();
 
-        let address = MsgAddressInt::from_str(&transaction.from_address.0)?;
+        let address = nekoton_utils::repack_address(&transaction.from_address.0)?;
         let bounce = transaction.bounce.unwrap_or_default();
 
-        let (transfer_action, amount) =
-            match account_type {
-                AccountType::HighloadWallet => {
-                    let account = UInt256::from_be_bytes(&address.address().get_bytestring(0));
-                    let current_state = self.ton_core.get_contract_state(account).await?.account;
+        let (transfer_action, amount) = match account_type {
+            AccountType::HighloadWallet => {
+                let account = UInt256::from_be_bytes(&address.address().get_bytestring(0));
+                let current_state = self.ton_core.get_contract_state(account).await?.account;
 
-                    let gifts = transaction
+                let gifts = transaction
                     .outputs
                     .into_iter()
                     .map(|item| {
-                        let destination = MsgAddressInt::from_str(&item.recipient_address.0)?;
+                        let destination = nekoton_utils::repack_address(&item.recipient_address.0)?;
                         let amount = item.value.to_u64().unwrap_or_default();
 
                         Ok(nekoton::core::ton_wallet::highload_wallet_v2::Gift {
@@ -267,79 +280,81 @@ impl TonClient for TonClientImpl {
                     })
                     .collect::<Vec<Result<nekoton::core::ton_wallet::highload_wallet_v2::Gift>>>();
 
-                    let gifts = gifts
+                let gifts = gifts
                     .into_iter()
                     .collect::<Result<Vec<nekoton::core::ton_wallet::highload_wallet_v2::Gift>>>(
                     )?;
 
-                    let amount = gifts.iter().map(|gift| gift.amount).sum();
+                let amount = gifts.iter().map(|gift| gift.amount).sum();
 
-                    (
-                        nekoton::core::ton_wallet::highload_wallet_v2::prepare_transfer(
-                            &public_key,
-                            &current_state,
-                            gifts,
-                            Expiration::Timeout(DEFAULT_EXPIRATION_TIMEOUT),
-                        )?,
+                (
+                    nekoton::core::ton_wallet::highload_wallet_v2::prepare_transfer(
+                        &public_key,
+                        &current_state,
+                        gifts,
+                        Expiration::Timeout(DEFAULT_EXPIRATION_TIMEOUT),
+                    )?,
+                    amount,
+                )
+            }
+            AccountType::Wallet => {
+                let account = UInt256::from_be_bytes(&address.address().get_bytestring(0));
+                let current_state = self.ton_core.get_contract_state(account).await?.account;
+
+                let recipient = transaction
+                    .outputs
+                    .first()
+                    .ok_or_else(|| ServiceError::Other(TonClientError::InvalidRecipient.into()))?;
+
+                let destination = nekoton_utils::repack_address(&recipient.recipient_address.0)?;
+                let amount = recipient.value.to_u64().unwrap_or_default();
+
+                (
+                    nekoton::core::ton_wallet::wallet_v3::prepare_transfer(
+                        &public_key,
+                        &current_state,
+                        destination,
                         amount,
-                    )
-                }
-                AccountType::Wallet => {
-                    let account = UInt256::from_be_bytes(&address.address().get_bytestring(0));
-                    let current_state = self.ton_core.get_contract_state(account).await?.account;
+                        bounce,
+                        None,
+                        Expiration::Timeout(DEFAULT_EXPIRATION_TIMEOUT),
+                    )?,
+                    amount,
+                )
+            }
+            AccountType::SafeMultisig => {
+                let recipient = transaction
+                    .outputs
+                    .first()
+                    .ok_or_else(|| ServiceError::Other(TonClientError::InvalidRecipient.into()))?;
 
-                    let recipient = transaction.outputs.first().ok_or_else(|| {
-                        ServiceError::Other(TonClientError::InvalidRecipient.into())
-                    })?;
+                let destination = nekoton_utils::repack_address(&recipient.recipient_address.0)?;
+                let amount = recipient.value.to_u64().unwrap_or_default();
 
-                    let destination = MsgAddressInt::from_str(&recipient.recipient_address.0)?;
-                    let amount = recipient.value.to_u64().unwrap_or_default();
+                let has_multiple_owners = match custodians {
+                    Some(custodians) => *custodians > 1,
+                    None => {
+                        return Err(ServiceError::Other(
+                            TonClientError::CustodiansNotFound.into(),
+                        ))
+                    }
+                };
 
-                    (
-                        nekoton::core::ton_wallet::wallet_v3::prepare_transfer(
-                            &public_key,
-                            &current_state,
-                            destination,
-                            amount,
-                            bounce,
-                            None,
-                            Expiration::Timeout(DEFAULT_EXPIRATION_TIMEOUT),
-                        )?,
+                (
+                    nekoton::core::ton_wallet::multisig::prepare_transfer(
+                        &public_key,
+                        has_multiple_owners,
+                        address.clone(),
+                        destination,
                         amount,
-                    )
-                }
-                AccountType::SafeMultisig => {
-                    let recipient = transaction.outputs.first().ok_or_else(|| {
-                        ServiceError::Other(TonClientError::InvalidRecipient.into())
-                    })?;
-
-                    let destination = MsgAddressInt::from_str(&recipient.recipient_address.0)?;
-                    let amount = recipient.value.to_u64().unwrap_or_default();
-
-                    let has_multiple_owners = match custodians {
-                        Some(custodians) => *custodians > 1,
-                        None => {
-                            return Err(ServiceError::Other(
-                                TonClientError::CustodiansNotFound.into(),
-                            ))
-                        }
-                    };
-
-                    (
-                        nekoton::core::ton_wallet::multisig::prepare_transfer(
-                            &public_key,
-                            has_multiple_owners,
-                            address.clone(),
-                            destination,
-                            amount,
-                            bounce,
-                            None,
-                            Expiration::Timeout(DEFAULT_EXPIRATION_TIMEOUT),
-                        )?,
-                        amount,
-                    )
-                }
-            };
+                        bounce,
+                        None,
+                        Expiration::Timeout(DEFAULT_EXPIRATION_TIMEOUT),
+                    )?,
+                    amount,
+                )
+            }
+        };
 
         let unsigned_message = match transfer_action {
             TransferAction::Sign(unsigned_message) => unsigned_message,
@@ -373,9 +388,13 @@ impl TonClient for TonClientImpl {
 
         Ok((sent_transaction, signed_message))
     }
-    async fn send_transaction(&self, signed_message: SignedMessage) -> Result<(), ServiceError> {
+    async fn send_transaction(
+        &self,
+        account: UInt256,
+        signed_message: SignedMessage,
+    ) -> Result<MessageStatus, ServiceError> {
         self.ton_core
-            .send_ton_message(&signed_message.message, signed_message.expire_at)
+            .send_ton_message(&account, &signed_message.message, signed_message.expire_at)
             .await
             .map_err(ServiceError::Other)
     }
@@ -411,7 +430,7 @@ impl TonClient for TonClientImpl {
         let token_wallet = TokenWalletContractState(&token_wallet_contract_state);
         let version = token_wallet.get_version()?;
 
-        let network_balance = BigDecimal::new(token_wallet.get_balance(version)?.into(), 0); // TODO
+        let network_balance = BigDecimal::new(token_wallet.get_balance(version)?.into(), 0);
         let account_status =
             transform_account_state(&token_wallet_contract_state.account.storage.state);
 
@@ -426,7 +445,7 @@ impl TonClient for TonClientImpl {
             account_status,
             last_transaction_hash,
             last_transaction_lt,
-            sync_u_time: token_wallet_contract_state.timings.current_utime() as i64, // TODO
+            sync_u_time: token_wallet_contract_state.timings.current_utime() as i64,
         })
     }
     async fn prepare_token_transaction(

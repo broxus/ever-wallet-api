@@ -145,7 +145,7 @@ async fn start_listening_receive_transactions(
                     match ton_service.create_receive_transaction(&transaction).await {
                         Ok(_) => {}
                         Err(err) => {
-                            log::error!("Failed to create receive transaction in db: {:?}", err)
+                            log::error!("Failed to create receive transaction: {:?}", err)
                         }
                     }
                 }
@@ -161,7 +161,7 @@ async fn start_listening_receive_transactions(
                     {
                         Ok(_) => {}
                         Err(err) => {
-                            log::error!("Failed to update sent transaction in db: {:?}", err)
+                            log::error!("Failed to update sent transaction: {:?}", err)
                         }
                     }
                 }

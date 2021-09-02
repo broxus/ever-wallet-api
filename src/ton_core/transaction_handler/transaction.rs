@@ -40,6 +40,8 @@ pub async fn handle_transaction(transaction_ctx: TransactionContext) -> Result<R
     let balance_change =
         BigDecimal::from_i64(nekoton::core::utils::compute_balance_change(&transaction));
 
+    // check if sender is token wallet (in cache) and check if owner of this token wallet this recipient
+
     let parsed = match in_msg.header() {
         CommonMsgInfo::IntMsgInfo(header) => {
             ReceiveTransaction::Create(CreateReceiveTransaction {
@@ -65,6 +67,7 @@ pub async fn handle_transaction(transaction_ctx: TransactionContext) -> Result<R
                 error: None,
                 aborted: is_aborted(&transaction),
                 bounce: header.bounce,
+                sender_is_token_wallet: false, //TODO
             })
         }
         CommonMsgInfo::ExtInMsgInfo(_) => {
@@ -97,9 +100,7 @@ pub async fn handle_transaction(transaction_ctx: TransactionContext) -> Result<R
     Ok(parsed)
 }
 
-fn get_sender_info(
-    transaction: &ton_block::Transaction,
-) -> Result<((Option<i32>, Option<String>))> {
+fn get_sender_info(transaction: &ton_block::Transaction) -> Result<(Option<i32>, Option<String>)> {
     let in_msg = match &transaction.in_msg {
         Some(message) => message
             .read_struct()
@@ -185,7 +186,7 @@ fn compute_fees(transaction: &ton_block::Transaction) -> u64 {
     if let Ok(ton_block::TransactionDescr::Ordinary(description)) =
         transaction.description.read_struct()
     {
-        fees = nekoton::core::utils::compute_total_transaction_fees(&transaction, &description)
+        fees = nekoton::core::utils::compute_total_transaction_fees(transaction, &description)
     }
     fees
 }

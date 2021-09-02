@@ -36,7 +36,7 @@ impl OwnersCache {
                         got.owner_account_workchain_id, got.owner_account_hex
                     ))
                     .trust_me(),
-                    root_address: MsgAddressInt::from_str(&got.root_address).trust_me(),
+                    root_address: nekoton_utils::repack_address(&got.root_address).trust_me(),
                     code_hash: got.code_hash,
                 }
             }
@@ -75,14 +75,14 @@ impl OwnersCache {
         let mut res = LruCache::new(5000);
         balances.into_iter().for_each(|x| {
             res.put(
-                MsgAddressInt::from_str(&x.address).unwrap(),
+                nekoton_utils::repack_address(&x.address).trust_me(),
                 OwnerInfo {
                     owner_address: MsgAddressInt::from_str(&format!(
                         "{}:{}",
                         x.owner_account_workchain_id, x.owner_account_hex
                     ))
-                    .unwrap(),
-                    root_address: MsgAddressInt::from_str(&x.root_address).unwrap(),
+                    .trust_me(),
+                    root_address: nekoton_utils::repack_address(&x.root_address).trust_me(),
                     code_hash: x.code_hash,
                 },
             );

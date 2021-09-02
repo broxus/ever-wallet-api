@@ -15,6 +15,12 @@ pub enum AccountType {
     SafeMultisig,
 }
 
+impl Default for AccountType {
+    fn default() -> AccountType {
+        AccountType::HighloadWallet
+    }
+}
+
 #[derive(Debug, Deserialize, Serialize, Clone, opg::OpgModel, sqlx::Type, Eq, PartialEq)]
 #[opg("AccountStatus")]
 #[sqlx(type_name = "twa_account_status", rename_all = "PascalCase")]

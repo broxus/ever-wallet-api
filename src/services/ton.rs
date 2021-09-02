@@ -5,15 +5,18 @@ use aes::Aes256;
 use async_trait::async_trait;
 use block_modes::block_padding::Pkcs7;
 use block_modes::{BlockMode, Ecb};
-use nekoton_utils::unpack_std_smc_addr;
+use nekoton::crypto::SignedMessage;
+use nekoton_utils::{repack_address, unpack_std_smc_addr};
 use sha2::{Digest, Sha256};
 use ton_block::MsgAddressInt;
+use ton_types::UInt256;
 use uuid::Uuid;
 
 use crate::client::*;
 use crate::models::*;
 use crate::prelude::*;
 use crate::sqlx_client::*;
+use crate::utils::*;
 
 type Aes128Ecb = Ecb<Aes256, Pkcs7>;
 
@@ -120,6 +123,7 @@ pub trait TonService: Send + Sync + 'static {
     ) -> Result<TokenTransactionFromDb, ServiceError>;
 }
 
+#[derive(Clone)]
 pub struct TonServiceImpl {
     sqlx_client: SqlxClient,
     owners_cache: OwnersCache,
@@ -218,6 +222,62 @@ impl TonServiceImpl {
         let mut buf = private_key.to_vec();
         cipher.decrypt(&mut buf).unwrap().to_vec()
     }
+
+    fn send_transaction(
+        &self,
+        message_hash: String,
+        account_hex: String,
+        account_workchain_id: i32,
+        signed_message: SignedMessage,
+    ) {
+        let ton_service = self.clone();
+        tokio::spawn(async move {
+            let account = UInt256::from_be_bytes(&hex::decode(&account_hex).unwrap_or_default());
+            match ton_service
+                .ton_api_client
+                .send_transaction(account, signed_message)
+                .await
+            {
+                Ok(MessageStatus::Delivered) => {
+                    log::info!("Successfully sent message `{}`", message_hash);
+                }
+                Ok(MessageStatus::Expired) => {
+                    log::info!("Message `{}` expired", message_hash);
+                    match ton_service
+                        .update_sent_transaction(
+                            message_hash,
+                            account_workchain_id,
+                            account_hex,
+                            &UpdateSendTransaction::error("Expired".to_string()),
+                        )
+                        .await
+                    {
+                        Ok(_) => {}
+                        Err(err) => {
+                            log::error!("Failed to update sent transaction: {:?}", err)
+                        }
+                    }
+                }
+                Err(e) => {
+                    log::warn!("Failed to send message: {:?}", e);
+                    match ton_service
+                        .update_sent_transaction(
+                            message_hash,
+                            account_workchain_id,
+                            account_hex,
+                            &UpdateSendTransaction::error("Fail".to_string()),
+                        )
+                        .await
+                    {
+                        Ok(_) => {}
+                        Err(err) => {
+                            log::error!("Failed to update sent transaction: {:?}", err)
+                        }
+                    }
+                }
+            };
+        });
+    }
 }
 
 #[async_trait]
@@ -243,6 +303,7 @@ impl TonService for TonServiceImpl {
     }
     async fn check_address(&self, address: &Address) -> Result<bool, ServiceError> {
         Ok(MsgAddressInt::from_str(&address.0).is_ok()
+            || (unpack_std_smc_addr(&address.0, false).is_ok())
             || (unpack_std_smc_addr(&address.0, true).is_ok()))
     }
     async fn get_address_balance(
@@ -250,9 +311,7 @@ impl TonService for TonServiceImpl {
         service_id: &ServiceId,
         address: &Address,
     ) -> Result<(AddressDb, NetworkAddressData), ServiceError> {
-        let account = MsgAddressInt::from_str(&address.0).map_err(|_| {
-            ServiceError::WrongInput(format!("Can not parse Address workchain and hex"))
-        })?;
+        let account = repack_address(&address.0)?;
         let address = self
             .sqlx_client
             .get_address(
@@ -269,13 +328,13 @@ impl TonService for TonServiceImpl {
         service_id: ServiceId,
         input: TransactionSend,
     ) -> Result<TransactionDb, ServiceError> {
-        let account = MsgAddressInt::from_str(&input.from_address.0).map_err(|_| {
-            ServiceError::WrongInput(format!("Can not parse Address workchain and hex"))
-        })?;
+        let account = repack_address(&input.from_address.0)?;
+
         let network = self
             .ton_api_client
             .get_address_info(account.clone())
             .await?;
+
         let address = self
             .sqlx_client
             .get_address(
@@ -287,10 +346,29 @@ impl TonService for TonServiceImpl {
 
         let public_key = hex::decode(address.public_key.clone()).unwrap_or_default();
         let secret = self.decrypt_private_key(address.private_key.clone()).await;
+
         if network.account_status == AccountStatus::UnInit {
-            self.ton_api_client
+            match self
+                .ton_api_client
                 .deploy_address_contract(&address, &secret)
-                .await?;
+                .await
+            {
+                Ok(MessageStatus::Delivered) => {
+                    log::info!(
+                        "Account `{}:{}` successfully deployed",
+                        address.workchain_id,
+                        address.hex
+                    );
+                }
+                Ok(MessageStatus::Expired) => {
+                    return Err(ServiceError::Other(
+                        TonServiceError::DeployFail(address.workchain_id, address.hex).into(),
+                    ));
+                }
+                Err(e) => {
+                    return Err(e);
+                }
+            };
         }
         let (payload, signed_message) = self
             .ton_api_client
@@ -302,23 +380,23 @@ impl TonService for TonServiceImpl {
                 &address.custodians,
             )
             .await?;
+
+        if payload.value >= network.network_balance {
+            return Err(ServiceError::WrongInput("Insufficient balance".to_string()));
+        }
+
         let (mut transaction, mut event) = self
             .sqlx_client
             .create_send_transaction(CreateSendTransaction::new(payload.clone(), service_id))
             .await?;
-        if let Err(e) = self.ton_api_client.send_transaction(signed_message).await {
-            let result = self
-                .sqlx_client
-                .update_send_transaction(
-                    transaction.message_hash,
-                    transaction.account_workchain_id,
-                    transaction.account_hex,
-                    UpdateSendTransaction::error(e.to_string()),
-                )
-                .await?;
-            transaction = result.0;
-            event = result.1;
-        }
+
+        self.send_transaction(
+            transaction.message_hash.clone(),
+            transaction.account_hex.clone(),
+            transaction.account_workchain_id,
+            signed_message,
+        );
+
         self.notify(service_id, event.into()).await;
 
         Ok(transaction)
@@ -478,9 +556,7 @@ impl TonService for TonServiceImpl {
         service_id: &ServiceId,
         address: &Address,
     ) -> Result<Vec<(TokenBalanceFromDb, NetworkTokenAddressData)>, ServiceError> {
-        let account = MsgAddressInt::from_str(&address.0).map_err(|_| {
-            ServiceError::WrongInput(format!("Can not parse address workchain and hex"))
-        })?;
+        let account = repack_address(&address.0)?;
         let balances = self
             .sqlx_client
             .get_token_balances(
@@ -492,9 +568,7 @@ impl TonService for TonServiceImpl {
 
         let mut result = vec![];
         for balance in balances {
-            let root_address = MsgAddressInt::from_str(&balance.root_address).map_err(|_| {
-                ServiceError::WrongInput(format!("Can not parse root address workchain and hex"))
-            })?;
+            let root_address = repack_address(&balance.root_address)?;
 
             let network = self
                 .ton_api_client
@@ -509,9 +583,7 @@ impl TonService for TonServiceImpl {
         service_id: &ServiceId,
         input: &TokenTransactionSend,
     ) -> Result<TokenTransactionFromDb, ServiceError> {
-        let account = MsgAddressInt::from_str(&input.from_address.0).map_err(|_| {
-            ServiceError::WrongInput(format!("Can not parse Address workchain and hex"))
-        })?;
+        let account = repack_address(&input.from_address.0)?;
         let address = self
             .sqlx_client
             .get_address(
@@ -527,9 +599,7 @@ impl TonService for TonServiceImpl {
             )));
         }
 
-        let root_address = MsgAddressInt::from_str(&input.root_address).map_err(|_| {
-            ServiceError::WrongInput(format!("Can not parse root address workchain and hex"))
-        })?;
+        let root_address = repack_address(&input.root_address)?;
 
         let network = self
             .ton_api_client
@@ -655,4 +725,10 @@ impl TonService for TonServiceImpl {
 
         Ok(transaction)
     }
+}
+
+#[derive(thiserror::Error, Debug)]
+enum TonServiceError {
+    #[error("Failed to deploy `{0}:{1}`")]
+    DeployFail(i32, String),
 }
