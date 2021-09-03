@@ -52,7 +52,7 @@ impl SqlxClient {
                 transaction_direction as "transaction_direction: _",
                 transaction_status as "transaction_status: _",
                 event_status as "event_status: _",
-                created_at, updated_at"#,
+                created_at, updated_at, sender_is_token_wallet"#,
                 payload.id,
                 payload.service_id as ServiceId,
                 payload.transaction_id,
@@ -132,7 +132,7 @@ impl SqlxClient {
                 transaction_direction as "transaction_direction: _",
                 transaction_status as "transaction_status: _",
                 event_status as "event_status: _",
-                created_at, updated_at"#,
+                created_at, updated_at, sender_is_token_wallet"#,
             payload.balance_change,
             payload.transaction_status as TonTransactionStatus,
             message_hash,
@@ -196,8 +196,8 @@ impl SqlxClient {
         let event = sqlx::query_as!(TransactionEventDb,
                 r#"
             INSERT INTO transaction_events
-            (id, service_id, transaction_id, message_hash, account_workchain_id, account_hex, balance_change, transaction_direction, transaction_status, event_status)
-            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+            (id, service_id, transaction_id, message_hash, account_workchain_id, account_hex, balance_change, transaction_direction, transaction_status, event_status, sender_is_token_wallet)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
             RETURNING id,
                 service_id as "service_id: _",
                 transaction_id,
@@ -208,7 +208,7 @@ impl SqlxClient {
                 transaction_direction as "transaction_direction: _",
                 transaction_status as "transaction_status: _",
                 event_status as "event_status: _",
-                created_at, updated_at"#,
+                created_at, updated_at, sender_is_token_wallet"#,
                 payload.id,
                 payload.service_id as ServiceId,
                 payload.transaction_id,
@@ -218,7 +218,8 @@ impl SqlxClient {
                 payload.balance_change,
                 payload.transaction_direction as TonTransactionDirection,
                 payload.transaction_status as TonTransactionStatus,
-                payload.event_status as TonEventStatus
+                payload.event_status as TonEventStatus,
+                payload.sender_is_token_wallet,
             )
             .fetch_one(&mut tx)
             .await

@@ -152,6 +152,7 @@ pub struct AccountTransactionEventResponse {
     pub transaction_direction: TonTransactionDirection,
     pub transaction_status: TonTransactionStatus,
     pub event_status: TonEventStatus,
+    pub sender_is_token_wallet: bool,
     #[opg("UTC timestamp in milliseconds", integer, format = "int64")]
     pub created_at: i64,
     #[opg("UTC timestamp in milliseconds", integer, format = "int64")]
@@ -179,6 +180,7 @@ impl From<TransactionEventDb> for AccountTransactionEventResponse {
             transaction_direction: c.transaction_direction,
             transaction_status: c.transaction_status,
             event_status: c.event_status,
+            sender_is_token_wallet: c.sender_is_token_wallet,
             created_at: c.created_at.timestamp_millis(),
             updated_at: c.updated_at.timestamp_millis(),
         }
