@@ -10,7 +10,10 @@ use uuid::Uuid;
 use crate::models::*;
 use crate::ton_core::*;
 
-pub async fn handle_transaction(transaction_ctx: TransactionContext) -> Result<ReceiveTransaction> {
+pub async fn handle_transaction(
+    transaction_ctx: TransactionContext,
+    owners_cache: &OwnersCache,
+) -> Result<ReceiveTransaction> {
     let transaction = transaction_ctx.transaction.clone();
 
     let in_msg = match &transaction.in_msg {
@@ -20,30 +23,38 @@ pub async fn handle_transaction(transaction_ctx: TransactionContext) -> Result<R
         None => return Err(TransactionError::Unsupported.into()),
     };
 
-    let (account_workchain_id, account_hex) = {
-        let address = MsgAddressInt::with_standart(
-            None,
-            ton_block::BASE_WORKCHAIN_ID as i8,
-            AccountId::from(transaction_ctx.account),
-        )?;
-        (address.workchain_id(), address.address().to_hex_string())
+    let address = MsgAddressInt::with_standart(
+        None,
+        ton_block::BASE_WORKCHAIN_ID as i8,
+        AccountId::from(transaction_ctx.account),
+    )?;
+
+    let sender_address = get_sender_address(&transaction)?;
+    let (sender_workchain_id, sender_hex) = match &sender_address {
+        Some(address) => (
+            Some(address.workchain_id()),
+            Some(address.address().to_hex_string()),
+        ),
+        None => (None, None),
     };
 
     let message_hash = in_msg.hash()?.to_hex_string();
     let transaction_hash = Some(transaction_ctx.transaction_hash.to_hex_string());
     let transaction_lt = BigDecimal::from_u64(transaction.lt);
     let transaction_scan_lt = Some(transaction_ctx.transaction.lt as i64);
-    let (sender_workchain_id, sender_hex) = get_sender_info(&transaction)?;
+    let sender_address = get_sender_address(&transaction)?;
     let messages = Some(serde_json::to_value(get_messages(&transaction)?)?);
     let fee = BigDecimal::from_u64(compute_fees(&transaction));
     let value = BigDecimal::from_u128(compute_value(&transaction));
     let balance_change =
         BigDecimal::from_i64(nekoton::core::utils::compute_balance_change(&transaction));
 
-    // check if sender is token wallet (in cache) and check if owner of this token wallet this recipient
-
     let parsed = match in_msg.header() {
         CommonMsgInfo::IntMsgInfo(header) => {
+            let sender_is_token_wallet =
+                sender_is_token_wallet(&address, &sender_address.unwrap_or_default(), owners_cache)
+                    .await;
+
             ReceiveTransaction::Create(CreateReceiveTransaction {
                 id: Uuid::new_v4(),
                 message_hash,
@@ -53,8 +64,8 @@ pub async fn handle_transaction(transaction_ctx: TransactionContext) -> Result<R
                 transaction_scan_lt,
                 sender_workchain_id,
                 sender_hex,
-                account_workchain_id,
-                account_hex,
+                account_workchain_id: address.workchain_id(),
+                account_hex: address.address().to_hex_string(),
                 messages,
                 data: None,             // TODO
                 original_value: None,   // TODO
@@ -67,14 +78,14 @@ pub async fn handle_transaction(transaction_ctx: TransactionContext) -> Result<R
                 error: None,
                 aborted: is_aborted(&transaction),
                 bounce: header.bounce,
-                sender_is_token_wallet: false, //TODO
+                sender_is_token_wallet,
             })
         }
         CommonMsgInfo::ExtInMsgInfo(_) => {
             ReceiveTransaction::UpdateSent(UpdateSentTransaction {
                 message_hash,
-                account_workchain_id,
-                account_hex,
+                account_workchain_id: address.workchain_id(),
+                account_hex: address.address().to_hex_string(),
                 input: UpdateSendTransaction {
                     transaction_hash,
                     transaction_lt,
@@ -100,7 +111,7 @@ pub async fn handle_transaction(transaction_ctx: TransactionContext) -> Result<R
     Ok(parsed)
 }
 
-fn get_sender_info(transaction: &ton_block::Transaction) -> Result<(Option<i32>, Option<String>)> {
+fn get_sender_address(transaction: &ton_block::Transaction) -> Result<Option<MsgAddressInt>> {
     let in_msg = match &transaction.in_msg {
         Some(message) => message
             .read_struct()
@@ -109,13 +120,7 @@ fn get_sender_info(transaction: &ton_block::Transaction) -> Result<(Option<i32>,
         None => return Err(TransactionError::Unsupported.into()),
     };
 
-    Ok(match in_msg.src {
-        Some(address) => (
-            Some(address.workchain_id()),
-            Some(address.address().to_hex_string()),
-        ),
-        None => (None, None),
-    })
+    Ok(in_msg.src)
 }
 
 fn get_messages(transaction: &ton_block::Transaction) -> Result<Vec<Message>> {
@@ -199,6 +204,19 @@ fn is_aborted(transaction: &ton_block::Transaction) -> bool {
         aborted = description.aborted
     }
     aborted
+}
+
+async fn sender_is_token_wallet(
+    address: &MsgAddressInt,
+    sender: &MsgAddressInt,
+    owners_cache: &OwnersCache,
+) -> bool {
+    if let Some(owner) = owners_cache.get(address).await {
+        if *sender == owner.owner_address {
+            return true;
+        }
+    }
+    false
 }
 
 #[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]

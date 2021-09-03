@@ -11,14 +11,13 @@ use ton_types::UInt256;
 
 use self::settings::*;
 use self::ton_subscriber::*;
-use self::transaction_handler::*;
+use self::transaction_parser::*;
 use crate::models::*;
 use crate::utils::*;
 
-mod models;
 mod settings;
 mod ton_subscriber;
-mod transaction_handler;
+mod transaction_parser;
 
 pub struct TonCore {
     ton_engine: Arc<ton_indexer::Engine>,
@@ -160,7 +159,7 @@ impl TonCore {
 
                 log::info!("Transaction context: {:#?}", transaction_ctx);
 
-                match handle_transaction(transaction_ctx).await {
+                match handle_transaction(transaction_ctx, &engine.owners_cache).await {
                     Ok(transaction) => {
                         engine.transaction_producer.send(transaction).ok();
                     }

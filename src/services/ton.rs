@@ -334,7 +334,7 @@ impl TonService for TonServiceImpl {
                 .await?;
 
             if let Some((payload, signed_message)) = payload {
-                let (mut transaction, mut event) = self
+                let (transaction, event) = self
                     .sqlx_client
                     .create_send_transaction(CreateSendTransaction::new(
                         payload.clone(),
@@ -370,7 +370,7 @@ impl TonService for TonServiceImpl {
             return Err(ServiceError::WrongInput("Insufficient balance".to_string()));
         }
 
-        let (mut transaction, mut event) = self
+        let (transaction, event) = self
             .sqlx_client
             .create_send_transaction(CreateSendTransaction::new(payload.clone(), service_id))
             .await?;

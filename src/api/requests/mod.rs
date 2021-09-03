@@ -84,7 +84,9 @@ impl From<PostTonTokenTransactionSendRequest> for TokenTransactionSend {
             value: c.value,
             bounce: c.bounce,
             notify_receiver: c.notify_receiver.unwrap_or(false),
-            fee: c.fee.unwrap_or(BigDecimal::from_str(TOKEN_FEE).unwrap()),
+            fee: c
+                .fee
+                .unwrap_or_else(|| BigDecimal::from_str(TOKEN_FEE).unwrap()),
         }
     }
 }

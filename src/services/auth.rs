@@ -74,7 +74,7 @@ impl AuthService for AuthServiceImpl {
             .to_str()
             .map_err(|_| ServiceError::Auth("API-KEY Header Not Found".to_string()))?;
 
-        let key = self.get_key(&api_key).await?;
+        let key = self.get_key(api_key).await?;
 
         let timestamp_header = headers
             .get("timestamp")
