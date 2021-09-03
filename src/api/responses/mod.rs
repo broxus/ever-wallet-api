@@ -415,6 +415,7 @@ pub struct AccountTransactionDataResponse {
     pub status: TonTransactionStatus,
     pub aborted: bool,
     pub bounce: bool,
+    pub sender_is_token_wallet: bool,
     #[opg("UTC timestamp in milliseconds", integer, format = "int64")]
     pub created_at: i64,
     #[opg("UTC timestamp in milliseconds", integer, format = "int64")]
@@ -444,6 +445,7 @@ impl From<TransactionDb> for AccountTransactionDataResponse {
             status: c.status,
             aborted: c.aborted,
             bounce: c.bounce,
+            sender_is_token_wallet: c.sender_is_token_wallet,
             created_at: c.created_at.timestamp_millis(),
             updated_at: c.updated_at.timestamp_millis(),
         }
