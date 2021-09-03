@@ -33,16 +33,11 @@ pub trait TonClient: Send + Sync {
         &self,
         address: MsgAddressInt,
     ) -> Result<NetworkAddressData, ServiceError>;
-    async fn deploy_address_contract(
+    async fn prepare_deploy(
         &self,
         address: &AddressDb,
         secret: &[u8],
-    ) -> Result<MessageStatus, ServiceError>;
-    async fn get_token_address_info(
-        &self,
-        address: MsgAddressInt,
-        root_address: MsgAddressInt,
-    ) -> Result<NetworkTokenAddressData, ServiceError>;
+    ) -> Result<Option<(SentTransaction, SignedMessage)>, ServiceError>;
     async fn prepare_transaction(
         &self,
         transaction: TransactionSend,
@@ -56,6 +51,11 @@ pub trait TonClient: Send + Sync {
         account: UInt256,
         signed_message: SignedMessage,
     ) -> Result<MessageStatus, ServiceError>;
+    async fn get_token_address_info(
+        &self,
+        address: MsgAddressInt,
+        root_address: MsgAddressInt,
+    ) -> Result<NetworkTokenAddressData, ServiceError>;
     async fn prepare_token_transaction(
         &self,
         transaction: &TokenTransactionSend,
@@ -123,6 +123,17 @@ impl TonClient for TonClientImpl {
             }
         };
 
+        let (custodians, confirmations) = match account_type {
+            AccountType::SafeMultisig => (
+                Some(payload.custodians.unwrap_or(1)),
+                Some(payload.confirmations.unwrap_or(1)),
+            ),
+            AccountType::HighloadWallet | AccountType::Wallet => {
+                (payload.custodians, payload.confirmations)
+            }
+        };
+
+        // Add created account to list of custodians
         let custodians_public_keys = match account_type {
             AccountType::SafeMultisig => {
                 let mut custodians_public_keys = payload.custodians_public_keys.unwrap_or_default();
@@ -132,6 +143,7 @@ impl TonClient for TonClientImpl {
             AccountType::HighloadWallet | AccountType::Wallet => payload.custodians_public_keys,
         };
 
+        // Subscribe to created account
         let account = UInt256::from_be_bytes(
             &hex::decode(address.address().to_hex_string()).unwrap_or_default(),
         );
@@ -144,8 +156,8 @@ impl TonClient for TonClientImpl {
             public_key: public.to_bytes().to_vec(),
             private_key: secret.to_bytes().to_vec(),
             account_type,
-            custodians: payload.custodians,
-            confirmations: payload.confirmations,
+            custodians,
+            confirmations,
             custodians_public_keys,
         })
     }
@@ -186,11 +198,11 @@ impl TonClient for TonClientImpl {
             sync_u_time: contract.timings.current_utime() as i64,
         })
     }
-    async fn deploy_address_contract(
+    async fn prepare_deploy(
         &self,
         address: &AddressDb,
         private_key: &[u8],
-    ) -> Result<MessageStatus, ServiceError> {
+    ) -> Result<Option<(SentTransaction, SignedMessage)>, ServiceError> {
         let public_key =
             PublicKey::from_bytes(&hex::decode(&address.public_key).unwrap_or_default())
                 .unwrap_or_default();
@@ -221,7 +233,7 @@ impl TonClient for TonClientImpl {
                 )?
             }
             AccountType::HighloadWallet | AccountType::Wallet => {
-                return Ok(MessageStatus::Delivered);
+                return Ok(None);
             }
         };
 
@@ -236,12 +248,17 @@ impl TonClient for TonClientImpl {
         let signature = key_pair.sign(unsigned_message.hash());
         let signed_message = unsigned_message.sign(&signature.to_bytes())?;
 
-        let account = UInt256::from_be_bytes(&hex::decode(&address.hex).unwrap_or_default());
+        let sent_transaction = SentTransaction {
+            id: uuid::Uuid::new_v4(),
+            message_hash: signed_message.message.hash()?.to_hex_string(),
+            account_workchain_id: address.workchain_id,
+            account_hex: address.hex.clone(),
+            value: BigDecimal::default(),
+            aborted: false,
+            bounce: false,
+        };
 
-        self.ton_core
-            .send_ton_message(&account, &signed_message.message, signed_message.expire_at)
-            .await
-            .map_err(ServiceError::Other)
+        return Ok(Some((sent_transaction, signed_message)));
     }
     async fn prepare_transaction(
         &self,
@@ -269,7 +286,7 @@ impl TonClient for TonClientImpl {
                         let amount = item.value.to_u64().unwrap_or_default();
 
                         Ok(nekoton::core::ton_wallet::highload_wallet_v2::Gift {
-                            flags: 0,
+                            flags: 3,
                             bounce,
                             destination,
                             amount,
@@ -397,15 +414,6 @@ impl TonClient for TonClientImpl {
             .await
             .map_err(ServiceError::Other)
     }
-    async fn deploy_token_address_contract(
-        &self,
-        address: TokenBalanceFromDb,
-        public_key: String,
-        private_key: String,
-        account_type: AccountType,
-    ) -> Result<(), ServiceError> {
-        todo!()
-    }
     async fn get_token_address_info(
         &self,
         address: MsgAddressInt,
@@ -459,6 +467,15 @@ impl TonClient for TonClientImpl {
     async fn send_token_transaction(
         &self,
         transaction: &SentTokenTransaction,
+        public_key: String,
+        private_key: String,
+        account_type: AccountType,
+    ) -> Result<(), ServiceError> {
+        todo!()
+    }
+    async fn deploy_token_address_contract(
+        &self,
+        address: TokenBalanceFromDb,
         public_key: String,
         private_key: String,
         account_type: AccountType,

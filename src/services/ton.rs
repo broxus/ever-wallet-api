@@ -6,7 +6,7 @@ use async_trait::async_trait;
 use block_modes::block_padding::Pkcs7;
 use block_modes::{BlockMode, Ecb};
 use nekoton::crypto::SignedMessage;
-use nekoton_utils::{repack_address, unpack_std_smc_addr};
+use nekoton_utils::{repack_address, unpack_std_smc_addr, TrustMe};
 use sha2::{Digest, Sha256};
 use ton_block::MsgAddressInt;
 use ton_types::UInt256;
@@ -223,60 +223,40 @@ impl TonServiceImpl {
         cipher.decrypt(&mut buf).unwrap().to_vec()
     }
 
-    fn send_transaction(
+    async fn send_transaction(
         &self,
         message_hash: String,
         account_hex: String,
         account_workchain_id: i32,
         signed_message: SignedMessage,
-    ) {
-        let ton_service = self.clone();
-        tokio::spawn(async move {
-            let account = UInt256::from_be_bytes(&hex::decode(&account_hex).unwrap_or_default());
-            match ton_service
-                .ton_api_client
-                .send_transaction(account, signed_message)
+        non_blocking: bool,
+    ) -> Result<(), ServiceError> {
+        if non_blocking {
+            let ton_service = self.clone();
+            tokio::spawn(async move {
+                if let Err(err) = send_transaction_helper(
+                    &ton_service,
+                    message_hash,
+                    account_hex,
+                    account_workchain_id,
+                    signed_message,
+                )
                 .await
-            {
-                Ok(MessageStatus::Delivered) => {
-                    log::info!("Successfully sent message `{}`", message_hash);
-                }
-                Ok(MessageStatus::Expired) => {
-                    log::info!("Message `{}` expired", message_hash);
-                    match ton_service
-                        .update_sent_transaction(
-                            message_hash,
-                            account_workchain_id,
-                            account_hex,
-                            &UpdateSendTransaction::error("Expired".to_string()),
-                        )
-                        .await
-                    {
-                        Ok(_) => {}
-                        Err(err) => {
-                            log::error!("Failed to update sent transaction: {:?}", err)
-                        }
-                    }
-                }
-                Err(e) => {
-                    log::warn!("Failed to send message: {:?}", e);
-                    match ton_service
-                        .update_sent_transaction(
-                            message_hash,
-                            account_workchain_id,
-                            account_hex,
-                            &UpdateSendTransaction::error("Fail".to_string()),
-                        )
-                        .await
-                    {
-                        Ok(_) => {}
-                        Err(err) => {
-                            log::error!("Failed to update sent transaction: {:?}", err)
-                        }
-                    }
-                }
-            };
-        });
+                {
+                    log::error!("{:?}", err);
+                };
+            });
+            Ok(())
+        } else {
+            send_transaction_helper(
+                self,
+                message_hash,
+                account_hex,
+                account_workchain_id,
+                signed_message,
+            )
+            .await
+        }
     }
 }
 
@@ -348,28 +328,33 @@ impl TonService for TonServiceImpl {
         let secret = self.decrypt_private_key(address.private_key.clone()).await;
 
         if network.account_status == AccountStatus::UnInit {
-            match self
+            let payload = self
                 .ton_api_client
-                .deploy_address_contract(&address, &secret)
-                .await
-            {
-                Ok(MessageStatus::Delivered) => {
-                    log::info!(
-                        "Account `{}:{}` successfully deployed",
-                        address.workchain_id,
-                        address.hex
-                    );
-                }
-                Ok(MessageStatus::Expired) => {
-                    return Err(ServiceError::Other(
-                        TonServiceError::DeployFail(address.workchain_id, address.hex).into(),
-                    ));
-                }
-                Err(e) => {
-                    return Err(e);
-                }
-            };
+                .prepare_deploy(&address, &secret)
+                .await?;
+
+            if let Some((payload, signed_message)) = payload {
+                let (mut transaction, mut event) = self
+                    .sqlx_client
+                    .create_send_transaction(CreateSendTransaction::new(
+                        payload.clone(),
+                        service_id,
+                    ))
+                    .await?;
+
+                self.send_transaction(
+                    transaction.message_hash.clone(),
+                    transaction.account_hex.clone(),
+                    transaction.account_workchain_id,
+                    signed_message,
+                    false,
+                )
+                .await?;
+
+                self.notify(service_id, event.into()).await;
+            }
         }
+
         let (payload, signed_message) = self
             .ton_api_client
             .prepare_transaction(
@@ -395,7 +380,10 @@ impl TonService for TonServiceImpl {
             transaction.account_hex.clone(),
             transaction.account_workchain_id,
             signed_message,
-        );
+            true,
+        )
+        .await
+        .trust_me();
 
         self.notify(service_id, event.into()).await;
 
@@ -727,8 +715,72 @@ impl TonService for TonServiceImpl {
     }
 }
 
+async fn send_transaction_helper(
+    ton_service: &TonServiceImpl,
+    message_hash: String,
+    account_hex: String,
+    account_workchain_id: i32,
+    signed_message: SignedMessage,
+) -> Result<(), ServiceError> {
+    let account = UInt256::from_be_bytes(&hex::decode(&account_hex).unwrap_or_default());
+    match ton_service
+        .ton_api_client
+        .send_transaction(account, signed_message)
+        .await
+    {
+        Ok(MessageStatus::Delivered) => {
+            log::info!("Successfully sent message `{}`", message_hash);
+            Ok(())
+        }
+        Ok(MessageStatus::Expired) => {
+            log::info!("Message `{}` expired", message_hash);
+            match ton_service
+                .update_sent_transaction(
+                    message_hash.clone(),
+                    account_workchain_id,
+                    account_hex.clone(),
+                    &UpdateSendTransaction::error("Expired".to_string()),
+                )
+                .await
+            {
+                Ok(_) => Ok(()),
+                Err(err) => Err(ServiceError::Other(
+                    TonServiceError::UpdateMessageFail(
+                        account_hex.clone(),
+                        message_hash.clone(),
+                        err,
+                    )
+                    .into(),
+                )),
+            }
+        }
+        Err(e) => {
+            log::warn!("Failed to send message: {:?}", e);
+            match ton_service
+                .update_sent_transaction(
+                    message_hash.clone(),
+                    account_workchain_id,
+                    account_hex.clone(),
+                    &UpdateSendTransaction::error("Fail".to_string()),
+                )
+                .await
+            {
+                Ok(_) => Ok(()),
+                Err(err) => Err(ServiceError::Other(
+                    TonServiceError::UpdateMessageFail(
+                        account_hex.clone(),
+                        message_hash.clone(),
+                        err,
+                    )
+                    .into(),
+                )),
+            }
+        }
+    }
+}
+
 #[derive(thiserror::Error, Debug)]
 enum TonServiceError {
-    #[error("Failed to deploy `{0}:{1}`")]
-    DeployFail(i32, String),
+    #[error("Failed to update sent transaction for account `{0}` with message hash - `{1}`: {2}")]
+    UpdateMessageFail(String, String, ServiceError),
 }
