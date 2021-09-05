@@ -98,6 +98,10 @@ impl TonSubscriber {
         }
     }
 
+    pub fn get_current_utime(&self) -> u32 {
+        self.current_utime.load(Ordering::Acquire)
+    }
+
     async fn wait_sync(&self) {
         if self.ready.load(Ordering::Acquire) {
             return;

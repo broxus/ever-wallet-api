@@ -144,6 +144,10 @@ impl TonCore {
             .add_transactions_subscription(accounts, &self.token_transaction_observer);
     }
 
+    pub fn get_current_utime(&self) -> u32 {
+        self.ton_subscriber.get_current_utime()
+    }
+
     fn start_listening_transactions(
         self: &Arc<Self>,
         mut rx: mpsc::UnboundedReceiver<TransactionContext>,
