@@ -14,10 +14,10 @@ pub struct Config {
     pub server_addr: String,
     pub database_url: String,
     pub db_pool_size: u32,
+    pub secret: String,
     pub ton_core: TonCoreConfig,
     #[serde(default = "default_logger_settings")]
     pub logger_settings: serde_yaml::Value,
-    pub secret: String,
 }
 
 impl Config {

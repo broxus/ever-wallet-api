@@ -168,7 +168,8 @@ impl TonClient for TonClientImpl {
         let account = UInt256::from_be_bytes(&address.address().get_bytestring(0));
         let contract = match self.ton_core.get_contract_state(account).await {
             Ok(contract) => contract,
-            Err(_) => {
+            Err(err) => {
+                log::warn!("Failed to get contract state: {}", err);
                 return Ok(NetworkAddressData {
                     workchain_id: address.workchain_id(),
                     hex: address.address().to_hex_string(),
@@ -177,7 +178,7 @@ impl TonClient for TonClientImpl {
                     last_transaction_hash: None,
                     last_transaction_lt: None,
                     sync_u_time: Default::default(),
-                })
+                });
             }
         };
 

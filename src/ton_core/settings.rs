@@ -20,44 +20,29 @@ pub async fn get_node_config(config: &TonCoreConfig) -> Result<ton_indexer::Node
         None => anyhow::bail!("External ip not found"),
     };
 
-    if !config.keys_path.exists() {
-        generate_keys_config(config.keys_path.clone()).await?
-    }
-
-    let keys_config = read_keys_config(config.keys_path.clone())?;
+    let adnl_keys = match read_keys_config(config.keys_path.clone()) {
+        Ok(keys) => keys,
+        Err(err) => {
+            log::warn!("Generate a new NodeKeys config for a reason: {}", err);
+            generate_keys_config(config.keys_path.clone()).await?;
+            read_keys_config(config.keys_path.clone())?
+        }
+    };
 
     Ok(ton_indexer::NodeConfig {
         ip_address,
-        keys: keys_config.entries,
+        adnl_keys,
         rocks_db_path: config.rocks_db_path.clone(),
         file_db_path: config.file_db_path.clone(),
-        shard_state_cache_enabled: false,
         old_blocks_policy: Default::default(),
-        max_db_memory_usage: Default::default(),
+        shard_state_cache_enabled: false,
+        max_db_memory_usage: ton_indexer::default_max_db_memory_usage(),
+        adnl_options: Default::default(),
+        rldp_options: Default::default(),
+        dht_options: Default::default(),
+        neighbours_options: Default::default(),
+        overlay_shard_options: Default::default(),
     })
-}
-
-#[derive(Deserialize, Serialize)]
-struct KeysConfig {
-    entries: Vec<ton_indexer::AdnlNodeKey>,
-}
-
-impl KeysConfig {
-    pub fn generate() -> Self {
-        let mut keys = Vec::new();
-
-        let get_node_key = |tag: usize| -> ton_indexer::AdnlNodeKey {
-            ton_indexer::AdnlNodeKey {
-                tag,
-                key: SecretKey::generate(&mut rand::thread_rng()).to_bytes(),
-            }
-        };
-
-        keys.push(get_node_key(1));
-        keys.push(get_node_key(2));
-
-        KeysConfig { entries: keys }
-    }
 }
 
 async fn generate_keys_config<T>(path: T) -> Result<()>
@@ -67,12 +52,12 @@ where
     use std::io::Write;
 
     let mut file = std::fs::File::create(path)?;
-    let config = KeysConfig::generate();
+    let config = ton_indexer::NodeKeys::generate();
     file.write_all(serde_yaml::to_string(&config)?.as_bytes())?;
     Ok(())
 }
 
-fn read_keys_config(path: PathBuf) -> Result<KeysConfig> {
+fn read_keys_config(path: PathBuf) -> Result<ton_indexer::NodeKeys> {
     let file = std::fs::File::open(path)?;
     let reader = std::io::BufReader::new(file);
     let config = serde_yaml::from_reader(reader)?;

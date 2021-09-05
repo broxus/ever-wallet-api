@@ -18,7 +18,7 @@ use crate::ton_core::*;
 pub struct TonSubscriber {
     ready: AtomicBool,
     ready_signal: Notify,
-    current_utime: AtomicU32,
+    current_utime: AtomicU32, // extend to api
     state_subscriptions: Mutex<HashMap<UInt256, StateSubscription>>,
     mc_block_awaiters: Mutex<Vec<Box<dyn BlockAwaiter>>>,
     messages_queue: Arc<PendingMessagesQueue>,
