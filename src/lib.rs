@@ -142,7 +142,7 @@ async fn start_listening_receive_transactions(
         while let Some(transaction) = rx.recv().await {
             match transaction {
                 ReceiveTransaction::Create(transaction) => {
-                    match ton_service.create_receive_transaction(&transaction).await {
+                    match ton_service.create_receive_transaction(transaction).await {
                         Ok(_) => {}
                         Err(err) => {
                             log::error!("Failed to create receive transaction: {:?}", err)
@@ -155,7 +155,7 @@ async fn start_listening_receive_transactions(
                             transaction.message_hash,
                             transaction.account_workchain_id,
                             transaction.account_hex,
-                            &transaction.input,
+                            transaction.input,
                         )
                         .await
                     {

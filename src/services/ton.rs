@@ -25,30 +25,30 @@ type Aes128Ecb = Ecb<Aes256, Pkcs7>;
 pub trait TonService: Send + Sync + 'static {
     async fn create_address(
         &self,
-        service_id: ServiceId,
+        service_id: &ServiceId,
         input: CreateAddress,
     ) -> Result<AddressDb, ServiceError>;
-    async fn check_address(&self, address: &Address) -> Result<bool, ServiceError>;
+    async fn check_address(&self, address: Address) -> Result<bool, ServiceError>;
     async fn get_address_balance(
         &self,
         service_id: &ServiceId,
-        address: &Address,
+        address: Address,
     ) -> Result<(AddressDb, NetworkAddressData), ServiceError>;
     async fn create_send_transaction(
         &self,
-        service_id: ServiceId,
+        service_id: &ServiceId,
         input: TransactionSend,
     ) -> Result<TransactionDb, ServiceError>;
     async fn create_receive_transaction(
         &self,
-        input: &CreateReceiveTransaction,
+        input: CreateReceiveTransaction,
     ) -> Result<TransactionDb, ServiceError>;
     async fn update_sent_transaction(
         &self,
         message_hash: String,
         account_workchain_id: i32,
         account_hex: String,
-        input: &UpdateSendTransaction,
+        input: UpdateSendTransaction,
     ) -> Result<TransactionDb, ServiceError>;
     async fn get_transaction_by_mh(
         &self,
@@ -149,8 +149,8 @@ impl TonServiceImpl {
             secret,
         }
     }
-    async fn notify_token(&self, service_id: ServiceId, payload: AccountTransactionEvent) {
-        if let Ok(url) = self.sqlx_client.get_callback(service_id).await {
+    async fn notify_token(&self, service_id: &ServiceId, payload: AccountTransactionEvent) {
+        if let Ok(url) = self.sqlx_client.get_callback(*service_id).await {
             let event_status = match self.callback_client.send(url, payload.clone()).await {
                 Err(e) => {
                     log::error!("{}", e);
@@ -172,8 +172,8 @@ impl TonServiceImpl {
             }
         }
     }
-    async fn notify(&self, service_id: ServiceId, payload: AccountTransactionEvent) {
-        if let Ok(url) = self.sqlx_client.get_callback(service_id).await {
+    async fn notify(&self, service_id: &ServiceId, payload: AccountTransactionEvent) {
+        if let Ok(url) = self.sqlx_client.get_callback(*service_id).await {
             let event_status = match self.callback_client.send(url, payload.clone()).await {
                 Err(e) => {
                     log::error!("{}", e);
@@ -265,7 +265,7 @@ impl TonServiceImpl {
 impl TonService for TonServiceImpl {
     async fn create_address(
         &self,
-        service_id: ServiceId,
+        service_id: &ServiceId,
         input: CreateAddress,
     ) -> Result<AddressDb, ServiceError> {
         let payload = self.ton_api_client.create_address(input).await?;
@@ -276,13 +276,13 @@ impl TonService for TonServiceImpl {
         self.sqlx_client
             .create_address(CreateAddressInDb::new(
                 payload,
-                service_id,
+                *service_id,
                 public_key,
                 private_key,
             ))
             .await
     }
-    async fn check_address(&self, address: &Address) -> Result<bool, ServiceError> {
+    async fn check_address(&self, address: Address) -> Result<bool, ServiceError> {
         Ok(MsgAddressInt::from_str(&address.0).is_ok()
             || (unpack_std_smc_addr(&address.0, false).is_ok())
             || (unpack_std_smc_addr(&address.0, true).is_ok()))
@@ -290,7 +290,7 @@ impl TonService for TonServiceImpl {
     async fn get_address_balance(
         &self,
         service_id: &ServiceId,
-        address: &Address,
+        address: Address,
     ) -> Result<(AddressDb, NetworkAddressData), ServiceError> {
         let account = repack_address(&address.0)?;
         let address = self
@@ -306,7 +306,7 @@ impl TonService for TonServiceImpl {
     }
     async fn create_send_transaction(
         &self,
-        service_id: ServiceId,
+        service_id: &ServiceId,
         input: TransactionSend,
     ) -> Result<TransactionDb, ServiceError> {
         let account = repack_address(&input.from_address.0)?;
@@ -329,7 +329,7 @@ impl TonService for TonServiceImpl {
         let address = self
             .sqlx_client
             .get_address(
-                service_id,
+                *service_id,
                 account.workchain_id(),
                 account.address().to_hex_string(),
             )
@@ -349,7 +349,7 @@ impl TonService for TonServiceImpl {
                     .sqlx_client
                     .create_send_transaction(CreateSendTransaction::new(
                         payload.clone(),
-                        service_id,
+                        *service_id,
                     ))
                     .await?;
 
@@ -379,7 +379,7 @@ impl TonService for TonServiceImpl {
 
         let (transaction, event) = self
             .sqlx_client
-            .create_send_transaction(CreateSendTransaction::new(payload.clone(), service_id))
+            .create_send_transaction(CreateSendTransaction::new(payload.clone(), *service_id))
             .await?;
 
         self.send_transaction(
@@ -399,7 +399,7 @@ impl TonService for TonServiceImpl {
 
     async fn create_receive_transaction(
         &self,
-        input: &CreateReceiveTransaction,
+        input: CreateReceiveTransaction,
     ) -> Result<TransactionDb, ServiceError> {
         let address = self
             .sqlx_client
@@ -408,10 +408,10 @@ impl TonService for TonServiceImpl {
 
         let (transaction, event) = self
             .sqlx_client
-            .create_receive_transaction(input.clone(), address.service_id)
+            .create_receive_transaction(input, address.service_id)
             .await?;
 
-        self.notify(address.service_id, event.into()).await;
+        self.notify(&address.service_id, event.into()).await;
 
         Ok(transaction)
     }
@@ -421,7 +421,7 @@ impl TonService for TonServiceImpl {
         message_hash: String,
         account_workchain_id: i32,
         account_hex: String,
-        input: &UpdateSendTransaction,
+        input: UpdateSendTransaction,
     ) -> Result<TransactionDb, ServiceError> {
         let address = self
             .sqlx_client
@@ -438,7 +438,7 @@ impl TonService for TonServiceImpl {
             )
             .await?;
 
-        self.notify(address.service_id, event.into()).await;
+        self.notify(&address.service_id, event.into()).await;
 
         Ok(transaction)
     }
@@ -660,7 +660,7 @@ impl TonService for TonServiceImpl {
             event = result.1;
         }
 
-        self.notify_token(*service_id, event.into()).await;
+        self.notify_token(service_id, event.into()).await;
 
         Ok(transaction)
     }
@@ -683,7 +683,7 @@ impl TonService for TonServiceImpl {
             .create_receive_token_transaction(input.clone(), address.service_id)
             .await?;
 
-        self.notify_token(address.service_id, event.into()).await;
+        self.notify_token(&address.service_id, event.into()).await;
 
         Ok(transaction)
     }
@@ -716,7 +716,7 @@ impl TonService for TonServiceImpl {
             )
             .await?;
 
-        self.notify_token(address.service_id, event.into()).await;
+        self.notify_token(&address.service_id, event.into()).await;
 
         Ok(transaction)
     }
@@ -746,7 +746,7 @@ async fn send_transaction_helper(
                     message_hash.clone(),
                     account_workchain_id,
                     account_hex.clone(),
-                    &UpdateSendTransaction::error("Expired".to_string()),
+                    UpdateSendTransaction::error("Expired".to_string()),
                 )
                 .await
             {
@@ -768,7 +768,7 @@ async fn send_transaction_helper(
                     message_hash.clone(),
                     account_workchain_id,
                     account_hex.clone(),
-                    &UpdateSendTransaction::error("Fail".to_string()),
+                    UpdateSendTransaction::error("Fail".to_string()),
                 )
                 .await
             {

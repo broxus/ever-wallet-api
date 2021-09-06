@@ -18,7 +18,7 @@ pub fn post_address_create(
     async move {
         let address = ctx
             .ton_service
-            .create_address(service_id, input.into())
+            .create_address(&service_id, input.into())
             .await
             .map(From::from);
         let res = AccountAddressResponse::from(address);
@@ -35,7 +35,7 @@ pub fn post_address_check(
     async move {
         let address = ctx
             .ton_service
-            .check_address(&input.address)
+            .check_address(input.address)
             .await
             .map(PostAddressValidResponse::new);
         let res = PostCheckedAddressResponse::from(address);
@@ -52,7 +52,7 @@ pub fn get_address_balance(
     async move {
         let address = ctx
             .ton_service
-            .get_address_balance(&service_id, &address)
+            .get_address_balance(&service_id, address)
             .await
             .map(|(a, b)| PostAddressBalanceDataResponse::new(a, b));
         let res = AddressBalanceResponse::from(address);
@@ -70,7 +70,7 @@ pub fn post_transactions_create(
     async move {
         let transaction = ctx
             .ton_service
-            .create_send_transaction(service_id, input.into())
+            .create_send_transaction(&service_id, input.into())
             .await
             .map(From::from);
         let res = AccountTransactionResponse::from(transaction);
