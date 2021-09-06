@@ -13,7 +13,6 @@ use ton_block::{GetRepresentationHash, MsgAddressInt};
 use ton_types::UInt256;
 
 use crate::models::*;
-use crate::prelude::*;
 use crate::ton_core::*;
 use crate::utils::*;
 
@@ -28,17 +27,14 @@ pub const MULTISIG_TYPE: MultisigType = MultisigType::SafeMultisigWallet;
 
 #[async_trait]
 pub trait TonClient: Send + Sync {
-    async fn create_address(&self, payload: CreateAddress) -> Result<CreatedAddress, ServiceError>;
-    async fn get_address_info(
-        &self,
-        address: MsgAddressInt,
-    ) -> Result<NetworkAddressData, ServiceError>;
+    async fn create_address(&self, payload: CreateAddress) -> Result<CreatedAddress>;
+    async fn get_address_info(&self, address: MsgAddressInt) -> Result<NetworkAddressData>;
     async fn prepare_deploy(
         &self,
         address: &AddressDb,
         public_key: &[u8],
         private_key: &[u8],
-    ) -> Result<Option<(SentTransaction, SignedMessage)>, ServiceError>;
+    ) -> Result<Option<(SentTransaction, SignedMessage)>>;
     async fn prepare_transaction(
         &self,
         transaction: TransactionSend,
@@ -46,38 +42,38 @@ pub trait TonClient: Send + Sync {
         private_key: &[u8],
         account_type: &AccountType,
         custodians: &Option<i32>,
-    ) -> Result<(SentTransaction, SignedMessage), ServiceError>;
+    ) -> Result<(SentTransaction, SignedMessage)>;
     async fn send_transaction(
         &self,
         account: UInt256,
         signed_message: SignedMessage,
-    ) -> Result<MessageStatus, ServiceError>;
+    ) -> Result<MessageStatus>;
     async fn get_token_address_info(
         &self,
         address: MsgAddressInt,
         root_address: MsgAddressInt,
-    ) -> Result<NetworkTokenAddressData, ServiceError>;
+    ) -> Result<NetworkTokenAddressData>;
     async fn prepare_token_transaction(
         &self,
         transaction: &TokenTransactionSend,
         public_key: String,
         private_key: String,
         account_type: AccountType,
-    ) -> Result<SentTokenTransaction, ServiceError>;
+    ) -> Result<SentTokenTransaction>;
     async fn send_token_transaction(
         &self,
         transaction: &SentTokenTransaction,
         public_key: String,
         private_key: String,
         account_type: AccountType,
-    ) -> Result<(), ServiceError>;
+    ) -> Result<()>;
     async fn deploy_token_address_contract(
         &self,
         address: TokenBalanceFromDb,
         public_key: String,
         private_key: String,
         account_type: AccountType,
-    ) -> Result<(), ServiceError>;
+    ) -> Result<()>;
 }
 
 #[derive(Clone)]
@@ -93,7 +89,7 @@ impl TonClientImpl {
 
 #[async_trait]
 impl TonClient for TonClientImpl {
-    async fn create_address(&self, payload: CreateAddress) -> Result<CreatedAddress, ServiceError> {
+    async fn create_address(&self, payload: CreateAddress) -> Result<CreatedAddress> {
         let generated_key = nekoton::crypto::generate_key(nekoton::crypto::MnemonicType::Labs(0))?;
 
         let Keypair { public, secret } = nekoton::crypto::derive_from_phrase(
@@ -162,10 +158,7 @@ impl TonClient for TonClientImpl {
             custodians_public_keys,
         })
     }
-    async fn get_address_info(
-        &self,
-        address: MsgAddressInt,
-    ) -> Result<NetworkAddressData, ServiceError> {
+    async fn get_address_info(&self, address: MsgAddressInt) -> Result<NetworkAddressData> {
         let account = UInt256::from_be_bytes(&address.address().get_bytestring(0));
         let contract = match self.ton_core.get_contract_state(account).await {
             Ok(contract) => contract,
@@ -205,7 +198,7 @@ impl TonClient for TonClientImpl {
         address: &AddressDb,
         public_key: &[u8],
         private_key: &[u8],
-    ) -> Result<Option<(SentTransaction, SignedMessage)>, ServiceError> {
+    ) -> Result<Option<(SentTransaction, SignedMessage)>> {
         let public_key = PublicKey::from_bytes(public_key).unwrap_or_default();
 
         let unsigned_message = match address.account_type {
@@ -238,8 +231,7 @@ impl TonClient for TonClientImpl {
             }
         };
 
-        let secret =
-            SecretKey::from_bytes(private_key).map_err(|err| ServiceError::Other(err.into()))?;
+        let secret = SecretKey::from_bytes(private_key)?;
 
         let key_pair = Keypair {
             secret,
@@ -269,7 +261,7 @@ impl TonClient for TonClientImpl {
         private_key: &[u8],
         account_type: &AccountType,
         custodians: &Option<i32>,
-    ) -> Result<(SentTransaction, SignedMessage), ServiceError> {
+    ) -> Result<(SentTransaction, SignedMessage)> {
         let original_value = transaction.outputs.iter().map(|o| o.value.clone()).sum();
         let original_outputs =
             serde_json::to_value(transaction.outputs.clone()).unwrap_or_default();
@@ -326,7 +318,7 @@ impl TonClient for TonClientImpl {
                 let recipient = transaction
                     .outputs
                     .first()
-                    .ok_or_else(|| ServiceError::Other(TonClientError::InvalidRecipient.into()))?;
+                    .ok_or(TonClientError::RecipientNotFound)?;
 
                 let destination = nekoton_utils::repack_address(&recipient.recipient_address.0)?;
                 let amount = recipient.value.clone();
@@ -346,18 +338,14 @@ impl TonClient for TonClientImpl {
                 let recipient = transaction
                     .outputs
                     .first()
-                    .ok_or_else(|| ServiceError::Other(TonClientError::InvalidRecipient.into()))?;
+                    .ok_or(TonClientError::RecipientNotFound)?;
 
                 let destination = nekoton_utils::repack_address(&recipient.recipient_address.0)?;
                 let amount = recipient.value.to_u64().unwrap_or_default();
 
                 let has_multiple_owners = match custodians {
                     Some(custodians) => *custodians > 1,
-                    None => {
-                        return Err(ServiceError::Other(
-                            TonClientError::CustodiansNotFound.into(),
-                        ))
-                    }
+                    None => return Err(TonClientError::CustodiansNotFound.into()),
                 };
 
                 nekoton::core::ton_wallet::multisig::prepare_transfer(
@@ -376,14 +364,11 @@ impl TonClient for TonClientImpl {
         let unsigned_message = match transfer_action {
             TransferAction::Sign(unsigned_message) => unsigned_message,
             TransferAction::DeployFirst => {
-                return Err(ServiceError::Other(
-                    TonClientError::AccountNotDeployed(address.to_string()).into(),
-                ))
+                return Err(TonClientError::AccountNotDeployed(address.to_string()).into())
             }
         };
 
-        let secret =
-            SecretKey::from_bytes(private_key).map_err(|err| ServiceError::Other(err.into()))?;
+        let secret = SecretKey::from_bytes(private_key)?;
 
         let key_pair = Keypair {
             secret,
@@ -410,17 +395,16 @@ impl TonClient for TonClientImpl {
         &self,
         account: UInt256,
         signed_message: SignedMessage,
-    ) -> Result<MessageStatus, ServiceError> {
+    ) -> Result<MessageStatus> {
         self.ton_core
             .send_ton_message(&account, &signed_message.message, signed_message.expire_at)
             .await
-            .map_err(ServiceError::Other)
     }
     async fn get_token_address_info(
         &self,
         address: MsgAddressInt,
         root_address: MsgAddressInt,
-    ) -> Result<NetworkTokenAddressData, ServiceError> {
+    ) -> Result<NetworkTokenAddressData> {
         let root_account = UInt256::from_be_bytes(&root_address.address().get_bytestring(0));
         let root_contract = self.ton_core.get_contract_state(root_account).await?;
         let root_contract_state = RootTokenContractState(&root_contract);
@@ -463,7 +447,7 @@ impl TonClient for TonClientImpl {
         public_key: String,
         private_key: String,
         account_type: AccountType,
-    ) -> Result<SentTokenTransaction, ServiceError> {
+    ) -> Result<SentTokenTransaction> {
         todo!()
     }
     async fn send_token_transaction(
@@ -472,7 +456,7 @@ impl TonClient for TonClientImpl {
         public_key: String,
         private_key: String,
         account_type: AccountType,
-    ) -> Result<(), ServiceError> {
+    ) -> Result<()> {
         todo!()
     }
     async fn deploy_token_address_contract(
@@ -481,15 +465,15 @@ impl TonClient for TonClientImpl {
         public_key: String,
         private_key: String,
         account_type: AccountType,
-    ) -> Result<(), ServiceError> {
+    ) -> Result<()> {
         todo!()
     }
 }
 
 #[derive(thiserror::Error, Debug)]
 enum TonClientError {
-    #[error("Recipient not found")]
-    InvalidRecipient,
+    #[error("Recipient is empty")]
+    RecipientNotFound,
     #[error("Account `{0}` not deployed")]
     AccountNotDeployed(String),
     #[error("Custodians not found")]
