@@ -254,7 +254,8 @@ impl TonClient for TonClientImpl {
             message_hash: signed_message.message.hash()?.to_hex_string(),
             account_workchain_id: address.workchain_id,
             account_hex: address.hex.clone(),
-            value: BigDecimal::default(),
+            original_value: None,
+            original_outputs: None,
             aborted: false,
             bounce: false,
         };
@@ -269,12 +270,15 @@ impl TonClient for TonClientImpl {
         account_type: &AccountType,
         custodians: &Option<i32>,
     ) -> Result<(SentTransaction, SignedMessage), ServiceError> {
-        let public_key = PublicKey::from_bytes(public_key).unwrap_or_default();
-
-        let address = nekoton_utils::repack_address(&transaction.from_address.0)?;
+        let original_value = transaction.outputs.iter().map(|o| o.value.clone()).sum();
+        let original_outputs =
+            serde_json::to_value(transaction.outputs.clone()).unwrap_or_default();
         let bounce = transaction.bounce.unwrap_or_default();
 
-        let (transfer_action, amount) = match account_type {
+        let public_key = PublicKey::from_bytes(public_key).unwrap_or_default();
+        let address = nekoton_utils::repack_address(&transaction.from_address.0)?;
+
+        let transfer_action = match account_type {
             AccountType::HighloadWallet => {
                 let account = UInt256::from_be_bytes(&address.address().get_bytestring(0));
                 let current_state = self.ton_core.get_contract_state(account).await?.account;
@@ -302,17 +306,12 @@ impl TonClient for TonClientImpl {
                     .collect::<Result<Vec<nekoton::core::ton_wallet::highload_wallet_v2::Gift>>>(
                     )?;
 
-                let amount = gifts.iter().map(|gift| gift.amount).sum();
-
-                (
-                    nekoton::core::ton_wallet::highload_wallet_v2::prepare_transfer(
-                        &public_key,
-                        &current_state,
-                        gifts,
-                        Expiration::Timeout(DEFAULT_EXPIRATION_TIMEOUT),
-                    )?,
-                    amount,
-                )
+                nekoton::core::ton_wallet::highload_wallet_v2::prepare_transfer(
+                    &public_key,
+                    &current_state,
+                    gifts,
+                    Expiration::Timeout(DEFAULT_EXPIRATION_TIMEOUT),
+                )?
             }
             AccountType::Wallet => {
                 let account = UInt256::from_be_bytes(&address.address().get_bytestring(0));
@@ -324,20 +323,18 @@ impl TonClient for TonClientImpl {
                     .ok_or_else(|| ServiceError::Other(TonClientError::InvalidRecipient.into()))?;
 
                 let destination = nekoton_utils::repack_address(&recipient.recipient_address.0)?;
-                let amount = recipient.value.to_u64().unwrap_or_default();
+                let amount = recipient.value.clone();
+                let amount = amount.to_u64().unwrap_or_default();
 
-                (
-                    nekoton::core::ton_wallet::wallet_v3::prepare_transfer(
-                        &public_key,
-                        &current_state,
-                        destination,
-                        amount,
-                        bounce,
-                        None,
-                        Expiration::Timeout(DEFAULT_EXPIRATION_TIMEOUT),
-                    )?,
+                nekoton::core::ton_wallet::wallet_v3::prepare_transfer(
+                    &public_key,
+                    &current_state,
+                    destination,
                     amount,
-                )
+                    bounce,
+                    None,
+                    Expiration::Timeout(DEFAULT_EXPIRATION_TIMEOUT),
+                )?
             }
             AccountType::SafeMultisig => {
                 let recipient = transaction
@@ -357,19 +354,16 @@ impl TonClient for TonClientImpl {
                     }
                 };
 
-                (
-                    nekoton::core::ton_wallet::multisig::prepare_transfer(
-                        &public_key,
-                        has_multiple_owners,
-                        address.clone(),
-                        destination,
-                        amount,
-                        bounce,
-                        None,
-                        Expiration::Timeout(DEFAULT_EXPIRATION_TIMEOUT),
-                    )?,
+                nekoton::core::ton_wallet::multisig::prepare_transfer(
+                    &public_key,
+                    has_multiple_owners,
+                    address.clone(),
+                    destination,
                     amount,
-                )
+                    bounce,
+                    None,
+                    Expiration::Timeout(DEFAULT_EXPIRATION_TIMEOUT),
+                )?
             }
         };
 
@@ -398,7 +392,8 @@ impl TonClient for TonClientImpl {
             message_hash: signed_message.message.hash()?.to_hex_string(),
             account_workchain_id: address.workchain_id(),
             account_hex: address.address().to_hex_string(),
-            value: BigDecimal::from_u64(amount).unwrap_or_default(),
+            original_value: Some(original_value),
+            original_outputs: Some(original_outputs),
             aborted: false,
             bounce,
         };

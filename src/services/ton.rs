@@ -3,6 +3,7 @@ use std::sync::Arc;
 
 use aes::Aes256;
 use async_trait::async_trait;
+use bigdecimal::BigDecimal;
 use block_modes::block_padding::Pkcs7;
 use block_modes::{BlockMode, Ecb};
 use nekoton::crypto::SignedMessage;
@@ -315,6 +316,37 @@ impl TonService for TonServiceImpl {
             .get_address_info(account.clone())
             .await?;
 
+        log::info!(
+            "Left balance: {}",
+            input
+                .outputs
+                .iter()
+                .map(|o| o.value.clone())
+                .sum::<BigDecimal>()
+        );
+        log::info!("Right balance: {}", network.network_balance);
+
+        if input
+            .outputs
+            .iter()
+            .map(|o| o.value.clone())
+            .sum::<BigDecimal>()
+            >= network.network_balance
+        {
+            return Err(ServiceError::WrongInput("Insufficient balance".to_string()));
+        }
+
+        /*if input
+            .outputs
+            .iter()
+            .fold(Default::default(), |acc: BigDecimal, o| {
+                acc + o.value.clone()
+            })
+            >= network.network_balance
+        {
+            return Err(ServiceError::WrongInput("Insufficient balance".to_string()));
+        }*/
+
         let address = self
             .sqlx_client
             .get_address(
@@ -365,10 +397,6 @@ impl TonService for TonServiceImpl {
                 &address.custodians,
             )
             .await?;
-
-        if payload.value >= network.network_balance {
-            return Err(ServiceError::WrongInput("Insufficient balance".to_string()));
-        }
 
         let (transaction, event) = self
             .sqlx_client

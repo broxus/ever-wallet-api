@@ -67,9 +67,9 @@ pub async fn handle_transaction(
                 account_workchain_id: address.workchain_id(),
                 account_hex: address.address().to_hex_string(),
                 messages,
-                data: None,             // TODO
-                original_value: None,   // TODO
-                original_outputs: None, // TODO
+                data: None, // TODO
+                original_value: None,
+                original_outputs: None,
                 value,
                 fee,
                 balance_change,
@@ -94,9 +94,7 @@ pub async fn handle_transaction(
                     sender_workchain_id,
                     sender_hex,
                     messages,
-                    data: None,             // TODO
-                    original_value: None,   // TODO
-                    original_outputs: None, // TODO
+                    data: None, // TODO
                     value,
                     fee,
                     balance_change,

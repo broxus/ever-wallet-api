@@ -2,8 +2,6 @@ use std::net::{IpAddr, SocketAddrV4};
 use std::path::PathBuf;
 
 use anyhow::Result;
-use ed25519_dalek::SecretKey;
-use serde::{Deserialize, Serialize};
 
 use super::TonCoreConfig;
 
