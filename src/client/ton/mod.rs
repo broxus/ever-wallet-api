@@ -36,7 +36,8 @@ pub trait TonClient: Send + Sync {
     async fn prepare_deploy(
         &self,
         address: &AddressDb,
-        secret: &[u8],
+        public_key: &[u8],
+        private_key: &[u8],
     ) -> Result<Option<(SentTransaction, SignedMessage)>, ServiceError>;
     async fn prepare_transaction(
         &self,
@@ -202,11 +203,10 @@ impl TonClient for TonClientImpl {
     async fn prepare_deploy(
         &self,
         address: &AddressDb,
+        public_key: &[u8],
         private_key: &[u8],
     ) -> Result<Option<(SentTransaction, SignedMessage)>, ServiceError> {
-        let public_key =
-            PublicKey::from_bytes(&hex::decode(&address.public_key).unwrap_or_default())
-                .unwrap_or_default();
+        let public_key = PublicKey::from_bytes(public_key).unwrap_or_default();
 
         let unsigned_message = match address.account_type {
             AccountType::SafeMultisig => {
@@ -290,8 +290,14 @@ impl TonClient for TonClientImpl {
                         let destination = nekoton_utils::repack_address(&item.recipient_address.0)?;
                         let amount = item.value.to_u64().unwrap_or_default();
 
+                        let flags = match item.output_type.unwrap_or_default() {
+                            TransactionSendOutputType::Normal => 3,
+                            TransactionSendOutputType::AllBalance => 128,
+                            TransactionSendOutputType::AllBalanceDeleteNetworkAccount => 160,
+                        };
+
                         Ok(nekoton::core::ton_wallet::highload_wallet_v2::Gift {
-                            flags: 3,
+                            flags,
                             bounce,
                             destination,
                             amount,

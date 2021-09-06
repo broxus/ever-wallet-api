@@ -119,3 +119,9 @@ pub enum TransactionSendOutputType {
     AllBalance,
     AllBalanceDeleteNetworkAccount,
 }
+
+impl Default for TransactionSendOutputType {
+    fn default() -> Self {
+        TransactionSendOutputType::Normal
+    }
+}

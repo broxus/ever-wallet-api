@@ -316,16 +316,6 @@ impl TonService for TonServiceImpl {
             .get_address_info(account.clone())
             .await?;
 
-        log::info!(
-            "Left balance: {}",
-            input
-                .outputs
-                .iter()
-                .map(|o| o.value.clone())
-                .sum::<BigDecimal>()
-        );
-        log::info!("Right balance: {}", network.network_balance);
-
         if input
             .outputs
             .iter()
@@ -335,17 +325,6 @@ impl TonService for TonServiceImpl {
         {
             return Err(ServiceError::WrongInput("Insufficient balance".to_string()));
         }
-
-        /*if input
-            .outputs
-            .iter()
-            .fold(Default::default(), |acc: BigDecimal, o| {
-                acc + o.value.clone()
-            })
-            >= network.network_balance
-        {
-            return Err(ServiceError::WrongInput("Insufficient balance".to_string()));
-        }*/
 
         let address = self
             .sqlx_client
@@ -362,7 +341,7 @@ impl TonService for TonServiceImpl {
         if network.account_status == AccountStatus::UnInit {
             let payload = self
                 .ton_api_client
-                .prepare_deploy(&address, &secret)
+                .prepare_deploy(&address, &public_key, &secret)
                 .await?;
 
             if let Some((payload, signed_message)) = payload {
