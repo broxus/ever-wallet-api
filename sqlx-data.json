@@ -3296,6 +3296,56 @@
       ]
     }
   },
+  "aaca2c63063e1d159c736c81e986d20cb10920fd95853a6c5212f6b1bb3b9df8": {
+    "query": "SELECT id,\n                    service_id as \"service_id: _\",\n                    key,\n                    secret,\n                    whitelist,\n                    created_at\n                    FROM api_service_key WHERE service_id = $1",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "id",
+          "type_info": "Uuid"
+        },
+        {
+          "ordinal": 1,
+          "name": "service_id: _",
+          "type_info": "Uuid"
+        },
+        {
+          "ordinal": 2,
+          "name": "key",
+          "type_info": "Varchar"
+        },
+        {
+          "ordinal": 3,
+          "name": "secret",
+          "type_info": "Varchar"
+        },
+        {
+          "ordinal": 4,
+          "name": "whitelist",
+          "type_info": "Jsonb"
+        },
+        {
+          "ordinal": 5,
+          "name": "created_at",
+          "type_info": "Timestamp"
+        }
+      ],
+      "parameters": {
+        "Left": [
+          "Uuid"
+        ]
+      },
+      "nullable": [
+        false,
+        false,
+        false,
+        false,
+        true,
+        false
+      ]
+    }
+  },
   "b07560cf0c54dddc13cb6f941fa45d536b2e7d85e0e86e22fa911156d9704168": {
     "query": "SELECT id, service_id as \"service_id: _\", workchain_id, hex, base64url, public_key, private_key, account_type as \"account_type: _\", custodians, confirmations, custodians_public_keys, balance, created_at, updated_at\n                FROM address\n                WHERE workchain_id = $1 AND hex = $2",
     "describe": {

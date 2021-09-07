@@ -19,21 +19,20 @@ impl SqlxClient {
         .await
         .map_err(From::from)
     }
-}
-
-#[cfg(test)]
-mod test {
-    use crate::models::transaction_kind::TransactionKind;
-    use crate::models::transactions::TransactionsSearch;
-    use crate::models::transactions_ordering::TransactionsOrdering;
-    use crate::sqlx_client::SqlxClient;
-    use sqlx::PgPool;
-
-    #[tokio::test]
-    async fn test() {
-        let pg_pool =
-            PgPool::connect("postgresql://postgres:postgres@localhost:5432/ton_wallet_api_rs")
-                .await
-                .unwrap();
+    pub async fn get_key_by_service_id(&self, service_id: &ServiceId) -> Result<Key, ServiceError> {
+        sqlx::query_as!(
+            Key,
+            r#"SELECT id,
+                    service_id as "service_id: _",
+                    key,
+                    secret,
+                    whitelist,
+                    created_at
+                    FROM api_service_key WHERE service_id = $1"#,
+            service_id: ServiceId,
+        )
+        .fetch_one(&self.pool)
+        .await
+        .map_err(From::from)
     }
 }

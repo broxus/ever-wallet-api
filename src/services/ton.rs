@@ -151,7 +151,17 @@ impl TonServiceImpl {
     }
     async fn notify_token(&self, service_id: &ServiceId, payload: AccountTransactionEvent) {
         if let Ok(url) = self.sqlx_client.get_callback(*service_id).await {
-            let event_status = match self.callback_client.send(url, payload.clone()).await {
+            let secret = self
+                .sqlx_client
+                .get_key_by_service_id(service_id)
+                .await
+                .map(|k| k.secret)
+                .unwrap_or_default();
+            let event_status = match self
+                .callback_client
+                .send(url, payload.clone(), secret)
+                .await
+            {
                 Err(e) => {
                     log::error!("{}", e);
                     TonEventStatus::Error
@@ -174,7 +184,17 @@ impl TonServiceImpl {
     }
     async fn notify(&self, service_id: &ServiceId, payload: AccountTransactionEvent) {
         if let Ok(url) = self.sqlx_client.get_callback(*service_id).await {
-            let event_status = match self.callback_client.send(url, payload.clone()).await {
+            let secret = self
+                .sqlx_client
+                .get_key_by_service_id(service_id)
+                .await
+                .map(|k| k.secret)
+                .unwrap_or_default();
+            let event_status = match self
+                .callback_client
+                .send(url, payload.clone(), secret)
+                .await
+            {
                 Err(e) => {
                     log::error!("{}", e);
                     TonEventStatus::Error
