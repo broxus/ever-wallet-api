@@ -179,23 +179,8 @@ async fn start_listening_receive_token_transactions(
 ) {
     tokio::spawn(async move {
         while let Some(transaction) = rx.recv().await {
-            match transaction {
-                ReceiveTokenTransaction::Create(transaction) => {
-                    let _transaction_db = ton_service
-                        .create_receive_token_transaction(&transaction)
-                        .await;
-                }
-                ReceiveTokenTransaction::UpdateSent(transaction) => {
-                    let _transaction_db = ton_service
-                        .update_sent_token_transaction(
-                            transaction.message_hash,
-                            transaction.account_workchain_id,
-                            transaction.account_hex,
-                            transaction.root_address,
-                            &transaction.input,
-                        )
-                        .await;
-                }
+            if let Err(e) = ton_service.create_token_transaction(&transaction).await {
+                log::error!("Failed to create token transaction: {:?}", e)
             }
         }
 

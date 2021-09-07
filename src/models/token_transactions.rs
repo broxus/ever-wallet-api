@@ -60,7 +60,7 @@ pub struct UpdateSentTokenTransaction {
 }
 
 #[derive(Clone, Debug, serde::Serialize, serde::Deserialize, Eq, PartialEq)]
-pub struct CreateReceiveTokenTransaction {
+pub struct CreateTokenTransaction {
     pub id: Uuid,
     pub transaction_hash: Option<String>,
     pub message_hash: String,

@@ -50,7 +50,7 @@ impl UpdateSendTokenTransactionEvent {
 }
 
 #[derive(Clone, Debug, serde::Serialize, serde::Deserialize, Eq, PartialEq)]
-pub struct CreateReceiveTokenTransactionEvent {
+pub struct CreateTokenTransactionEvent {
     pub id: Uuid,
     pub service_id: ServiceId,
     pub token_transaction_id: Uuid,
@@ -64,7 +64,7 @@ pub struct CreateReceiveTokenTransactionEvent {
     pub event_status: TonEventStatus,
 }
 
-impl CreateReceiveTokenTransactionEvent {
+impl CreateTokenTransactionEvent {
     pub fn new(payload: TokenTransactionFromDb) -> Self {
         Self {
             id: Uuid::new_v4(),
@@ -75,8 +75,8 @@ impl CreateReceiveTokenTransactionEvent {
             account_hex: payload.account_hex,
             value: payload.value,
             root_address: payload.root_address,
-            transaction_direction: TonTransactionDirection::Receive,
-            transaction_status: TonTokenTransactionStatus::Done,
+            transaction_direction: payload.direction,
+            transaction_status: payload.status,
             event_status: TonEventStatus::New,
         }
     }

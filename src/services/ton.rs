@@ -110,17 +110,9 @@ pub trait TonService: Send + Sync + 'static {
         service_id: &ServiceId,
         input: &TokenTransactionSend,
     ) -> Result<TokenTransactionFromDb, ServiceError>;
-    async fn create_receive_token_transaction(
+    async fn create_token_transaction(
         &self,
-        input: &CreateReceiveTokenTransaction,
-    ) -> Result<TokenTransactionFromDb, ServiceError>;
-    async fn update_sent_token_transaction(
-        &self,
-        message_hash: String,
-        account_workchain_id: i32,
-        account_hex: String,
-        root_address: String,
-        input: &UpdateSendTokenTransaction,
+        input: &CreateTokenTransaction,
     ) -> Result<TokenTransactionFromDb, ServiceError>;
 }
 
@@ -685,9 +677,9 @@ impl TonService for TonServiceImpl {
         Ok(transaction)
     }
 
-    async fn create_receive_token_transaction(
+    async fn create_token_transaction(
         &self,
-        input: &CreateReceiveTokenTransaction,
+        input: &CreateTokenTransaction,
     ) -> Result<TokenTransactionFromDb, ServiceError> {
         let address = self
             .sqlx_client
@@ -700,40 +692,7 @@ impl TonService for TonServiceImpl {
 
         let (transaction, event) = self
             .sqlx_client
-            .create_receive_token_transaction(input.clone(), address.service_id)
-            .await?;
-
-        self.notify_token(&address.service_id, event.into()).await;
-
-        Ok(transaction)
-    }
-
-    async fn update_sent_token_transaction(
-        &self,
-        message_hash: String,
-        account_workchain_id: i32,
-        account_hex: String,
-        root_address: String,
-        input: &UpdateSendTokenTransaction,
-    ) -> Result<TokenTransactionFromDb, ServiceError> {
-        let address = self
-            .sqlx_client
-            .get_token_balance_by_workchain_hex(
-                account_workchain_id,
-                account_hex.clone(),
-                root_address.clone(),
-            )
-            .await?;
-
-        let (transaction, event) = self
-            .sqlx_client
-            .update_send_token_transaction(
-                message_hash,
-                account_workchain_id,
-                account_hex,
-                root_address,
-                input.clone(),
-            )
+            .create_token_transaction(input.clone(), address.service_id)
             .await?;
 
         self.notify_token(&address.service_id, event.into()).await;

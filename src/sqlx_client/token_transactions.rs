@@ -135,9 +135,9 @@ impl SqlxClient {
         Ok((transaction, event))
     }
 
-    pub async fn create_receive_token_transaction(
+    pub async fn create_token_transaction(
         &self,
-        payload: CreateReceiveTokenTransaction,
+        payload: CreateTokenTransaction,
         service_id: ServiceId,
     ) -> Result<(TokenTransactionFromDb, TokenTransactionEventDb), ServiceError> {
         let mut tx = self.pool.begin().await.map_err(ServiceError::from)?;
@@ -167,7 +167,7 @@ impl SqlxClient {
             .await
             .map_err(ServiceError::from)?;
 
-        let payload = CreateReceiveTokenTransactionEvent::new(transaction.clone());
+        let payload = CreateTokenTransactionEvent::new(transaction.clone());
 
         let event = sqlx::query_as!(TokenTransactionEventDb,
                 r#"

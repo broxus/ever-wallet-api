@@ -323,16 +323,11 @@ pub enum ReceiveTransaction {
     UpdateSent(UpdateSentTransaction),
 }
 
-pub enum ReceiveTokenTransaction {
-    Create(CreateReceiveTokenTransaction),
-    UpdateSent(UpdateSentTokenTransaction),
-}
-
 pub type ReceiveTransactionTx = mpsc::UnboundedSender<ReceiveTransaction>;
 pub type ReceiveTransactionRx = mpsc::UnboundedReceiver<ReceiveTransaction>;
 
-pub type ReceiveTokenTransactionTx = mpsc::UnboundedSender<ReceiveTokenTransaction>;
-pub type ReceiveTokenTransactionRx = mpsc::UnboundedReceiver<ReceiveTokenTransaction>;
+pub type ReceiveTokenTransactionTx = mpsc::UnboundedSender<CreateTokenTransaction>;
+pub type ReceiveTokenTransactionRx = mpsc::UnboundedReceiver<CreateTokenTransaction>;
 
 #[derive(thiserror::Error, Debug)]
 enum TonCoreError {

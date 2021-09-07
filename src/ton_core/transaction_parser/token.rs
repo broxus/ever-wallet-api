@@ -18,7 +18,7 @@ pub async fn handle_token_transaction(
     token_transaction_ctx: TokenTransactionContext,
     parsed_token_transaction: TokenWalletTransaction,
     owners_cache: &OwnersCache,
-) -> Result<ReceiveTokenTransaction> {
+) -> Result<CreateTokenTransaction> {
     let parse_ctx = ParseContext { owners_cache };
 
     let parsed = match parsed_token_transaction {
@@ -28,11 +28,15 @@ pub async fn handle_token_transaction(
         TokenWalletTransaction::Accept(tokens) => {
             internal_transfer_mint(token_transaction_ctx, tokens, parse_ctx).await?
         }
-        TokenWalletTransaction::OutgoingTransfer(_) | TokenWalletTransaction::SwapBack(_) => {
-            internal_transfer_send(token_transaction_ctx, parse_ctx).await?
+        TokenWalletTransaction::OutgoingTransfer(token_transfer) => {
+            internal_transfer_send(token_transaction_ctx, token_transfer.tokens, parse_ctx).await?
         }
-        TokenWalletTransaction::TransferBounced(_) | TokenWalletTransaction::SwapBackBounced(_) => {
-            internal_transfer_bounced(token_transaction_ctx, parse_ctx).await?
+        TokenWalletTransaction::SwapBack(token_transfer) => {
+            internal_transfer_send(token_transaction_ctx, token_transfer.tokens, parse_ctx).await?
+        }
+        TokenWalletTransaction::TransferBounced(tokens)
+        | TokenWalletTransaction::SwapBackBounced(tokens) => {
+            internal_transfer_bounced(token_transaction_ctx, tokens, parse_ctx).await?
         }
     };
 
@@ -45,8 +49,9 @@ struct ParseContext<'a> {
 
 async fn internal_transfer_send(
     token_transaction_ctx: TokenTransactionContext,
+    tokens: BigUint,
     parse_ctx: ParseContext<'_>,
-) -> Result<ReceiveTokenTransaction> {
+) -> Result<CreateTokenTransaction> {
     let sender_address = MsgAddressInt::with_standart(
         None,
         ton_block::BASE_WORKCHAIN_ID as i8,
@@ -60,33 +65,38 @@ async fn internal_transfer_send(
     )
     .await?;
 
-    let mut transaction = UpdateSentTokenTransaction {
+    let amount = BigDecimal::new(tokens.into(), 0); // TODO
+
+    let mut transaction = CreateTokenTransaction {
+        id: Uuid::new_v4(),
+        transaction_hash: Some(token_transaction_ctx.transaction_hash.to_hex_string()),
         message_hash: token_transaction_ctx.message_hash.to_hex_string(),
         account_workchain_id: sender_address.workchain_id(),
         account_hex: sender_address.address().to_hex_string(),
+        sender_workchain_id: None,
+        sender_hex: None,
         root_address: sender_info.root_address.to_string(),
-        input: UpdateSendTokenTransaction {
-            transaction_hash: Some(token_transaction_ctx.transaction_hash.to_hex_string()),
-            payload: None,
-            block_hash: Some(token_transaction_ctx.block_hash.to_hex_string()),
-            block_time: Some(token_transaction_ctx.block_utime as i32),
-            status: TonTokenTransactionStatus::Done,
-            error: None,
-        },
+        value: amount,
+        payload: None,
+        block_hash: token_transaction_ctx.block_hash.to_hex_string(),
+        block_time: token_transaction_ctx.block_utime as i32,
+        direction: TonTransactionDirection::Send,
+        status: TonTokenTransactionStatus::Done,
+        error: None,
     };
 
     if TOKEN_WALLET_CODE_HASH.as_ref() != sender_info.code_hash {
-        transaction.input.error = Some("Bad hash".to_string())
+        transaction.error = Some("Bad hash".to_string())
     }
 
-    Ok(ReceiveTokenTransaction::UpdateSent(transaction))
+    Ok(transaction)
 }
 
 async fn internal_transfer_receive(
     token_transaction_ctx: TokenTransactionContext,
     token_transfer: TokenIncomingTransfer,
     parse_ctx: ParseContext<'_>,
-) -> Result<ReceiveTokenTransaction> {
+) -> Result<CreateTokenTransaction> {
     let receiver_address = MsgAddressInt::with_standart(
         None,
         ton_block::BASE_WORKCHAIN_ID as i8,
@@ -102,7 +112,7 @@ async fn internal_transfer_receive(
 
     let amount = BigDecimal::new(token_transfer.tokens.into(), 0); // TODO
 
-    let mut transaction = CreateReceiveTokenTransaction {
+    let mut transaction = CreateTokenTransaction {
         id: Uuid::new_v4(),
         transaction_hash: Some(token_transaction_ctx.transaction_hash.to_hex_string()),
         message_hash: token_transaction_ctx.message_hash.to_hex_string(),
@@ -119,18 +129,18 @@ async fn internal_transfer_receive(
         direction: TonTransactionDirection::Receive,
         status: TonTokenTransactionStatus::New,
     };
-
     if TOKEN_WALLET_CODE_HASH.as_ref() != receiver_info.code_hash {
         transaction.error = Some("Bad hash".to_string())
     }
 
-    Ok(ReceiveTokenTransaction::Create(transaction))
+    Ok(transaction)
 }
 
 async fn internal_transfer_bounced(
     token_transaction_ctx: TokenTransactionContext,
+    tokens: BigUint,
     parse_ctx: ParseContext<'_>,
-) -> Result<ReceiveTokenTransaction> {
+) -> Result<CreateTokenTransaction> {
     let sender_address = MsgAddressInt::with_standart(
         None,
         ton_block::BASE_WORKCHAIN_ID as i8,
@@ -144,33 +154,37 @@ async fn internal_transfer_bounced(
     )
     .await?;
 
-    let mut transaction = UpdateSentTokenTransaction {
+    let amount = BigDecimal::new(tokens.into(), 0); // TODO
+
+    let mut transaction = CreateTokenTransaction {
+        id: Uuid::new_v4(),
+        transaction_hash: Some(token_transaction_ctx.transaction_hash.to_hex_string()),
         message_hash: token_transaction_ctx.message_hash.to_hex_string(),
         account_workchain_id: sender_address.workchain_id(),
         account_hex: sender_address.address().to_hex_string(),
+        sender_workchain_id: None,
+        sender_hex: None,
         root_address: sender_info.root_address.to_string(),
-        input: UpdateSendTokenTransaction {
-            transaction_hash: Some(token_transaction_ctx.transaction_hash.to_hex_string()),
-            payload: None,
-            block_hash: Some(token_transaction_ctx.block_hash.to_hex_string()),
-            block_time: Some(token_transaction_ctx.block_utime as i32),
-            status: TonTokenTransactionStatus::Error,
-            error: None,
-        },
+        value: amount,
+        payload: None,
+        block_hash: token_transaction_ctx.block_hash.to_hex_string(),
+        block_time: token_transaction_ctx.block_utime as i32,
+        direction: TonTransactionDirection::Send,
+        status: TonTokenTransactionStatus::Done,
+        error: None,
     };
-
     if TOKEN_WALLET_CODE_HASH.as_ref() != sender_info.code_hash {
-        transaction.input.error = Some("Bad hash".to_string())
+        transaction.error = Some("Bad hash".to_string())
     }
 
-    Ok(ReceiveTokenTransaction::UpdateSent(transaction))
+    Ok(transaction)
 }
 
 async fn internal_transfer_mint(
     token_transaction_ctx: TokenTransactionContext,
     tokens: BigUint,
     parse_ctx: ParseContext<'_>,
-) -> Result<ReceiveTokenTransaction> {
+) -> Result<CreateTokenTransaction> {
     let receiver_address = MsgAddressInt::with_standart(
         None,
         ton_block::BASE_WORKCHAIN_ID as i8,
@@ -186,7 +200,7 @@ async fn internal_transfer_mint(
 
     let amount = BigDecimal::new(tokens.into(), 0); // TODO
 
-    let mut transaction = CreateReceiveTokenTransaction {
+    let mut transaction = CreateTokenTransaction {
         id: Uuid::new_v4(),
         transaction_hash: Some(token_transaction_ctx.transaction_hash.to_hex_string()),
         message_hash: token_transaction_ctx.message_hash.to_hex_string(),
@@ -203,12 +217,11 @@ async fn internal_transfer_mint(
         direction: TonTransactionDirection::Receive,
         status: TonTokenTransactionStatus::New,
     };
-
     if TOKEN_WALLET_CODE_HASH.as_ref() != receiver_info.code_hash {
         transaction.error = Some("Bad hash".to_string())
     }
 
-    Ok(ReceiveTokenTransaction::Create(transaction))
+    Ok(transaction)
 }
 
 async fn get_token_wallet_info(
