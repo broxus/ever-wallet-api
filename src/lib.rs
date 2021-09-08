@@ -92,7 +92,7 @@ pub async fn start_server() -> Result<(), Box<dyn std::error::Error + Send + Syn
         .collect::<Vec<UInt256>>();
     ton_core.add_account_subscription(accounts.clone());
 
-    // temporary workaround to add wton subscription
+    // TODO: temporary workaround to add wton subscription
     {
         use nekoton::core::models::RootTokenContractDetails;
         use nekoton::core::token_wallet::RootTokenContractState;
@@ -118,11 +118,6 @@ pub async fn start_server() -> Result<(), Box<dyn std::error::Error + Send + Syn
 
             let token_wallet_address =
                 root_contract_state.get_wallet_address(version, &address, None)?;
-
-            log::info!(
-                "add_token_account_subscription: {:#?}",
-                token_wallet_address
-            );
 
             let token_wallet_account =
                 UInt256::from_be_bytes(&token_wallet_address.address().get_bytestring(0));
@@ -217,7 +212,7 @@ async fn start_listening_receive_token_transactions(
 ) {
     tokio::spawn(async move {
         while let Some(transaction) = rx.recv().await {
-            if let Err(e) = ton_service.create_token_transaction(&transaction).await {
+            if let Err(e) = ton_service.create_token_transaction(transaction).await {
                 log::error!("Failed to create token transaction: {:?}", e)
             }
         }

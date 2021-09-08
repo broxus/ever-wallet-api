@@ -6,6 +6,7 @@ use async_trait::async_trait;
 use bigdecimal::BigDecimal;
 use block_modes::block_padding::Pkcs7;
 use block_modes::{BlockMode, Ecb};
+use nekoton::core::models::TokenWalletVersion;
 use nekoton::crypto::SignedMessage;
 use nekoton_utils::{repack_address, unpack_std_smc_addr, TrustMe};
 use sha2::{Digest, Sha256};
@@ -112,7 +113,7 @@ pub trait TonService: Send + Sync + 'static {
     ) -> Result<TransactionDb, ServiceError>;
     async fn create_token_transaction(
         &self,
-        input: &CreateTokenTransaction,
+        input: CreateTokenTransaction,
     ) -> Result<TokenTransactionFromDb, ServiceError>;
 }
 
@@ -294,11 +295,13 @@ impl TonService for TonServiceImpl {
             ))
             .await
     }
+
     async fn check_address(&self, address: Address) -> Result<bool, ServiceError> {
         Ok(MsgAddressInt::from_str(&address.0).is_ok()
             || (unpack_std_smc_addr(&address.0, false).is_ok())
             || (unpack_std_smc_addr(&address.0, true).is_ok()))
     }
+
     async fn get_address_balance(
         &self,
         service_id: &ServiceId,
@@ -316,6 +319,7 @@ impl TonService for TonServiceImpl {
         let network = self.ton_api_client.get_address_info(account).await?;
         Ok((address, network))
     }
+
     async fn create_send_transaction(
         &self,
         service_id: &ServiceId,
@@ -359,10 +363,7 @@ impl TonService for TonServiceImpl {
             if let Some((payload, signed_message)) = payload {
                 let (transaction, event) = self
                     .sqlx_client
-                    .create_send_transaction(CreateSendTransaction::new(
-                        payload.clone(),
-                        *service_id,
-                    ))
+                    .create_send_transaction(CreateSendTransaction::new(payload, *service_id))
                     .await?;
 
                 self.send_transaction(
@@ -391,7 +392,7 @@ impl TonService for TonServiceImpl {
 
         let (transaction, event) = self
             .sqlx_client
-            .create_send_transaction(CreateSendTransaction::new(payload.clone(), *service_id))
+            .create_send_transaction(CreateSendTransaction::new(payload, *service_id))
             .await?;
 
         self.send_transaction(
@@ -455,12 +456,7 @@ impl TonService for TonServiceImpl {
                 .is_some()
             {
                 self.sqlx_client
-                    .update_send_transaction(
-                        message_hash,
-                        account_workchain_id,
-                        account_hex,
-                        input.clone(),
-                    )
+                    .update_send_transaction(message_hash, account_workchain_id, account_hex, input)
                     .await?
             } else {
                 self.sqlx_client
@@ -469,18 +465,13 @@ impl TonService for TonServiceImpl {
                         message_hash,
                         account_workchain_id,
                         account_hex,
-                        input.clone(),
+                        input,
                     )
                     .await?
             }
         } else {
             self.sqlx_client
-                .update_send_transaction(
-                    message_hash,
-                    account_workchain_id,
-                    account_hex,
-                    input.clone(),
-                )
+                .update_send_transaction(message_hash, account_workchain_id, account_hex, input)
                 .await?
         };
 
@@ -498,6 +489,7 @@ impl TonService for TonServiceImpl {
             .get_transaction_by_mh(*service_id, message_hash)
             .await
     }
+
     async fn get_transaction_by_h(
         &self,
         service_id: &ServiceId,
@@ -507,6 +499,7 @@ impl TonService for TonServiceImpl {
             .get_transaction_by_h(*service_id, transaction_hash)
             .await
     }
+
     async fn get_transaction_by_id(
         &self,
         service_id: &ServiceId,
@@ -516,6 +509,7 @@ impl TonService for TonServiceImpl {
             .get_transaction_by_id(*service_id, id)
             .await
     }
+
     async fn search_events(
         &self,
         service_id: &ServiceId,
@@ -525,6 +519,7 @@ impl TonService for TonServiceImpl {
             .get_all_transaction_events(*service_id, payload)
             .await
     }
+
     async fn mark_event(
         &self,
         service_id: &ServiceId,
@@ -538,6 +533,7 @@ impl TonService for TonServiceImpl {
             )
             .await
     }
+
     async fn mark_all_events(
         &self,
         service_id: &ServiceId,
@@ -551,6 +547,7 @@ impl TonService for TonServiceImpl {
             )
             .await
     }
+
     async fn get_tokens_transaction_by_mh(
         &self,
         service_id: &ServiceId,
@@ -560,6 +557,7 @@ impl TonService for TonServiceImpl {
             .get_token_transaction_by_mh(*service_id, message_hash)
             .await
     }
+
     async fn get_tokens_transaction_by_id(
         &self,
         service_id: &ServiceId,
@@ -569,6 +567,7 @@ impl TonService for TonServiceImpl {
             .get_token_transaction_by_id(*service_id, id)
             .await
     }
+
     async fn search_token_events(
         &self,
         service_id: &ServiceId,
@@ -592,6 +591,7 @@ impl TonService for TonServiceImpl {
             )
             .await
     }
+
     async fn get_token_address_balance(
         &self,
         service_id: &ServiceId,
@@ -613,26 +613,28 @@ impl TonService for TonServiceImpl {
 
             let network = self
                 .ton_api_client
-                .get_token_address_info(account.clone(), root_address)
+                .get_token_address_info(&account, &root_address)
                 .await?;
             result.push((balance, network));
         }
         Ok(result)
     }
+
     async fn create_send_token_transaction(
         &self,
         service_id: &ServiceId,
         input: &TokenTransactionSend,
     ) -> Result<TransactionDb, ServiceError> {
-        let account = repack_address(&input.from_address.0)?;
+        let owner = repack_address(&input.from_address.0)?;
         let address = self
             .sqlx_client
             .get_address(
                 *service_id,
-                account.workchain_id(),
-                account.address().to_hex_string(),
+                owner.workchain_id(),
+                owner.address().to_hex_string(),
             )
             .await?;
+
         if address.balance < input.fee {
             return Err(ServiceError::WrongInput(format!(
                 "Address balance is not enough to pay fee for token transfer. Balance: {}. Fee: {}",
@@ -640,62 +642,73 @@ impl TonService for TonServiceImpl {
             )));
         }
 
-        let public_key = hex::decode(address.public_key.clone()).unwrap_or_default();
-        let secret = self.decrypt_private_key(address.private_key.clone()).await;
-
         let root_address = repack_address(&input.root_address)?;
 
-        let network = self
+        let owner_info = self
             .ton_api_client
-            .get_token_address_info(account.clone(), root_address.clone())
+            .get_token_address_info(&owner, &root_address)
             .await?;
 
-        if network.account_status == AccountStatus::UnInit {
-            let token_balance = self
-                .sqlx_client
-                .get_token_balance(
-                    *service_id,
-                    account.workchain_id(),
-                    account.address().to_hex_string(),
-                    input.root_address.clone(),
-                )
-                .await?;
-
-            let (payload, signed_message) = self
-                .ton_api_client
-                .prepare_token_deploy(
-                    token_balance,
-                    &public_key,
-                    &secret,
-                    AccountType::SafeMultisig,
-                )
-                .await?;
-
-            let (transaction, event) = self
-                .sqlx_client
-                .create_send_transaction(CreateSendTransaction::new(payload.clone(), *service_id))
-                .await?;
-
-            self.send_transaction(
-                transaction.message_hash.clone(),
-                transaction.account_hex.clone(),
-                transaction.account_workchain_id,
-                signed_message,
-                false,
-            )
-            .await?;
-
-            self.notify(service_id, event.into()).await;
+        if owner_info.account_status == AccountStatus::UnInit {
+            return Err(ServiceError::WrongInput(format!(
+                "Token wallet not found for `{}`",
+                owner.to_string()
+            )));
         }
+        let token_wallet =
+            MsgAddressInt::from_str(&format!("{}:{}", owner_info.workchain_id, owner_info.hex))
+                .unwrap_or_default();
+
+        let recipient = repack_address(&input.recipient_address.0)?;
+        let recipient_info = self
+            .ton_api_client
+            .get_token_address_info(&recipient, &root_address)
+            .await?;
+        let recipient_token_wallet = MsgAddressInt::from_str(&format!(
+            "{}:{}",
+            recipient_info.workchain_id, recipient_info.hex
+        ))
+        .unwrap_or_default();
+
+        let destination = match recipient_info.account_status {
+            AccountStatus::Active => {
+                nekoton::core::models::TransferRecipient::TokenWallet(recipient_token_wallet)
+            }
+            AccountStatus::UnInit => {
+                nekoton::core::models::TransferRecipient::OwnerWallet(recipient)
+            }
+            AccountStatus::Frozen => {
+                return Err(ServiceError::WrongInput(format!(
+                    "Destination token wallet `{}` is frozen",
+                    recipient.to_string()
+                )));
+            }
+        };
+
+        let tokens = input.value.clone();
+        let version = TokenWalletVersion::from_str(&owner_info.version)?;
+
+        let public_key = hex::decode(address.public_key).unwrap_or_default();
+        let private_key = self.decrypt_private_key(address.private_key).await;
 
         let (payload, signed_message) = self
             .ton_api_client
-            .prepare_token_transaction(input, &public_key, &secret, address.account_type)
+            .prepare_token_transaction(
+                input.id,
+                owner,
+                token_wallet,
+                destination,
+                version,
+                tokens,
+                address.account_type,
+                &public_key,
+                &private_key,
+            )
             .await?;
 
         let (transaction, event) = self
             .sqlx_client
-            .create_send_transaction(CreateSendTransaction::new(payload.clone(), *service_id))
+            .create_send_transaction(CreateSendTransaction::new(payload, *service_id))
             .await?;
 
         self.send_transaction(
@@ -715,7 +728,7 @@ impl TonService for TonServiceImpl {
 
     async fn create_token_transaction(
         &self,
-        input: &CreateTokenTransaction,
+        input: CreateTokenTransaction,
     ) -> Result<TokenTransactionFromDb, ServiceError> {
         let address = self
             .sqlx_client
@@ -724,7 +737,7 @@ impl TonService for TonServiceImpl {
 
         let (transaction, event) = self
             .sqlx_client
-            .create_token_transaction(input.clone(), address.service_id)
+            .create_token_transaction(input, address.service_id)
             .await?;
 
         self.notify_token(&address.service_id, event.into()).await;
@@ -754,21 +767,16 @@ async fn send_transaction_helper(
             log::info!("Message `{}` expired", message_hash);
             match ton_service
                 .upsert_sent_transaction(
-                    message_hash.clone(),
+                    message_hash,
                     account_workchain_id,
-                    account_hex.clone(),
+                    account_hex,
                     UpdateSendTransaction::error("Expired".to_string()),
                 )
                 .await
             {
                 Ok(_) => Ok(()),
                 Err(err) => Err(ServiceError::Other(
-                    TonServiceError::UpdateMessageFail(
-                        account_hex.clone(),
-                        message_hash.clone(),
-                        err,
-                    )
-                    .into(),
+                    TonServiceError::UpdateMessageFail(err).into(),
                 )),
             }
         }
@@ -776,21 +784,16 @@ async fn send_transaction_helper(
             log::error!("Failed to send message: {:?}", e);
             match ton_service
                 .upsert_sent_transaction(
-                    message_hash.clone(),
+                    message_hash,
                     account_workchain_id,
-                    account_hex.clone(),
+                    account_hex,
                     UpdateSendTransaction::error("Fail".to_string()),
                 )
                 .await
             {
                 Ok(_) => Ok(()),
                 Err(err) => Err(ServiceError::Other(
-                    TonServiceError::UpdateMessageFail(
-                        account_hex.clone(),
-                        message_hash.clone(),
-                        err,
-                    )
-                    .into(),
+                    TonServiceError::UpdateMessageFail(err).into(),
                 )),
             }
         }
@@ -799,6 +802,6 @@ async fn send_transaction_helper(
 
 #[derive(thiserror::Error, Debug)]
 enum TonServiceError {
-    #[error("Failed to update sent transaction for account `{0}` with message hash - `{1}`: {2}")]
-    UpdateMessageFail(String, String, ServiceError),
+    #[error("Failed to update sent transaction: {0}")]
+    UpdateMessageFail(ServiceError),
 }

@@ -8,33 +8,6 @@ use ton_block::MsgAddressInt;
 
 const INITIAL_BALANCE: u64 = 100_000_000; // 0.1 TON
 
-pub fn prepare_token_deploy(owner: MsgAddressInt, root: MsgAddressInt) -> Result<InternalMessage> {
-    const ATTACHED_AMOUNT: u64 = 500_000_000; // 0.5 TON
-
-    let (function, input) = MessageBuilder::new(
-        nekoton_contracts::abi::root_token_contract_v3(),
-        "deployEmptyWallet",
-    )
-    .trust_me()
-    .arg(BigUint128(INITIAL_BALANCE.into()))
-    .arg(BigUint256(Default::default()))
-    .arg(&owner)
-    .arg(&owner)
-    .build();
-
-    let body = function
-        .encode_input(&Default::default(), &input, true, None)?
-        .into();
-
-    Ok(InternalMessage {
-        source: Some(owner),
-        destination: root,
-        amount: ATTACHED_AMOUNT,
-        bounce: true,
-        body,
-    })
-}
-
 pub fn prepare_token_transfer(
     owner: MsgAddressInt,
     token_wallet: MsgAddressInt,

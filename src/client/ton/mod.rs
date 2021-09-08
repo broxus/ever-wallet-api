@@ -1,15 +1,15 @@
-use std::str::FromStr;
 use std::sync::Arc;
 
 use anyhow::Result;
 use async_trait::async_trait;
 use bigdecimal::{BigDecimal, ToPrimitive};
 use ed25519_dalek::{Keypair, PublicKey, SecretKey, Signer};
-use nekoton::core::models::{Expiration, RootTokenContractDetails, TransferRecipient};
+use nekoton::core::models::{
+    Expiration, RootTokenContractDetails, TokenWalletVersion, TransferRecipient,
+};
 use nekoton::core::token_wallet::{RootTokenContractState, TokenWalletContractState};
 use nekoton::core::ton_wallet::{MultisigType, TransferAction};
 use nekoton::crypto::SignedMessage;
-use nekoton_utils::TrustMe;
 use num_bigint::BigUint;
 use num_traits::FromPrimitive;
 use ton_block::{GetRepresentationHash, MsgAddressInt};
@@ -48,22 +48,20 @@ pub trait TonClient: Send + Sync {
     ) -> Result<(SentTransaction, SignedMessage)>;
     async fn get_token_address_info(
         &self,
-        address: MsgAddressInt,
-        root_address: MsgAddressInt,
+        address: &MsgAddressInt,
+        root_address: &MsgAddressInt,
     ) -> Result<NetworkTokenAddressData>;
-    async fn prepare_token_deploy(
-        &self,
-        address: TokenBalanceFromDb,
-        public_key: &[u8],
-        private_key: &[u8],
-        account_type: AccountType,
-    ) -> Result<(SentTransaction, SignedMessage)>;
     async fn prepare_token_transaction(
         &self,
-        transaction: &TokenTransactionSend,
+        id: uuid::Uuid,
+        owner: MsgAddressInt,
+        token_wallet: MsgAddressInt,
+        destination: TransferRecipient,
+        version: TokenWalletVersion,
+        tokens: BigDecimal,
+        account_type: AccountType,
         public_key: &[u8],
         private_key: &[u8],
-        account_type: AccountType,
     ) -> Result<(SentTransaction, SignedMessage)>;
     async fn send_transaction(
         &self,
@@ -142,6 +140,38 @@ impl TonClient for TonClientImpl {
         );
         self.ton_core.add_account_subscription([account]);
 
+        // TODO: temporary workaround to add wton subscription
+        {
+            use nekoton::core::models::RootTokenContractDetails;
+            use nekoton::core::token_wallet::RootTokenContractState;
+            use std::str::FromStr;
+
+            let root_address = ton_block::MsgAddressInt::from_str(
+                "0:0ee39330eddb680ce731cd6a443c71d9069db06d149a9bec9569d1eb8d04eb37",
+            )
+            .unwrap();
+            let root_account = UInt256::from_be_bytes(&root_address.address().get_bytestring(0));
+            let root_state = self.ton_core.get_contract_state(root_account).await?;
+
+            let root_contract_state = RootTokenContractState(&root_state);
+
+            let RootTokenContractDetails { version, .. } = root_contract_state.guess_details()?;
+
+            let address = ton_block::MsgAddressInt::with_standart(
+                None,
+                ton_block::BASE_WORKCHAIN_ID as i8,
+                ton_types::AccountId::from(account),
+            )?;
+
+            let token_wallet_address =
+                root_contract_state.get_wallet_address(version, &address, None)?;
+
+            let token_wallet_account =
+                UInt256::from_be_bytes(&token_wallet_address.address().get_bytestring(0));
+            self.ton_core
+                .add_token_account_subscription([token_wallet_account]);
+        }
+
         Ok(CreatedAddress {
             workchain_id: address.workchain_id(),
             hex: address.address().to_hex_string(),
@@ -154,22 +184,11 @@ impl TonClient for TonClientImpl {
             custodians_public_keys,
         })
     }
-    async fn get_address_info(&self, address: MsgAddressInt) -> Result<NetworkAddressData> {
-        let account = UInt256::from_be_bytes(&address.address().get_bytestring(0));
+    async fn get_address_info(&self, owner: MsgAddressInt) -> Result<NetworkAddressData> {
+        let account = UInt256::from_be_bytes(&owner.address().get_bytestring(0));
         let contract = match self.ton_core.get_contract_state(account).await {
             Ok(contract) => contract,
-            Err(err) => {
-                log::warn!("Failed to get contract state: {}", err);
-                return Ok(NetworkAddressData {
-                    workchain_id: address.workchain_id(),
-                    hex: address.address().to_hex_string(),
-                    account_status: AccountStatus::UnInit,
-                    network_balance: Default::default(),
-                    last_transaction_hash: None,
-                    last_transaction_lt: None,
-                    sync_u_time: Default::default(),
-                });
-            }
+            Err(_) => return Ok(NetworkAddressData::uninit(&owner)),
         };
 
         let account_status = transform_account_state(&contract.account.storage.state);
@@ -380,225 +399,77 @@ impl TonClient for TonClientImpl {
     }
     async fn get_token_address_info(
         &self,
-        address: MsgAddressInt,
-        root_address: MsgAddressInt,
+        owner: &MsgAddressInt,
+        root_address: &MsgAddressInt,
     ) -> Result<NetworkTokenAddressData> {
         let root_account = UInt256::from_be_bytes(&root_address.address().get_bytestring(0));
         let root_contract = match self.ton_core.get_contract_state(root_account).await {
             Ok(contract) => contract,
-            Err(err) => {
-                log::warn!("Failed to get contract state: {}", err);
-                return Ok(NetworkTokenAddressData {
-                    workchain_id: address.workchain_id(),
-                    hex: address.address().to_hex_string(),
-                    root_address: root_address.to_string(),
-                    account_status: AccountStatus::UnInit,
-                    network_balance: Default::default(),
-                    last_transaction_hash: None,
-                    last_transaction_lt: None,
-                    sync_u_time: Default::default(),
-                });
-            }
+            Err(_) => return Ok(NetworkTokenAddressData::uninit(owner, root_address)),
         };
 
         let root_contract_state = RootTokenContractState(&root_contract);
-
         let RootTokenContractDetails { version, .. } = root_contract_state.guess_details()?;
 
-        let token_wallet_address =
-            root_contract_state.get_wallet_address(version, &address, None)?;
+        let token_wallet_address = root_contract_state.get_wallet_address(version, owner, None)?;
         let token_wallet_account =
             UInt256::from_be_bytes(&token_wallet_address.address().get_bytestring(0));
-        let token_wallet_contract_state = self
-            .ton_core
-            .get_contract_state(token_wallet_account)
-            .await?;
 
-        let token_wallet = TokenWalletContractState(&token_wallet_contract_state);
-        let version = token_wallet.get_version()?;
+        let token_contract = match self.ton_core.get_contract_state(token_wallet_account).await {
+            Ok(contract) => contract,
+            Err(_) => {
+                return Ok(NetworkTokenAddressData::uninit(
+                    &token_wallet_address,
+                    root_address,
+                ))
+            }
+        };
+        let token_wallet_state = TokenWalletContractState(&token_contract);
 
-        let network_balance = BigDecimal::new(token_wallet.get_balance(version)?.into(), 0);
-        let account_status =
-            transform_account_state(&token_wallet_contract_state.account.storage.state);
+        let version = token_wallet_state.get_version()?;
+        let network_balance = BigDecimal::new(token_wallet_state.get_balance(version)?.into(), 0);
+
+        let account_status = transform_account_state(&token_contract.account.storage.state);
 
         let (last_transaction_hash, last_transaction_lt) =
-            parse_last_transaction(&token_wallet_contract_state.last_transaction_id);
+            parse_last_transaction(&token_contract.last_transaction_id);
 
         Ok(NetworkTokenAddressData {
             workchain_id: token_wallet_address.workchain_id(),
             hex: token_wallet_address.address().to_hex_string(),
             root_address: root_address.to_string(),
+            version: version.to_string(),
             network_balance,
             account_status,
             last_transaction_hash,
             last_transaction_lt,
-            sync_u_time: token_wallet_contract_state.timings.current_utime() as i64,
+            sync_u_time: token_contract.timings.current_utime() as i64,
         })
-    }
-    async fn prepare_token_deploy(
-        &self,
-        address: TokenBalanceFromDb,
-        public_key: &[u8],
-        private_key: &[u8],
-        account_type: AccountType,
-    ) -> Result<(SentTransaction, SignedMessage)> {
-        let owner_address = MsgAddressInt::from_str(&format!(
-            "{}:{}",
-            address.account_workchain_id, address.account_hex
-        ))?;
-        let root_address = nekoton_utils::repack_address(&address.root_address)?;
-
-        let internal_message = prepare_token_deploy(owner_address.clone(), root_address)?;
-
-        let bounce = internal_message.bounce;
-        let destination = internal_message.destination;
-        let amount = internal_message.amount;
-        let body = Some(internal_message.body);
-        let expiration = Expiration::Timeout(DEFAULT_EXPIRATION_TIMEOUT);
-
-        let public_key = PublicKey::from_bytes(public_key).unwrap_or_default();
-
-        let transfer_action = match account_type {
-            AccountType::HighloadWallet => {
-                let account = UInt256::from_be_bytes(&owner_address.address().get_bytestring(0));
-                let current_state = self.ton_core.get_contract_state(account).await?.account;
-                let gift = nekoton::core::ton_wallet::highload_wallet_v2::Gift {
-                    flags: TransactionSendOutputType::Normal.value(),
-                    bounce,
-                    destination,
-                    amount,
-                    body,
-                    state_init: None,
-                };
-
-                nekoton::core::ton_wallet::highload_wallet_v2::prepare_transfer(
-                    &public_key,
-                    &current_state,
-                    vec![gift],
-                    expiration,
-                )?
-            }
-            AccountType::Wallet => {
-                let account = UInt256::from_be_bytes(&owner_address.address().get_bytestring(0));
-                let current_state = self.ton_core.get_contract_state(account).await?.account;
-
-                nekoton::core::ton_wallet::wallet_v3::prepare_transfer(
-                    &public_key,
-                    &current_state,
-                    destination,
-                    amount,
-                    bounce,
-                    body,
-                    expiration,
-                )?
-            }
-            AccountType::SafeMultisig => {
-                let address = internal_message.source.clone().trust_me();
-                let has_multiple_owners = false; // TODO
-
-                nekoton::core::ton_wallet::multisig::prepare_transfer(
-                    &public_key,
-                    has_multiple_owners,
-                    address,
-                    destination,
-                    amount,
-                    bounce,
-                    body,
-                    expiration,
-                )?
-            }
-        };
-
-        let unsigned_message = match transfer_action {
-            TransferAction::Sign(unsigned_message) => unsigned_message,
-            TransferAction::DeployFirst => {
-                return Err(TonClientError::AccountNotDeployed(owner_address.to_string()).into())
-            }
-        };
-
-        let key_pair = Keypair {
-            secret: SecretKey::from_bytes(private_key)?,
-            public: public_key,
-        };
-
-        let signature = key_pair.sign(unsigned_message.hash());
-        let signed_message = unsigned_message.sign(&signature.to_bytes())?;
-
-        let sent_transaction = SentTransaction {
-            id: uuid::Uuid::new_v4(),
-            message_hash: signed_message.message.hash()?.to_hex_string(),
-            account_workchain_id: internal_message.source.clone().trust_me().workchain_id(),
-            account_hex: internal_message
-                .source
-                .clone()
-                .trust_me()
-                .address()
-                .to_hex_string(),
-            original_value: None,
-            original_outputs: None,
-            aborted: false,
-            bounce: false,
-        };
-
-        return Ok((sent_transaction, signed_message));
     }
     async fn prepare_token_transaction(
         &self,
-        transaction: &TokenTransactionSend,
+        id: uuid::Uuid,
+        owner: MsgAddressInt,
+        token_wallet: MsgAddressInt,
+        destination: TransferRecipient,
+        version: TokenWalletVersion,
+        tokens: BigDecimal,
+        account_type: AccountType,
         public_key: &[u8],
         private_key: &[u8],
-        account_type: AccountType,
     ) -> Result<(SentTransaction, SignedMessage)> {
-        let root_address = nekoton_utils::repack_address(&transaction.root_address)?;
-        let root_account = UInt256::from_be_bytes(&root_address.address().get_bytestring(0));
-        let root_contract = self.ton_core.get_contract_state(root_account).await?;
-        let root_contract_state = RootTokenContractState(&root_contract);
-
-        let RootTokenContractDetails { version, .. } = root_contract_state.guess_details()?;
-
-        let owner_address = nekoton_utils::repack_address(&transaction.from_address.0)?;
-        let token_wallet_address =
-            root_contract_state.get_wallet_address(version, &owner_address, None)?;
-
-        let token_wallet_account =
-            UInt256::from_be_bytes(&token_wallet_address.address().get_bytestring(0));
-        let token_wallet_contract_state = self
-            .ton_core
-            .get_contract_state(token_wallet_account)
-            .await?;
-
-        let token_wallet = TokenWalletContractState(&token_wallet_contract_state);
-        let version = token_wallet.get_version()?;
-
-        let recipient_address = nekoton_utils::repack_address(&transaction.recipient_address.0)?;
-
-        let network = self
-            .get_token_address_info(recipient_address, root_address)
-            .await?;
-
-        let destination = match network.account_status {
-            AccountStatus::Active => TransferRecipient::TokenWallet(MsgAddressInt::from_str(
-                &format!("{}:{}", network.workchain_id, network.hex),
-            )?),
-            AccountStatus::UnInit => TransferRecipient::OwnerWallet(nekoton_utils::repack_address(
-                &transaction.recipient_address.0,
-            )?),
-            AccountStatus::Frozen => {
-                todo!()
-            }
-        };
+        let tokens = BigUint::from_u64(tokens.to_u64().unwrap_or_default()).unwrap_or_default();
 
         let internal_message = prepare_token_transfer(
-            owner_address.clone(),
-            token_wallet_address,
+            owner.clone(),
+            token_wallet,
             destination,
             version,
-            BigUint::from_u64(transaction.value.to_u64().unwrap_or_default()).unwrap_or_default(),
+            tokens,
             false,
             Default::default(),
         )?;
 
-        let address = internal_message.source.trust_me();
         let bounce = internal_message.bounce;
         let destination = internal_message.destination;
         let amount = internal_message.amount;
@@ -609,8 +480,9 @@ impl TonClient for TonClientImpl {
 
         let transfer_action = match account_type {
             AccountType::HighloadWallet => {
-                let account = UInt256::from_be_bytes(&owner_address.address().get_bytestring(0));
+                let account = UInt256::from_be_bytes(&owner.address().get_bytestring(0));
                 let current_state = self.ton_core.get_contract_state(account).await?.account;
+
                 let gift = nekoton::core::ton_wallet::highload_wallet_v2::Gift {
                     flags: TransactionSendOutputType::Normal.value(),
                     bounce,
@@ -628,7 +500,7 @@ impl TonClient for TonClientImpl {
                 )?
             }
             AccountType::Wallet => {
-                let account = UInt256::from_be_bytes(&owner_address.address().get_bytestring(0));
+                let account = UInt256::from_be_bytes(&owner.address().get_bytestring(0));
                 let current_state = self.ton_core.get_contract_state(account).await?.account;
 
                 nekoton::core::ton_wallet::wallet_v3::prepare_transfer(
@@ -647,7 +519,7 @@ impl TonClient for TonClientImpl {
                 nekoton::core::ton_wallet::multisig::prepare_transfer(
                     &public_key,
                     has_multiple_owners,
-                    address.clone(),
+                    owner.clone(),
                     destination,
                     amount,
                     bounce,
@@ -660,7 +532,7 @@ impl TonClient for TonClientImpl {
         let unsigned_message = match transfer_action {
             TransferAction::Sign(unsigned_message) => unsigned_message,
             TransferAction::DeployFirst => {
-                return Err(TonClientError::AccountNotDeployed(owner_address.to_string()).into())
+                return Err(TonClientError::AccountNotDeployed(owner.to_string()).into())
             }
         };
 
@@ -673,14 +545,14 @@ impl TonClient for TonClientImpl {
         let signed_message = unsigned_message.sign(&signature.to_bytes())?;
 
         let sent_transaction = SentTransaction {
-            id: uuid::Uuid::new_v4(),
+            id,
             message_hash: signed_message.message.hash()?.to_hex_string(),
-            account_workchain_id: address.workchain_id(),
-            account_hex: address.address().to_hex_string(),
+            account_workchain_id: owner.workchain_id(),
+            account_hex: owner.address().to_hex_string(),
             original_value: None,
             original_outputs: None,
             aborted: false,
-            bounce,
+            bounce: false,
         };
 
         return Ok((sent_transaction, signed_message));

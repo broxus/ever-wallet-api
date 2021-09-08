@@ -55,3 +55,17 @@ pub struct NetworkAddressData {
     pub last_transaction_lt: Option<String>,
     pub sync_u_time: i64,
 }
+
+impl NetworkAddressData {
+    pub fn uninit(owner: &ton_block::MsgAddressInt) -> NetworkAddressData {
+        NetworkAddressData {
+            workchain_id: owner.workchain_id(),
+            hex: owner.address().to_hex_string(),
+            account_status: AccountStatus::UnInit,
+            network_balance: Default::default(),
+            last_transaction_hash: None,
+            last_transaction_lt: None,
+            sync_u_time: 0,
+        }
+    }
+}
