@@ -246,7 +246,6 @@ pub struct TokenTransactionContext {
     account: UInt256,
     block_hash: UInt256,
     block_utime: u32,
-    message_hash: UInt256,
     transaction_hash: UInt256,
     transaction: ton_block::Transaction,
     shard_accounts: ton_block::ShardAccounts,
@@ -269,34 +268,12 @@ impl TransactionsSubscription for TokenTransactionObserver {
         );
 
         if let Some(parsed) = parsed {
-            let message_hash = match &parsed {
-                TokenWalletTransaction::IncomingTransfer(_)
-                | TokenWalletTransaction::Accept(_)
-                | TokenWalletTransaction::TransferBounced(_)
-                | TokenWalletTransaction::SwapBackBounced(_) => ctx
-                    .transaction
-                    .in_msg
-                    .clone()
-                    .map(|message| message.hash())
-                    .unwrap_or_default(),
-                TokenWalletTransaction::OutgoingTransfer(_)
-                | TokenWalletTransaction::SwapBack(_) => {
-                    let mut hash = Default::default();
-                    let _ = ctx.transaction.out_msgs.iterate(|message| {
-                        hash = message.hash().unwrap_or_default();
-                        Ok(false)
-                    });
-                    hash
-                }
-            };
-
             self.tx
                 .send((
                     TokenTransactionContext {
                         account: *ctx.account,
                         block_hash: *ctx.block_hash,
                         block_utime: ctx.block_info.gen_utime().0,
-                        message_hash,
                         transaction_hash: *ctx.transaction_hash,
                         transaction: ctx.transaction.clone(),
                         shard_accounts: ctx.shard_accounts.clone(),

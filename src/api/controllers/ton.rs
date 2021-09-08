@@ -306,7 +306,7 @@ pub fn post_tokens_transactions_create(
             .create_send_token_transaction(&service_id, &input.into())
             .await
             .map(From::from);
-        let res = AccountTokenTransactionResponse::from(transaction);
+        let res = AccountTransactionResponse::from(transaction);
         Ok(warp::reply::json(&(res)))
     }
     .boxed()

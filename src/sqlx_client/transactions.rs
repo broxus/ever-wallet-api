@@ -84,16 +84,15 @@ impl SqlxClient {
         let transaction = sqlx::query_as!(TransactionDb,
                 r#"
             UPDATE transactions SET
-            (transaction_hash, transaction_lt, transaction_timeout, transaction_scan_lt, sender_workchain_id, sender_hex, messages, data, value, fee, balance_change, status, error) =
-            ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
-            WHERE message_hash = $14 AND account_workchain_id = $15 and account_hex = $16 and direction = 'Send'::twa_transaction_direction and transaction_hash is NULL
+            (transaction_hash, transaction_lt, transaction_scan_lt, sender_workchain_id, sender_hex, messages, data, value, fee, balance_change, status, error) =
+            ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+            WHERE message_hash = $13 AND account_workchain_id = $14 and account_hex = $15 and direction = 'Send'::twa_transaction_direction and transaction_hash is NULL
             RETURNING id, service_id as "service_id: _", message_hash, transaction_hash, transaction_lt, transaction_timeout,
                 transaction_scan_lt, sender_workchain_id, sender_hex, account_workchain_id, account_hex, messages, data,
                 original_value, original_outputs, value, fee, balance_change, direction as "direction: _", status as "status: _",
                 error, aborted, bounce, created_at, updated_at, sender_is_token_wallet"#,
                 payload.transaction_hash,
                 payload.transaction_lt,
-                payload.transaction_timeout,
                 payload.transaction_scan_lt,
                 payload.sender_workchain_id,
                 payload.sender_hex,

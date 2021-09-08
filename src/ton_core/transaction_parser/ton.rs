@@ -7,7 +7,6 @@ use ton_block::CommonMsgInfo;
 use ton_types::AccountId;
 use uuid::Uuid;
 
-use crate::models::*;
 use crate::ton_core::*;
 
 pub async fn handle_transaction(
@@ -89,7 +88,6 @@ pub async fn handle_transaction(
                 input: UpdateSendTransaction {
                     transaction_hash,
                     transaction_lt,
-                    transaction_timeout: None,
                     transaction_scan_lt,
                     sender_workchain_id,
                     sender_hex,

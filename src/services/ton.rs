@@ -109,7 +109,7 @@ pub trait TonService: Send + Sync + 'static {
         &self,
         service_id: &ServiceId,
         input: &TokenTransactionSend,
-    ) -> Result<TokenTransactionFromDb, ServiceError>;
+    ) -> Result<TransactionDb, ServiceError>;
     async fn create_token_transaction(
         &self,
         input: &CreateTokenTransaction,
@@ -589,7 +589,7 @@ impl TonService for TonServiceImpl {
         &self,
         service_id: &ServiceId,
         input: &TokenTransactionSend,
-    ) -> Result<TokenTransactionFromDb, ServiceError> {
+    ) -> Result<TransactionDb, ServiceError> {
         let account = repack_address(&input.from_address.0)?;
         let address = self
             .sqlx_client
@@ -606,12 +606,16 @@ impl TonService for TonServiceImpl {
             )));
         }
 
+        let public_key = hex::decode(address.public_key.clone()).unwrap_or_default();
+        let secret = self.decrypt_private_key(address.private_key.clone()).await;
+
         let root_address = repack_address(&input.root_address)?;
 
         let network = self
             .ton_api_client
             .get_token_address_info(account.clone(), root_address.clone())
             .await?;
+
         if network.account_status == AccountStatus::UnInit {
             let token_balance = self
                 .sqlx_client
@@ -622,55 +626,53 @@ impl TonService for TonServiceImpl {
                     input.root_address.clone(),
                 )
                 .await?;
-            self.ton_api_client
-                .deploy_token_address_contract(
+
+            let (payload, signed_message) = self
+                .ton_api_client
+                .prepare_token_deploy(
                     token_balance,
-                    address.public_key.clone(),
-                    address.private_key.clone(),
-                    address.account_type,
+                    &public_key,
+                    &secret,
+                    AccountType::SafeMultisig,
                 )
                 .await?;
+
+            let (transaction, event) = self
+                .sqlx_client
+                .create_send_transaction(CreateSendTransaction::new(payload.clone(), *service_id))
+                .await?;
+
+            self.send_transaction(
+                transaction.message_hash.clone(),
+                transaction.account_hex.clone(),
+                transaction.account_workchain_id,
+                signed_message,
+                false,
+            )
+            .await?;
+
+            self.notify(service_id, event.into()).await;
         }
 
-        let payload = self
+        let (payload, signed_message) = self
             .ton_api_client
-            .prepare_token_transaction(
-                input,
-                address.public_key.clone(),
-                address.private_key.clone(),
-                address.account_type,
-            )
+            .prepare_token_transaction(input, &public_key, &secret, address.account_type)
             .await?;
-        let (mut transaction, mut event) = self
+
+        let (transaction, event) = self
             .sqlx_client
-            .create_send_token_transaction(CreateSendTokenTransaction::new(
-                payload.clone(),
-                *service_id,
-            ))
+            .create_send_transaction(CreateSendTransaction::new(payload.clone(), *service_id))
             .await?;
-        if let Err(e) = self
-            .ton_api_client
-            .send_token_transaction(
-                &payload,
-                address.public_key,
-                address.private_key,
-                address.account_type,
-            )
-            .await
-        {
-            let result = self
-                .sqlx_client
-                .update_send_token_transaction(
-                    transaction.message_hash,
-                    transaction.account_workchain_id,
-                    transaction.account_hex,
-                    transaction.root_address,
-                    UpdateSendTokenTransaction::error(e.to_string()),
-                )
-                .await?;
-            transaction = result.0;
-            event = result.1;
-        }
+
+        self.send_transaction(
+            transaction.message_hash.clone(),
+            transaction.account_hex.clone(),
+            transaction.account_workchain_id,
+            signed_message,
+            true,
+        )
+        .await
+        .trust_me();
 
         self.notify_token(service_id, event.into()).await;
 
@@ -683,11 +685,7 @@ impl TonService for TonServiceImpl {
     ) -> Result<TokenTransactionFromDb, ServiceError> {
         let address = self
             .sqlx_client
-            .get_token_balance_by_workchain_hex(
-                input.account_workchain_id,
-                input.account_hex.clone(),
-                input.root_address.clone(),
-            )
+            .get_address_by_workchain_hex(input.account_workchain_id, input.account_hex.clone())
             .await?;
 
         let (transaction, event) = self
@@ -741,7 +739,7 @@ async fn send_transaction_helper(
             }
         }
         Err(e) => {
-            log::warn!("Failed to send message: {:?}", e);
+            log::error!("Failed to send message: {:?}", e);
             match ton_service
                 .update_sent_transaction(
                     message_hash.clone(),

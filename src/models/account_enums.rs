@@ -120,6 +120,16 @@ pub enum TransactionSendOutputType {
     AllBalanceDeleteNetworkAccount,
 }
 
+impl TransactionSendOutputType {
+    pub fn value(&self) -> u8 {
+        match *self {
+            TransactionSendOutputType::Normal => 3,
+            TransactionSendOutputType::AllBalance => 128,
+            TransactionSendOutputType::AllBalanceDeleteNetworkAccount => 160,
+        }
+    }
+}
+
 impl Default for TransactionSendOutputType {
     fn default() -> Self {
         TransactionSendOutputType::Normal

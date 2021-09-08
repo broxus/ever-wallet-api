@@ -69,10 +69,9 @@ impl CallbackClient for CallbackClientImpl {
 }
 
 fn calc_sign(body: String, url: String, timestamp_ms: i64, secret: String) -> String {
-    let mut mac = hmac::Hmac::<sha2::Sha256>::new_from_slice(&secret.as_bytes()).unwrap();
+    let mut mac = hmac::Hmac::<sha2::Sha256>::new_from_slice(secret.as_bytes()).unwrap();
     let signing_phrase = format!("{}{}{}", timestamp_ms, url, body);
-    mac.update(&signing_phrase.as_bytes());
+    mac.update(signing_phrase.as_bytes());
     let hash_result = mac.finalize().into_bytes();
-    let sign = base64::encode(&hash_result);
-    sign
+    base64::encode(&hash_result)
 }

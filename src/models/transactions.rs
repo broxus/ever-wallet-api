@@ -38,7 +38,6 @@ pub struct CreateSendTransaction {
 pub struct UpdateSendTransaction {
     pub transaction_hash: Option<String>,
     pub transaction_lt: Option<BigDecimal>,
-    pub transaction_timeout: Option<i64>, // TODO: remove
     pub transaction_scan_lt: Option<i64>,
     pub sender_workchain_id: Option<i32>,
     pub sender_hex: Option<String>,
@@ -56,7 +55,6 @@ impl UpdateSendTransaction {
         Self {
             transaction_hash: None,
             transaction_lt: None,
-            transaction_timeout: None,
             transaction_scan_lt: None,
             sender_workchain_id: None,
             sender_hex: None,
@@ -71,6 +69,7 @@ impl UpdateSendTransaction {
     }
 }
 
+#[derive(Clone, Debug, serde::Serialize, serde::Deserialize, Eq, PartialEq)]
 pub struct UpdateSentTransaction {
     pub message_hash: String,
     pub account_workchain_id: i32,

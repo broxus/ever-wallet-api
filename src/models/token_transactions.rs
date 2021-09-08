@@ -51,6 +51,7 @@ impl UpdateSendTokenTransaction {
     }
 }
 
+#[derive(Debug)]
 pub struct UpdateSentTokenTransaction {
     pub message_hash: String,
     pub account_workchain_id: i32,

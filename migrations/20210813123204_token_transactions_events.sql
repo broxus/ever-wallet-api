@@ -6,7 +6,7 @@ CREATE TABLE token_transaction_events (
         account_workchain_id        INT NOT NULL,
         account_hex                 VARCHAR(64) NOT NULL,
         value                       NUMERIC NOT NULL,
-        root_address                VARCHAR(64) NOT NULL,
+        root_address                VARCHAR NOT NULL,
         transaction_direction       twa_transaction_direction NOT NULL,
         transaction_status          twa_token_transaction_status NOT NULL,
         event_status                twa_transaction_event_status NOT NULL,
