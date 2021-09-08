@@ -189,7 +189,7 @@ async fn start_listening_receive_transactions(
                 }
                 ReceiveTransaction::UpdateSent(transaction) => {
                     match ton_service
-                        .update_sent_transaction(
+                        .upsert_sent_transaction(
                             transaction.message_hash,
                             transaction.account_workchain_id,
                             transaction.account_hex,

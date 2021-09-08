@@ -1,4 +1,4 @@
-use anyhow::Result;
+use uuid::Uuid;
 
 use crate::models::*;
 use crate::prelude::*;
@@ -144,6 +144,91 @@ impl SqlxClient {
         Ok((transaction, event))
     }
 
+    pub async fn create_sent_transaction(
+        &self,
+        service_id: ServiceId,
+        message_hash: String,
+        account_workchain_id: i32,
+        account_hex: String,
+        payload: UpdateSendTransaction,
+    ) -> Result<(TransactionDb, TransactionEventDb), ServiceError> {
+        let mut tx = self.pool.begin().await.map_err(ServiceError::from)?;
+        let transaction_id = Uuid::new_v4();
+        let transaction = sqlx::query_as!(TransactionDb,
+                r#"
+                 INSERT INTO transactions
+            (id, service_id, message_hash, transaction_hash, transaction_lt, sender_workchain_id, sender_hex, account_workchain_id, account_hex, messages, data, value, fee, balance_change, direction, status, error, aborted, bounce, sender_is_token_wallet)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20)
+            RETURNING id, service_id as "service_id: _", message_hash, transaction_hash, transaction_lt, transaction_timeout,
+                transaction_scan_lt, sender_workchain_id, sender_hex, account_workchain_id, account_hex, messages, data,
+                original_value, original_outputs, value, fee, balance_change, direction as "direction: _", status as "status: _",
+                error, aborted, bounce, created_at, updated_at, sender_is_token_wallet"#,
+                transaction_id,
+                service_id as ServiceId,
+                message_hash,
+                payload.transaction_hash,
+                payload.transaction_lt,
+                payload.sender_workchain_id,
+                payload.sender_hex,
+                account_workchain_id,
+                account_hex,
+                payload.messages,
+                payload.data,
+                payload.value,
+                payload.fee,
+                payload.balance_change,
+                TonTransactionDirection::Send as TonTransactionDirection,
+                payload.status as TonTransactionStatus,
+                payload.error,
+                false,
+                false,
+                false
+            )
+            .fetch_one(&mut tx)
+            .await
+            .map_err(ServiceError::from)?;
+
+        let payload = UpdateSendTransactionEvent::new(transaction.clone());
+        let id = Uuid::new_v4();
+
+        let event = sqlx::query_as!(
+            TransactionEventDb,
+            r#"
+            INSERT INTO transaction_events
+            (id, service_id, transaction_id, message_hash, account_workchain_id, account_hex, balance_change, transaction_direction, transaction_status, event_status, sender_is_token_wallet)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+            RETURNING id,
+                service_id as "service_id: _",
+                transaction_id,
+                message_hash,
+                account_workchain_id,
+                account_hex,
+                balance_change,
+                transaction_direction as "transaction_direction: _",
+                transaction_status as "transaction_status: _",
+                event_status as "event_status: _",
+                created_at, updated_at, sender_is_token_wallet"#,
+                id,
+                service_id as ServiceId,
+                transaction_id,
+                message_hash,
+                account_workchain_id,
+                account_hex,
+                payload.balance_change,
+                TonTransactionDirection::Send as TonTransactionDirection,
+                payload.transaction_status as TonTransactionStatus,
+                TonEventStatus::New as TonEventStatus,
+                false,
+        )
+        .fetch_one(&mut tx)
+        .await
+        .map_err(ServiceError::from)?;
+
+        tx.commit().await.map_err(ServiceError::from)?;
+
+        Ok((transaction, event))
+    }
+
     pub async fn create_receive_transaction(
         &self,
         payload: CreateReceiveTransaction,
@@ -245,6 +330,31 @@ impl SqlxClient {
                 message_hash,
             )
             .fetch_one(&self.pool)
+            .await
+            .map_err(From::from)
+    }
+
+    pub async fn get_sent_transaction_by_mh_account(
+        &self,
+        service_id: ServiceId,
+        message_hash: String,
+        account_workchain_id: i32,
+        account_hex: String,
+    ) -> Result<Option<TransactionDb>, ServiceError> {
+        sqlx::query_as!(TransactionDb,
+                r#"
+            SELECT id, service_id as "service_id: _", message_hash, transaction_hash, transaction_lt, transaction_timeout,
+                transaction_scan_lt, sender_workchain_id, sender_hex, account_workchain_id, account_hex, messages, data,
+                original_value, original_outputs, value, fee, balance_change, direction as "direction: _", status as "status: _",
+                error, aborted, bounce, created_at, updated_at, sender_is_token_wallet
+            FROM transactions
+            WHERE service_id = $1 AND message_hash = $2 AND account_workchain_id = $3 AND account_hex = $4 and direction = 'Send'::twa_transaction_direction"#,
+                service_id as ServiceId,
+                message_hash,
+                account_workchain_id,
+                account_hex,
+            )
+            .fetch_optional(&self.pool)
             .await
             .map_err(From::from)
     }

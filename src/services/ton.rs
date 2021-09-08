@@ -43,7 +43,7 @@ pub trait TonService: Send + Sync + 'static {
         &self,
         input: CreateReceiveTransaction,
     ) -> Result<TransactionDb, ServiceError>;
-    async fn update_sent_transaction(
+    async fn upsert_sent_transaction(
         &self,
         message_hash: String,
         account_workchain_id: i32,
@@ -428,7 +428,7 @@ impl TonService for TonServiceImpl {
         Ok(transaction)
     }
 
-    async fn update_sent_transaction(
+    async fn upsert_sent_transaction(
         &self,
         message_hash: String,
         account_workchain_id: i32,
@@ -440,15 +440,49 @@ impl TonService for TonServiceImpl {
             .get_address_by_workchain_hex(account_workchain_id, account_hex.clone())
             .await?;
 
-        let (transaction, event) = self
-            .sqlx_client
-            .update_send_transaction(
-                message_hash,
-                account_workchain_id,
-                account_hex,
-                input.clone(),
-            )
-            .await?;
+        let (transaction, event) = if address.account_type == AccountType::SafeMultisig
+            && address.custodians.unwrap_or_default() > 1
+        {
+            if self
+                .sqlx_client
+                .get_sent_transaction_by_mh_account(
+                    address.service_id,
+                    message_hash.clone(),
+                    account_workchain_id,
+                    account_hex.clone(),
+                )
+                .await?
+                .is_some()
+            {
+                self.sqlx_client
+                    .update_send_transaction(
+                        message_hash,
+                        account_workchain_id,
+                        account_hex,
+                        input.clone(),
+                    )
+                    .await?
+            } else {
+                self.sqlx_client
+                    .create_sent_transaction(
+                        address.service_id,
+                        message_hash,
+                        account_workchain_id,
+                        account_hex,
+                        input.clone(),
+                    )
+                    .await?
+            }
+        } else {
+            self.sqlx_client
+                .update_send_transaction(
+                    message_hash,
+                    account_workchain_id,
+                    account_hex,
+                    input.clone(),
+                )
+                .await?
+        };
 
         self.notify(&address.service_id, event.into()).await;
 
@@ -719,7 +753,7 @@ async fn send_transaction_helper(
         Ok(MessageStatus::Expired) => {
             log::info!("Message `{}` expired", message_hash);
             match ton_service
-                .update_sent_transaction(
+                .upsert_sent_transaction(
                     message_hash.clone(),
                     account_workchain_id,
                     account_hex.clone(),
@@ -741,7 +775,7 @@ async fn send_transaction_helper(
         Err(e) => {
             log::error!("Failed to send message: {:?}", e);
             match ton_service
-                .update_sent_transaction(
+                .upsert_sent_transaction(
                     message_hash.clone(),
                     account_workchain_id,
                     account_hex.clone(),
