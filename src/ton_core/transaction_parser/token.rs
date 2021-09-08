@@ -68,7 +68,7 @@ async fn internal_transfer_send(
     let _ = token_transaction_ctx
         .transaction
         .out_msgs
-        .iterate(|message| {
+        .iterate(|ton_block::InRefValue(message)| {
             message_hash = message.hash().unwrap_or_default();
             Ok(false)
         });

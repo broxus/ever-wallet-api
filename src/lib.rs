@@ -90,7 +90,45 @@ pub async fn start_server() -> Result<(), Box<dyn std::error::Error + Send + Syn
         .into_iter()
         .map(|item| UInt256::from_be_bytes(&hex::decode(item.hex).trust_me()))
         .collect::<Vec<UInt256>>();
-    ton_core.add_account_subscription(accounts);
+    ton_core.add_account_subscription(accounts.clone());
+
+    // temporary workaround to add wton subscription
+    {
+        use nekoton::core::models::RootTokenContractDetails;
+        use nekoton::core::token_wallet::RootTokenContractState;
+        use std::str::FromStr;
+
+        let root_address = ton_block::MsgAddressInt::from_str(
+            "0:0ee39330eddb680ce731cd6a443c71d9069db06d149a9bec9569d1eb8d04eb37",
+        )
+        .unwrap();
+        let root_account = UInt256::from_be_bytes(&root_address.address().get_bytestring(0));
+        let root_state = ton_core.get_contract_state(root_account).await?;
+
+        let root_contract_state = RootTokenContractState(&root_state);
+
+        let RootTokenContractDetails { version, .. } = root_contract_state.guess_details()?;
+
+        for account in accounts {
+            let address = ton_block::MsgAddressInt::with_standart(
+                None,
+                ton_block::BASE_WORKCHAIN_ID as i8,
+                ton_types::AccountId::from(account),
+            )?;
+
+            let token_wallet_address =
+                root_contract_state.get_wallet_address(version, &address, None)?;
+
+            log::info!(
+                "add_token_account_subscription: {:#?}",
+                token_wallet_address
+            );
+
+            let token_wallet_account =
+                UInt256::from_be_bytes(&token_wallet_address.address().get_bytestring(0));
+            ton_core.add_token_account_subscription([token_wallet_account]);
+        }
+    }
 
     log::debug!("tokens caching");
     log::debug!("Finish tokens caching");
