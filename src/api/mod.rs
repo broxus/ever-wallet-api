@@ -219,7 +219,8 @@ mod filters {
     }
 
     pub fn get_tokens_address_balance(ctx: Context) -> BoxedFilter<(impl warp::Reply,)> {
-        warp::path!("tokens" / "address")
+        warp::path("tokens")
+            .and(warp::path("address"))
             .and(warp::path::param())
             .and(warp::path::end())
             .and(warp::get())
