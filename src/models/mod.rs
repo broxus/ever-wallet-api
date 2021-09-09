@@ -1,4 +1,5 @@
 pub use self::account_enums::*;
+pub use self::account_transaction_event::*;
 pub use self::address::*;
 pub use self::key::*;
 pub use self::owners_cache::*;
@@ -11,6 +12,7 @@ pub use self::transaction_events::*;
 pub use self::transactions::*;
 
 mod account_enums;
+mod account_transaction_event;
 mod address;
 mod key;
 mod owners_cache;

@@ -127,7 +127,7 @@ impl From<Result<TokenEventsResponse, ServiceError>> for TonTokenEventsResponse 
 #[opg("EventsResponse")]
 pub struct EventsResponse {
     pub count: i32,
-    pub items: Vec<AccountTransactionEventResponse>,
+    pub items: Vec<AccountTransactionEvent>,
 }
 
 #[derive(Debug, Deserialize, Serialize, Clone, opg::OpgModel)]
@@ -135,105 +135,7 @@ pub struct EventsResponse {
 #[opg("TokenEventsResponse")]
 pub struct TokenEventsResponse {
     pub count: i32,
-    pub items: Vec<AccountTokenTransactionEventResponse>,
-}
-
-#[derive(Debug, Deserialize, Serialize, Clone, opg::OpgModel)]
-#[serde(rename_all = "camelCase")]
-#[opg("AccountTransactionEventResponse")]
-pub struct AccountTransactionEventResponse {
-    pub id: Uuid,
-    pub service_id: ServiceId,
-    pub transaction_id: Uuid,
-    pub message_hash: String,
-    pub account: AddressResponse,
-    #[opg("balanceChange", string, optional)]
-    pub balance_change: Option<BigDecimal>,
-    pub transaction_direction: TonTransactionDirection,
-    pub transaction_status: TonTransactionStatus,
-    pub event_status: TonEventStatus,
-    pub sender_is_token_wallet: bool,
-    #[opg("UTC timestamp in milliseconds", integer, format = "int64")]
-    pub created_at: i64,
-    #[opg("UTC timestamp in milliseconds", integer, format = "int64")]
-    pub updated_at: i64,
-}
-
-impl From<TransactionEventDb> for AccountTransactionEventResponse {
-    fn from(c: TransactionEventDb) -> Self {
-        let account =
-            MsgAddressInt::from_str(&format!("{}:{}", c.account_workchain_id, c.account_hex))
-                .unwrap();
-        let base64url = Address(pack_std_smc_addr(true, &account, false).unwrap());
-
-        AccountTransactionEventResponse {
-            id: c.id,
-            service_id: c.service_id,
-            transaction_id: c.transaction_id,
-            message_hash: c.message_hash,
-            account: AddressResponse {
-                workchain_id: c.account_workchain_id,
-                hex: Address(c.account_hex),
-                base64url,
-            },
-            balance_change: c.balance_change,
-            transaction_direction: c.transaction_direction,
-            transaction_status: c.transaction_status,
-            event_status: c.event_status,
-            sender_is_token_wallet: c.sender_is_token_wallet,
-            created_at: c.created_at.timestamp_millis(),
-            updated_at: c.updated_at.timestamp_millis(),
-        }
-    }
-}
-
-#[derive(Debug, Deserialize, Serialize, Clone, opg::OpgModel)]
-#[serde(rename_all = "camelCase")]
-#[opg("AccountTokenTransactionEventResponse")]
-pub struct AccountTokenTransactionEventResponse {
-    pub id: Uuid,
-    pub service_id: ServiceId,
-    pub token_transaction_id: Uuid,
-    pub message_hash: String,
-    pub account: AddressResponse,
-    #[opg("value", string)]
-    pub value: BigDecimal,
-    pub root_address: String,
-    pub transaction_direction: TonTransactionDirection,
-    pub transaction_status: TonTokenTransactionStatus,
-    pub event_status: TonEventStatus,
-    #[opg("UTC timestamp in milliseconds", integer, format = "int64")]
-    pub created_at: i64,
-    #[opg("UTC timestamp in milliseconds", integer, format = "int64")]
-    pub updated_at: i64,
-}
-
-impl From<TokenTransactionEventDb> for AccountTokenTransactionEventResponse {
-    fn from(c: TokenTransactionEventDb) -> Self {
-        let account =
-            MsgAddressInt::from_str(&format!("{}:{}", c.account_workchain_id, c.account_hex))
-                .unwrap();
-        let base64url = Address(pack_std_smc_addr(true, &account, false).unwrap());
-
-        AccountTokenTransactionEventResponse {
-            id: c.id,
-            service_id: c.service_id,
-            token_transaction_id: c.token_transaction_id,
-            message_hash: c.message_hash,
-            account: AddressResponse {
-                workchain_id: c.account_workchain_id,
-                hex: Address(c.account_hex),
-                base64url,
-            },
-            value: c.value,
-            root_address: c.root_address,
-            transaction_direction: c.transaction_direction,
-            transaction_status: c.transaction_status,
-            event_status: c.event_status,
-            created_at: c.created_at.timestamp_millis(),
-            updated_at: c.updated_at.timestamp_millis(),
-        }
-    }
+    pub items: Vec<AccountTransactionEvent>,
 }
 
 #[derive(Debug, Deserialize, Serialize, Clone, opg::OpgModel)]

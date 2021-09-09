@@ -8,13 +8,15 @@ use uuid::Uuid;
 
 use crate::models::*;
 
-#[derive(Debug, Serialize, Deserialize, Clone, derive_more::Constructor)]
+#[derive(Debug, Serialize, Deserialize, Clone, derive_more::Constructor, opg::OpgModel)]
 #[serde(rename_all = "camelCase")]
+#[opg("AccountTokenTransactionEventResponse")]
 pub struct AccountTransactionEvent {
     pub id: Uuid,
     pub transaction_id: Uuid,
     pub message_hash: String,
     pub account: AddressResponse,
+    #[opg("balanceChange", string, optional)]
     pub balance_change: Option<BigDecimal>,
     pub root_address: Option<String>,
     pub transaction_direction: TonTransactionDirection,

@@ -1,14 +1,11 @@
-mod requests;
-
-pub use self::requests::*;
-
 use async_trait::async_trait;
-use http::Method;
-
-use crate::prelude::ServiceError;
 use chrono::Utc;
 use hmac::{Mac, NewMac};
+use http::Method;
 use reqwest::Url;
+
+use crate::models::AccountTransactionEvent;
+use crate::prelude::ServiceError;
 
 #[async_trait]
 pub trait CallbackClient: Send + Sync {

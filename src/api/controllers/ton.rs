@@ -146,7 +146,7 @@ pub fn post_events(
             .map(|transactions_events| {
                 let events: Vec<_> = transactions_events
                     .into_iter()
-                    .map(AccountTransactionEventResponse::from)
+                    .map(AccountTransactionEvent::from)
                     .collect();
                 EventsResponse {
                     count: events.len() as i32,
@@ -238,7 +238,7 @@ pub fn post_tokens_events(
             .await?;
         let events: Vec<_> = transactions_events
             .into_iter()
-            .map(AccountTokenTransactionEventResponse::from)
+            .map(AccountTransactionEvent::from)
             .collect();
         let res = TonTokenEventsResponse {
             status: TonStatus::Ok,
