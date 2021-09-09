@@ -16,6 +16,7 @@ pub struct AccountTransactionEvent {
     pub transaction_id: Uuid,
     pub message_hash: String,
     pub account: AddressResponse,
+    pub sender: Option<AddressResponse>,
     #[opg("balanceChange", string, optional)]
     pub balance_change: Option<BigDecimal>,
     pub root_address: Option<String>,
@@ -43,6 +44,7 @@ impl From<TokenTransactionEventDb> for AccountTransactionEvent {
                 hex: Address(t.account_hex),
                 base64url,
             },
+            sender: None,
             balance_change: Some(t.value),
             root_address: Some(t.root_address),
             transaction_direction: t.transaction_direction,
@@ -62,6 +64,22 @@ impl From<TransactionEventDb> for AccountTransactionEvent {
                 .unwrap();
         let base64url = Address(pack_std_smc_addr(true, &account, false).unwrap());
 
+        let sender = if let (Some(sender_workchain_id), Some(sender_hex)) =
+            (t.sender_workchain_id.clone(), t.sender_hex.clone())
+        {
+            let sender =
+                MsgAddressInt::from_str(&format!("{}:{}", sender_workchain_id, sender_hex))
+                    .unwrap();
+            let base64url = Address(pack_std_smc_addr(true, &sender, false).unwrap());
+            Some(AddressResponse {
+                workchain_id: sender_workchain_id,
+                hex: Address(sender_hex),
+                base64url,
+            })
+        } else {
+            None
+        };
+
         Self {
             id: t.id,
             transaction_id: t.transaction_id,
@@ -71,6 +89,7 @@ impl From<TransactionEventDb> for AccountTransactionEvent {
                 hex: Address(t.account_hex),
                 base64url,
             },
+            sender,
             balance_change: t.balance_change,
             root_address: None,
             transaction_direction: t.transaction_direction,

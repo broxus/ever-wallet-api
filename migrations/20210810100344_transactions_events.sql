@@ -14,6 +14,8 @@ CREATE TABLE transaction_events (
                                     message_hash                VARCHAR(64) NOT NULL,
                                     account_workchain_id        INT NOT NULL,
                                     account_hex                 VARCHAR(64) NOT NULL,
+                                    sender_workchain_id         INT,
+                                    sender_hex                  VARCHAR(64),
                                     balance_change              NUMERIC,
                                     transaction_direction       twa_transaction_direction NOT NULL,
                                     transaction_status          twa_transaction_status NOT NULL,

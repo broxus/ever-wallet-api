@@ -86,6 +86,8 @@ pub struct TransactionEventDb {
     pub message_hash: String,
     pub account_workchain_id: i32,
     pub account_hex: String,
+    pub sender_workchain_id: Option<i32>,
+    pub sender_hex: Option<String>,
     pub balance_change: Option<BigDecimal>,
     pub transaction_direction: TonTransactionDirection,
     pub transaction_status: TonTransactionStatus,

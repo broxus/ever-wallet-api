@@ -1,5 +1,145 @@
 {
   "db": "PostgreSQL",
+  "06443ba9f0651be1754417e9fa51bceef3aa65ec9c2eeb40faa4a19a41d7999a": {
+    "query": "\n            SELECT id,\n                service_id as \"service_id: _\",\n                transaction_id,\n                message_hash,\n                account_workchain_id,\n                account_hex,\n                sender_workchain_id,\n                sender_hex,\n                balance_change,\n                transaction_direction as \"transaction_direction: _\",\n                transaction_status as \"transaction_status: _\",\n                event_status as \"event_status: _\",\n                created_at, updated_at, sender_is_token_wallet\n            FROM transaction_events\n            WHERE service_id = $1 AND message_hash = $2 AND account_workchain_id = $3 AND account_hex = $4",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "id",
+          "type_info": "Uuid"
+        },
+        {
+          "ordinal": 1,
+          "name": "service_id: _",
+          "type_info": "Uuid"
+        },
+        {
+          "ordinal": 2,
+          "name": "transaction_id",
+          "type_info": "Uuid"
+        },
+        {
+          "ordinal": 3,
+          "name": "message_hash",
+          "type_info": "Varchar"
+        },
+        {
+          "ordinal": 4,
+          "name": "account_workchain_id",
+          "type_info": "Int4"
+        },
+        {
+          "ordinal": 5,
+          "name": "account_hex",
+          "type_info": "Varchar"
+        },
+        {
+          "ordinal": 6,
+          "name": "sender_workchain_id",
+          "type_info": "Int4"
+        },
+        {
+          "ordinal": 7,
+          "name": "sender_hex",
+          "type_info": "Varchar"
+        },
+        {
+          "ordinal": 8,
+          "name": "balance_change",
+          "type_info": "Numeric"
+        },
+        {
+          "ordinal": 9,
+          "name": "transaction_direction: _",
+          "type_info": {
+            "Custom": {
+              "name": "twa_transaction_direction",
+              "kind": {
+                "Enum": [
+                  "Send",
+                  "Receive"
+                ]
+              }
+            }
+          }
+        },
+        {
+          "ordinal": 10,
+          "name": "transaction_status: _",
+          "type_info": {
+            "Custom": {
+              "name": "twa_transaction_status",
+              "kind": {
+                "Enum": [
+                  "New",
+                  "Done",
+                  "PartiallyDone",
+                  "Error"
+                ]
+              }
+            }
+          }
+        },
+        {
+          "ordinal": 11,
+          "name": "event_status: _",
+          "type_info": {
+            "Custom": {
+              "name": "twa_transaction_event_status",
+              "kind": {
+                "Enum": [
+                  "New",
+                  "Notified",
+                  "Error"
+                ]
+              }
+            }
+          }
+        },
+        {
+          "ordinal": 12,
+          "name": "created_at",
+          "type_info": "Timestamp"
+        },
+        {
+          "ordinal": 13,
+          "name": "updated_at",
+          "type_info": "Timestamp"
+        },
+        {
+          "ordinal": 14,
+          "name": "sender_is_token_wallet",
+          "type_info": "Bool"
+        }
+      ],
+      "parameters": {
+        "Left": [
+          "Uuid",
+          "Text",
+          "Int4",
+          "Text"
+        ]
+      },
+      "nullable": [
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        true,
+        true,
+        true,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false
+      ]
+    }
+  },
   "0a82f3e446104e8206d5903363b5ff1099ecbd516df0adfae50564e639658858": {
     "query": "\n            UPDATE token_transaction_events SET event_status = $1\n            WHERE service_id = $2 AND id = $3\n            RETURNING id,\n                service_id as \"service_id: _\",\n                token_transaction_id,\n                message_hash,\n                account_workchain_id,\n                account_hex,\n                value,\n                root_address,\n                transaction_direction as \"transaction_direction: _\",\n                transaction_status as \"transaction_status: _\",\n                event_status as \"event_status: _\",\n                created_at, updated_at",
     "describe": {
@@ -555,6 +695,186 @@
         false,
         false,
         true,
+        false,
+        false,
+        false,
+        false,
+        false
+      ]
+    }
+  },
+  "0d682d9963004a6b29b671a1e16cebedc71ec7d33a4436e144871c32c754537b": {
+    "query": "\n            INSERT INTO transaction_events\n            (id, service_id, transaction_id, message_hash, account_workchain_id, account_hex, balance_change, transaction_direction, transaction_status, event_status, sender_is_token_wallet)\n            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)\n            RETURNING id,\n                service_id as \"service_id: _\",\n                transaction_id,\n                message_hash,\n                account_workchain_id,\n                account_hex,\n                sender_workchain_id,\n                sender_hex,\n                balance_change,\n                transaction_direction as \"transaction_direction: _\",\n                transaction_status as \"transaction_status: _\",\n                event_status as \"event_status: _\",\n                created_at, updated_at, sender_is_token_wallet",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "id",
+          "type_info": "Uuid"
+        },
+        {
+          "ordinal": 1,
+          "name": "service_id: _",
+          "type_info": "Uuid"
+        },
+        {
+          "ordinal": 2,
+          "name": "transaction_id",
+          "type_info": "Uuid"
+        },
+        {
+          "ordinal": 3,
+          "name": "message_hash",
+          "type_info": "Varchar"
+        },
+        {
+          "ordinal": 4,
+          "name": "account_workchain_id",
+          "type_info": "Int4"
+        },
+        {
+          "ordinal": 5,
+          "name": "account_hex",
+          "type_info": "Varchar"
+        },
+        {
+          "ordinal": 6,
+          "name": "sender_workchain_id",
+          "type_info": "Int4"
+        },
+        {
+          "ordinal": 7,
+          "name": "sender_hex",
+          "type_info": "Varchar"
+        },
+        {
+          "ordinal": 8,
+          "name": "balance_change",
+          "type_info": "Numeric"
+        },
+        {
+          "ordinal": 9,
+          "name": "transaction_direction: _",
+          "type_info": {
+            "Custom": {
+              "name": "twa_transaction_direction",
+              "kind": {
+                "Enum": [
+                  "Send",
+                  "Receive"
+                ]
+              }
+            }
+          }
+        },
+        {
+          "ordinal": 10,
+          "name": "transaction_status: _",
+          "type_info": {
+            "Custom": {
+              "name": "twa_transaction_status",
+              "kind": {
+                "Enum": [
+                  "New",
+                  "Done",
+                  "PartiallyDone",
+                  "Error"
+                ]
+              }
+            }
+          }
+        },
+        {
+          "ordinal": 11,
+          "name": "event_status: _",
+          "type_info": {
+            "Custom": {
+              "name": "twa_transaction_event_status",
+              "kind": {
+                "Enum": [
+                  "New",
+                  "Notified",
+                  "Error"
+                ]
+              }
+            }
+          }
+        },
+        {
+          "ordinal": 12,
+          "name": "created_at",
+          "type_info": "Timestamp"
+        },
+        {
+          "ordinal": 13,
+          "name": "updated_at",
+          "type_info": "Timestamp"
+        },
+        {
+          "ordinal": 14,
+          "name": "sender_is_token_wallet",
+          "type_info": "Bool"
+        }
+      ],
+      "parameters": {
+        "Left": [
+          "Uuid",
+          "Uuid",
+          "Uuid",
+          "Varchar",
+          "Int4",
+          "Varchar",
+          "Numeric",
+          {
+            "Custom": {
+              "name": "twa_transaction_direction",
+              "kind": {
+                "Enum": [
+                  "Send",
+                  "Receive"
+                ]
+              }
+            }
+          },
+          {
+            "Custom": {
+              "name": "twa_transaction_status",
+              "kind": {
+                "Enum": [
+                  "New",
+                  "Done",
+                  "PartiallyDone",
+                  "Error"
+                ]
+              }
+            }
+          },
+          {
+            "Custom": {
+              "name": "twa_transaction_event_status",
+              "kind": {
+                "Enum": [
+                  "New",
+                  "Notified",
+                  "Error"
+                ]
+              }
+            }
+          },
+          "Bool"
+        ]
+      },
+      "nullable": [
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        true,
+        true,
+        true,
+        false,
         false,
         false,
         false,
@@ -1149,24 +1469,8 @@
       ]
     }
   },
-  "271f5fcb3fc356619aca727bb852514d54f152a79ebed65ab6571425a506ee9e": {
-    "query": "INSERT INTO token_owners (address, owner_account_workchain_id, owner_account_hex, root_address, code_hash)\n            VALUES ($1, $2, $3, $4, $5)\n            ON CONFLICT DO NOTHING",
-    "describe": {
-      "columns": [],
-      "parameters": {
-        "Left": [
-          "Varchar",
-          "Int4",
-          "Varchar",
-          "Varchar",
-          "Bytea"
-        ]
-      },
-      "nullable": []
-    }
-  },
-  "3028ceb0a50d9d62ad64160cbd72fb8de6a6ad9ccd2140f89411d88423a30220": {
-    "query": "\n            UPDATE transaction_events SET\n            (balance_change, transaction_status) =\n            ($1, $2)\n            WHERE message_hash = $3 and transaction_direction = 'Send'::twa_transaction_direction\n            RETURNING id,\n                service_id as \"service_id: _\",\n                transaction_id,\n                message_hash,\n                account_workchain_id,\n                account_hex,\n                balance_change,\n                transaction_direction as \"transaction_direction: _\",\n                transaction_status as \"transaction_status: _\",\n                event_status as \"event_status: _\",\n                created_at, updated_at, sender_is_token_wallet",
+  "242a8d3cfdd26e9ba851b5af5a0eb851d5629186c3242482894a18d1d45332c5": {
+    "query": "\n            UPDATE transaction_events SET\n            (balance_change, transaction_status) =\n            ($1, $2)\n            WHERE message_hash = $3 and transaction_direction = 'Send'::twa_transaction_direction\n            RETURNING id,\n                service_id as \"service_id: _\",\n                transaction_id,\n                message_hash,\n                account_workchain_id,\n                account_hex,\n                sender_workchain_id,\n                sender_hex,\n                balance_change,\n                transaction_direction as \"transaction_direction: _\",\n                transaction_status as \"transaction_status: _\",\n                event_status as \"event_status: _\",\n                created_at, updated_at, sender_is_token_wallet",
     "describe": {
       "columns": [
         {
@@ -1201,11 +1505,21 @@
         },
         {
           "ordinal": 6,
+          "name": "sender_workchain_id",
+          "type_info": "Int4"
+        },
+        {
+          "ordinal": 7,
+          "name": "sender_hex",
+          "type_info": "Varchar"
+        },
+        {
+          "ordinal": 8,
           "name": "balance_change",
           "type_info": "Numeric"
         },
         {
-          "ordinal": 7,
+          "ordinal": 9,
           "name": "transaction_direction: _",
           "type_info": {
             "Custom": {
@@ -1220,7 +1534,7 @@
           }
         },
         {
-          "ordinal": 8,
+          "ordinal": 10,
           "name": "transaction_status: _",
           "type_info": {
             "Custom": {
@@ -1237,7 +1551,7 @@
           }
         },
         {
-          "ordinal": 9,
+          "ordinal": 11,
           "name": "event_status: _",
           "type_info": {
             "Custom": {
@@ -1253,17 +1567,17 @@
           }
         },
         {
-          "ordinal": 10,
+          "ordinal": 12,
           "name": "created_at",
           "type_info": "Timestamp"
         },
         {
-          "ordinal": 11,
+          "ordinal": 13,
           "name": "updated_at",
           "type_info": "Timestamp"
         },
         {
-          "ordinal": 12,
+          "ordinal": 14,
           "name": "sender_is_token_wallet",
           "type_info": "Bool"
         }
@@ -1295,6 +1609,8 @@
         false,
         false,
         true,
+        true,
+        true,
         false,
         false,
         false,
@@ -1302,6 +1618,22 @@
         false,
         false
       ]
+    }
+  },
+  "271f5fcb3fc356619aca727bb852514d54f152a79ebed65ab6571425a506ee9e": {
+    "query": "INSERT INTO token_owners (address, owner_account_workchain_id, owner_account_hex, root_address, code_hash)\n            VALUES ($1, $2, $3, $4, $5)\n            ON CONFLICT DO NOTHING",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": [
+          "Varchar",
+          "Int4",
+          "Varchar",
+          "Varchar",
+          "Bytea"
+        ]
+      },
+      "nullable": []
     }
   },
   "331d420c36f5f2b9083b7956770b95d519ee9845d6ac7e687d21197d355dc915": {
@@ -2018,8 +2350,8 @@
       ]
     }
   },
-  "54f114709fb9a1f9bd42bb437cbf0c853029e664f4bd14e2cbc0d99891ae5e9a": {
-    "query": "\n            UPDATE transaction_events SET event_status = $1\n            WHERE message_hash = $2 AND account_workchain_id = $3 AND account_hex = $4\n            RETURNING id,\n                service_id as \"service_id: _\",\n                transaction_id,\n                message_hash,\n                account_workchain_id,\n                account_hex,\n                balance_change,\n                transaction_direction as \"transaction_direction: _\",\n                transaction_status as \"transaction_status: _\",\n                event_status as \"event_status: _\",\n                created_at, updated_at, sender_is_token_wallet",
+  "54828b19d0f3545a3d6167732c19d11b81faef9de7f67bf89796901e0a0031da": {
+    "query": "\n            UPDATE transaction_events SET event_status = $1\n            WHERE service_id = $2 AND id = $3\n            RETURNING id,\n                service_id as \"service_id: _\",\n                transaction_id,\n                message_hash,\n                account_workchain_id,\n                account_hex,\n                sender_workchain_id,\n                sender_hex,\n                balance_change,\n                transaction_direction as \"transaction_direction: _\",\n                transaction_status as \"transaction_status: _\",\n                event_status as \"event_status: _\",\n                created_at, updated_at, sender_is_token_wallet",
     "describe": {
       "columns": [
         {
@@ -2054,11 +2386,21 @@
         },
         {
           "ordinal": 6,
+          "name": "sender_workchain_id",
+          "type_info": "Int4"
+        },
+        {
+          "ordinal": 7,
+          "name": "sender_hex",
+          "type_info": "Varchar"
+        },
+        {
+          "ordinal": 8,
           "name": "balance_change",
           "type_info": "Numeric"
         },
         {
-          "ordinal": 7,
+          "ordinal": 9,
           "name": "transaction_direction: _",
           "type_info": {
             "Custom": {
@@ -2073,7 +2415,7 @@
           }
         },
         {
-          "ordinal": 8,
+          "ordinal": 10,
           "name": "transaction_status: _",
           "type_info": {
             "Custom": {
@@ -2090,7 +2432,7 @@
           }
         },
         {
-          "ordinal": 9,
+          "ordinal": 11,
           "name": "event_status: _",
           "type_info": {
             "Custom": {
@@ -2106,17 +2448,167 @@
           }
         },
         {
-          "ordinal": 10,
+          "ordinal": 12,
           "name": "created_at",
           "type_info": "Timestamp"
         },
         {
-          "ordinal": 11,
+          "ordinal": 13,
           "name": "updated_at",
           "type_info": "Timestamp"
         },
         {
+          "ordinal": 14,
+          "name": "sender_is_token_wallet",
+          "type_info": "Bool"
+        }
+      ],
+      "parameters": {
+        "Left": [
+          {
+            "Custom": {
+              "name": "twa_transaction_event_status",
+              "kind": {
+                "Enum": [
+                  "New",
+                  "Notified",
+                  "Error"
+                ]
+              }
+            }
+          },
+          "Uuid",
+          "Uuid"
+        ]
+      },
+      "nullable": [
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        true,
+        true,
+        true,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false
+      ]
+    }
+  },
+  "56dc51f931cf1b304c960ae96c8607aea5b0576c11a6e434a92cbd561ba2718a": {
+    "query": "\n            UPDATE transaction_events SET event_status = $1\n            WHERE message_hash = $2 AND account_workchain_id = $3 AND account_hex = $4\n            RETURNING id,\n                service_id as \"service_id: _\",\n                transaction_id,\n                message_hash,\n                account_workchain_id,\n                account_hex,\n                sender_workchain_id,\n                sender_hex,\n                balance_change,\n                transaction_direction as \"transaction_direction: _\",\n                transaction_status as \"transaction_status: _\",\n                event_status as \"event_status: _\",\n                created_at, updated_at, sender_is_token_wallet",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "id",
+          "type_info": "Uuid"
+        },
+        {
+          "ordinal": 1,
+          "name": "service_id: _",
+          "type_info": "Uuid"
+        },
+        {
+          "ordinal": 2,
+          "name": "transaction_id",
+          "type_info": "Uuid"
+        },
+        {
+          "ordinal": 3,
+          "name": "message_hash",
+          "type_info": "Varchar"
+        },
+        {
+          "ordinal": 4,
+          "name": "account_workchain_id",
+          "type_info": "Int4"
+        },
+        {
+          "ordinal": 5,
+          "name": "account_hex",
+          "type_info": "Varchar"
+        },
+        {
+          "ordinal": 6,
+          "name": "sender_workchain_id",
+          "type_info": "Int4"
+        },
+        {
+          "ordinal": 7,
+          "name": "sender_hex",
+          "type_info": "Varchar"
+        },
+        {
+          "ordinal": 8,
+          "name": "balance_change",
+          "type_info": "Numeric"
+        },
+        {
+          "ordinal": 9,
+          "name": "transaction_direction: _",
+          "type_info": {
+            "Custom": {
+              "name": "twa_transaction_direction",
+              "kind": {
+                "Enum": [
+                  "Send",
+                  "Receive"
+                ]
+              }
+            }
+          }
+        },
+        {
+          "ordinal": 10,
+          "name": "transaction_status: _",
+          "type_info": {
+            "Custom": {
+              "name": "twa_transaction_status",
+              "kind": {
+                "Enum": [
+                  "New",
+                  "Done",
+                  "PartiallyDone",
+                  "Error"
+                ]
+              }
+            }
+          }
+        },
+        {
+          "ordinal": 11,
+          "name": "event_status: _",
+          "type_info": {
+            "Custom": {
+              "name": "twa_transaction_event_status",
+              "kind": {
+                "Enum": [
+                  "New",
+                  "Notified",
+                  "Error"
+                ]
+              }
+            }
+          }
+        },
+        {
           "ordinal": 12,
+          "name": "created_at",
+          "type_info": "Timestamp"
+        },
+        {
+          "ordinal": 13,
+          "name": "updated_at",
+          "type_info": "Timestamp"
+        },
+        {
+          "ordinal": 14,
           "name": "sender_is_token_wallet",
           "type_info": "Bool"
         }
@@ -2148,6 +2640,8 @@
         false,
         false,
         true,
+        true,
+        true,
         false,
         false,
         false,
@@ -2173,6 +2667,184 @@
         ]
       },
       "nullable": [
+        false
+      ]
+    }
+  },
+  "618f0dc76dca00d21fde9e62902f3081b504c96228e7bbadfbb690237e8d749c": {
+    "query": "\n            INSERT INTO transaction_events\n            (id, service_id, transaction_id, message_hash, account_workchain_id, account_hex, transaction_direction, transaction_status, event_status)\n            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)\n            RETURNING\n                id,\n                service_id as \"service_id: _\",\n                transaction_id,\n                message_hash,\n                account_workchain_id,\n                account_hex,\n                sender_workchain_id,\n                sender_hex,\n                balance_change,\n                transaction_direction as \"transaction_direction: _\",\n                transaction_status as \"transaction_status: _\",\n                event_status as \"event_status: _\",\n                created_at, updated_at, sender_is_token_wallet",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "id",
+          "type_info": "Uuid"
+        },
+        {
+          "ordinal": 1,
+          "name": "service_id: _",
+          "type_info": "Uuid"
+        },
+        {
+          "ordinal": 2,
+          "name": "transaction_id",
+          "type_info": "Uuid"
+        },
+        {
+          "ordinal": 3,
+          "name": "message_hash",
+          "type_info": "Varchar"
+        },
+        {
+          "ordinal": 4,
+          "name": "account_workchain_id",
+          "type_info": "Int4"
+        },
+        {
+          "ordinal": 5,
+          "name": "account_hex",
+          "type_info": "Varchar"
+        },
+        {
+          "ordinal": 6,
+          "name": "sender_workchain_id",
+          "type_info": "Int4"
+        },
+        {
+          "ordinal": 7,
+          "name": "sender_hex",
+          "type_info": "Varchar"
+        },
+        {
+          "ordinal": 8,
+          "name": "balance_change",
+          "type_info": "Numeric"
+        },
+        {
+          "ordinal": 9,
+          "name": "transaction_direction: _",
+          "type_info": {
+            "Custom": {
+              "name": "twa_transaction_direction",
+              "kind": {
+                "Enum": [
+                  "Send",
+                  "Receive"
+                ]
+              }
+            }
+          }
+        },
+        {
+          "ordinal": 10,
+          "name": "transaction_status: _",
+          "type_info": {
+            "Custom": {
+              "name": "twa_transaction_status",
+              "kind": {
+                "Enum": [
+                  "New",
+                  "Done",
+                  "PartiallyDone",
+                  "Error"
+                ]
+              }
+            }
+          }
+        },
+        {
+          "ordinal": 11,
+          "name": "event_status: _",
+          "type_info": {
+            "Custom": {
+              "name": "twa_transaction_event_status",
+              "kind": {
+                "Enum": [
+                  "New",
+                  "Notified",
+                  "Error"
+                ]
+              }
+            }
+          }
+        },
+        {
+          "ordinal": 12,
+          "name": "created_at",
+          "type_info": "Timestamp"
+        },
+        {
+          "ordinal": 13,
+          "name": "updated_at",
+          "type_info": "Timestamp"
+        },
+        {
+          "ordinal": 14,
+          "name": "sender_is_token_wallet",
+          "type_info": "Bool"
+        }
+      ],
+      "parameters": {
+        "Left": [
+          "Uuid",
+          "Uuid",
+          "Uuid",
+          "Varchar",
+          "Int4",
+          "Varchar",
+          {
+            "Custom": {
+              "name": "twa_transaction_direction",
+              "kind": {
+                "Enum": [
+                  "Send",
+                  "Receive"
+                ]
+              }
+            }
+          },
+          {
+            "Custom": {
+              "name": "twa_transaction_status",
+              "kind": {
+                "Enum": [
+                  "New",
+                  "Done",
+                  "PartiallyDone",
+                  "Error"
+                ]
+              }
+            }
+          },
+          {
+            "Custom": {
+              "name": "twa_transaction_event_status",
+              "kind": {
+                "Enum": [
+                  "New",
+                  "Notified",
+                  "Error"
+                ]
+              }
+            }
+          }
+        ]
+      },
+      "nullable": [
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        true,
+        true,
+        true,
+        false,
+        false,
+        false,
+        false,
+        false,
         false
       ]
     }
@@ -3470,172 +4142,6 @@
       ]
     }
   },
-  "b86f3ed22dde3118c5f80b16df7daef0bcb4258e34d91361e44d151563fa22cf": {
-    "query": "\n            INSERT INTO transaction_events\n            (id, service_id, transaction_id, message_hash, account_workchain_id, account_hex, transaction_direction, transaction_status, event_status)\n            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)\n            RETURNING\n                id,\n                service_id as \"service_id: _\",\n                transaction_id,\n                message_hash,\n                account_workchain_id,\n                account_hex,\n                balance_change,\n                transaction_direction as \"transaction_direction: _\",\n                transaction_status as \"transaction_status: _\",\n                event_status as \"event_status: _\",\n                created_at, updated_at, sender_is_token_wallet",
-    "describe": {
-      "columns": [
-        {
-          "ordinal": 0,
-          "name": "id",
-          "type_info": "Uuid"
-        },
-        {
-          "ordinal": 1,
-          "name": "service_id: _",
-          "type_info": "Uuid"
-        },
-        {
-          "ordinal": 2,
-          "name": "transaction_id",
-          "type_info": "Uuid"
-        },
-        {
-          "ordinal": 3,
-          "name": "message_hash",
-          "type_info": "Varchar"
-        },
-        {
-          "ordinal": 4,
-          "name": "account_workchain_id",
-          "type_info": "Int4"
-        },
-        {
-          "ordinal": 5,
-          "name": "account_hex",
-          "type_info": "Varchar"
-        },
-        {
-          "ordinal": 6,
-          "name": "balance_change",
-          "type_info": "Numeric"
-        },
-        {
-          "ordinal": 7,
-          "name": "transaction_direction: _",
-          "type_info": {
-            "Custom": {
-              "name": "twa_transaction_direction",
-              "kind": {
-                "Enum": [
-                  "Send",
-                  "Receive"
-                ]
-              }
-            }
-          }
-        },
-        {
-          "ordinal": 8,
-          "name": "transaction_status: _",
-          "type_info": {
-            "Custom": {
-              "name": "twa_transaction_status",
-              "kind": {
-                "Enum": [
-                  "New",
-                  "Done",
-                  "PartiallyDone",
-                  "Error"
-                ]
-              }
-            }
-          }
-        },
-        {
-          "ordinal": 9,
-          "name": "event_status: _",
-          "type_info": {
-            "Custom": {
-              "name": "twa_transaction_event_status",
-              "kind": {
-                "Enum": [
-                  "New",
-                  "Notified",
-                  "Error"
-                ]
-              }
-            }
-          }
-        },
-        {
-          "ordinal": 10,
-          "name": "created_at",
-          "type_info": "Timestamp"
-        },
-        {
-          "ordinal": 11,
-          "name": "updated_at",
-          "type_info": "Timestamp"
-        },
-        {
-          "ordinal": 12,
-          "name": "sender_is_token_wallet",
-          "type_info": "Bool"
-        }
-      ],
-      "parameters": {
-        "Left": [
-          "Uuid",
-          "Uuid",
-          "Uuid",
-          "Varchar",
-          "Int4",
-          "Varchar",
-          {
-            "Custom": {
-              "name": "twa_transaction_direction",
-              "kind": {
-                "Enum": [
-                  "Send",
-                  "Receive"
-                ]
-              }
-            }
-          },
-          {
-            "Custom": {
-              "name": "twa_transaction_status",
-              "kind": {
-                "Enum": [
-                  "New",
-                  "Done",
-                  "PartiallyDone",
-                  "Error"
-                ]
-              }
-            }
-          },
-          {
-            "Custom": {
-              "name": "twa_transaction_event_status",
-              "kind": {
-                "Enum": [
-                  "New",
-                  "Notified",
-                  "Error"
-                ]
-              }
-            }
-          }
-        ]
-      },
-      "nullable": [
-        false,
-        false,
-        false,
-        false,
-        false,
-        false,
-        true,
-        false,
-        false,
-        false,
-        false,
-        false,
-        false
-      ]
-    }
-  },
   "bea373addcff988470868b63ed5630b82402146a833bb310ae665a86f0f8fa52": {
     "query": "SELECT id, service_id as \"service_id: _\", workchain_id, hex, base64url, public_key, private_key, account_type as \"account_type: _\", custodians, confirmations, custodians_public_keys, balance, created_at, updated_at\n                FROM address",
     "describe": {
@@ -3737,134 +4243,6 @@
         true,
         true,
         true,
-        false,
-        false,
-        false
-      ]
-    }
-  },
-  "c3774774769a4d09e2e84518883c17cf488683fb0962c80e66e1d7732b48e02e": {
-    "query": "\n            SELECT id,\n                service_id as \"service_id: _\",\n                transaction_id,\n                message_hash,\n                account_workchain_id,\n                account_hex,\n                balance_change,\n                transaction_direction as \"transaction_direction: _\",\n                transaction_status as \"transaction_status: _\",\n                event_status as \"event_status: _\",\n                created_at, updated_at, sender_is_token_wallet\n            FROM transaction_events\n            WHERE service_id = $1 AND message_hash = $2 AND account_workchain_id = $3 AND account_hex = $4",
-    "describe": {
-      "columns": [
-        {
-          "ordinal": 0,
-          "name": "id",
-          "type_info": "Uuid"
-        },
-        {
-          "ordinal": 1,
-          "name": "service_id: _",
-          "type_info": "Uuid"
-        },
-        {
-          "ordinal": 2,
-          "name": "transaction_id",
-          "type_info": "Uuid"
-        },
-        {
-          "ordinal": 3,
-          "name": "message_hash",
-          "type_info": "Varchar"
-        },
-        {
-          "ordinal": 4,
-          "name": "account_workchain_id",
-          "type_info": "Int4"
-        },
-        {
-          "ordinal": 5,
-          "name": "account_hex",
-          "type_info": "Varchar"
-        },
-        {
-          "ordinal": 6,
-          "name": "balance_change",
-          "type_info": "Numeric"
-        },
-        {
-          "ordinal": 7,
-          "name": "transaction_direction: _",
-          "type_info": {
-            "Custom": {
-              "name": "twa_transaction_direction",
-              "kind": {
-                "Enum": [
-                  "Send",
-                  "Receive"
-                ]
-              }
-            }
-          }
-        },
-        {
-          "ordinal": 8,
-          "name": "transaction_status: _",
-          "type_info": {
-            "Custom": {
-              "name": "twa_transaction_status",
-              "kind": {
-                "Enum": [
-                  "New",
-                  "Done",
-                  "PartiallyDone",
-                  "Error"
-                ]
-              }
-            }
-          }
-        },
-        {
-          "ordinal": 9,
-          "name": "event_status: _",
-          "type_info": {
-            "Custom": {
-              "name": "twa_transaction_event_status",
-              "kind": {
-                "Enum": [
-                  "New",
-                  "Notified",
-                  "Error"
-                ]
-              }
-            }
-          }
-        },
-        {
-          "ordinal": 10,
-          "name": "created_at",
-          "type_info": "Timestamp"
-        },
-        {
-          "ordinal": 11,
-          "name": "updated_at",
-          "type_info": "Timestamp"
-        },
-        {
-          "ordinal": 12,
-          "name": "sender_is_token_wallet",
-          "type_info": "Bool"
-        }
-      ],
-      "parameters": {
-        "Left": [
-          "Uuid",
-          "Text",
-          "Int4",
-          "Text"
-        ]
-      },
-      "nullable": [
-        false,
-        false,
-        false,
-        false,
-        false,
-        false,
-        true,
-        false,
-        false,
-        false,
         false,
         false,
         false
@@ -5062,8 +5440,8 @@
       ]
     }
   },
-  "ef3e0cef9aa37a83e29360e878a85ce587047e7bcc5ebe7c34d576110851d7bd": {
-    "query": "\n            INSERT INTO transaction_events\n            (id, service_id, transaction_id, message_hash, account_workchain_id, account_hex, balance_change, transaction_direction, transaction_status, event_status, sender_is_token_wallet)\n            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)\n            RETURNING id,\n                service_id as \"service_id: _\",\n                transaction_id,\n                message_hash,\n                account_workchain_id,\n                account_hex,\n                balance_change,\n                transaction_direction as \"transaction_direction: _\",\n                transaction_status as \"transaction_status: _\",\n                event_status as \"event_status: _\",\n                created_at, updated_at, sender_is_token_wallet",
+  "fc5b25956dd512b9aed55779517f6b94bd9a372e81c240dd9c5d32395ba328ae": {
+    "query": "\n            INSERT INTO transaction_events\n            (id, service_id, transaction_id, message_hash, account_workchain_id, account_hex, sender_workchain_id, sender_hex, balance_change, transaction_direction, transaction_status, event_status, sender_is_token_wallet)\n            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)\n            RETURNING id,\n                service_id as \"service_id: _\",\n                transaction_id,\n                message_hash,\n                account_workchain_id,\n                account_hex,\n                sender_workchain_id,\n                sender_hex,\n                balance_change,\n                transaction_direction as \"transaction_direction: _\",\n                transaction_status as \"transaction_status: _\",\n                event_status as \"event_status: _\",\n                created_at, updated_at, sender_is_token_wallet",
     "describe": {
       "columns": [
         {
@@ -5098,11 +5476,21 @@
         },
         {
           "ordinal": 6,
+          "name": "sender_workchain_id",
+          "type_info": "Int4"
+        },
+        {
+          "ordinal": 7,
+          "name": "sender_hex",
+          "type_info": "Varchar"
+        },
+        {
+          "ordinal": 8,
           "name": "balance_change",
           "type_info": "Numeric"
         },
         {
-          "ordinal": 7,
+          "ordinal": 9,
           "name": "transaction_direction: _",
           "type_info": {
             "Custom": {
@@ -5117,7 +5505,7 @@
           }
         },
         {
-          "ordinal": 8,
+          "ordinal": 10,
           "name": "transaction_status: _",
           "type_info": {
             "Custom": {
@@ -5134,7 +5522,7 @@
           }
         },
         {
-          "ordinal": 9,
+          "ordinal": 11,
           "name": "event_status: _",
           "type_info": {
             "Custom": {
@@ -5150,17 +5538,17 @@
           }
         },
         {
-          "ordinal": 10,
+          "ordinal": 12,
           "name": "created_at",
           "type_info": "Timestamp"
         },
         {
-          "ordinal": 11,
+          "ordinal": 13,
           "name": "updated_at",
           "type_info": "Timestamp"
         },
         {
-          "ordinal": 12,
+          "ordinal": 14,
           "name": "sender_is_token_wallet",
           "type_info": "Bool"
         }
@@ -5170,6 +5558,8 @@
           "Uuid",
           "Uuid",
           "Uuid",
+          "Varchar",
+          "Int4",
           "Varchar",
           "Int4",
           "Varchar",
@@ -5221,143 +5611,7 @@
         false,
         false,
         true,
-        false,
-        false,
-        false,
-        false,
-        false,
-        false
-      ]
-    }
-  },
-  "ff60fff3ff1c0299125f057675910dd139fe37843ca9f4f1985aee42e9673ea4": {
-    "query": "\n            UPDATE transaction_events SET event_status = $1\n            WHERE service_id = $2 AND id = $3\n            RETURNING id,\n                service_id as \"service_id: _\",\n                transaction_id,\n                message_hash,\n                account_workchain_id,\n                account_hex,\n                balance_change,\n                transaction_direction as \"transaction_direction: _\",\n                transaction_status as \"transaction_status: _\",\n                event_status as \"event_status: _\",\n                created_at, updated_at, sender_is_token_wallet",
-    "describe": {
-      "columns": [
-        {
-          "ordinal": 0,
-          "name": "id",
-          "type_info": "Uuid"
-        },
-        {
-          "ordinal": 1,
-          "name": "service_id: _",
-          "type_info": "Uuid"
-        },
-        {
-          "ordinal": 2,
-          "name": "transaction_id",
-          "type_info": "Uuid"
-        },
-        {
-          "ordinal": 3,
-          "name": "message_hash",
-          "type_info": "Varchar"
-        },
-        {
-          "ordinal": 4,
-          "name": "account_workchain_id",
-          "type_info": "Int4"
-        },
-        {
-          "ordinal": 5,
-          "name": "account_hex",
-          "type_info": "Varchar"
-        },
-        {
-          "ordinal": 6,
-          "name": "balance_change",
-          "type_info": "Numeric"
-        },
-        {
-          "ordinal": 7,
-          "name": "transaction_direction: _",
-          "type_info": {
-            "Custom": {
-              "name": "twa_transaction_direction",
-              "kind": {
-                "Enum": [
-                  "Send",
-                  "Receive"
-                ]
-              }
-            }
-          }
-        },
-        {
-          "ordinal": 8,
-          "name": "transaction_status: _",
-          "type_info": {
-            "Custom": {
-              "name": "twa_transaction_status",
-              "kind": {
-                "Enum": [
-                  "New",
-                  "Done",
-                  "PartiallyDone",
-                  "Error"
-                ]
-              }
-            }
-          }
-        },
-        {
-          "ordinal": 9,
-          "name": "event_status: _",
-          "type_info": {
-            "Custom": {
-              "name": "twa_transaction_event_status",
-              "kind": {
-                "Enum": [
-                  "New",
-                  "Notified",
-                  "Error"
-                ]
-              }
-            }
-          }
-        },
-        {
-          "ordinal": 10,
-          "name": "created_at",
-          "type_info": "Timestamp"
-        },
-        {
-          "ordinal": 11,
-          "name": "updated_at",
-          "type_info": "Timestamp"
-        },
-        {
-          "ordinal": 12,
-          "name": "sender_is_token_wallet",
-          "type_info": "Bool"
-        }
-      ],
-      "parameters": {
-        "Left": [
-          {
-            "Custom": {
-              "name": "twa_transaction_event_status",
-              "kind": {
-                "Enum": [
-                  "New",
-                  "Notified",
-                  "Error"
-                ]
-              }
-            }
-          },
-          "Uuid",
-          "Uuid"
-        ]
-      },
-      "nullable": [
-        false,
-        false,
-        false,
-        false,
-        false,
-        false,
+        true,
         true,
         false,
         false,

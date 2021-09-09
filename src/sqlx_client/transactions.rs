@@ -49,6 +49,8 @@ impl SqlxClient {
                 message_hash,
                 account_workchain_id,
                 account_hex,
+                sender_workchain_id,
+                sender_hex,
                 balance_change,
                 transaction_direction as "transaction_direction: _",
                 transaction_status as "transaction_status: _",
@@ -126,6 +128,8 @@ impl SqlxClient {
                 message_hash,
                 account_workchain_id,
                 account_hex,
+                sender_workchain_id,
+                sender_hex,
                 balance_change,
                 transaction_direction as "transaction_direction: _",
                 transaction_status as "transaction_status: _",
@@ -203,6 +207,8 @@ impl SqlxClient {
                 message_hash,
                 account_workchain_id,
                 account_hex,
+                sender_workchain_id,
+                sender_hex,
                 balance_change,
                 transaction_direction as "transaction_direction: _",
                 transaction_status as "transaction_status: _",
@@ -279,14 +285,16 @@ impl SqlxClient {
         let event = sqlx::query_as!(TransactionEventDb,
                 r#"
             INSERT INTO transaction_events
-            (id, service_id, transaction_id, message_hash, account_workchain_id, account_hex, balance_change, transaction_direction, transaction_status, event_status, sender_is_token_wallet)
-            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+            (id, service_id, transaction_id, message_hash, account_workchain_id, account_hex, sender_workchain_id, sender_hex, balance_change, transaction_direction, transaction_status, event_status, sender_is_token_wallet)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
             RETURNING id,
                 service_id as "service_id: _",
                 transaction_id,
                 message_hash,
                 account_workchain_id,
                 account_hex,
+                sender_workchain_id,
+                sender_hex,
                 balance_change,
                 transaction_direction as "transaction_direction: _",
                 transaction_status as "transaction_status: _",
@@ -298,6 +306,8 @@ impl SqlxClient {
                 payload.message_hash,
                 payload.account_workchain_id,
                 payload.account_hex,
+                payload.sender_workchain_id,
+                payload.sender_hex,
                 payload.balance_change,
                 payload.transaction_direction as TonTransactionDirection,
                 payload.transaction_status as TonTransactionStatus,
