@@ -409,6 +409,27 @@ impl SqlxClient {
             .await
             .map_err(From::from)
     }
+
+    pub async fn get_all_transactions_by_status(
+        &self,
+        service_id: ServiceId,
+        status: TonTransactionStatus,
+    ) -> Result<Vec<TransactionDb>, ServiceError> {
+        sqlx::query_as!(TransactionDb,
+                r#"
+            SELECT id, service_id as "service_id: _", message_hash, transaction_hash, transaction_lt, transaction_timeout,
+                transaction_scan_lt, sender_workchain_id, sender_hex, account_workchain_id, account_hex, messages, data,
+                original_value, original_outputs, value, fee, balance_change, direction as "direction: _", status as "status: _",
+                error, aborted, bounce, created_at, updated_at, sender_is_token_wallet
+            FROM transactions
+            WHERE service_id = $1 AND status = $2 "#,
+                service_id as ServiceId,
+                status as TonTransactionStatus,
+            )
+            .fetch_all(&self.pool)
+            .await
+            .map_err(From::from)
+    }
 }
 
 #[cfg(test)]

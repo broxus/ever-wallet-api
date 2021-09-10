@@ -3671,6 +3671,211 @@
       ]
     }
   },
+  "9a845969b0fc8157c85241f194ae4a97906840b8c409f2dd0b5654f13c4695a2": {
+    "query": "\n            SELECT id, service_id as \"service_id: _\", message_hash, transaction_hash, transaction_lt, transaction_timeout,\n                transaction_scan_lt, sender_workchain_id, sender_hex, account_workchain_id, account_hex, messages, data,\n                original_value, original_outputs, value, fee, balance_change, direction as \"direction: _\", status as \"status: _\",\n                error, aborted, bounce, created_at, updated_at, sender_is_token_wallet\n            FROM transactions\n            WHERE service_id = $1 AND status = $2 ",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "id",
+          "type_info": "Uuid"
+        },
+        {
+          "ordinal": 1,
+          "name": "service_id: _",
+          "type_info": "Uuid"
+        },
+        {
+          "ordinal": 2,
+          "name": "message_hash",
+          "type_info": "Varchar"
+        },
+        {
+          "ordinal": 3,
+          "name": "transaction_hash",
+          "type_info": "Varchar"
+        },
+        {
+          "ordinal": 4,
+          "name": "transaction_lt",
+          "type_info": "Numeric"
+        },
+        {
+          "ordinal": 5,
+          "name": "transaction_timeout",
+          "type_info": "Int8"
+        },
+        {
+          "ordinal": 6,
+          "name": "transaction_scan_lt",
+          "type_info": "Int8"
+        },
+        {
+          "ordinal": 7,
+          "name": "sender_workchain_id",
+          "type_info": "Int4"
+        },
+        {
+          "ordinal": 8,
+          "name": "sender_hex",
+          "type_info": "Varchar"
+        },
+        {
+          "ordinal": 9,
+          "name": "account_workchain_id",
+          "type_info": "Int4"
+        },
+        {
+          "ordinal": 10,
+          "name": "account_hex",
+          "type_info": "Varchar"
+        },
+        {
+          "ordinal": 11,
+          "name": "messages",
+          "type_info": "Jsonb"
+        },
+        {
+          "ordinal": 12,
+          "name": "data",
+          "type_info": "Jsonb"
+        },
+        {
+          "ordinal": 13,
+          "name": "original_value",
+          "type_info": "Numeric"
+        },
+        {
+          "ordinal": 14,
+          "name": "original_outputs",
+          "type_info": "Jsonb"
+        },
+        {
+          "ordinal": 15,
+          "name": "value",
+          "type_info": "Numeric"
+        },
+        {
+          "ordinal": 16,
+          "name": "fee",
+          "type_info": "Numeric"
+        },
+        {
+          "ordinal": 17,
+          "name": "balance_change",
+          "type_info": "Numeric"
+        },
+        {
+          "ordinal": 18,
+          "name": "direction: _",
+          "type_info": {
+            "Custom": {
+              "name": "twa_transaction_direction",
+              "kind": {
+                "Enum": [
+                  "Send",
+                  "Receive"
+                ]
+              }
+            }
+          }
+        },
+        {
+          "ordinal": 19,
+          "name": "status: _",
+          "type_info": {
+            "Custom": {
+              "name": "twa_transaction_status",
+              "kind": {
+                "Enum": [
+                  "New",
+                  "Done",
+                  "PartiallyDone",
+                  "Error"
+                ]
+              }
+            }
+          }
+        },
+        {
+          "ordinal": 20,
+          "name": "error",
+          "type_info": "Text"
+        },
+        {
+          "ordinal": 21,
+          "name": "aborted",
+          "type_info": "Bool"
+        },
+        {
+          "ordinal": 22,
+          "name": "bounce",
+          "type_info": "Bool"
+        },
+        {
+          "ordinal": 23,
+          "name": "created_at",
+          "type_info": "Timestamp"
+        },
+        {
+          "ordinal": 24,
+          "name": "updated_at",
+          "type_info": "Timestamp"
+        },
+        {
+          "ordinal": 25,
+          "name": "sender_is_token_wallet",
+          "type_info": "Bool"
+        }
+      ],
+      "parameters": {
+        "Left": [
+          "Uuid",
+          {
+            "Custom": {
+              "name": "twa_transaction_status",
+              "kind": {
+                "Enum": [
+                  "New",
+                  "Done",
+                  "PartiallyDone",
+                  "Error"
+                ]
+              }
+            }
+          }
+        ]
+      },
+      "nullable": [
+        false,
+        false,
+        false,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        false,
+        false,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        false,
+        false,
+        true,
+        false,
+        false,
+        false,
+        false,
+        false
+      ]
+    }
+  },
   "9c7a7da542dd001a5bc28dad96ef0cf56ab88b8efdccaa7864fed69743cdb687": {
     "query": "\n            SELECT id,\n                service_id as \"service_id: _\",\n                token_transaction_id,\n                message_hash,\n                account_workchain_id,\n                account_hex,\n                value,\n                root_address,\n                transaction_direction as \"transaction_direction: _\",\n                transaction_status as \"transaction_status: _\",\n                event_status as \"event_status: _\",\n                created_at, updated_at\n            FROM token_transaction_events\n            WHERE service_id = $1 AND event_status = $2",
     "describe": {
