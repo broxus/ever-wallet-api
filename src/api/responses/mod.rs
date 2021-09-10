@@ -386,6 +386,21 @@ impl From<Result<AccountTokenTransactionDataResponse, ServiceError>>
 
 #[derive(Debug, Deserialize, Serialize, Clone, opg::OpgModel)]
 #[serde(rename_all = "camelCase")]
+#[opg("MetricsResponse")]
+pub struct MetricsResponse {
+    pub gen_utime: u64,
+}
+
+impl From<Metrics> for MetricsResponse {
+    fn from(r: Metrics) -> Self {
+        Self {
+            gen_utime: r.gen_utime,
+        }
+    }
+}
+
+#[derive(Debug, Deserialize, Serialize, Clone, opg::OpgModel)]
+#[serde(rename_all = "camelCase")]
 #[opg("AccountTokenTransactionDataResponse")]
 pub struct AccountTokenTransactionDataResponse {
     pub id: Uuid,

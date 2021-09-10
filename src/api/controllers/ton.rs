@@ -226,6 +226,16 @@ pub fn get_tokens_transactions_id(
     .boxed()
 }
 
+pub fn get_metrics(ctx: Context) -> BoxFuture<'static, Result<impl warp::Reply, warp::Rejection>> {
+    async move {
+        let metrics = ctx.ton_service.get_metrics().await?;
+        let res = MetricsResponse::from(metrics);
+
+        Ok(warp::reply::json(&(res)))
+    }
+    .boxed()
+}
+
 pub fn post_tokens_events(
     service_id: ServiceId,
     input: PostTonTokenTransactionEventsRequest,

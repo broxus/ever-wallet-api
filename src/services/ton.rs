@@ -91,6 +91,7 @@ pub trait TonService: Send + Sync + 'static {
         service_id: &ServiceId,
         id: &uuid::Uuid,
     ) -> Result<TokenTransactionFromDb, ServiceError>;
+    async fn get_metrics(&self) -> Result<Metrics, ServiceError>;
     async fn search_token_events(
         &self,
         service_id: &ServiceId,
@@ -566,6 +567,10 @@ impl TonService for TonServiceImpl {
         self.sqlx_client
             .get_token_transaction_by_id(*service_id, id)
             .await
+    }
+
+    async fn get_metrics(&self) -> Result<Metrics, ServiceError> {
+        Ok(self.ton_api_client.get_metrics().await?)
     }
 
     async fn search_token_events(

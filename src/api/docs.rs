@@ -20,6 +20,7 @@ pub fn swagger() -> String {
             transactions,
             tokens,
             events,
+            metrics,
         },
         paths: {
             ("address" / "create"): {
@@ -157,6 +158,14 @@ pub fn swagger() -> String {
                     description: "Mark tokens event by id.",
                     body: requests::PostTonTokenMarkEventsRequest,
                     200: responses::MarkTokenEventsResponse,
+                }
+            },
+            ("metrics"): {
+                GET: {
+                    tags: { metrics  },
+                    summary: "Get metrics",
+                    description: "Get metrics of api health.",
+                    200: responses::MetricsResponse,
                 }
             },
         }
