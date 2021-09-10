@@ -63,6 +63,7 @@ pub async fn start_server() -> Result<(), Box<dyn std::error::Error + Send + Syn
     let sqlx_client = SqlxClient::new(pool);
     let callback_client = Arc::new(CallbackClientImpl::new());
     let owners_cache = OwnersCache::new(sqlx_client.clone()).await?;
+
     let ton_core =
         TonCore::new(service_config.ton_core, global_config, owners_cache.clone()).await?;
     let ton_api_client = Arc::new(TonClientImpl::new(ton_core.clone(), sqlx_client.clone()));

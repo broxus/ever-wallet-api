@@ -620,6 +620,17 @@ impl TonService for TonServiceImpl {
                 .ton_api_client
                 .get_token_address_info(&account, &root_address)
                 .await?;
+
+            if network.account_status == AccountStatus::UnInit {
+                return Err(ServiceError::Other(
+                    TonServiceError::AccountNotExist(format!(
+                        "{}:{}",
+                        network.workchain_id, network.hex
+                    ))
+                    .into(),
+                ));
+            }
+
             result.push((balance, network));
         }
         Ok(result)
@@ -656,7 +667,7 @@ impl TonService for TonServiceImpl {
 
         if owner_info.account_status == AccountStatus::UnInit {
             return Err(ServiceError::WrongInput(format!(
-                "Token wallet not found for `{}`",
+                "Failed to get contract state for owner or token wallet  `{}`",
                 owner.to_string()
             )));
         }
@@ -809,4 +820,6 @@ async fn send_transaction_helper(
 enum TonServiceError {
     #[error("Failed to update sent transaction: {0}")]
     UpdateMessageFail(ServiceError),
+    #[error("Account not : {0}")]
+    AccountNotExist(String),
 }

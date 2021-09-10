@@ -275,7 +275,7 @@ async fn get_token_wallet_details(
     let account = UInt256::from_be_bytes(&address.address().get_bytestring(0));
     let state = shard_accounts
         .find_account(&account)?
-        .ok_or_else(|| TonCoreError::AccountNotFound(account.to_hex_string()))?;
+        .ok_or_else(|| TonCoreError::AccountNotExist(account.to_hex_string()))?;
 
     let state = nekoton::core::token_wallet::TokenWalletContractState(&state);
     let hash = *state.get_code_hash()?.as_slice();

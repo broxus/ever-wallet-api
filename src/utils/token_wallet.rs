@@ -1,4 +1,5 @@
 use anyhow::Result;
+use bigdecimal::BigDecimal;
 use nekoton::core::models::*;
 use nekoton::core::token_wallet::*;
 use nekoton::core::*;
@@ -59,19 +60,39 @@ pub fn prepare_token_transfer(
     })
 }
 
+pub fn get_token_wallet_address(
+    root_contract: ExistingContract,
+    owner: &MsgAddressInt,
+) -> Result<MsgAddressInt> {
+    let root_contract_state = RootTokenContractState(&root_contract);
+    let RootTokenContractDetails { version, .. } = root_contract_state.guess_details()?;
+
+    root_contract_state.get_wallet_address(version, owner, None)
+}
+
 pub fn get_token_wallet_account(
     root_contract: ExistingContract,
     owner: &MsgAddressInt,
 ) -> Result<UInt256> {
     let root_contract_state = RootTokenContractState(&root_contract);
-
     let RootTokenContractDetails { version, .. } = root_contract_state.guess_details()?;
 
     let token_wallet_address = root_contract_state.get_wallet_address(version, owner, None)?;
+    let token_wallet_account =
+        UInt256::from_be_bytes(&token_wallet_address.address().get_bytestring(0));
 
-    Ok(UInt256::from_be_bytes(
-        &token_wallet_address.address().get_bytestring(0),
-    ))
+    Ok(token_wallet_account)
+}
+
+pub fn get_token_wallet_details(
+    token_contract: &ExistingContract,
+) -> Result<(TokenWalletVersion, BigDecimal)> {
+    let token_wallet_state = TokenWalletContractState(token_contract);
+
+    let version = token_wallet_state.get_version()?;
+    let balance = BigDecimal::new(token_wallet_state.get_balance(version)?.into(), 0);
+
+    Ok((version, balance))
 }
 
 fn select_token_contract(version: TokenWalletVersion) -> Result<&'static ton_abi::Contract> {

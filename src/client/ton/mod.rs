@@ -4,10 +4,7 @@ use anyhow::Result;
 use async_trait::async_trait;
 use bigdecimal::{BigDecimal, ToPrimitive};
 use ed25519_dalek::{Keypair, PublicKey, SecretKey, Signer};
-use nekoton::core::models::{
-    Expiration, RootTokenContractDetails, TokenWalletVersion, TransferRecipient,
-};
-use nekoton::core::token_wallet::{RootTokenContractState, TokenWalletContractState};
+use nekoton::core::models::{Expiration, TokenWalletVersion, TransferRecipient};
 use nekoton::core::ton_wallet::{MultisigType, TransferAction};
 use nekoton::crypto::SignedMessage;
 use nekoton_utils::TrustMe;
@@ -204,6 +201,10 @@ impl TonClient for TonClientImpl {
             last_transaction_lt,
             sync_u_time: contract.timings.current_utime() as i64,
         })
+    }
+    async fn get_metrics(&self) -> Result<Metrics> {
+        let gen_utime = self.ton_core.get_current_utime();
+        Ok(Metrics { gen_utime })
     }
     async fn prepare_deploy(
         &self,
@@ -405,42 +406,35 @@ impl TonClient for TonClientImpl {
             Err(_) => return Ok(NetworkTokenAddressData::uninit(owner, root_address)),
         };
 
-        let root_contract_state = RootTokenContractState(&root_contract);
-        let RootTokenContractDetails { version, .. } = root_contract_state.guess_details()?;
-
-        let token_wallet_address = root_contract_state.get_wallet_address(version, owner, None)?;
-        let token_wallet_account =
-            UInt256::from_be_bytes(&token_wallet_address.address().get_bytestring(0));
-
-        let token_contract = match self.ton_core.get_contract_state(token_wallet_account).await {
+        let token_address = get_token_wallet_address(root_contract, owner)?;
+        let token_account = UInt256::from_be_bytes(&token_address.address().get_bytestring(0));
+        let token_contract = match self.ton_core.get_contract_state(token_account).await {
             Ok(contract) => contract,
             Err(_) => {
                 return Ok(NetworkTokenAddressData::uninit(
-                    &token_wallet_address,
+                    &token_address,
                     root_address,
                 ))
             }
         };
-        let token_wallet_state = TokenWalletContractState(&token_contract);
 
-        let version = token_wallet_state.get_version()?;
-        let network_balance = BigDecimal::new(token_wallet_state.get_balance(version)?.into(), 0);
-
+        let (version, network_balance) = get_token_wallet_details(&token_contract)?;
         let account_status = transform_account_state(&token_contract.account.storage.state);
+        let sync_u_time = token_contract.timings.current_utime() as i64;
 
         let (last_transaction_hash, last_transaction_lt) =
             parse_last_transaction(&token_contract.last_transaction_id);
 
         Ok(NetworkTokenAddressData {
-            workchain_id: token_wallet_address.workchain_id(),
-            hex: token_wallet_address.address().to_hex_string(),
+            workchain_id: token_address.workchain_id(),
+            hex: token_address.address().to_hex_string(),
             root_address: root_address.to_string(),
             version: version.to_string(),
             network_balance,
             account_status,
             last_transaction_hash,
             last_transaction_lt,
-            sync_u_time: token_contract.timings.current_utime() as i64,
+            sync_u_time,
         })
     }
     async fn prepare_token_transaction(
@@ -562,10 +556,6 @@ impl TonClient for TonClientImpl {
         self.ton_core
             .send_ton_message(&account, &signed_message.message, signed_message.expire_at)
             .await
-    }
-    async fn get_metrics(&self) -> Result<Metrics> {
-        let gen_utime = self.ton_core.get_current_utime();
-        Ok(Metrics { gen_utime })
     }
 }
 

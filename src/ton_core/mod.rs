@@ -144,7 +144,7 @@ impl TonCoreContext {
         match self.ton_subscriber.get_contract_state(account).await? {
             RawContractState::Exists(contract) => Ok(contract),
             RawContractState::NotExists => {
-                Err(TonCoreError::AccountNotFound(account.to_hex_string()).into())
+                Err(TonCoreError::AccountNotExist(account.to_hex_string()).into())
             }
         }
     }
@@ -235,6 +235,6 @@ pub struct TonCoreConfig {
 enum TonCoreError {
     #[error("External ton message expected")]
     ExternalTonMessageExpected,
-    #[error("Account `{0}` not found")]
-    AccountNotFound(String),
+    #[error("Account `{0}` not exist")]
+    AccountNotExist(String),
 }
