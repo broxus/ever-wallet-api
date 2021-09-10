@@ -402,6 +402,7 @@ impl TonClient for TonClientImpl {
         owner: &MsgAddressInt,
         root_address: &MsgAddressInt,
     ) -> Result<NetworkTokenAddressData> {
+        log::debug!("root_address - {:#?}", root_address);
         let root_account = UInt256::from_be_bytes(&root_address.address().get_bytestring(0));
         let root_contract = match self.ton_core.get_contract_state(root_account).await {
             Ok(contract) => contract,
@@ -410,8 +411,10 @@ impl TonClient for TonClientImpl {
 
         let root_contract_state = RootTokenContractState(&root_contract);
         let RootTokenContractDetails { version, .. } = root_contract_state.guess_details()?;
+        log::debug!("owner - {:#?}", owner);
 
         let token_wallet_address = root_contract_state.get_wallet_address(version, owner, None)?;
+        log::debug!("token_wallet_address - {:#?}", token_wallet_address);
         let token_wallet_account =
             UInt256::from_be_bytes(&token_wallet_address.address().get_bytestring(0));
 
