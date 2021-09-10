@@ -10,12 +10,14 @@ use nekoton::core::models::{
 use nekoton::core::token_wallet::{RootTokenContractState, TokenWalletContractState};
 use nekoton::core::ton_wallet::{MultisigType, TransferAction};
 use nekoton::crypto::SignedMessage;
+use nekoton_utils::TrustMe;
 use num_bigint::BigUint;
 use num_traits::FromPrimitive;
 use ton_block::{GetRepresentationHash, MsgAddressInt};
 use ton_types::UInt256;
 
 use crate::models::*;
+use crate::sqlx_client::*;
 use crate::ton_core::*;
 use crate::utils::*;
 
@@ -25,8 +27,8 @@ pub use self::utils::*;
 mod responses;
 mod utils;
 
-pub const DEFAULT_EXPIRATION_TIMEOUT: u32 = 60;
-pub const MULTISIG_TYPE: MultisigType = MultisigType::SafeMultisigWallet;
+const DEFAULT_EXPIRATION_TIMEOUT: u32 = 60;
+const DEFAULT_MULTISIG_TYPE: MultisigType = MultisigType::SafeMultisigWallet;
 
 #[async_trait]
 pub trait TonClient: Send + Sync {
@@ -74,11 +76,15 @@ pub trait TonClient: Send + Sync {
 #[derive(Clone)]
 pub struct TonClientImpl {
     ton_core: Arc<TonCore>,
+    sqlx_client: SqlxClient,
 }
 
 impl TonClientImpl {
-    pub fn new(ton_core: Arc<TonCore>) -> Self {
-        Self { ton_core }
+    pub fn new(ton_core: Arc<TonCore>, sqlx_client: SqlxClient) -> Self {
+        Self {
+            ton_core,
+            sqlx_client,
+        }
     }
 }
 
@@ -109,7 +115,7 @@ impl TonClient for TonClientImpl {
             AccountType::SafeMultisig => {
                 nekoton::core::ton_wallet::multisig::compute_contract_address(
                     &public,
-                    MULTISIG_TYPE,
+                    DEFAULT_MULTISIG_TYPE,
                     workchain_id as i8,
                 )
             }
@@ -135,42 +141,32 @@ impl TonClient for TonClientImpl {
             AccountType::HighloadWallet | AccountType::Wallet => payload.custodians_public_keys,
         };
 
-        // Subscribe to created account
-        let account = UInt256::from_be_bytes(
-            &hex::decode(address.address().to_hex_string()).unwrap_or_default(),
-        );
-        self.ton_core.add_ton_account_subscription([account]);
-
-        // TODO: temporary workaround to add wton subscription
+        // Subscribe to created account and all token accounts related to one
         {
-            use nekoton::core::models::RootTokenContractDetails;
-            use nekoton::core::token_wallet::RootTokenContractState;
-            use std::str::FromStr;
+            let account = UInt256::from_be_bytes(
+                &hex::decode(address.address().to_hex_string()).unwrap_or_default(),
+            );
 
-            let root_address = ton_block::MsgAddressInt::from_str(
-                "0:0ee39330eddb680ce731cd6a443c71d9069db06d149a9bec9569d1eb8d04eb37",
-            )
-            .unwrap();
-            let root_account = UInt256::from_be_bytes(&root_address.address().get_bytestring(0));
-            let root_state = self.ton_core.get_contract_state(root_account).await?;
+            let root_accounts = self
+                .sqlx_client
+                .get_token_whitelist()
+                .await?
+                .into_iter()
+                .map(|item| {
+                    let address = nekoton_utils::repack_address(&item.address).trust_me();
+                    UInt256::from_be_bytes(&address.address().get_bytestring(0))
+                })
+                .collect::<Vec<UInt256>>();
 
-            let root_contract_state = RootTokenContractState(&root_state);
+            let mut token_accounts = Vec::new();
+            for root_account in &root_accounts {
+                let root_state = self.ton_core.get_contract_state(*root_account).await?;
+                let token_account = get_token_wallet_account(root_state, &address)?;
+                token_accounts.push(token_account);
+            }
 
-            let RootTokenContractDetails { version, .. } = root_contract_state.guess_details()?;
-
-            let address = ton_block::MsgAddressInt::with_standart(
-                None,
-                ton_block::BASE_WORKCHAIN_ID as i8,
-                ton_types::AccountId::from(account),
-            )?;
-
-            let token_wallet_address =
-                root_contract_state.get_wallet_address(version, &address, None)?;
-
-            let token_wallet_account =
-                UInt256::from_be_bytes(&token_wallet_address.address().get_bytestring(0));
-            self.ton_core
-                .add_token_account_subscription([token_wallet_account]);
+            self.ton_core.add_ton_account_subscription([account]);
+            self.ton_core.add_token_account_subscription(token_accounts);
         }
 
         Ok(CreatedAddress {
@@ -235,7 +231,7 @@ impl TonClient for TonClientImpl {
                 owners.push(public_key);
                 nekoton::core::ton_wallet::multisig::prepare_deploy(
                     &public_key,
-                    MULTISIG_TYPE,
+                    DEFAULT_MULTISIG_TYPE,
                     address.workchain_id as i8,
                     Expiration::Timeout(DEFAULT_EXPIRATION_TIMEOUT),
                     &owners,

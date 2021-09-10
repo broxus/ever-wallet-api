@@ -65,7 +65,7 @@ impl From<TransactionEventDb> for AccountTransactionEvent {
         let base64url = Address(pack_std_smc_addr(true, &account, false).unwrap());
 
         let sender = if let (Some(sender_workchain_id), Some(sender_hex)) =
-            (t.sender_workchain_id.clone(), t.sender_hex.clone())
+            (t.sender_workchain_id, t.sender_hex)
         {
             let sender =
                 MsgAddressInt::from_str(&format!("{}:{}", sender_workchain_id, sender_hex))

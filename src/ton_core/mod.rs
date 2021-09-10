@@ -26,7 +26,6 @@ pub struct TonCore {
     context: Arc<TonCoreContext>,
     ton_transaction: Mutex<Option<Arc<TonTransaction>>>,
     token_transaction: Mutex<Option<Arc<TokenTransaction>>>,
-    wallet_notification: Mutex<Option<Arc<WalletNotification>>>,
 }
 
 impl TonCore {
@@ -41,7 +40,6 @@ impl TonCore {
             context,
             ton_transaction: Mutex::new(None),
             token_transaction: Mutex::new(None),
-            wallet_notification: Mutex::new(None),
         }))
     }
 
@@ -60,9 +58,6 @@ impl TonCore {
         let token_transaction =
             TokenTransaction::new(self.context.clone(), token_transaction_producer).await?;
         *self.token_transaction.lock() = Some(token_transaction);
-
-        let wallet_notification = WalletNotification::new(self.context.clone()).await?;
-        *self.wallet_notification.lock() = Some(wallet_notification);
 
         // Done
         Ok(())
@@ -83,15 +78,6 @@ impl TonCore {
     {
         if let Some(token_transaction) = &*self.token_transaction.lock() {
             token_transaction.add_account_subscription(accounts);
-        }
-    }
-
-    pub fn add_wallet_notification_subscription<I>(&self, accounts: I)
-    where
-        I: IntoIterator<Item = UInt256>,
-    {
-        if let Some(wallet_notification) = &*self.wallet_notification.lock() {
-            wallet_notification.add_account_subscription(accounts);
         }
     }
 

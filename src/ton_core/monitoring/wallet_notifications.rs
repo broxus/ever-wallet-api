@@ -12,6 +12,7 @@ pub struct WalletNotification {
 }
 
 impl WalletNotification {
+    #[allow(dead_code)]
     pub async fn new(context: Arc<TonCoreContext>) -> Result<Arc<Self>> {
         let (wallet_notification_events_tx, wallet_notification_events_rx) =
             mpsc::unbounded_channel();
@@ -26,6 +27,7 @@ impl WalletNotification {
         Ok(ton_transaction)
     }
 
+    #[allow(dead_code)]
     pub fn add_account_subscription<I>(&self, accounts: I)
     where
         I: IntoIterator<Item = UInt256>,

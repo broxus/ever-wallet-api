@@ -2130,6 +2130,24 @@
       ]
     }
   },
+  "3c4f49322c214c3931ccc980ceeec64160c4671dc5ab4f75c0a67078e2042f16": {
+    "query": "SELECT address FROM token_whitelist ",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "address",
+          "type_info": "Varchar"
+        }
+      ],
+      "parameters": {
+        "Left": []
+      },
+      "nullable": [
+        false
+      ]
+    }
+  },
   "441426fe5d74f2f864fe04f4d0cb4d9db43c477bc12d0e8d315cf9663d0a36c9": {
     "query": "\n            INSERT INTO token_transactions\n            (id, service_id, message_hash, account_workchain_id, account_hex, value, root_address, direction, status)\n            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)\n            RETURNING id, service_id as \"service_id: _\", transaction_hash, message_hash, account_workchain_id, account_hex,\n            value, root_address, payload, error, block_hash, block_time, direction as \"direction: _\", status as \"status: _\", created_at, updated_at",
     "describe": {

@@ -154,3 +154,8 @@ pub struct TokenOwnerFromDb {
     pub code_hash: Vec<u8>,
     pub created_at: NaiveDateTime,
 }
+
+#[derive(Clone, Debug, serde::Serialize, serde::Deserialize, Eq, PartialEq)]
+pub struct TokenWhitelistFromDb {
+    pub address: String,
+}

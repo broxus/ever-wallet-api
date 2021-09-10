@@ -7,6 +7,7 @@ mod token_balances;
 mod token_owners;
 mod token_transactions;
 mod token_transactions_events;
+mod token_whitelist;
 mod transactions;
 mod transactions_events;
 
