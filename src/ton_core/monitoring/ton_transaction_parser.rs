@@ -51,8 +51,7 @@ pub async fn parse_ton_transaction(
     let parsed = match in_msg.header() {
         CommonMsgInfo::IntMsgInfo(header) => {
             let sender_is_token_wallet =
-                sender_is_token_wallet(&address, &sender_address.unwrap_or_default(), owners_cache)
-                    .await;
+                sender_is_token_wallet(&address, &sender_address, owners_cache).await;
 
             CaughtTonTransaction::Create(CreateReceiveTransaction {
                 id: Uuid::new_v4(),
@@ -204,12 +203,14 @@ fn is_aborted(transaction: &ton_block::Transaction) -> bool {
 
 async fn sender_is_token_wallet(
     address: &MsgAddressInt,
-    sender: &MsgAddressInt,
+    sender: &Option<MsgAddressInt>,
     owners_cache: &OwnersCache,
 ) -> bool {
-    if let Some(owner) = owners_cache.get(address).await {
-        if *sender == owner.owner_address {
-            return true;
+    if let Some(sender) = sender {
+        if let Some(owner_info) = owners_cache.get(sender).await {
+            if owner_info.owner_address == *address {
+                return true;
+            }
         }
     }
     false
