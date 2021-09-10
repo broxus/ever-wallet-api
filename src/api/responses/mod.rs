@@ -388,7 +388,7 @@ impl From<Result<AccountTokenTransactionDataResponse, ServiceError>>
 #[serde(rename_all = "camelCase")]
 #[opg("MetricsResponse")]
 pub struct MetricsResponse {
-    pub gen_utime: u64,
+    pub gen_utime: u32,
 }
 
 impl From<Metrics> for MetricsResponse {

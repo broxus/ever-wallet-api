@@ -109,6 +109,10 @@ impl TonCore {
             .send_ton_message(account, message, expire_at)
             .await
     }
+
+    pub fn get_current_utime(&self) -> u32 {
+        self.context.ton_subscriber.get_current_utime()
+    }
 }
 
 pub struct TonCoreContext {

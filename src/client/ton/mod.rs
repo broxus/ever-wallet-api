@@ -568,7 +568,8 @@ impl TonClient for TonClientImpl {
             .await
     }
     async fn get_metrics(&self) -> Result<Metrics> {
-        todo!()
+        let gen_utime = self.ton_core.get_current_utime();
+        Ok(Metrics { gen_utime })
     }
 }
 
