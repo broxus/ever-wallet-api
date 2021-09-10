@@ -18,7 +18,7 @@ use crate::ton_core::*;
 pub struct TonSubscriber {
     ready: AtomicBool,
     ready_signal: Notify,
-    current_utime: AtomicU32, // extend to api
+    current_utime: AtomicU32,
     state_subscriptions: Mutex<HashMap<UInt256, StateSubscription>>,
     mc_block_awaiters: Mutex<Vec<Box<dyn BlockAwaiter>>>,
     messages_queue: Arc<PendingMessagesQueue>,
@@ -289,7 +289,7 @@ impl StateSubscription {
                 _ => continue,
             };
 
-            let _ = match transaction
+            let in_msg = match transaction
                 .in_msg
                 .as_ref()
                 .map(|message| (message, message.read_struct()))
@@ -311,6 +311,7 @@ impl StateSubscription {
                 transaction_hash: &hash,
                 transaction_info: &transaction_info,
                 transaction: &transaction,
+                in_msg: &in_msg,
             };
 
             // Handle transaction
@@ -403,17 +404,6 @@ pub trait BlockAwaiter: Send + Sync {
 
 pub trait TransactionsSubscription: Send + Sync {
     fn handle_transaction(&self, ctx: TxContext<'_>) -> Result<()>;
-}
-
-#[derive(Copy, Clone, Debug)]
-pub struct TxContext<'a> {
-    pub shard_accounts: &'a ton_block::ShardAccounts,
-    pub block_info: &'a ton_block::BlockInfo,
-    pub block_hash: &'a UInt256,
-    pub account: &'a UInt256,
-    pub transaction_hash: &'a UInt256,
-    pub transaction_info: &'a ton_block::TransactionDescrOrdinary,
-    pub transaction: &'a ton_block::Transaction,
 }
 
 type ShardAccountTx = watch::Sender<Option<ton_block::ShardAccount>>;

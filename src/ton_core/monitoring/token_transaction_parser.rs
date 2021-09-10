@@ -8,12 +8,12 @@ use uuid::Uuid;
 
 use crate::ton_core::*;
 
-pub const TOKEN_WALLET_CODE_HASH: [u8; 32] = [
+const TOKEN_WALLET_CODE_HASH: [u8; 32] = [
     44, 127, 188, 81, 97, 200, 223, 145, 75, 25, 193, 126, 27, 104, 81, 113, 32, 159, 175, 201, 32,
     0, 153, 178, 193, 252, 136, 125, 89, 93, 42, 227,
 ];
 
-pub async fn handle_token_transaction(
+pub async fn parse_token_transaction(
     token_transaction_ctx: TokenTransactionContext,
     parsed_token_transaction: TokenWalletTransaction,
     owners_cache: &OwnersCache,

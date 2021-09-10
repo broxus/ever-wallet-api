@@ -139,7 +139,7 @@ impl TonClient for TonClientImpl {
         let account = UInt256::from_be_bytes(
             &hex::decode(address.address().to_hex_string()).unwrap_or_default(),
         );
-        self.ton_core.add_account_subscription([account]);
+        self.ton_core.add_ton_account_subscription([account]);
 
         // TODO: temporary workaround to add wton subscription
         {

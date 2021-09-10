@@ -9,11 +9,11 @@ use uuid::Uuid;
 
 use crate::ton_core::*;
 
-pub async fn handle_transaction(
-    transaction_ctx: TransactionContext,
+pub async fn parse_ton_transaction(
+    event: TonTransactionEvent,
     owners_cache: &OwnersCache,
-) -> Result<ReceiveTransaction> {
-    let transaction = transaction_ctx.transaction.clone();
+) -> Result<CaughtTonTransaction> {
+    let transaction = event.transaction.clone();
 
     let in_msg = match &transaction.in_msg {
         Some(message) => message
@@ -25,7 +25,7 @@ pub async fn handle_transaction(
     let address = MsgAddressInt::with_standart(
         None,
         ton_block::BASE_WORKCHAIN_ID as i8,
-        AccountId::from(transaction_ctx.account),
+        AccountId::from(event.account),
     )?;
 
     let sender_address = get_sender_address(&transaction)?;
@@ -38,9 +38,9 @@ pub async fn handle_transaction(
     };
 
     let message_hash = in_msg.hash()?.to_hex_string();
-    let transaction_hash = Some(transaction_ctx.transaction_hash.to_hex_string());
+    let transaction_hash = Some(event.transaction_hash.to_hex_string());
     let transaction_lt = BigDecimal::from_u64(transaction.lt);
-    let transaction_scan_lt = Some(transaction_ctx.transaction.lt as i64);
+    let transaction_scan_lt = Some(event.transaction.lt as i64);
     let sender_address = get_sender_address(&transaction)?;
     let messages = Some(serde_json::to_value(get_messages(&transaction)?)?);
     let fee = BigDecimal::from_u64(compute_fees(&transaction));
@@ -54,7 +54,7 @@ pub async fn handle_transaction(
                 sender_is_token_wallet(&address, &sender_address.unwrap_or_default(), owners_cache)
                     .await;
 
-            ReceiveTransaction::Create(CreateReceiveTransaction {
+            CaughtTonTransaction::Create(CreateReceiveTransaction {
                 id: Uuid::new_v4(),
                 message_hash,
                 transaction_hash,
@@ -81,7 +81,7 @@ pub async fn handle_transaction(
             })
         }
         CommonMsgInfo::ExtInMsgInfo(_) => {
-            ReceiveTransaction::UpdateSent(UpdateSentTransaction {
+            CaughtTonTransaction::UpdateSent(UpdateSentTransaction {
                 message_hash,
                 account_workchain_id: address.workchain_id(),
                 account_hex: address.address().to_hex_string(),
@@ -217,7 +217,7 @@ async fn sender_is_token_wallet(
 
 #[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
-pub struct Message {
+struct Message {
     pub fee: BigDecimal,
     pub value: BigDecimal,
     pub recipient: MessageRecipient,
@@ -226,7 +226,7 @@ pub struct Message {
 
 #[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
-pub struct MessageRecipient {
+struct MessageRecipient {
     pub hex: String,
     pub base64url: String,
     pub workchain_id: i32,
@@ -234,14 +234,14 @@ pub struct MessageRecipient {
 
 #[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
-pub struct Outputs {
+struct Outputs {
     pub value: BigDecimal,
     pub recipient: OutputsRecipient,
 }
 
 #[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
-pub struct OutputsRecipient {
+struct OutputsRecipient {
     pub hex: String,
     pub base64url: String,
     pub workchain_id: i64,

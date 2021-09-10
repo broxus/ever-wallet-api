@@ -2,37 +2,31 @@ use std::path::PathBuf;
 use std::sync::Arc;
 
 use anyhow::Result;
-use nekoton::core::models::{TokenWalletTransaction, TokenWalletVersion};
-use nekoton::transport::models::{ExistingContract, RawContractState};
+use nekoton::transport::models::*;
+use nekoton_abi::*;
+use parking_lot::Mutex;
 use serde::Deserialize;
 use tokio::sync::mpsc;
 use ton_block::{GetRepresentationHash, MsgAddressInt, Serializable};
 use ton_types::UInt256;
 
+use self::monitoring::*;
 use self::settings::*;
+use self::ton_contracts::*;
 use self::ton_subscriber::*;
-use self::transaction_parser::*;
 use crate::models::*;
 use crate::utils::*;
 
+mod monitoring;
 mod settings;
+mod ton_contracts;
 mod ton_subscriber;
-mod transaction_parser;
 
 pub struct TonCore {
-    ton_engine: Arc<ton_indexer::Engine>,
-    ton_subscriber: Arc<TonSubscriber>,
-
-    owners_cache: OwnersCache,
-    messages_queue: Arc<PendingMessagesQueue>,
-
-    transaction_observer: Arc<TransactionObserver>,
-    transaction_producer: ReceiveTransactionTx,
-
-    token_transaction_observer: Arc<TokenTransactionObserver>,
-    token_transaction_producer: ReceiveTokenTransactionTx,
-
-    initialized: tokio::sync::Mutex<bool>,
+    context: Arc<TonCoreContext>,
+    ton_transaction: Mutex<Option<Arc<TonTransaction>>>,
+    token_transaction: Mutex<Option<Arc<TokenTransaction>>>,
+    wallet_notification: Mutex<Option<Arc<WalletNotification>>>,
 }
 
 impl TonCore {
@@ -40,14 +34,101 @@ impl TonCore {
         config: TonCoreConfig,
         global_config: ton_indexer::GlobalConfig,
         owners_cache: OwnersCache,
-        transaction_producer: ReceiveTransactionTx,
-        token_transaction_producer: ReceiveTokenTransactionTx,
+    ) -> Result<Arc<Self>> {
+        let context = TonCoreContext::new(config, global_config, owners_cache).await?;
+
+        Ok(Arc::new(Self {
+            context,
+            ton_transaction: Mutex::new(None),
+            token_transaction: Mutex::new(None),
+            wallet_notification: Mutex::new(None),
+        }))
+    }
+
+    pub async fn start(
+        &self,
+        ton_transaction_producer: CaughtTonTransactionTx,
+        token_transaction_producer: CaughtTokenTransactionTx,
+    ) -> Result<()> {
+        // Sync node and subscribers
+        self.context.start().await?;
+
+        let ton_transaction =
+            TonTransaction::new(self.context.clone(), ton_transaction_producer).await?;
+        *self.ton_transaction.lock() = Some(ton_transaction);
+
+        let token_transaction =
+            TokenTransaction::new(self.context.clone(), token_transaction_producer).await?;
+        *self.token_transaction.lock() = Some(token_transaction);
+
+        let wallet_notification = WalletNotification::new(self.context.clone()).await?;
+        *self.wallet_notification.lock() = Some(wallet_notification);
+
+        // Done
+        Ok(())
+    }
+
+    pub fn add_ton_account_subscription<I>(&self, accounts: I)
+    where
+        I: IntoIterator<Item = UInt256>,
+    {
+        if let Some(ton_transaction) = &*self.ton_transaction.lock() {
+            ton_transaction.add_account_subscription(accounts);
+        }
+    }
+
+    pub fn add_token_account_subscription<I>(&self, accounts: I)
+    where
+        I: IntoIterator<Item = UInt256>,
+    {
+        if let Some(token_transaction) = &*self.token_transaction.lock() {
+            token_transaction.add_account_subscription(accounts);
+        }
+    }
+
+    pub fn add_wallet_notification_subscription<I>(&self, accounts: I)
+    where
+        I: IntoIterator<Item = UInt256>,
+    {
+        if let Some(wallet_notification) = &*self.wallet_notification.lock() {
+            wallet_notification.add_account_subscription(accounts);
+        }
+    }
+
+    pub async fn get_contract_state(&self, account: UInt256) -> Result<ExistingContract> {
+        self.context.get_contract_state(account).await
+    }
+
+    pub async fn send_ton_message(
+        &self,
+        account: &ton_types::UInt256,
+        message: &ton_block::Message,
+        expire_at: u32,
+    ) -> Result<MessageStatus> {
+        self.context
+            .send_ton_message(account, message, expire_at)
+            .await
+    }
+}
+
+pub struct TonCoreContext {
+    pub owners_cache: OwnersCache,
+    pub messages_queue: Arc<PendingMessagesQueue>,
+    pub ton_subscriber: Arc<TonSubscriber>,
+    pub ton_engine: Arc<ton_indexer::Engine>,
+}
+
+impl TonCoreContext {
+    async fn new(
+        config: TonCoreConfig,
+        global_config: ton_indexer::GlobalConfig,
+        owners_cache: OwnersCache,
     ) -> Result<Arc<Self>> {
         let node_config = get_node_config(&config).await?;
 
-        let messages_queue = PendingMessagesQueue::new(100);
-        let ton_subscriber = TonSubscriber::new(messages_queue.clone());
+        let messages_queue = PendingMessagesQueue::new(1000);
 
+        let ton_subscriber = TonSubscriber::new(messages_queue.clone());
         let ton_engine = ton_indexer::Engine::new(
             node_config,
             global_config,
@@ -55,43 +136,21 @@ impl TonCore {
         )
         .await?;
 
-        let (transaction_tx, transaction_rx) = mpsc::unbounded_channel();
-        let (token_transaction_tx, token_transaction_rx) = mpsc::unbounded_channel();
-
-        let engine = Arc::new(Self {
-            ton_engine,
+        Ok(Arc::new(Self {
             owners_cache,
             messages_queue,
             ton_subscriber,
-            transaction_producer,
-            transaction_observer: Arc::new(TransactionObserver { tx: transaction_tx }),
-            token_transaction_producer,
-            token_transaction_observer: Arc::new(TokenTransactionObserver {
-                tx: token_transaction_tx,
-            }),
-            initialized: Default::default(),
-        });
-
-        engine.start_listening_transactions(transaction_rx);
-        engine.start_listening_token_transactions(token_transaction_rx);
-
-        Ok(engine)
+            ton_engine,
+        }))
     }
 
-    pub async fn start(&self) -> Result<()> {
-        let mut initialized = self.initialized.lock().await;
-        if *initialized {
-            return Err(TonCoreError::AlreadyInitialized.into());
-        }
-
+    async fn start(&self) -> Result<()> {
         self.ton_engine.start().await?;
         self.ton_subscriber.start().await?;
-
-        *initialized = true;
         Ok(())
     }
 
-    pub async fn get_contract_state(&self, account: UInt256) -> Result<ExistingContract> {
+    async fn get_contract_state(&self, account: UInt256) -> Result<ExistingContract> {
         match self.ton_subscriber.get_contract_state(account).await? {
             RawContractState::Exists(contract) => Ok(contract),
             RawContractState::NotExists => {
@@ -100,7 +159,7 @@ impl TonCore {
         }
     }
 
-    pub async fn send_ton_message(
+    async fn send_ton_message(
         &self,
         account: &ton_types::UInt256,
         message: &ton_block::Message,
@@ -127,165 +186,52 @@ impl TonCore {
         let status = rx.await?;
         Ok(status)
     }
+}
 
-    pub fn add_account_subscription<I>(&self, accounts: I)
-    where
-        I: IntoIterator<Item = UInt256>,
-    {
-        self.ton_subscriber
-            .add_transactions_subscription(accounts, &self.transaction_observer);
-    }
+/// Generic listener for transactions
+struct AccountObserver<T>(AccountEventsTx<T>);
 
-    pub fn add_token_account_subscription<I>(&self, accounts: I)
-    where
-        I: IntoIterator<Item = UInt256>,
-    {
-        self.ton_subscriber
-            .add_transactions_subscription(accounts, &self.token_transaction_observer);
-    }
-
-    pub fn get_current_utime(&self) -> u32 {
-        self.ton_subscriber.get_current_utime()
-    }
-
-    fn start_listening_transactions(
-        self: &Arc<Self>,
-        mut rx: mpsc::UnboundedReceiver<TransactionContext>,
-    ) {
-        let engine = Arc::downgrade(self);
-
-        tokio::spawn(async move {
-            while let Some(transaction_ctx) = rx.recv().await {
-                let engine = match engine.upgrade() {
-                    Some(engine) => engine,
-                    None => break,
-                };
-
-                log::info!("Transaction context: {:#?}", transaction_ctx);
-
-                match handle_transaction(transaction_ctx, &engine.owners_cache).await {
-                    Ok(transaction) => {
-                        engine.transaction_producer.send(transaction).ok();
-                    }
-                    Err(e) => {
-                        log::error!("Failed to handle received transaction: {}", e);
-                    }
-                }
-            }
-
-            rx.close();
-            while rx.recv().await.is_some() {}
-        });
-    }
-
-    fn start_listening_token_transactions(
-        self: &Arc<Self>,
-        mut rx: mpsc::UnboundedReceiver<(TokenTransactionContext, TokenWalletTransaction)>,
-    ) {
-        let engine = Arc::downgrade(self);
-
-        tokio::spawn(async move {
-            while let Some((token_transaction_ctx, parsed_token_transaction)) = rx.recv().await {
-                let engine = match engine.upgrade() {
-                    Some(engine) => engine,
-                    None => break,
-                };
-
-                log::info!("Token transaction context: {:#?}", token_transaction_ctx);
-                log::info!("Parsed token transaction: {:#?}", parsed_token_transaction);
-
-                match handle_token_transaction(
-                    token_transaction_ctx,
-                    parsed_token_transaction,
-                    &engine.owners_cache,
-                )
-                .await
-                {
-                    Ok(transaction) => {
-                        engine.token_transaction_producer.send(transaction).ok();
-                    }
-                    Err(e) => {
-                        log::error!("Failed to handle received token transaction: {}", e);
-                    }
-                }
-            }
-
-            rx.close();
-            while rx.recv().await.is_some() {}
-        });
+impl<T> AccountObserver<T> {
+    fn new(tx: AccountEventsTx<T>) -> Arc<Self> {
+        Arc::new(Self(tx))
     }
 }
 
-#[derive(Debug)]
-pub struct TransactionContext {
-    account: UInt256,
-    transaction_hash: UInt256,
-    transaction: ton_block::Transaction,
-}
-
-struct TransactionObserver {
-    tx: mpsc::UnboundedSender<TransactionContext>,
-}
-
-impl TransactionsSubscription for TransactionObserver {
+impl<T> TransactionsSubscription for AccountObserver<T>
+where
+    T: ReadFromTransaction + std::fmt::Debug + Send + Sync,
+{
     fn handle_transaction(&self, ctx: TxContext<'_>) -> Result<()> {
-        let transaction = TransactionContext {
-            account: *ctx.account,
-            transaction_hash: *ctx.transaction_hash,
-            transaction: ctx.transaction.clone(),
-        };
+        let event = T::read_from_transaction(&ctx);
 
-        self.tx.send(transaction)?;
-
-        Ok(())
-    }
-}
-
-#[derive(Debug)]
-pub struct TokenTransactionContext {
-    account: UInt256,
-    block_hash: UInt256,
-    block_utime: u32,
-    transaction_hash: UInt256,
-    transaction: ton_block::Transaction,
-    shard_accounts: ton_block::ShardAccounts,
-}
-
-struct TokenTransactionObserver {
-    tx: mpsc::UnboundedSender<(TokenTransactionContext, TokenWalletTransaction)>,
-}
-
-impl TransactionsSubscription for TokenTransactionObserver {
-    fn handle_transaction(&self, ctx: TxContext<'_>) -> Result<()> {
-        if ctx.transaction_info.aborted {
-            return Ok(());
-        }
-
-        let parsed = nekoton::core::parsing::parse_token_transaction(
-            ctx.transaction,
-            ctx.transaction_info,
-            TokenWalletVersion::Tip3v4,
+        log::info!(
+            "Got transaction on account {}: {:?}",
+            ctx.account.to_hex_string(),
+            event
         );
 
-        if let Some(parsed) = parsed {
-            self.tx
-                .send((
-                    TokenTransactionContext {
-                        account: *ctx.account,
-                        block_hash: *ctx.block_hash,
-                        block_utime: ctx.block_info.gen_utime().0,
-                        transaction_hash: *ctx.transaction_hash,
-                        transaction: ctx.transaction.clone(),
-                        shard_accounts: ctx.shard_accounts.clone(),
-                    },
-                    parsed,
-                ))
-                .ok();
+        // Send event to event manager if it exist
+        if let Some(event) = event {
+            self.0.send(event).ok();
         }
 
+        // Done
         Ok(())
     }
 }
+
+pub type AccountEventsTx<T> = mpsc::UnboundedSender<T>;
+
+pub enum CaughtTonTransaction {
+    Create(CreateReceiveTransaction),
+    UpdateSent(UpdateSentTransaction),
+}
+
+pub type CaughtTonTransactionTx = mpsc::UnboundedSender<CaughtTonTransaction>;
+pub type CaughtTonTransactionRx = mpsc::UnboundedReceiver<CaughtTonTransaction>;
+
+pub type CaughtTokenTransactionTx = mpsc::UnboundedSender<CreateTokenTransaction>;
+pub type CaughtTokenTransactionRx = mpsc::UnboundedReceiver<CreateTokenTransaction>;
 
 #[derive(Deserialize, Clone, Debug)]
 pub struct TonCoreConfig {
@@ -295,21 +241,8 @@ pub struct TonCoreConfig {
     pub keys_path: PathBuf,
 }
 
-pub enum ReceiveTransaction {
-    Create(CreateReceiveTransaction),
-    UpdateSent(UpdateSentTransaction),
-}
-
-pub type ReceiveTransactionTx = mpsc::UnboundedSender<ReceiveTransaction>;
-pub type ReceiveTransactionRx = mpsc::UnboundedReceiver<ReceiveTransaction>;
-
-pub type ReceiveTokenTransactionTx = mpsc::UnboundedSender<CreateTokenTransaction>;
-pub type ReceiveTokenTransactionRx = mpsc::UnboundedReceiver<CreateTokenTransaction>;
-
 #[derive(thiserror::Error, Debug)]
 enum TonCoreError {
-    #[error("Already initialized")]
-    AlreadyInitialized,
     #[error("External ton message expected")]
     ExternalTonMessageExpected,
     #[error("Account `{0}` not found")]

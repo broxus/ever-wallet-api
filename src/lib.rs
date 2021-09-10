@@ -52,9 +52,6 @@ pub async fn start_server() -> Result<(), Box<dyn std::error::Error + Send + Syn
         sentry::ClientOptions::default().add_integration(sentry_panic::PanicIntegration::default()),
     );
 
-    let (receive_transaction_tx, receive_transaction_rx) = mpsc::unbounded_channel();
-    let (receive_token_transaction_tx, receive_token_transaction_rx) = mpsc::unbounded_channel();
-
     let pool = PgPoolOptions::new()
         .max_connections(service_config.db_pool_size)
         .connect(&service_config.database_url)
@@ -64,14 +61,8 @@ pub async fn start_server() -> Result<(), Box<dyn std::error::Error + Send + Syn
     let sqlx_client = SqlxClient::new(pool);
     let callback_client = Arc::new(CallbackClientImpl::new());
     let owners_cache = OwnersCache::new(sqlx_client.clone()).await?;
-    let ton_core = TonCore::new(
-        service_config.ton_core,
-        global_config,
-        owners_cache.clone(),
-        receive_transaction_tx,
-        receive_token_transaction_tx,
-    )
-    .await?;
+    let ton_core =
+        TonCore::new(service_config.ton_core, global_config, owners_cache.clone()).await?;
     let ton_api_client = Arc::new(TonClientImpl::new(ton_core.clone()));
     let ton_service = Arc::new(TonServiceImpl::new(
         sqlx_client.clone(),
@@ -82,7 +73,11 @@ pub async fn start_server() -> Result<(), Box<dyn std::error::Error + Send + Syn
     ));
     let auth_service = Arc::new(AuthServiceImpl::new(sqlx_client.clone()));
 
-    ton_core.start().await?;
+    let (caught_ton_transaction_tx, caught_ton_transaction_rx) = mpsc::unbounded_channel();
+    let (caught_token_transaction_tx, caught_token_transaction_rx) = mpsc::unbounded_channel();
+    ton_core
+        .start(caught_ton_transaction_tx, caught_token_transaction_tx)
+        .await?;
 
     let accounts = sqlx_client
         .get_all_addresses()
@@ -90,9 +85,20 @@ pub async fn start_server() -> Result<(), Box<dyn std::error::Error + Send + Syn
         .into_iter()
         .map(|item| UInt256::from_be_bytes(&hex::decode(item.hex).trust_me()))
         .collect::<Vec<UInt256>>();
-    ton_core.add_account_subscription(accounts.clone());
+    ton_core.add_ton_account_subscription(accounts);
 
-    // TODO: temporary workaround to add wton subscription
+    let token_accounts = sqlx_client
+        .get_all_token_owners()
+        .await?
+        .into_iter()
+        .map(|item| {
+            let address = nekoton_utils::repack_address(&item.address).trust_me();
+            UInt256::from_be_bytes(&hex::decode(address.address().to_hex_string()).trust_me())
+        })
+        .collect::<Vec<UInt256>>();
+    ton_core.add_token_account_subscription(token_accounts.clone());
+
+    /*// TODO: temporary workaround to add wton subscription
     {
         use nekoton::core::models::RootTokenContractDetails;
         use nekoton::core::token_wallet::RootTokenContractState;
@@ -121,21 +127,21 @@ pub async fn start_server() -> Result<(), Box<dyn std::error::Error + Send + Syn
 
             let token_wallet_account =
                 UInt256::from_be_bytes(&token_wallet_address.address().get_bytestring(0));
-            ton_core.add_token_account_subscription([token_wallet_account]);
+
+            log::info!("{:#?}", token_wallet_account);
+
+            //ton_core.add_token_account_subscription([token_wallet_account]);
         }
-    }
+    }*/
 
-    log::debug!("tokens caching");
-    log::debug!("Finish tokens caching");
-
-    tokio::spawn(start_listening_receive_transactions(
+    tokio::spawn(start_listening_ton_transaction(
         ton_service.clone(),
-        receive_transaction_rx,
+        caught_ton_transaction_rx,
     ));
 
-    tokio::spawn(start_listening_receive_token_transactions(
+    tokio::spawn(start_listening_token_transaction(
         ton_service.clone(),
-        receive_token_transaction_rx,
+        caught_token_transaction_rx,
     ));
 
     log::debug!("start server");
@@ -167,14 +173,14 @@ fn init_logger(config: &serde_yaml::Value) -> Result<()> {
     Ok(())
 }
 
-async fn start_listening_receive_transactions(
+async fn start_listening_ton_transaction(
     ton_service: Arc<TonServiceImpl>,
-    mut rx: ReceiveTransactionRx,
+    mut rx: CaughtTonTransactionRx,
 ) {
     tokio::spawn(async move {
         while let Some(transaction) = rx.recv().await {
             match transaction {
-                ReceiveTransaction::Create(transaction) => {
+                CaughtTonTransaction::Create(transaction) => {
                     match ton_service.create_receive_transaction(transaction).await {
                         Ok(_) => {}
                         Err(err) => {
@@ -182,7 +188,7 @@ async fn start_listening_receive_transactions(
                         }
                     }
                 }
-                ReceiveTransaction::UpdateSent(transaction) => {
+                CaughtTonTransaction::UpdateSent(transaction) => {
                     match ton_service
                         .upsert_sent_transaction(
                             transaction.message_hash,
@@ -206,9 +212,9 @@ async fn start_listening_receive_transactions(
     });
 }
 
-async fn start_listening_receive_token_transactions(
+async fn start_listening_token_transaction(
     ton_service: Arc<TonServiceImpl>,
-    mut rx: ReceiveTokenTransactionRx,
+    mut rx: CaughtTokenTransactionRx,
 ) {
     tokio::spawn(async move {
         while let Some(transaction) = rx.recv().await {
