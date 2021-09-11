@@ -65,6 +65,7 @@ pub struct CreateTokenTransaction {
     pub id: Uuid,
     pub transaction_hash: Option<String>,
     pub message_hash: String,
+    pub owner_message_hash: Option<String>,
     pub account_workchain_id: i32,
     pub account_hex: String,
     pub sender_workchain_id: Option<i32>,

@@ -206,8 +206,13 @@ async fn sender_is_token_wallet(
     sender: &Option<MsgAddressInt>,
     owners_cache: &OwnersCache,
 ) -> bool {
+    log::info!("Address: {:#?}", address);
+    log::info!("Sender: {:#?}", sender);
+
     if let Some(sender) = sender {
         if let Some(owner_info) = owners_cache.get(sender).await {
+            log::info!("Owner info: {:#?}", owner_info);
+
             if owner_info.owner_address == *address {
                 return true;
             }

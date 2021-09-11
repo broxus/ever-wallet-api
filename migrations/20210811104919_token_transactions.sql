@@ -12,6 +12,7 @@ CREATE TABLE token_transactions
     service_id           UUID NOT NULL,
     transaction_hash     VARCHAR(64),
     message_hash         VARCHAR(64) NOT NULL,
+    owner_message_hash         VARCHAR(64),
     account_workchain_id INT NOT NULL,
     account_hex          VARCHAR(64) NOT NULL,
     value                DECIMAL NOT NULL,

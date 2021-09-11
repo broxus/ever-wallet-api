@@ -73,10 +73,18 @@ async fn internal_transfer_send(
             Ok(false)
         });
 
+    let owner_message_hash = token_transaction_ctx
+        .transaction
+        .in_msg
+        .clone()
+        .map(|message| message.hash())
+        .unwrap_or_default();
+
     let mut transaction = CreateTokenTransaction {
         id: Uuid::new_v4(),
         transaction_hash: Some(token_transaction_ctx.transaction_hash.to_hex_string()),
         message_hash: message_hash.to_hex_string(),
+        owner_message_hash: Some(owner_message_hash.to_hex_string()),
         account_workchain_id: owner_info.owner_address.workchain_id(),
         account_hex: owner_info.owner_address.address().to_hex_string(),
         sender_workchain_id: None,
@@ -127,6 +135,7 @@ async fn internal_transfer_receive(
         id: Uuid::new_v4(),
         transaction_hash: Some(token_transaction_ctx.transaction_hash.to_hex_string()),
         message_hash: message_hash.to_hex_string(),
+        owner_message_hash: None,
         account_workchain_id: owner_info.owner_address.get_workchain_id(),
         account_hex: owner_info.owner_address.address().to_hex_string(),
         sender_workchain_id: Some(token_transfer.sender_address.workchain_id()),
@@ -176,6 +185,7 @@ async fn internal_transfer_bounced(
         id: Uuid::new_v4(),
         transaction_hash: Some(token_transaction_ctx.transaction_hash.to_hex_string()),
         message_hash: message_hash.to_hex_string(),
+        owner_message_hash: None,
         account_workchain_id: owner_info.owner_address.workchain_id(),
         account_hex: owner_info.owner_address.address().to_hex_string(),
         sender_workchain_id: None,
@@ -225,6 +235,7 @@ async fn internal_transfer_mint(
         id: Uuid::new_v4(),
         transaction_hash: Some(token_transaction_ctx.transaction_hash.to_hex_string()),
         message_hash: message_hash.to_hex_string(),
+        owner_message_hash: None,
         account_workchain_id: owner_info.owner_address.get_workchain_id(),
         account_hex: owner_info.owner_address.address().to_hex_string(),
         sender_workchain_id: None,

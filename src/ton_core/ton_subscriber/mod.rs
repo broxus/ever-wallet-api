@@ -59,7 +59,7 @@ impl TonSubscriber {
 
         state_rx.changed().await?;
 
-        let shard_account = match state_rx.borrow().deref() {
+        let shard_account = match state_rx.borrow_and_update().deref() {
             Some(shard_account) => ExistingContract::from_shard_account(shard_account)?,
             None => None,
         };
