@@ -15,6 +15,7 @@ pub struct AccountTransactionEvent {
     pub id: Uuid,
     pub transaction_id: Uuid,
     pub message_hash: String,
+    pub owner_message_hash: Option<String>,
     pub account: AddressResponse,
     pub sender: Option<AddressResponse>,
     #[opg("balanceChange", string, optional)]
@@ -39,6 +40,7 @@ impl From<TokenTransactionEventDb> for AccountTransactionEvent {
             id: t.id,
             transaction_id: t.token_transaction_id,
             message_hash: t.message_hash,
+            owner_message_hash: t.owner_message_hash,
             account: AddressResponse {
                 workchain_id: t.account_workchain_id,
                 hex: Address(t.account_hex),
@@ -84,6 +86,7 @@ impl From<TransactionEventDb> for AccountTransactionEvent {
             id: t.id,
             transaction_id: t.transaction_id,
             message_hash: t.message_hash,
+            owner_message_hash: None,
             account: AddressResponse {
                 workchain_id: t.account_workchain_id,
                 hex: Address(t.account_hex),
