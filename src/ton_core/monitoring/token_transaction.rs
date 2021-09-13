@@ -2,6 +2,7 @@ use std::sync::Arc;
 
 use anyhow::Result;
 use nekoton::core::models::*;
+use nekoton_utils::TrustMe;
 use tokio::sync::mpsc;
 use ton_types::UInt256;
 
@@ -32,6 +33,47 @@ impl TokenTransaction {
         Ok(token_transaction)
     }
 
+    pub async fn init_subscriptions(&self) -> Result<()> {
+        let owner_addresses = self
+            .context
+            .sqlx_client
+            .get_all_addresses()
+            .await?
+            .into_iter()
+            .map(|item| {
+                nekoton_utils::repack_address(&format!("{}:{}", item.workchain_id, item.hex))
+                    .trust_me()
+            })
+            .collect::<Vec<MsgAddressInt>>();
+
+        let root_accounts = self
+            .context
+            .sqlx_client
+            .get_token_whitelist()
+            .await?
+            .into_iter()
+            .map(|item| {
+                let address = nekoton_utils::repack_address(&item.address).trust_me();
+                UInt256::from_be_bytes(&address.address().get_bytestring(0))
+            })
+            .collect::<Vec<UInt256>>();
+
+        let mut token_accounts = Vec::new();
+        for owner_address in &owner_addresses {
+            for root_account in &root_accounts {
+                let root_state = self.context.get_contract_state(*root_account).await?;
+                let token_account = get_token_wallet_account(root_state, owner_address)?;
+                token_accounts.push(token_account);
+            }
+        }
+
+        self.context
+            .ton_subscriber
+            .add_transactions_subscription(token_accounts, &self.token_transaction_observer);
+
+        Ok(())
+    }
+
     pub fn add_account_subscription<I>(&self, accounts: I)
     where
         I: IntoIterator<Item = UInt256>,
@@ -57,6 +99,7 @@ impl TokenTransaction {
                 match parse_token_transaction(
                     event.ctx,
                     event.parsed,
+                    &token_transaction.context.sqlx_client,
                     &token_transaction.context.owners_cache,
                 )
                 .await

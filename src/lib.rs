@@ -9,12 +9,9 @@ use std::sync::Arc;
 
 use anyhow::Result;
 use futures::prelude::*;
-use nekoton_utils::TrustMe;
 use serde::Deserialize;
 use sqlx::postgres::PgPoolOptions;
 use tokio::sync::mpsc;
-use ton_block::MsgAddressInt;
-use ton_types::UInt256;
 
 use crate::api::*;
 use crate::client::*;
@@ -23,7 +20,6 @@ use crate::services::*;
 use crate::settings::*;
 use crate::sqlx_client::*;
 use crate::ton_core::*;
-use crate::utils::*;
 
 #[allow(unused)]
 mod api;
@@ -64,8 +60,13 @@ pub async fn start_server() -> Result<(), Box<dyn std::error::Error + Send + Syn
     let callback_client = Arc::new(CallbackClientImpl::new());
     let owners_cache = OwnersCache::new(sqlx_client.clone()).await?;
 
-    let ton_core =
-        TonCore::new(service_config.ton_core, global_config, owners_cache.clone()).await?;
+    let ton_core = TonCore::new(
+        service_config.ton_core,
+        global_config,
+        sqlx_client.clone(),
+        owners_cache.clone(),
+    )
+    .await?;
     let ton_api_client = Arc::new(TonClientImpl::new(ton_core.clone(), sqlx_client.clone()));
     let ton_service = Arc::new(TonServiceImpl::new(
         sqlx_client.clone(),
@@ -78,49 +79,10 @@ pub async fn start_server() -> Result<(), Box<dyn std::error::Error + Send + Syn
 
     let (caught_ton_transaction_tx, caught_ton_transaction_rx) = mpsc::unbounded_channel();
     let (caught_token_transaction_tx, caught_token_transaction_rx) = mpsc::unbounded_channel();
+
     ton_core
         .start(caught_ton_transaction_tx, caught_token_transaction_tx)
         .await?;
-
-    // Subscribe to all ton and token accounts
-    {
-        let owner_addresses = sqlx_client
-            .get_all_addresses()
-            .await?
-            .into_iter()
-            .map(|item| {
-                nekoton_utils::repack_address(&format!("{}:{}", item.workchain_id, item.hex))
-                    .trust_me()
-            })
-            .collect::<Vec<MsgAddressInt>>();
-
-        let root_accounts = sqlx_client
-            .get_token_whitelist()
-            .await?
-            .into_iter()
-            .map(|item| {
-                let address = nekoton_utils::repack_address(&item.address).trust_me();
-                UInt256::from_be_bytes(&address.address().get_bytestring(0))
-            })
-            .collect::<Vec<UInt256>>();
-
-        let owner_accounts = owner_addresses
-            .iter()
-            .map(|item| UInt256::from_be_bytes(&item.address().get_bytestring(0)))
-            .collect::<Vec<UInt256>>();
-
-        let mut token_accounts = Vec::new();
-        for owner_address in &owner_addresses {
-            for root_account in &root_accounts {
-                let root_state = ton_core.get_contract_state(*root_account).await?;
-                let token_account = get_token_wallet_account(root_state, owner_address)?;
-                token_accounts.push(token_account);
-            }
-        }
-
-        ton_core.add_ton_account_subscription(owner_accounts);
-        ton_core.add_token_account_subscription(token_accounts);
-    }
 
     tokio::spawn(start_listening_ton_transaction(
         ton_service.clone(),

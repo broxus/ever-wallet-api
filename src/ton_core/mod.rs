@@ -15,6 +15,7 @@ use self::settings::*;
 use self::ton_contracts::*;
 use self::ton_subscriber::*;
 use crate::models::*;
+use crate::sqlx_client::*;
 use crate::utils::*;
 
 mod monitoring;
@@ -32,9 +33,10 @@ impl TonCore {
     pub async fn new(
         config: TonCoreConfig,
         global_config: ton_indexer::GlobalConfig,
+        sqlx_client: SqlxClient,
         owners_cache: OwnersCache,
     ) -> Result<Arc<Self>> {
-        let context = TonCoreContext::new(config, global_config, owners_cache).await?;
+        let context = TonCoreContext::new(config, global_config, sqlx_client, owners_cache).await?;
 
         Ok(Arc::new(Self {
             context,
@@ -53,10 +55,12 @@ impl TonCore {
 
         let ton_transaction =
             TonTransaction::new(self.context.clone(), ton_transaction_producer).await?;
+        ton_transaction.init_subscriptions().await?;
         *self.ton_transaction.lock() = Some(ton_transaction);
 
         let token_transaction =
             TokenTransaction::new(self.context.clone(), token_transaction_producer).await?;
+        token_transaction.init_subscriptions().await?;
         *self.token_transaction.lock() = Some(token_transaction);
 
         // Done
@@ -102,6 +106,7 @@ impl TonCore {
 }
 
 pub struct TonCoreContext {
+    pub sqlx_client: SqlxClient,
     pub owners_cache: OwnersCache,
     pub messages_queue: Arc<PendingMessagesQueue>,
     pub ton_subscriber: Arc<TonSubscriber>,
@@ -112,6 +117,7 @@ impl TonCoreContext {
     async fn new(
         config: TonCoreConfig,
         global_config: ton_indexer::GlobalConfig,
+        sqlx_client: SqlxClient,
         owners_cache: OwnersCache,
     ) -> Result<Arc<Self>> {
         let node_config = get_node_config(&config).await?;
@@ -127,6 +133,7 @@ impl TonCoreContext {
         .await?;
 
         Ok(Arc::new(Self {
+            sqlx_client,
             owners_cache,
             messages_queue,
             ton_subscriber,
@@ -176,6 +183,23 @@ impl TonCoreContext {
         let status = rx.await?;
         Ok(status)
     }
+
+    /*async fn load_unprocessed_transactions(&self) -> Result<()> {
+        let transactions: Vec<TransactionDb> = self
+            .sqlx_client
+            .get_all_transactions_by_status(TonTransactionStatus::New)
+            .await?;
+
+        for transaction in transactions {
+            let account = UInt256::from_be_bytes(&hex::decode(transaction.account_hex)?);
+            let message_hash = UInt256::from_be_bytes(&hex::decode(transaction.message_hash)?);
+            let expire_at = transaction.created_at.timestamp() as u32 + DEFAULT_EXPIRATION_TIMEOUT;
+            self.messages_queue
+                .add_message(account, message_hash, expire_at)?;
+        }
+
+        Ok(())
+    }*/
 }
 
 /// Generic listener for transactions

@@ -28,6 +28,7 @@ CREATE TABLE transactions (
                               account_workchain_id        INT NOT NULL,
                               account_hex                 VARCHAR(64) NOT NULL,
                               messages                    jsonb,
+                              messages_hash               jsonb,
                               data                        jsonb,
                               original_value              NUMERIC,
                               original_outputs            jsonb,
@@ -56,3 +57,4 @@ CREATE INDEX transactions_created_at_idx ON transactions (created_at);
 CREATE UNIQUE INDEX transactions_t_hash_a_wi_hex_d_idx ON transactions (transaction_hash, account_workchain_id, account_hex, direction)
     WHERE transaction_hash IS NOT NULL;
 CREATE INDEX transactions_lt_idx ON transactions (transaction_lt) WHERE transaction_lt IS NOT NULL;
+CREATE INDEX transactions_messages_hash_gin_idx ON transactions USING gin (messages_hash jsonb_path_ops);

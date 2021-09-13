@@ -716,6 +716,7 @@ impl TonService for TonServiceImpl {
                 destination,
                 version,
                 tokens,
+                input.notify_receiver,
                 address.account_type,
                 &public_key,
                 &private_key,

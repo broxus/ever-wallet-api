@@ -59,6 +59,7 @@ pub trait TonClient: Send + Sync {
         destination: TransferRecipient,
         version: TokenWalletVersion,
         tokens: BigDecimal,
+        notify_receiver: bool,
         account_type: AccountType,
         public_key: &[u8],
         private_key: &[u8],
@@ -445,6 +446,7 @@ impl TonClient for TonClientImpl {
         destination: TransferRecipient,
         version: TokenWalletVersion,
         tokens: BigDecimal,
+        notify_receiver: bool,
         account_type: AccountType,
         public_key: &[u8],
         private_key: &[u8],
@@ -457,7 +459,7 @@ impl TonClient for TonClientImpl {
             destination,
             version,
             tokens,
-            false,
+            notify_receiver,
             Default::default(),
         )?;
 

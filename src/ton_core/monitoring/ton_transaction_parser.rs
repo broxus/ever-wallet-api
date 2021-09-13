@@ -43,6 +43,7 @@ pub async fn parse_ton_transaction(
     let transaction_scan_lt = Some(event.transaction.lt as i64);
     let sender_address = get_sender_address(&transaction)?;
     let messages = Some(serde_json::to_value(get_messages(&transaction)?)?);
+    let messages_hash = Some(serde_json::to_value(get_messages_hash(&transaction)?)?);
     let fee = BigDecimal::from_u64(compute_fees(&transaction));
     let value = BigDecimal::from_u128(compute_value(&transaction));
     let balance_change =
@@ -65,6 +66,7 @@ pub async fn parse_ton_transaction(
                 account_workchain_id: address.workchain_id(),
                 account_hex: address.address().to_hex_string(),
                 messages,
+                messages_hash,
                 data: None, // TODO
                 original_value: None,
                 original_outputs: None,
@@ -91,6 +93,7 @@ pub async fn parse_ton_transaction(
                     sender_workchain_id,
                     sender_hex,
                     messages,
+                    messages_hash,
                     data: None, // TODO
                     value,
                     fee,
@@ -158,6 +161,20 @@ fn get_messages(transaction: &ton_block::Transaction) -> Result<Vec<Message>> {
     Ok(out_msgs)
 }
 
+fn get_messages_hash(transaction: &ton_block::Transaction) -> Result<Vec<String>> {
+    let mut hashes = Vec::new();
+    transaction
+        .out_msgs
+        .iterate(|ton_block::InRefValue(item)| {
+            hashes.push(item.hash()?.to_hex_string());
+
+            Ok(true)
+        })
+        .map_err(|_| TransactionError::InvalidStructure)?;
+
+    Ok(hashes)
+}
+
 fn compute_value(transaction: &ton_block::Transaction) -> u128 {
     let mut value = 0;
 
@@ -206,13 +223,8 @@ async fn sender_is_token_wallet(
     sender: &Option<MsgAddressInt>,
     owners_cache: &OwnersCache,
 ) -> bool {
-    log::info!("Address: {:#?}", address);
-    log::info!("Sender: {:#?}", sender);
-
     if let Some(sender) = sender {
         if let Some(owner_info) = owners_cache.get(sender).await {
-            log::info!("Owner info: {:#?}", owner_info);
-
             if owner_info.owner_address == *address {
                 return true;
             }

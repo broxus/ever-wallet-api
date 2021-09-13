@@ -16,9 +16,13 @@ const TOKEN_WALLET_CODE_HASH: [u8; 32] = [
 pub async fn parse_token_transaction(
     token_transaction_ctx: TokenTransactionContext,
     parsed_token_transaction: TokenWalletTransaction,
+    sqlx_client: &SqlxClient,
     owners_cache: &OwnersCache,
 ) -> Result<CreateTokenTransaction> {
-    let parse_ctx = ParseContext { owners_cache };
+    let parse_ctx = ParseContext {
+        sqlx_client,
+        owners_cache,
+    };
 
     let parsed = match parsed_token_transaction {
         TokenWalletTransaction::IncomingTransfer(transfer) => {
@@ -43,6 +47,7 @@ pub async fn parse_token_transaction(
 }
 
 struct ParseContext<'a> {
+    sqlx_client: &'a SqlxClient,
     owners_cache: &'a OwnersCache,
 }
 
@@ -69,22 +74,31 @@ async fn internal_transfer_send(
         .transaction
         .out_msgs
         .iterate(|ton_block::InRefValue(message)| {
-            message_hash = message.hash().unwrap_or_default();
+            message_hash = message.hash().unwrap_or_default().to_hex_string();
             Ok(false)
         });
 
-    let owner_message_hash = token_transaction_ctx
+    let out_ton_message_hash = token_transaction_ctx
         .transaction
         .in_msg
         .clone()
-        .map(|message| message.hash())
+        .map(|message| message.hash().to_hex_string())
         .unwrap_or_default();
+
+    let owner_message_hash = match parse_ctx
+        .sqlx_client
+        .get_transaction_by_out_msg(out_ton_message_hash)
+        .await
+    {
+        Ok(transaction) => Some(transaction.message_hash),
+        Err(_) => None,
+    };
 
     let mut transaction = CreateTokenTransaction {
         id: Uuid::new_v4(),
         transaction_hash: Some(token_transaction_ctx.transaction_hash.to_hex_string()),
-        message_hash: message_hash.to_hex_string(),
-        owner_message_hash: Some(owner_message_hash.to_hex_string()),
+        message_hash,
+        owner_message_hash,
         account_workchain_id: owner_info.owner_address.workchain_id(),
         account_hex: owner_info.owner_address.address().to_hex_string(),
         sender_workchain_id: None,
@@ -128,13 +142,13 @@ async fn internal_transfer_receive(
         .transaction
         .in_msg
         .clone()
-        .map(|message| message.hash())
+        .map(|message| message.hash().to_hex_string())
         .unwrap_or_default();
 
     let mut transaction = CreateTokenTransaction {
         id: Uuid::new_v4(),
         transaction_hash: Some(token_transaction_ctx.transaction_hash.to_hex_string()),
-        message_hash: message_hash.to_hex_string(),
+        message_hash,
         owner_message_hash: None,
         account_workchain_id: owner_info.owner_address.get_workchain_id(),
         account_hex: owner_info.owner_address.address().to_hex_string(),
@@ -178,13 +192,13 @@ async fn internal_transfer_bounced(
         .transaction
         .in_msg
         .clone()
-        .map(|message| message.hash())
+        .map(|message| message.hash().to_hex_string())
         .unwrap_or_default();
 
     let mut transaction = CreateTokenTransaction {
         id: Uuid::new_v4(),
         transaction_hash: Some(token_transaction_ctx.transaction_hash.to_hex_string()),
-        message_hash: message_hash.to_hex_string(),
+        message_hash,
         owner_message_hash: None,
         account_workchain_id: owner_info.owner_address.workchain_id(),
         account_hex: owner_info.owner_address.address().to_hex_string(),

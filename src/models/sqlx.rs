@@ -62,6 +62,7 @@ pub struct TransactionDb {
     pub account_workchain_id: i32,
     pub account_hex: String,
     pub messages: Option<serde_json::Value>,
+    pub messages_hash: Option<serde_json::Value>,
     pub data: Option<serde_json::Value>,
     pub original_value: Option<BigDecimal>,
     pub original_outputs: Option<serde_json::Value>,
