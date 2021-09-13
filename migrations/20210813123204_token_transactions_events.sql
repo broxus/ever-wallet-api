@@ -5,6 +5,7 @@ CREATE TABLE token_transaction_events (
         message_hash                VARCHAR(64) NOT NULL,
         account_workchain_id        INT NOT NULL,
         account_hex                 VARCHAR(64) NOT NULL,
+        owner_message_hash          VARCHAR(64),
         value                       NUMERIC NOT NULL,
         root_address                VARCHAR NOT NULL,
         transaction_direction       twa_transaction_direction NOT NULL,
@@ -21,6 +22,7 @@ CREATE TABLE token_transaction_events (
 CREATE UNIQUE INDEX token_transaction_events_transaction_id_status ON token_transaction_events (token_transaction_id, transaction_status);
 CREATE INDEX token_transaction_events_service_id_idx ON token_transaction_events (service_id);
 CREATE INDEX token_transaction_events_m_hash_idx ON token_transaction_events (message_hash);
+CREATE INDEX token_transaction_events_owner_m_hash_idx ON token_transaction_events (owner_message_hash);
 CREATE INDEX token_transaction_events_account_wc_hex_idx ON token_transaction_events (account_workchain_id, account_hex);
 CREATE INDEX token_transaction_events_created_at_idx ON token_transaction_events (created_at);
 CREATE INDEX token_transaction_events_status_idx ON token_transaction_events (event_status);

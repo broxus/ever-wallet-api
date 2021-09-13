@@ -43,14 +43,15 @@ impl SqlxClient {
         let event = sqlx::query_as!(TokenTransactionEventDb,
                 r#"
             INSERT INTO token_transaction_events
-            (id, service_id, token_transaction_id, message_hash, account_workchain_id, account_hex, value, root_address, transaction_direction, transaction_status, event_status)
-            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+            (id, service_id, token_transaction_id, message_hash, account_workchain_id, account_hex, owner_message_hash, value, root_address, transaction_direction, transaction_status, event_status)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
             RETURNING id,
                 service_id as "service_id: _",
                 token_transaction_id,
                 message_hash,
                 account_workchain_id,
                 account_hex,
+                owner_message_hash,
                 value,
                 root_address,
                 transaction_direction as "transaction_direction: _",
@@ -63,6 +64,7 @@ impl SqlxClient {
                 payload.message_hash,
                 payload.account_workchain_id,
                 payload.account_hex,
+                payload.owner_message_hash,
                 payload.value,
                 payload.root_address,
                 payload.transaction_direction as TonTransactionDirection,

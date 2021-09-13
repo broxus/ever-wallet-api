@@ -25,6 +25,7 @@ impl SqlxClient {
                 message_hash,
                 account_workchain_id,
                 account_hex,
+                owner_message_hash,
                 value,
                 root_address,
                 transaction_direction as "transaction_direction: _",
@@ -61,6 +62,7 @@ impl SqlxClient {
                 message_hash,
                 account_workchain_id,
                 account_hex,
+                owner_message_hash,
                 value,
                 root_address,
                 transaction_direction as "transaction_direction: _",
@@ -91,6 +93,7 @@ impl SqlxClient {
                 message_hash,
                 account_workchain_id,
                 account_hex,
+                owner_message_hash,
                 value,
                 root_address,
                 transaction_direction as "transaction_direction: _",
@@ -124,6 +127,7 @@ impl SqlxClient {
                 message_hash,
                 account_workchain_id,
                 account_hex,
+                owner_message_hash,
                 value,
                 root_address,
                 transaction_direction as "transaction_direction: _",
@@ -158,6 +162,7 @@ impl SqlxClient {
                 message_hash,
                 account_workchain_id,
                 account_hex,
+                owner_message_hash,
                 value,
                 root_address,
                 transaction_direction as "transaction_direction: _",
@@ -184,13 +189,14 @@ impl SqlxClient {
                 message_hash: x.get(3),
                 account_workchain_id: x.get(4),
                 account_hex: x.get(5),
-                value: x.get(6),
-                root_address: x.get(7),
-                transaction_direction: x.get(8),
-                transaction_status: x.get(9),
-                event_status: x.get(10),
-                created_at: x.get(11),
-                updated_at: x.get(12),
+                owner_message_hash: x.get(6),
+                value: x.get(7),
+                root_address: x.get(8),
+                transaction_direction: x.get(9),
+                transaction_status: x.get(10),
+                event_status: x.get(11),
+                created_at: x.get(12),
+                updated_at: x.get(13),
             })
             .collect::<Vec<_>>();
         Ok(res)
@@ -210,6 +216,7 @@ pub fn filter_token_transaction_query(
         message_hash,
         account_workchain_id,
         account_hex,
+        owner_message_hash,
         transaction_direction,
         transaction_status,
         event_status,
@@ -245,6 +252,12 @@ pub fn filter_token_transaction_query(
         updates.push(format!(" AND account_hex = ${} ", *args_len + 1,));
         *args_len += 1;
         args.add(account_hex)
+    }
+
+    if let Some(owner_message_hash) = owner_message_hash {
+        updates.push(format!(" AND owner_message_hash = ${} ", *args_len + 1,));
+        *args_len += 1;
+        args.add(owner_message_hash)
     }
 
     if let Some(transaction_direction) = transaction_direction {

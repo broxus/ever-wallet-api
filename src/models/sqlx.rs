@@ -138,6 +138,7 @@ pub struct TokenTransactionEventDb {
     pub message_hash: String,
     pub account_workchain_id: i32,
     pub account_hex: String,
+    pub owner_message_hash: Option<String>,
     pub value: BigDecimal,
     pub root_address: String,
     pub transaction_direction: TonTransactionDirection,
@@ -159,5 +160,6 @@ pub struct TokenOwnerFromDb {
 
 #[derive(Clone, Debug, serde::Serialize, serde::Deserialize, Eq, PartialEq)]
 pub struct TokenWhitelistFromDb {
+    pub name: String,
     pub address: String,
 }
