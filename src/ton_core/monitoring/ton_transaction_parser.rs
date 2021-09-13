@@ -9,10 +9,21 @@ use uuid::Uuid;
 
 use crate::ton_core::*;
 
+struct ParseContext<'a> {
+    owners_cache: &'a OwnersCache,
+    ton_subscriber: &'a TonSubscriber,
+}
+
 pub async fn parse_ton_transaction(
     event: TonTransactionEvent,
     owners_cache: &OwnersCache,
+    ton_subscriber: &TonSubscriber,
 ) -> Result<CaughtTonTransaction> {
+    let parse_ctx = ParseContext {
+        owners_cache,
+        ton_subscriber,
+    };
+
     let transaction = event.transaction.clone();
 
     let in_msg = match &transaction.in_msg {
@@ -52,7 +63,7 @@ pub async fn parse_ton_transaction(
     let parsed = match in_msg.header() {
         CommonMsgInfo::IntMsgInfo(header) => {
             let sender_is_token_wallet =
-                sender_is_token_wallet(&address, &sender_address, owners_cache).await;
+                sender_is_token_wallet(&address, &sender_address, parse_ctx).await?;
 
             CaughtTonTransaction::Create(CreateReceiveTransaction {
                 id: Uuid::new_v4(),
@@ -221,16 +232,26 @@ fn is_aborted(transaction: &ton_block::Transaction) -> bool {
 async fn sender_is_token_wallet(
     address: &MsgAddressInt,
     sender: &Option<MsgAddressInt>,
-    owners_cache: &OwnersCache,
-) -> bool {
+    parse_ctx: ParseContext<'_>,
+) -> Result<bool> {
     if let Some(sender) = sender {
-        if let Some(owner_info) = owners_cache.get(sender).await {
+        if let Some(owner_info) = parse_ctx.owners_cache.get(sender).await {
             if owner_info.owner_address == *address {
-                return true;
+                return Ok(true);
+            }
+        }
+
+        let account = UInt256::from_be_bytes(&sender.address().get_bytestring(0));
+        let state = parse_ctx.ton_subscriber.get_contract_state(account).await?;
+        if let RawContractState::Exists(contract) = state {
+            let token_wallet = nekoton::core::token_wallet::TokenWalletContractState(&contract);
+            if token_wallet.get_version().is_ok() {
+                return Ok(true);
             }
         }
     }
-    false
+
+    Ok(false)
 }
 
 #[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]

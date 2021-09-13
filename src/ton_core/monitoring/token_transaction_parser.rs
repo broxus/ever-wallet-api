@@ -13,6 +13,11 @@ const TOKEN_WALLET_CODE_HASH: [u8; 32] = [
     0, 153, 178, 193, 252, 136, 125, 89, 93, 42, 227,
 ];
 
+struct ParseContext<'a> {
+    sqlx_client: &'a SqlxClient,
+    owners_cache: &'a OwnersCache,
+}
+
 pub async fn parse_token_transaction(
     token_transaction_ctx: TokenTransactionContext,
     parsed_token_transaction: TokenWalletTransaction,
@@ -44,11 +49,6 @@ pub async fn parse_token_transaction(
     };
 
     Ok(parsed)
-}
-
-struct ParseContext<'a> {
-    sqlx_client: &'a SqlxClient,
-    owners_cache: &'a OwnersCache,
 }
 
 async fn internal_transfer_send(
