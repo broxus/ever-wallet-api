@@ -3,7 +3,7 @@ use std::sync::Arc;
 
 use aes::Aes256;
 use async_trait::async_trait;
-use bigdecimal::BigDecimal;
+use bigdecimal::{BigDecimal, ToPrimitive};
 use block_modes::block_padding::Pkcs7;
 use block_modes::{BlockMode, Ecb};
 use nekoton::core::models::TokenWalletVersion;
@@ -703,6 +703,7 @@ impl TonService for TonServiceImpl {
 
         let tokens = input.value.clone();
         let version = TokenWalletVersion::from_str(&owner_info.version)?;
+        let attached_amount = input.fee.to_u64().unwrap_or(TOKEN_FEE);
 
         let public_key = hex::decode(address.public_key).unwrap_or_default();
         let private_key = self.decrypt_private_key(address.private_key).await;
@@ -717,6 +718,7 @@ impl TonService for TonServiceImpl {
                 version,
                 tokens,
                 input.notify_receiver,
+                attached_amount,
                 address.account_type,
                 &public_key,
                 &private_key,

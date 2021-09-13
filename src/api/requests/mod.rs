@@ -1,6 +1,7 @@
 use std::str::FromStr;
 
-use bigdecimal::BigDecimal;
+use bigdecimal::{BigDecimal, FromPrimitive};
+use nekoton_utils::TrustMe;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
@@ -86,7 +87,7 @@ impl From<PostTonTokenTransactionSendRequest> for TokenTransactionSend {
             notify_receiver: c.notify_receiver.unwrap_or(false),
             fee: c
                 .fee
-                .unwrap_or_else(|| BigDecimal::from_str(TOKEN_FEE).unwrap()),
+                .unwrap_or_else(|| BigDecimal::from_u64(TOKEN_FEE).trust_me()),
         }
     }
 }

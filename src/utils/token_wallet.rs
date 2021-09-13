@@ -19,10 +19,9 @@ pub fn prepare_token_transfer(
     version: TokenWalletVersion,
     tokens: BigUint,
     notify_receiver: bool,
+    attached_amount: u64,
     payload: ton_types::Cell,
 ) -> Result<InternalMessage> {
-    const ATTACHED_AMOUNT: u64 = 500_000_000; // 0.5 TON
-
     let contract = select_token_contract(version)?;
 
     let (function, input) = match destination {
@@ -54,7 +53,7 @@ pub fn prepare_token_transfer(
     Ok(InternalMessage {
         source: Some(owner),
         destination: token_wallet,
-        amount: ATTACHED_AMOUNT,
+        amount: attached_amount,
         bounce: true,
         body,
     })
