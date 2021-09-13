@@ -140,16 +140,23 @@ impl TonClient for TonClientImpl {
             AccountType::HighloadWallet | AccountType::Wallet => payload.custodians_public_keys,
         };
 
-        // Subscribe to created account and all token accounts related to one
-        {
+        let address_copy = address.clone();
+        let ton_core_copy = self.ton_core.clone();
+        let sqlx_client_copy = self.sqlx_client.clone();
+        tokio::spawn(async move {
             let account = UInt256::from_be_bytes(
-                &hex::decode(address.address().to_hex_string()).unwrap_or_default(),
+                &hex::decode(address_copy.address().to_hex_string()).unwrap_or_default(),
             );
 
-            let root_accounts = self
-                .sqlx_client
-                .get_token_whitelist()
-                .await?
+            let token_whitelist = match sqlx_client_copy.get_token_whitelist().await {
+                Ok(token_whitelist) => token_whitelist,
+                Err(err) => {
+                    log::error!("Failed to get token whitelist: {}", err);
+                    return;
+                }
+            };
+
+            let root_accounts = token_whitelist
                 .into_iter()
                 .map(|item| {
                     let address = nekoton_utils::repack_address(&item.address).trust_me();
@@ -159,14 +166,34 @@ impl TonClient for TonClientImpl {
 
             let mut token_accounts = Vec::new();
             for root_account in &root_accounts {
-                let root_state = self.ton_core.get_contract_state(*root_account).await?;
-                let token_account = get_token_wallet_account(root_state, &address)?;
+                let root_state = match ton_core_copy.get_contract_state(*root_account).await {
+                    Ok(contract_state) => contract_state,
+                    Err(err) => {
+                        log::error!(
+                            "Failed to get contract state for root account `{}`: {}",
+                            root_account.to_hex_string(),
+                            err
+                        );
+                        continue;
+                    }
+                };
+                let token_account = match get_token_wallet_account(root_state, &address_copy) {
+                    Ok(account) => account,
+                    Err(err) => {
+                        log::error!(
+                            "Failed to get token wallet for owner `{}`: {}",
+                            address_copy.address().to_hex_string(),
+                            err
+                        );
+                        continue;
+                    }
+                };
                 token_accounts.push(token_account);
             }
 
-            self.ton_core.add_ton_account_subscription([account]);
-            self.ton_core.add_token_account_subscription(token_accounts);
-        }
+            ton_core_copy.add_ton_account_subscription([account]);
+            ton_core_copy.add_token_account_subscription(token_accounts);
+        });
 
         Ok(CreatedAddress {
             workchain_id: address.workchain_id(),
