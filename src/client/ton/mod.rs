@@ -7,7 +7,6 @@ use ed25519_dalek::{Keypair, PublicKey, SecretKey, Signer};
 use nekoton::core::models::{Expiration, TokenWalletVersion, TransferRecipient};
 use nekoton::core::ton_wallet::{MultisigType, TransferAction};
 use nekoton::crypto::SignedMessage;
-use nekoton_utils::TrustMe;
 use num_bigint::BigUint;
 use num_traits::FromPrimitive;
 use ton_block::{GetRepresentationHash, MsgAddressInt};
@@ -74,14 +73,14 @@ pub trait TonClient: Send + Sync {
 #[derive(Clone)]
 pub struct TonClientImpl {
     ton_core: Arc<TonCore>,
-    root_state_cache: RootStateCache,
+    root_contract_cache: RootContractCache,
 }
 
 impl TonClientImpl {
-    pub fn new(ton_core: Arc<TonCore>, root_state_cache: RootStateCache) -> Self {
+    pub fn new(ton_core: Arc<TonCore>, root_contract_cache: RootContractCache) -> Self {
         Self {
             ton_core,
-            root_state_cache,
+            root_contract_cache,
         }
     }
 }
@@ -146,11 +145,10 @@ impl TonClient for TonClientImpl {
             );
 
             let mut token_accounts = Vec::new();
-            let _ = self.root_state_cache.read().iter().map(|(_, root_state)| {
-                let token_account =
-                    get_token_wallet_account(root_state.clone(), &address).trust_me();
-                token_accounts.push(token_account);
-            });
+            for (_, root_contract) in self.root_contract_cache.read().iter() {
+                let account = get_token_wallet_account(root_contract, &address)?;
+                token_accounts.push(account);
+            }
 
             self.ton_core.add_ton_account_subscription([account]);
             self.ton_core.add_token_account_subscription(token_accounts);
@@ -391,7 +389,7 @@ impl TonClient for TonClientImpl {
         root_address: &MsgAddressInt,
     ) -> Result<NetworkTokenAddressData> {
         let root_contract = self
-            .root_state_cache
+            .root_contract_cache
             .read()
             .get(root_address)
             .ok_or(TonClientError::UnknownRootContract)?

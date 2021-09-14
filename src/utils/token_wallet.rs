@@ -70,10 +70,10 @@ pub fn get_token_wallet_address(
 }
 
 pub fn get_token_wallet_account(
-    root_contract: ExistingContract,
+    root_contract: &ExistingContract,
     owner: &MsgAddressInt,
 ) -> Result<UInt256> {
-    let root_contract_state = RootTokenContractState(&root_contract);
+    let root_contract_state = RootTokenContractState(root_contract);
     let RootTokenContractDetails { version, .. } = root_contract_state.guess_details()?;
 
     let token_wallet_address = root_contract_state.get_wallet_address(version, owner, None)?;

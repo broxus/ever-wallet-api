@@ -65,7 +65,7 @@ pub async fn start_server() -> Result<(), Box<dyn std::error::Error + Send + Syn
     let sqlx_client = SqlxClient::new(pool);
     let callback_client = Arc::new(CallbackClientImpl::new());
     let owners_cache = OwnersCache::new(sqlx_client.clone()).await?;
-    let root_state_cache = Arc::new(RwLock::new(HashMap::new()));
+    let root_contract_cache = Arc::new(RwLock::new(HashMap::new()));
 
     let ton_core = TonCore::new(
         service_config.ton_core,
@@ -77,7 +77,7 @@ pub async fn start_server() -> Result<(), Box<dyn std::error::Error + Send + Syn
 
     let ton_api_client = Arc::new(TonClientImpl::new(
         ton_core.clone(),
-        root_state_cache.clone(),
+        root_contract_cache.clone(),
     ));
     let ton_service = Arc::new(TonServiceImpl::new(
         sqlx_client.clone(),
@@ -98,10 +98,10 @@ pub async fn start_server() -> Result<(), Box<dyn std::error::Error + Send + Syn
     // Init root contract state cache
     let token_whitelist = sqlx_client.get_token_whitelist().await?;
     for root_address in &token_whitelist {
-        let address = nekoton_utils::repack_address(&root_address.address).trust_me();
+        let address = nekoton_utils::repack_address(&root_address.address)?;
         let account = UInt256::from_be_bytes(&address.address().get_bytestring(0));
-        let root_state = ton_core.get_contract_state(account).await?;
-        root_state_cache.write().insert(address, root_state);
+        let root_contract = ton_core.get_contract_state(account).await?;
+        root_contract_cache.write().insert(address, root_contract);
     }
 
     let owner_addresses = sqlx_client
@@ -127,11 +127,10 @@ pub async fn start_server() -> Result<(), Box<dyn std::error::Error + Send + Syn
     {
         let mut token_accounts = Vec::new();
         for owner_address in &owner_addresses {
-            let _ = root_state_cache.read().iter().map(|(_, root_state)| {
-                let token_account =
-                    get_token_wallet_account(root_state.clone(), owner_address).trust_me();
-                token_accounts.push(token_account);
-            });
+            for (_, root_contract) in root_contract_cache.read().iter() {
+                let account = get_token_wallet_account(root_contract, owner_address)?;
+                token_accounts.push(account);
+            }
         }
 
         ton_core.add_token_account_subscription(token_accounts);
