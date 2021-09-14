@@ -2,7 +2,6 @@ use std::sync::Arc;
 
 use anyhow::Result;
 use nekoton::core::models::*;
-use nekoton_utils::TrustMe;
 use tokio::sync::mpsc;
 use ton_types::UInt256;
 
@@ -31,35 +30,6 @@ impl TokenTransaction {
         token_transaction.start_listening_token_transaction_events(token_transaction_events_rx);
 
         Ok(token_transaction)
-    }
-
-    pub async fn init_subscriptions(&self, root_state_cache: RootStateCache) -> Result<()> {
-        let owner_addresses = self
-            .context
-            .sqlx_client
-            .get_all_addresses()
-            .await?
-            .into_iter()
-            .map(|item| {
-                nekoton_utils::repack_address(&format!("{}:{}", item.workchain_id, item.hex))
-                    .trust_me()
-            })
-            .collect::<Vec<MsgAddressInt>>();
-
-        let mut token_accounts = Vec::new();
-        for owner_address in &owner_addresses {
-            let _ = root_state_cache.iter().map(|(_, root_state)| {
-                let token_account =
-                    get_token_wallet_account(root_state.clone(), owner_address).trust_me();
-                token_accounts.push(token_account);
-            });
-        }
-
-        self.context
-            .ton_subscriber
-            .add_transactions_subscription(token_accounts, &self.token_transaction_observer);
-
-        Ok(())
     }
 
     pub fn add_account_subscription<I>(&self, accounts: I)

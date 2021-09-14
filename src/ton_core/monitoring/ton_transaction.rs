@@ -1,7 +1,6 @@
 use std::sync::Arc;
 
 use anyhow::Result;
-use nekoton_utils::TrustMe;
 use tokio::sync::mpsc;
 use ton_types::UInt256;
 
@@ -30,31 +29,6 @@ impl TonTransaction {
         ton_transaction.start_listening_ton_transaction_events(ton_transaction_events_rx);
 
         Ok(ton_transaction)
-    }
-
-    pub async fn init_subscriptions(&self) -> Result<()> {
-        let owner_addresses = self
-            .context
-            .sqlx_client
-            .get_all_addresses()
-            .await?
-            .into_iter()
-            .map(|item| {
-                nekoton_utils::repack_address(&format!("{}:{}", item.workchain_id, item.hex))
-                    .trust_me()
-            })
-            .collect::<Vec<MsgAddressInt>>();
-
-        let owner_accounts = owner_addresses
-            .iter()
-            .map(|item| UInt256::from_be_bytes(&item.address().get_bytestring(0)))
-            .collect::<Vec<UInt256>>();
-
-        self.context
-            .ton_subscriber
-            .add_transactions_subscription(owner_accounts, &self.ton_transaction_observer);
-
-        Ok(())
     }
 
     pub fn add_account_subscription<I>(&self, accounts: I)

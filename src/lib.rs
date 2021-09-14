@@ -2,6 +2,7 @@
 #![allow(clippy::too_many_arguments)]
 #![allow(clippy::inconsistent_struct_constructor)]
 
+use std::collections::HashMap;
 use std::net::SocketAddr;
 use std::panic::PanicInfo;
 use std::path::PathBuf;
@@ -10,9 +11,11 @@ use std::sync::Arc;
 use anyhow::Result;
 use futures::prelude::*;
 use nekoton_utils::TrustMe;
+use parking_lot::RwLock;
 use serde::Deserialize;
 use sqlx::postgres::PgPoolOptions;
 use tokio::sync::mpsc;
+use ton_block::MsgAddressInt;
 use ton_types::UInt256;
 
 use crate::api::*;
@@ -22,7 +25,7 @@ use crate::services::*;
 use crate::settings::*;
 use crate::sqlx_client::*;
 use crate::ton_core::*;
-use std::collections::HashMap;
+use crate::utils::*;
 
 #[allow(unused)]
 mod api;
@@ -62,6 +65,7 @@ pub async fn start_server() -> Result<(), Box<dyn std::error::Error + Send + Syn
     let sqlx_client = SqlxClient::new(pool);
     let callback_client = Arc::new(CallbackClientImpl::new());
     let owners_cache = OwnersCache::new(sqlx_client.clone()).await?;
+    let root_state_cache = Arc::new(RwLock::new(HashMap::new()));
 
     let ton_core = TonCore::new(
         service_config.ton_core,
@@ -70,17 +74,6 @@ pub async fn start_server() -> Result<(), Box<dyn std::error::Error + Send + Syn
         owners_cache.clone(),
     )
     .await?;
-
-    let token_whitelist = sqlx_client.get_token_whitelist().await?;
-
-    let mut root_state_cache = HashMap::new();
-    for root_address in &token_whitelist {
-        let address = nekoton_utils::repack_address(&root_address.address).trust_me();
-        let account = UInt256::from_be_bytes(&address.address().get_bytestring(0));
-        let root_state = ton_core.get_contract_state(account).await?;
-        root_state_cache.insert(address, root_state);
-    }
-    let root_state_cache = Arc::new(root_state_cache);
 
     let ton_api_client = Arc::new(TonClientImpl::new(
         ton_core.clone(),
@@ -99,12 +92,50 @@ pub async fn start_server() -> Result<(), Box<dyn std::error::Error + Send + Syn
     let (caught_token_transaction_tx, caught_token_transaction_rx) = mpsc::unbounded_channel();
 
     ton_core
-        .start(
-            caught_ton_transaction_tx,
-            caught_token_transaction_tx,
-            root_state_cache,
-        )
+        .start(caught_ton_transaction_tx, caught_token_transaction_tx)
         .await?;
+
+    // Init root contract state cache
+    let token_whitelist = sqlx_client.get_token_whitelist().await?;
+    for root_address in &token_whitelist {
+        let address = nekoton_utils::repack_address(&root_address.address).trust_me();
+        let account = UInt256::from_be_bytes(&address.address().get_bytestring(0));
+        let root_state = ton_core.get_contract_state(account).await?;
+        root_state_cache.write().insert(address, root_state);
+    }
+
+    let owner_addresses = sqlx_client
+        .get_all_addresses()
+        .await?
+        .into_iter()
+        .map(|item| {
+            nekoton_utils::repack_address(&format!("{}:{}", item.workchain_id, item.hex)).trust_me()
+        })
+        .collect::<Vec<MsgAddressInt>>();
+
+    // Subscribe to all accounts
+    {
+        let owner_accounts = owner_addresses
+            .iter()
+            .map(|item| UInt256::from_be_bytes(&item.address().get_bytestring(0)))
+            .collect::<Vec<UInt256>>();
+
+        ton_core.add_ton_account_subscription(owner_accounts);
+    }
+
+    // Subscribe to all token accounts
+    {
+        let mut token_accounts = Vec::new();
+        for owner_address in &owner_addresses {
+            let _ = root_state_cache.read().iter().map(|(_, root_state)| {
+                let token_account =
+                    get_token_wallet_account(root_state.clone(), owner_address).trust_me();
+                token_accounts.push(token_account);
+            });
+        }
+
+        ton_core.add_token_account_subscription(token_accounts);
+    }
 
     tokio::spawn(start_listening_ton_transaction(
         ton_service.clone(),

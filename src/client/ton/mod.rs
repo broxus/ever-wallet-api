@@ -146,7 +146,7 @@ impl TonClient for TonClientImpl {
             );
 
             let mut token_accounts = Vec::new();
-            let _ = self.root_state_cache.iter().map(|(_, root_state)| {
+            let _ = self.root_state_cache.read().iter().map(|(_, root_state)| {
                 let token_account =
                     get_token_wallet_account(root_state.clone(), &address).trust_me();
                 token_accounts.push(token_account);
@@ -392,10 +392,12 @@ impl TonClient for TonClientImpl {
     ) -> Result<NetworkTokenAddressData> {
         let root_contract = self
             .root_state_cache
+            .read()
             .get(root_address)
-            .ok_or(TonClientError::UnknownRootContract)?;
+            .ok_or(TonClientError::UnknownRootContract)?
+            .clone();
 
-        let token_address = get_token_wallet_address(root_contract.clone(), owner)?;
+        let token_address = get_token_wallet_address(root_contract, owner)?;
         let token_account = UInt256::from_be_bytes(&token_address.address().get_bytestring(0));
         let token_contract = match self.ton_core.get_contract_state(token_account).await {
             Ok(contract) => contract,
