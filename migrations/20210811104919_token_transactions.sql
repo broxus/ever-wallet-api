@@ -32,7 +32,7 @@ CREATE TABLE token_transactions
 
 CREATE INDEX token_transactions_service_id_idx ON token_transactions (service_id);
 CREATE INDEX token_transactions_m_hash_idx ON token_transactions (message_hash);
-CREATE INDEX token_transactions_owner_m_hash_idx ON token_transactions (owner_message_hash);
+CREATE INDEX token_transactions_owner_m_hash_idx ON token_transactions (owner_message_hash) WHERE owner_message_hash IS NOT NULL;
 CREATE INDEX token_transactions_t_hash_idx ON token_transactions (transaction_hash);
 CREATE INDEX token_transactions_created_at_idx ON token_transactions (created_at);
 CREATE UNIQUE INDEX token_transactions_t_hash_a_wi_hex_d_idx ON token_transactions (transaction_hash, account_workchain_id, account_hex, direction)

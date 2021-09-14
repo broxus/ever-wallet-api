@@ -33,7 +33,7 @@ impl TokenTransaction {
         Ok(token_transaction)
     }
 
-    pub async fn init_subscriptions(&self) -> Result<()> {
+    pub async fn init_subscriptions(&self, root_state_cache: RootStateCache) -> Result<()> {
         let owner_addresses = self
             .context
             .sqlx_client
@@ -46,25 +46,13 @@ impl TokenTransaction {
             })
             .collect::<Vec<MsgAddressInt>>();
 
-        let root_accounts = self
-            .context
-            .sqlx_client
-            .get_token_whitelist()
-            .await?
-            .into_iter()
-            .map(|item| {
-                let address = nekoton_utils::repack_address(&item.address).trust_me();
-                UInt256::from_be_bytes(&address.address().get_bytestring(0))
-            })
-            .collect::<Vec<UInt256>>();
-
         let mut token_accounts = Vec::new();
         for owner_address in &owner_addresses {
-            for root_account in &root_accounts {
-                let root_state = self.context.get_contract_state(*root_account).await?;
-                let token_account = get_token_wallet_account(root_state, owner_address)?;
+            let _ = root_state_cache.iter().map(|(_, root_state)| {
+                let token_account =
+                    get_token_wallet_account(root_state.clone(), owner_address).trust_me();
                 token_accounts.push(token_account);
-            }
+            });
         }
 
         self.context

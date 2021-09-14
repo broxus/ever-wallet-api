@@ -9,9 +9,11 @@ use std::sync::Arc;
 
 use anyhow::Result;
 use futures::prelude::*;
+use nekoton_utils::TrustMe;
 use serde::Deserialize;
 use sqlx::postgres::PgPoolOptions;
 use tokio::sync::mpsc;
+use ton_types::UInt256;
 
 use crate::api::*;
 use crate::client::*;
@@ -20,6 +22,7 @@ use crate::services::*;
 use crate::settings::*;
 use crate::sqlx_client::*;
 use crate::ton_core::*;
+use std::collections::HashMap;
 
 #[allow(unused)]
 mod api;
@@ -67,7 +70,22 @@ pub async fn start_server() -> Result<(), Box<dyn std::error::Error + Send + Syn
         owners_cache.clone(),
     )
     .await?;
-    let ton_api_client = Arc::new(TonClientImpl::new(ton_core.clone(), sqlx_client.clone()));
+
+    let token_whitelist = sqlx_client.get_token_whitelist().await?;
+
+    let mut root_state_cache = HashMap::new();
+    for root_address in &token_whitelist {
+        let address = nekoton_utils::repack_address(&root_address.address).trust_me();
+        let account = UInt256::from_be_bytes(&address.address().get_bytestring(0));
+        let root_state = ton_core.get_contract_state(account).await?;
+        root_state_cache.insert(address, root_state);
+    }
+    let root_state_cache = Arc::new(root_state_cache);
+
+    let ton_api_client = Arc::new(TonClientImpl::new(
+        ton_core.clone(),
+        root_state_cache.clone(),
+    ));
     let ton_service = Arc::new(TonServiceImpl::new(
         sqlx_client.clone(),
         owners_cache.clone(),
@@ -81,7 +99,11 @@ pub async fn start_server() -> Result<(), Box<dyn std::error::Error + Send + Syn
     let (caught_token_transaction_tx, caught_token_transaction_rx) = mpsc::unbounded_channel();
 
     ton_core
-        .start(caught_ton_transaction_tx, caught_token_transaction_tx)
+        .start(
+            caught_ton_transaction_tx,
+            caught_token_transaction_tx,
+            root_state_cache,
+        )
         .await?;
 
     tokio::spawn(start_listening_ton_transaction(

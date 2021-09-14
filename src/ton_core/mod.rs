@@ -49,6 +49,7 @@ impl TonCore {
         &self,
         ton_transaction_producer: CaughtTonTransactionTx,
         token_transaction_producer: CaughtTokenTransactionTx,
+        root_state_cache: RootStateCache,
     ) -> Result<()> {
         // Sync node and subscribers
         self.context.start().await?;
@@ -60,7 +61,9 @@ impl TonCore {
 
         let token_transaction =
             TokenTransaction::new(self.context.clone(), token_transaction_producer).await?;
-        token_transaction.init_subscriptions().await?;
+        token_transaction
+            .init_subscriptions(root_state_cache)
+            .await?;
         *self.token_transaction.lock() = Some(token_transaction);
 
         // Done

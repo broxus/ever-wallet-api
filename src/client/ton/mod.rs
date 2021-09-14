@@ -14,7 +14,6 @@ use ton_block::{GetRepresentationHash, MsgAddressInt};
 use ton_types::UInt256;
 
 use crate::models::*;
-use crate::sqlx_client::*;
 use crate::ton_core::*;
 use crate::utils::*;
 
@@ -75,14 +74,14 @@ pub trait TonClient: Send + Sync {
 #[derive(Clone)]
 pub struct TonClientImpl {
     ton_core: Arc<TonCore>,
-    sqlx_client: SqlxClient,
+    root_state_cache: RootStateCache,
 }
 
 impl TonClientImpl {
-    pub fn new(ton_core: Arc<TonCore>, sqlx_client: SqlxClient) -> Self {
+    pub fn new(ton_core: Arc<TonCore>, root_state_cache: RootStateCache) -> Self {
         Self {
             ton_core,
-            sqlx_client,
+            root_state_cache,
         }
     }
 }
@@ -140,60 +139,22 @@ impl TonClient for TonClientImpl {
             AccountType::HighloadWallet | AccountType::Wallet => payload.custodians_public_keys,
         };
 
-        let address_copy = address.clone();
-        let ton_core_copy = self.ton_core.clone();
-        let sqlx_client_copy = self.sqlx_client.clone();
-        tokio::spawn(async move {
+        // Subscribe to wallets
+        {
             let account = UInt256::from_be_bytes(
-                &hex::decode(address_copy.address().to_hex_string()).unwrap_or_default(),
+                &hex::decode(address.address().to_hex_string()).unwrap_or_default(),
             );
 
-            let token_whitelist = match sqlx_client_copy.get_token_whitelist().await {
-                Ok(token_whitelist) => token_whitelist,
-                Err(err) => {
-                    log::error!("Failed to get token whitelist: {}", err);
-                    return;
-                }
-            };
-
-            let root_accounts = token_whitelist
-                .into_iter()
-                .map(|item| {
-                    let address = nekoton_utils::repack_address(&item.address).trust_me();
-                    UInt256::from_be_bytes(&address.address().get_bytestring(0))
-                })
-                .collect::<Vec<UInt256>>();
-
             let mut token_accounts = Vec::new();
-            for root_account in &root_accounts {
-                let root_state = match ton_core_copy.get_contract_state(*root_account).await {
-                    Ok(contract_state) => contract_state,
-                    Err(err) => {
-                        log::error!(
-                            "Failed to get contract state for root account `{}`: {}",
-                            root_account.to_hex_string(),
-                            err
-                        );
-                        continue;
-                    }
-                };
-                let token_account = match get_token_wallet_account(root_state, &address_copy) {
-                    Ok(account) => account,
-                    Err(err) => {
-                        log::error!(
-                            "Failed to get token wallet for owner `{}`: {}",
-                            address_copy.address().to_hex_string(),
-                            err
-                        );
-                        continue;
-                    }
-                };
+            let _ = self.root_state_cache.iter().map(|(_, root_state)| {
+                let token_account =
+                    get_token_wallet_account(root_state.clone(), &address).trust_me();
                 token_accounts.push(token_account);
-            }
+            });
 
-            ton_core_copy.add_ton_account_subscription([account]);
-            ton_core_copy.add_token_account_subscription(token_accounts);
-        });
+            self.ton_core.add_ton_account_subscription([account]);
+            self.ton_core.add_token_account_subscription(token_accounts);
+        }
 
         Ok(CreatedAddress {
             workchain_id: address.workchain_id(),
@@ -429,13 +390,12 @@ impl TonClient for TonClientImpl {
         owner: &MsgAddressInt,
         root_address: &MsgAddressInt,
     ) -> Result<NetworkTokenAddressData> {
-        let root_account = UInt256::from_be_bytes(&root_address.address().get_bytestring(0));
-        let root_contract = match self.ton_core.get_contract_state(root_account).await {
-            Ok(contract) => contract,
-            Err(_) => return Ok(NetworkTokenAddressData::uninit(owner, root_address)),
-        };
+        let root_contract = self
+            .root_state_cache
+            .get(root_address)
+            .ok_or(TonClientError::UnknownRootContract)?;
 
-        let token_address = get_token_wallet_address(root_contract, owner)?;
+        let token_address = get_token_wallet_address(root_contract.clone(), owner)?;
         let token_account = UInt256::from_be_bytes(&token_address.address().get_bytestring(0));
         let token_contract = match self.ton_core.get_contract_state(token_account).await {
             Ok(contract) => contract,
@@ -599,4 +559,6 @@ enum TonClientError {
     AccountNotDeployed(String),
     #[error("Custodians not found")]
     CustodiansNotFound,
+    #[error("Unknown root contract")]
+    UnknownRootContract,
 }
