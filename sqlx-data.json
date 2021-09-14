@@ -3325,6 +3325,144 @@
       ]
     }
   },
+  "8be056823a18a0c45e85ec509679e1dc31082227c22333923bcea0881f8c64e5": {
+    "query": "\n            SELECT id, service_id as \"service_id: _\", transaction_hash, message_hash, owner_message_hash, account_workchain_id, account_hex,\n            value, root_address, payload, error, block_hash, block_time, direction as \"direction: _\", status as \"status: _\", created_at, updated_at\n            FROM token_transactions\n            WHERE service_id = $1 AND (message_hash = $2 OR owner_message_hash = $2)",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "id",
+          "type_info": "Uuid"
+        },
+        {
+          "ordinal": 1,
+          "name": "service_id: _",
+          "type_info": "Uuid"
+        },
+        {
+          "ordinal": 2,
+          "name": "transaction_hash",
+          "type_info": "Varchar"
+        },
+        {
+          "ordinal": 3,
+          "name": "message_hash",
+          "type_info": "Varchar"
+        },
+        {
+          "ordinal": 4,
+          "name": "owner_message_hash",
+          "type_info": "Varchar"
+        },
+        {
+          "ordinal": 5,
+          "name": "account_workchain_id",
+          "type_info": "Int4"
+        },
+        {
+          "ordinal": 6,
+          "name": "account_hex",
+          "type_info": "Varchar"
+        },
+        {
+          "ordinal": 7,
+          "name": "value",
+          "type_info": "Numeric"
+        },
+        {
+          "ordinal": 8,
+          "name": "root_address",
+          "type_info": "Varchar"
+        },
+        {
+          "ordinal": 9,
+          "name": "payload",
+          "type_info": "Bytea"
+        },
+        {
+          "ordinal": 10,
+          "name": "error",
+          "type_info": "Varchar"
+        },
+        {
+          "ordinal": 11,
+          "name": "block_hash",
+          "type_info": "Varchar"
+        },
+        {
+          "ordinal": 12,
+          "name": "block_time",
+          "type_info": "Int4"
+        },
+        {
+          "ordinal": 13,
+          "name": "direction: _",
+          "type_info": {
+            "Custom": {
+              "name": "twa_transaction_direction",
+              "kind": {
+                "Enum": [
+                  "Send",
+                  "Receive"
+                ]
+              }
+            }
+          }
+        },
+        {
+          "ordinal": 14,
+          "name": "status: _",
+          "type_info": {
+            "Custom": {
+              "name": "twa_token_transaction_status",
+              "kind": {
+                "Enum": [
+                  "New",
+                  "Done",
+                  "Error"
+                ]
+              }
+            }
+          }
+        },
+        {
+          "ordinal": 15,
+          "name": "created_at",
+          "type_info": "Timestamp"
+        },
+        {
+          "ordinal": 16,
+          "name": "updated_at",
+          "type_info": "Timestamp"
+        }
+      ],
+      "parameters": {
+        "Left": [
+          "Uuid",
+          "Text"
+        ]
+      },
+      "nullable": [
+        false,
+        false,
+        true,
+        false,
+        true,
+        false,
+        false,
+        false,
+        false,
+        true,
+        true,
+        true,
+        true,
+        false,
+        false,
+        false,
+        false
+      ]
+    }
+  },
   "957f4145c738e0c81e9f0d1c6ea312966f50f802f8b1365b2fa20330277eb4ac": {
     "query": "SELECT id, service_id as \"service_id: _\", workchain_id, hex, base64url, public_key, private_key, account_type as \"account_type: _\", custodians, confirmations, custodians_public_keys, balance, created_at, updated_at\n                FROM address\n                WHERE service_id = $1 AND workchain_id = $2 AND hex = $3",
     "describe": {
@@ -4811,144 +4949,6 @@
         true,
         true,
         true,
-        false,
-        false,
-        false
-      ]
-    }
-  },
-  "dc36bf492f624cf8bc5df3d68061bfdb03ad9bf3d2123f0b3e98e3af6e2150c8": {
-    "query": "\n            SELECT id, service_id as \"service_id: _\", transaction_hash, message_hash, owner_message_hash, account_workchain_id, account_hex,\n            value, root_address, payload, error, block_hash, block_time, direction as \"direction: _\", status as \"status: _\", created_at, updated_at\n            FROM token_transactions\n            WHERE service_id = $1 AND message_hash = $2",
-    "describe": {
-      "columns": [
-        {
-          "ordinal": 0,
-          "name": "id",
-          "type_info": "Uuid"
-        },
-        {
-          "ordinal": 1,
-          "name": "service_id: _",
-          "type_info": "Uuid"
-        },
-        {
-          "ordinal": 2,
-          "name": "transaction_hash",
-          "type_info": "Varchar"
-        },
-        {
-          "ordinal": 3,
-          "name": "message_hash",
-          "type_info": "Varchar"
-        },
-        {
-          "ordinal": 4,
-          "name": "owner_message_hash",
-          "type_info": "Varchar"
-        },
-        {
-          "ordinal": 5,
-          "name": "account_workchain_id",
-          "type_info": "Int4"
-        },
-        {
-          "ordinal": 6,
-          "name": "account_hex",
-          "type_info": "Varchar"
-        },
-        {
-          "ordinal": 7,
-          "name": "value",
-          "type_info": "Numeric"
-        },
-        {
-          "ordinal": 8,
-          "name": "root_address",
-          "type_info": "Varchar"
-        },
-        {
-          "ordinal": 9,
-          "name": "payload",
-          "type_info": "Bytea"
-        },
-        {
-          "ordinal": 10,
-          "name": "error",
-          "type_info": "Varchar"
-        },
-        {
-          "ordinal": 11,
-          "name": "block_hash",
-          "type_info": "Varchar"
-        },
-        {
-          "ordinal": 12,
-          "name": "block_time",
-          "type_info": "Int4"
-        },
-        {
-          "ordinal": 13,
-          "name": "direction: _",
-          "type_info": {
-            "Custom": {
-              "name": "twa_transaction_direction",
-              "kind": {
-                "Enum": [
-                  "Send",
-                  "Receive"
-                ]
-              }
-            }
-          }
-        },
-        {
-          "ordinal": 14,
-          "name": "status: _",
-          "type_info": {
-            "Custom": {
-              "name": "twa_token_transaction_status",
-              "kind": {
-                "Enum": [
-                  "New",
-                  "Done",
-                  "Error"
-                ]
-              }
-            }
-          }
-        },
-        {
-          "ordinal": 15,
-          "name": "created_at",
-          "type_info": "Timestamp"
-        },
-        {
-          "ordinal": 16,
-          "name": "updated_at",
-          "type_info": "Timestamp"
-        }
-      ],
-      "parameters": {
-        "Left": [
-          "Uuid",
-          "Text"
-        ]
-      },
-      "nullable": [
-        false,
-        false,
-        true,
-        false,
-        true,
-        false,
-        false,
-        false,
-        false,
-        true,
-        true,
-        true,
-        true,
-        false,
         false,
         false,
         false

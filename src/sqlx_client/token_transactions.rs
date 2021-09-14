@@ -90,7 +90,7 @@ impl SqlxClient {
             SELECT id, service_id as "service_id: _", transaction_hash, message_hash, owner_message_hash, account_workchain_id, account_hex,
             value, root_address, payload, error, block_hash, block_time, direction as "direction: _", status as "status: _", created_at, updated_at
             FROM token_transactions
-            WHERE service_id = $1 AND message_hash = $2"#,
+            WHERE service_id = $1 AND (message_hash = $2 OR owner_message_hash = $2)"#,
                 service_id as ServiceId,
                 message_hash,
             )
