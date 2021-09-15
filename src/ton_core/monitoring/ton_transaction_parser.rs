@@ -137,11 +137,6 @@ fn get_messages(transaction: &ton_block::Transaction) -> Result<Vec<Message>> {
     transaction
         .out_msgs
         .iterate(|ton_block::InRefValue(item)| {
-            let dst = item
-                .header()
-                .get_dst_address()
-                .ok_or(TransactionError::InvalidStructure)?;
-
             let fee =
                 BigDecimal::from_u128(item.get_fee()?.ok_or(TransactionError::InvalidStructure)?.0)
                     .ok_or(TransactionError::InvalidStructure)?;
@@ -154,14 +149,19 @@ fn get_messages(transaction: &ton_block::Transaction) -> Result<Vec<Message>> {
             )
             .ok_or(TransactionError::InvalidStructure)?;
 
-            out_msgs.push(Message {
-                fee,
-                value,
-                recipient: MessageRecipient {
+            let recipient = match item.header().get_dst_address() {
+                Some(dst) => Some(MessageRecipient {
                     hex: dst.address().to_hex_string(),
                     base64url: nekoton_utils::pack_std_smc_addr(true, &dst, false)?,
                     workchain_id: dst.workchain_id(),
-                },
+                }),
+                None => None,
+            };
+
+            out_msgs.push(Message {
+                fee,
+                value,
+                recipient,
                 message_hash: item.hash()?.to_hex_string(),
             });
 
@@ -259,7 +259,7 @@ async fn sender_is_token_wallet(
 struct Message {
     pub fee: BigDecimal,
     pub value: BigDecimal,
-    pub recipient: MessageRecipient,
+    pub recipient: Option<MessageRecipient>,
     pub message_hash: String,
 }
 

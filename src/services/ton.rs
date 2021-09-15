@@ -172,7 +172,7 @@ impl TonServiceImpl {
                     payload.message_hash.clone(),
                     payload.account.workchain_id,
                     payload.account.hex.0.clone(),
-                    event_status.clone(),
+                    event_status,
                 )
                 .await
             {
@@ -210,7 +210,7 @@ impl TonServiceImpl {
                     payload.message_hash.clone(),
                     payload.account.workchain_id,
                     payload.account.hex.0.clone(),
-                    event_status.clone(),
+                    event_status,
                 )
                 .await
             {
