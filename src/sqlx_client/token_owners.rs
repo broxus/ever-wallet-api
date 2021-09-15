@@ -9,8 +9,8 @@ impl SqlxClient {
         let res = sqlx::query_as!(
             TokenOwnerFromDb,
             r#"SELECT address, owner_account_workchain_id, owner_account_hex, root_address, code_hash, created_at
-        FROM token_owners
-        WHERE address = $1"#,
+            FROM token_owners
+            WHERE address = $1"#,
             address
         )
         .fetch_one(&self.pool)
@@ -42,9 +42,29 @@ impl SqlxClient {
         sqlx::query_as!(
             TokenOwnerFromDb,
             r#"SELECT address, owner_account_workchain_id, owner_account_hex, root_address, code_hash, created_at
-        FROM token_owners "#,
+            FROM token_owners "#,
         )
         .fetch_all(&self.pool)
+        .await
+        .map_err(anyhow::Error::new)
+    }
+
+    pub async fn get_token_address(
+        &self,
+        account_workchain_id: i32,
+        account_hex: String,
+        root_address: String,
+    ) -> Result<TokenOwnerFromDb, anyhow::Error> {
+        sqlx::query_as!(
+            TokenOwnerFromDb,
+            r#"SELECT address, owner_account_workchain_id, owner_account_hex, root_address, code_hash, created_at
+            FROM token_owners
+            WHERE owner_account_workchain_id = $1 AND owner_account_hex = $2 AND root_address = $3"#,
+            account_workchain_id,
+            account_hex,
+            root_address
+        )
+        .fetch_one(&self.pool)
         .await
         .map_err(anyhow::Error::new)
     }

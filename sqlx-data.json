@@ -313,6 +313,54 @@
       ]
     }
   },
+  "07f3c48962bba0b104bab7c9491243292d8a91b5b6383ad2ac43515eca86f864": {
+    "query": "SELECT address, owner_account_workchain_id, owner_account_hex, root_address, code_hash, created_at\n            FROM token_owners ",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "address",
+          "type_info": "Varchar"
+        },
+        {
+          "ordinal": 1,
+          "name": "owner_account_workchain_id",
+          "type_info": "Int4"
+        },
+        {
+          "ordinal": 2,
+          "name": "owner_account_hex",
+          "type_info": "Varchar"
+        },
+        {
+          "ordinal": 3,
+          "name": "root_address",
+          "type_info": "Varchar"
+        },
+        {
+          "ordinal": 4,
+          "name": "code_hash",
+          "type_info": "Bytea"
+        },
+        {
+          "ordinal": 5,
+          "name": "created_at",
+          "type_info": "Timestamp"
+        }
+      ],
+      "parameters": {
+        "Left": []
+      },
+      "nullable": [
+        false,
+        false,
+        false,
+        false,
+        false,
+        false
+      ]
+    }
+  },
   "0d682d9963004a6b29b671a1e16cebedc71ec7d33a4436e144871c32c754537b": {
     "query": "\n            INSERT INTO transaction_events\n            (id, service_id, transaction_id, message_hash, account_workchain_id, account_hex, balance_change, transaction_direction, transaction_status, event_status, sender_is_token_wallet)\n            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)\n            RETURNING id,\n                service_id as \"service_id: _\",\n                transaction_id,\n                message_hash,\n                account_workchain_id,\n                account_hex,\n                sender_workchain_id,\n                sender_hex,\n                balance_change,\n                transaction_direction as \"transaction_direction: _\",\n                transaction_status as \"transaction_status: _\",\n                event_status as \"event_status: _\",\n                created_at, updated_at, sender_is_token_wallet",
     "describe": {
@@ -551,6 +599,56 @@
       ]
     }
   },
+  "11bab8c019a8880cd011a05ca4c2de99fe383cf44b2c91cd7c17fffa9b728c23": {
+    "query": "SELECT address, owner_account_workchain_id, owner_account_hex, root_address, code_hash, created_at\n            FROM token_owners\n            WHERE address = $1",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "address",
+          "type_info": "Varchar"
+        },
+        {
+          "ordinal": 1,
+          "name": "owner_account_workchain_id",
+          "type_info": "Int4"
+        },
+        {
+          "ordinal": 2,
+          "name": "owner_account_hex",
+          "type_info": "Varchar"
+        },
+        {
+          "ordinal": 3,
+          "name": "root_address",
+          "type_info": "Varchar"
+        },
+        {
+          "ordinal": 4,
+          "name": "code_hash",
+          "type_info": "Bytea"
+        },
+        {
+          "ordinal": 5,
+          "name": "created_at",
+          "type_info": "Timestamp"
+        }
+      ],
+      "parameters": {
+        "Left": [
+          "Text"
+        ]
+      },
+      "nullable": [
+        false,
+        false,
+        false,
+        false,
+        false,
+        false
+      ]
+    }
+  },
   "1a04315f8528a01631e8bb57b3292eb8a47325769d89ba74a820fb5c27294717": {
     "query": "\n            UPDATE token_transaction_events SET event_status = $1\n            WHERE service_id = $2 AND id = $3\n            RETURNING id,\n                service_id as \"service_id: _\",\n                token_transaction_id,\n                message_hash,\n                account_workchain_id,\n                account_hex,\n                owner_message_hash,\n                value,\n                root_address,\n                transaction_direction as \"transaction_direction: _\",\n                transaction_status as \"transaction_status: _\",\n                event_status as \"event_status: _\",\n                created_at, updated_at",
     "describe": {
@@ -685,104 +783,6 @@
         false,
         true,
         false,
-        false,
-        false,
-        false,
-        false,
-        false,
-        false
-      ]
-    }
-  },
-  "1f229f4539ed07fc43016177e62044a447224c420bb5798a564260b274053353": {
-    "query": "SELECT address, owner_account_workchain_id, owner_account_hex, root_address, code_hash, created_at\n        FROM token_owners ",
-    "describe": {
-      "columns": [
-        {
-          "ordinal": 0,
-          "name": "address",
-          "type_info": "Varchar"
-        },
-        {
-          "ordinal": 1,
-          "name": "owner_account_workchain_id",
-          "type_info": "Int4"
-        },
-        {
-          "ordinal": 2,
-          "name": "owner_account_hex",
-          "type_info": "Varchar"
-        },
-        {
-          "ordinal": 3,
-          "name": "root_address",
-          "type_info": "Varchar"
-        },
-        {
-          "ordinal": 4,
-          "name": "code_hash",
-          "type_info": "Bytea"
-        },
-        {
-          "ordinal": 5,
-          "name": "created_at",
-          "type_info": "Timestamp"
-        }
-      ],
-      "parameters": {
-        "Left": []
-      },
-      "nullable": [
-        false,
-        false,
-        false,
-        false,
-        false,
-        false
-      ]
-    }
-  },
-  "20ac70c82bacbfffb61f52396c34a237fd2afdd0ff65067f35eb74cd05888b41": {
-    "query": "SELECT address, owner_account_workchain_id, owner_account_hex, root_address, code_hash, created_at\n        FROM token_owners\n        WHERE address = $1",
-    "describe": {
-      "columns": [
-        {
-          "ordinal": 0,
-          "name": "address",
-          "type_info": "Varchar"
-        },
-        {
-          "ordinal": 1,
-          "name": "owner_account_workchain_id",
-          "type_info": "Int4"
-        },
-        {
-          "ordinal": 2,
-          "name": "owner_account_hex",
-          "type_info": "Varchar"
-        },
-        {
-          "ordinal": 3,
-          "name": "root_address",
-          "type_info": "Varchar"
-        },
-        {
-          "ordinal": 4,
-          "name": "code_hash",
-          "type_info": "Bytea"
-        },
-        {
-          "ordinal": 5,
-          "name": "created_at",
-          "type_info": "Timestamp"
-        }
-      ],
-      "parameters": {
-        "Left": [
-          "Text"
-        ]
-      },
-      "nullable": [
         false,
         false,
         false,
@@ -5357,6 +5357,58 @@
       },
       "nullable": [
         false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false
+      ]
+    }
+  },
+  "f54b4106e3a7963830e86e3f1aa0db268a8863de8006a7872d49696d47d1bf60": {
+    "query": "SELECT address, owner_account_workchain_id, owner_account_hex, root_address, code_hash, created_at\n            FROM token_owners\n            WHERE owner_account_workchain_id = $1 AND owner_account_hex = $2 AND root_address = $3",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "address",
+          "type_info": "Varchar"
+        },
+        {
+          "ordinal": 1,
+          "name": "owner_account_workchain_id",
+          "type_info": "Int4"
+        },
+        {
+          "ordinal": 2,
+          "name": "owner_account_hex",
+          "type_info": "Varchar"
+        },
+        {
+          "ordinal": 3,
+          "name": "root_address",
+          "type_info": "Varchar"
+        },
+        {
+          "ordinal": 4,
+          "name": "code_hash",
+          "type_info": "Bytea"
+        },
+        {
+          "ordinal": 5,
+          "name": "created_at",
+          "type_info": "Timestamp"
+        }
+      ],
+      "parameters": {
+        "Left": [
+          "Int4",
+          "Text",
+          "Text"
+        ]
+      },
+      "nullable": [
         false,
         false,
         false,

@@ -6,7 +6,6 @@ use async_trait::async_trait;
 use bigdecimal::{BigDecimal, ToPrimitive};
 use block_modes::block_padding::Pkcs7;
 use block_modes::{BlockMode, Ecb};
-use nekoton::core::models::TokenWalletVersion;
 use nekoton::crypto::SignedMessage;
 use nekoton_utils::{repack_address, unpack_std_smc_addr, TrustMe};
 use sha2::{Digest, Sha256};
@@ -249,22 +248,21 @@ impl TonServiceImpl {
         if non_blocking {
             let ton_service = self.clone();
             tokio::spawn(async move {
-                if let Err(err) = send_transaction_helper(
-                    &ton_service,
-                    message_hash,
-                    account_hex,
-                    account_workchain_id,
-                    signed_message,
-                )
-                .await
+                if let Err(err) = ton_service
+                    .send_transaction_helper(
+                        message_hash,
+                        account_hex,
+                        account_workchain_id,
+                        signed_message,
+                    )
+                    .await
                 {
                     log::error!("{:?}", err);
                 };
             });
             Ok(())
         } else {
-            send_transaction_helper(
-                self,
+            self.send_transaction_helper(
                 message_hash,
                 account_hex,
                 account_workchain_id,
@@ -272,6 +270,93 @@ impl TonServiceImpl {
             )
             .await
         }
+    }
+
+    async fn send_transaction_helper(
+        &self,
+        message_hash: String,
+        account_hex: String,
+        account_workchain_id: i32,
+        signed_message: SignedMessage,
+    ) -> Result<(), ServiceError> {
+        let account = UInt256::from_be_bytes(&hex::decode(&account_hex).unwrap_or_default());
+        match self
+            .ton_api_client
+            .send_transaction(account, signed_message)
+            .await
+        {
+            Ok(MessageStatus::Delivered) => {
+                log::info!("Successfully sent message `{}`", message_hash);
+                Ok(())
+            }
+            Ok(MessageStatus::Expired) => {
+                log::info!("Message `{}` expired", message_hash);
+                match self
+                    .upsert_sent_transaction(
+                        message_hash,
+                        account_workchain_id,
+                        account_hex,
+                        UpdateSendTransaction::error("Expired".to_string()),
+                    )
+                    .await
+                {
+                    Ok(_) => Ok(()),
+                    Err(err) => Err(ServiceError::Other(
+                        TonServiceError::UpdateMessageFail(err).into(),
+                    )),
+                }
+            }
+            Err(e) => {
+                log::error!("Failed to send message: {:?}", e);
+                match self
+                    .upsert_sent_transaction(
+                        message_hash,
+                        account_workchain_id,
+                        account_hex,
+                        UpdateSendTransaction::error("Fail".to_string()),
+                    )
+                    .await
+                {
+                    Ok(_) => Ok(()),
+                    Err(err) => Err(ServiceError::Other(
+                        TonServiceError::UpdateMessageFail(err).into(),
+                    )),
+                }
+            }
+        }
+    }
+
+    async fn deploy_wallet(
+        &self,
+        service_id: &ServiceId,
+        address: &AddressDb,
+        public_key: &[u8],
+        private_key: &[u8],
+    ) -> Result<(), ServiceError> {
+        let payload = self
+            .ton_api_client
+            .prepare_deploy(address, public_key, private_key)
+            .await?;
+
+        if let Some((payload, signed_message)) = payload {
+            let (transaction, event) = self
+                .sqlx_client
+                .create_send_transaction(CreateSendTransaction::new(payload, *service_id))
+                .await?;
+
+            self.send_transaction(
+                transaction.message_hash.clone(),
+                transaction.account_hex.clone(),
+                transaction.account_workchain_id,
+                signed_message,
+                false,
+            )
+            .await?;
+
+            self.notify(service_id, event.into()).await;
+        }
+
+        Ok(())
     }
 }
 
@@ -317,7 +402,7 @@ impl TonService for TonServiceImpl {
                 account.address().to_hex_string(),
             )
             .await?;
-        let network = self.ton_api_client.get_address_info(account).await?;
+        let (network, _) = self.ton_api_client.get_address_info(account).await?;
         Ok((address, network))
     }
 
@@ -328,7 +413,7 @@ impl TonService for TonServiceImpl {
     ) -> Result<TransactionDb, ServiceError> {
         let account = repack_address(&input.from_address.0)?;
 
-        let network = self
+        let (network, current_state) = self
             .ton_api_client
             .get_address_info(account.clone())
             .await?;
@@ -353,31 +438,11 @@ impl TonService for TonServiceImpl {
             .await?;
 
         let public_key = hex::decode(address.public_key.clone()).unwrap_or_default();
-        let secret = self.decrypt_private_key(address.private_key.clone()).await;
+        let private_key = self.decrypt_private_key(address.private_key.clone()).await;
 
         if network.account_status == AccountStatus::UnInit {
-            let payload = self
-                .ton_api_client
-                .prepare_deploy(&address, &public_key, &secret)
+            self.deploy_wallet(service_id, &address, &public_key, &private_key)
                 .await?;
-
-            if let Some((payload, signed_message)) = payload {
-                let (transaction, event) = self
-                    .sqlx_client
-                    .create_send_transaction(CreateSendTransaction::new(payload, *service_id))
-                    .await?;
-
-                self.send_transaction(
-                    transaction.message_hash.clone(),
-                    transaction.account_hex.clone(),
-                    transaction.account_workchain_id,
-                    signed_message,
-                    false,
-                )
-                .await?;
-
-                self.notify(service_id, event.into()).await;
-            }
         }
 
         let (payload, signed_message) = self
@@ -385,9 +450,10 @@ impl TonService for TonServiceImpl {
             .prepare_transaction(
                 input,
                 &public_key,
-                &secret,
+                &private_key,
                 &address.account_type,
                 &address.custodians,
+                current_state,
             )
             .await?;
 
@@ -658,70 +724,64 @@ impl TonService for TonServiceImpl {
             )));
         }
 
-        let root_address = repack_address(&input.root_address)?;
+        let token_balance = self
+            .sqlx_client
+            .get_token_balance(
+                *service_id,
+                owner.workchain_id(),
+                owner.address().to_hex_string(),
+                input.root_address.clone(),
+            )
+            .await
+            .map_err(|_| {
+                ServiceError::WrongInput("Token wallet is not deployed yet".to_string())
+            })?;
 
-        let owner_info = self
-            .ton_api_client
-            .get_token_address_info(&owner, &root_address)
-            .await?;
-
-        if owner_info.account_status == AccountStatus::UnInit {
+        if token_balance.balance < input.value {
             return Err(ServiceError::WrongInput(format!(
-                "Failed to get contract state for owner or token wallet  `{}`",
-                owner.to_string()
+                "Token balance is not enough to make request; Balance: {}. Sent amount: {}",
+                token_balance.balance, input.value
             )));
         }
-        let token_wallet =
-            MsgAddressInt::from_str(&format!("{}:{}", owner_info.workchain_id, owner_info.hex))
-                .unwrap_or_default();
+
+        let public_key = hex::decode(address.public_key.clone()).unwrap_or_default();
+        let private_key = self.decrypt_private_key(address.private_key.clone()).await;
+
+        let (owner_network, current_state) =
+            self.ton_api_client.get_address_info(owner.clone()).await?;
+
+        if owner_network.account_status == AccountStatus::UnInit {
+            self.deploy_wallet(service_id, &address, &public_key, &private_key)
+                .await?;
+        }
+
+        let token_address = self
+            .sqlx_client
+            .get_token_address(
+                owner.workchain_id(),
+                owner.address().to_hex_string(),
+                input.root_address.clone(),
+            )
+            .await?;
+        let token_address = repack_address(&token_address.address)?;
 
         let recipient = repack_address(&input.recipient_address.0)?;
-        let recipient_info = self
-            .ton_api_client
-            .get_token_address_info(&recipient, &root_address)
-            .await?;
-        let recipient_token_wallet = MsgAddressInt::from_str(&format!(
-            "{}:{}",
-            recipient_info.workchain_id, recipient_info.hex
-        ))
-        .unwrap_or_default();
-
-        let destination = match recipient_info.account_status {
-            AccountStatus::Active => {
-                nekoton::core::models::TransferRecipient::TokenWallet(recipient_token_wallet)
-            }
-            AccountStatus::UnInit => {
-                nekoton::core::models::TransferRecipient::OwnerWallet(recipient)
-            }
-            AccountStatus::Frozen => {
-                return Err(ServiceError::WrongInput(format!(
-                    "Destination token wallet `{}` is frozen",
-                    recipient.to_string()
-                )));
-            }
-        };
-
-        let tokens = input.value.clone();
-        let version = TokenWalletVersion::from_str(&owner_info.version)?;
-        let attached_amount = input.fee.to_u64().unwrap_or(TOKEN_FEE);
-
-        let public_key = hex::decode(address.public_key).unwrap_or_default();
-        let private_key = self.decrypt_private_key(address.private_key).await;
+        let destination = nekoton::core::models::TransferRecipient::OwnerWallet(recipient);
 
         let (payload, signed_message) = self
             .ton_api_client
             .prepare_token_transaction(
                 input.id,
                 owner,
-                token_wallet,
+                token_address,
                 destination,
-                version,
-                tokens,
+                input.value.clone(),
                 input.notify_receiver,
-                attached_amount,
+                input.fee.to_u64().unwrap_or(TOKEN_FEE),
                 address.account_type,
                 &public_key,
                 &private_key,
+                current_state,
             )
             .await?;
 
@@ -762,60 +822,6 @@ impl TonService for TonServiceImpl {
         self.notify_token(&address.service_id, event.into()).await;
 
         Ok(transaction)
-    }
-}
-
-async fn send_transaction_helper(
-    ton_service: &TonServiceImpl,
-    message_hash: String,
-    account_hex: String,
-    account_workchain_id: i32,
-    signed_message: SignedMessage,
-) -> Result<(), ServiceError> {
-    let account = UInt256::from_be_bytes(&hex::decode(&account_hex).unwrap_or_default());
-    match ton_service
-        .ton_api_client
-        .send_transaction(account, signed_message)
-        .await
-    {
-        Ok(MessageStatus::Delivered) => {
-            log::info!("Successfully sent message `{}`", message_hash);
-            Ok(())
-        }
-        Ok(MessageStatus::Expired) => {
-            log::info!("Message `{}` expired", message_hash);
-            match ton_service
-                .upsert_sent_transaction(
-                    message_hash,
-                    account_workchain_id,
-                    account_hex,
-                    UpdateSendTransaction::error("Expired".to_string()),
-                )
-                .await
-            {
-                Ok(_) => Ok(()),
-                Err(err) => Err(ServiceError::Other(
-                    TonServiceError::UpdateMessageFail(err).into(),
-                )),
-            }
-        }
-        Err(e) => {
-            log::error!("Failed to send message: {:?}", e);
-            match ton_service
-                .upsert_sent_transaction(
-                    message_hash,
-                    account_workchain_id,
-                    account_hex,
-                    UpdateSendTransaction::error("Fail".to_string()),
-                )
-                .await
-            {
-                Ok(_) => Ok(()),
-                Err(err) => Err(ServiceError::Other(
-                    TonServiceError::UpdateMessageFail(err).into(),
-                )),
-            }
-        }
     }
 }
 

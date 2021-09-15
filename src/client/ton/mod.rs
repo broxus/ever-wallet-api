@@ -9,7 +9,7 @@ use nekoton::core::ton_wallet::{MultisigType, TransferAction};
 use nekoton::crypto::SignedMessage;
 use num_bigint::BigUint;
 use num_traits::FromPrimitive;
-use ton_block::{GetRepresentationHash, MsgAddressInt};
+use ton_block::{AccountStuff, GetRepresentationHash, MsgAddressInt};
 use ton_types::UInt256;
 
 use crate::models::*;
@@ -24,11 +24,15 @@ mod utils;
 
 const DEFAULT_EXPIRATION_TIMEOUT: u32 = 60;
 const DEFAULT_MULTISIG_TYPE: MultisigType = MultisigType::SafeMultisigWallet;
+const DEFAULT_TOKEN_WALLET_VERSION: TokenWalletVersion = TokenWalletVersion::Tip3v4;
 
 #[async_trait]
 pub trait TonClient: Send + Sync {
     async fn create_address(&self, payload: CreateAddress) -> Result<CreatedAddress>;
-    async fn get_address_info(&self, address: MsgAddressInt) -> Result<NetworkAddressData>;
+    async fn get_address_info(
+        &self,
+        address: MsgAddressInt,
+    ) -> Result<(NetworkAddressData, Option<AccountStuff>)>;
     async fn get_metrics(&self) -> Result<Metrics>;
     async fn prepare_deploy(
         &self,
@@ -43,6 +47,7 @@ pub trait TonClient: Send + Sync {
         private_key: &[u8],
         account_type: &AccountType,
         custodians: &Option<i32>,
+        current_state: Option<AccountStuff>,
     ) -> Result<(SentTransaction, SignedMessage)>;
     async fn get_token_address_info(
         &self,
@@ -55,13 +60,13 @@ pub trait TonClient: Send + Sync {
         owner: MsgAddressInt,
         token_wallet: MsgAddressInt,
         destination: TransferRecipient,
-        version: TokenWalletVersion,
         tokens: BigDecimal,
         notify_receiver: bool,
         attached_amount: u64,
         account_type: AccountType,
         public_key: &[u8],
         private_key: &[u8],
+        current_state: Option<AccountStuff>,
     ) -> Result<(SentTransaction, SignedMessage)>;
     async fn send_transaction(
         &self,
@@ -166,11 +171,14 @@ impl TonClient for TonClientImpl {
             custodians_public_keys,
         })
     }
-    async fn get_address_info(&self, owner: MsgAddressInt) -> Result<NetworkAddressData> {
+    async fn get_address_info(
+        &self,
+        owner: MsgAddressInt,
+    ) -> Result<(NetworkAddressData, Option<AccountStuff>)> {
         let account = UInt256::from_be_bytes(&owner.address().get_bytestring(0));
         let contract = match self.ton_core.get_contract_state(account).await {
             Ok(contract) => contract,
-            Err(_) => return Ok(NetworkAddressData::uninit(&owner)),
+            Err(_) => return Ok((NetworkAddressData::uninit(&owner), None)),
         };
 
         let account_status = transform_account_state(&contract.account.storage.state);
@@ -180,15 +188,18 @@ impl TonClient for TonClientImpl {
         let (last_transaction_hash, last_transaction_lt) =
             parse_last_transaction(&contract.last_transaction_id);
 
-        Ok(NetworkAddressData {
-            workchain_id: contract.account.addr.workchain_id(),
-            hex: contract.account.addr.address().to_hex_string(),
-            account_status,
-            network_balance,
-            last_transaction_hash,
-            last_transaction_lt,
-            sync_u_time: contract.timings.current_utime() as i64,
-        })
+        Ok((
+            NetworkAddressData {
+                workchain_id: contract.account.addr.workchain_id(),
+                hex: contract.account.addr.address().to_hex_string(),
+                account_status,
+                network_balance,
+                last_transaction_hash,
+                last_transaction_lt,
+                sync_u_time: contract.timings.current_utime() as i64,
+            },
+            Some(contract.account),
+        ))
     }
     async fn get_metrics(&self) -> Result<Metrics> {
         let gen_utime = self.ton_core.get_current_utime();
@@ -260,6 +271,7 @@ impl TonClient for TonClientImpl {
         private_key: &[u8],
         account_type: &AccountType,
         custodians: &Option<i32>,
+        current_state: Option<AccountStuff>,
     ) -> Result<(SentTransaction, SignedMessage)> {
         let original_value = transaction.outputs.iter().map(|o| o.value.clone()).sum();
         let original_outputs =
@@ -271,8 +283,12 @@ impl TonClient for TonClientImpl {
 
         let transfer_action = match account_type {
             AccountType::HighloadWallet => {
-                let account = UInt256::from_be_bytes(&address.address().get_bytestring(0));
-                let current_state = self.ton_core.get_contract_state(account).await?.account;
+                let current_state = if let Some(current_state) = current_state {
+                    current_state
+                } else {
+                    let account = UInt256::from_be_bytes(&address.address().get_bytestring(0));
+                    self.ton_core.get_contract_state(account).await?.account
+                };
 
                 let gifts = transaction
                     .outputs
@@ -306,8 +322,12 @@ impl TonClient for TonClientImpl {
                 )?
             }
             AccountType::Wallet => {
-                let account = UInt256::from_be_bytes(&address.address().get_bytestring(0));
-                let current_state = self.ton_core.get_contract_state(account).await?.account;
+                let current_state = if let Some(current_state) = current_state {
+                    current_state
+                } else {
+                    let account = UInt256::from_be_bytes(&address.address().get_bytestring(0));
+                    self.ton_core.get_contract_state(account).await?.account
+                };
 
                 let recipient = transaction
                     .outputs
@@ -432,14 +452,15 @@ impl TonClient for TonClientImpl {
         owner: MsgAddressInt,
         token_wallet: MsgAddressInt,
         destination: TransferRecipient,
-        version: TokenWalletVersion,
         tokens: BigDecimal,
         notify_receiver: bool,
         attached_amount: u64,
         account_type: AccountType,
         public_key: &[u8],
         private_key: &[u8],
+        current_state: Option<AccountStuff>,
     ) -> Result<(SentTransaction, SignedMessage)> {
+        let version = DEFAULT_TOKEN_WALLET_VERSION;
         let tokens = BigUint::from_u64(tokens.to_u64().unwrap_or_default()).unwrap_or_default();
 
         let internal_message = prepare_token_transfer(
@@ -463,8 +484,12 @@ impl TonClient for TonClientImpl {
 
         let transfer_action = match account_type {
             AccountType::HighloadWallet => {
-                let account = UInt256::from_be_bytes(&owner.address().get_bytestring(0));
-                let current_state = self.ton_core.get_contract_state(account).await?.account;
+                let current_state = if let Some(current_state) = current_state {
+                    current_state
+                } else {
+                    let account = UInt256::from_be_bytes(&owner.address().get_bytestring(0));
+                    self.ton_core.get_contract_state(account).await?.account
+                };
 
                 let gift = nekoton::core::ton_wallet::highload_wallet_v2::Gift {
                     flags: TransactionSendOutputType::Normal.value(),
@@ -483,8 +508,12 @@ impl TonClient for TonClientImpl {
                 )?
             }
             AccountType::Wallet => {
-                let account = UInt256::from_be_bytes(&owner.address().get_bytestring(0));
-                let current_state = self.ton_core.get_contract_state(account).await?.account;
+                let current_state = if let Some(current_state) = current_state {
+                    current_state
+                } else {
+                    let account = UInt256::from_be_bytes(&owner.address().get_bytestring(0));
+                    self.ton_core.get_contract_state(account).await?.account
+                };
 
                 nekoton::core::ton_wallet::wallet_v3::prepare_transfer(
                     &public_key,
