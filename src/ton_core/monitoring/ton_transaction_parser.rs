@@ -137,17 +137,20 @@ fn get_messages(transaction: &ton_block::Transaction) -> Result<Vec<Message>> {
     transaction
         .out_msgs
         .iterate(|ton_block::InRefValue(item)| {
-            let fee =
-                BigDecimal::from_u128(item.get_fee()?.ok_or(TransactionError::InvalidStructure)?.0)
-                    .ok_or(TransactionError::InvalidStructure)?;
+            let fee = match item.get_fee()? {
+                Some(fee) => {
+                    Some(BigDecimal::from_u128(fee.0).ok_or(TransactionError::InvalidStructure)?)
+                }
+                None => None,
+            };
 
-            let value = BigDecimal::from_u128(
-                item.get_value()
-                    .ok_or(TransactionError::InvalidStructure)?
-                    .grams
-                    .0,
-            )
-            .ok_or(TransactionError::InvalidStructure)?;
+            let value = match item.get_value() {
+                Some(value) => Some(
+                    BigDecimal::from_u128(value.grams.0)
+                        .ok_or(TransactionError::InvalidStructure)?,
+                ),
+                None => None,
+            };
 
             let recipient = match item.header().get_dst_address() {
                 Some(dst) => Some(MessageRecipient {
@@ -257,8 +260,8 @@ async fn sender_is_token_wallet(
 #[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 struct Message {
-    pub fee: BigDecimal,
-    pub value: BigDecimal,
+    pub fee: Option<BigDecimal>,
+    pub value: Option<BigDecimal>,
     pub recipient: Option<MessageRecipient>,
     pub message_hash: String,
 }
