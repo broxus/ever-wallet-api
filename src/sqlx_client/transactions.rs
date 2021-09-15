@@ -413,6 +413,7 @@ impl SqlxClient {
             .map_err(From::from)
     }
 
+    #[allow(dead_code)]
     pub async fn get_all_transactions_by_status(
         &self,
         status: TonTransactionStatus,

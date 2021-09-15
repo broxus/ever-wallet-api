@@ -81,19 +81,3 @@ pub struct SentTokenTransaction {
     pub notify_receiver: bool,
     pub fee: BigDecimal,
 }
-
-impl CreateSendTokenTransaction {
-    pub fn new(s: SentTokenTransaction, service_id: ServiceId) -> Self {
-        Self {
-            id: s.id,
-            service_id,
-            message_hash: s.message_hash,
-            account_workchain_id: s.account_workchain_id,
-            account_hex: s.account_hex,
-            value: -s.value,
-            root_address: s.root_address,
-            direction: TonTransactionDirection::Send,
-            status: TonTokenTransactionStatus::New,
-        }
-    }
-}

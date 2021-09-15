@@ -118,6 +118,7 @@ impl SqlxClient {
             .map_err(From::from)
     }
 
+    #[allow(dead_code)]
     pub async fn get_token_transaction_by_h(
         &self,
         service_id: ServiceId,

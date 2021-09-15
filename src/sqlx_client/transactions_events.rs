@@ -9,6 +9,7 @@ use crate::prelude::*;
 use crate::sqlx_client::*;
 
 impl SqlxClient {
+    #[allow(dead_code)]
     pub async fn get_transaction_event_by_mh(
         &self,
         service_id: ServiceId,

@@ -9,6 +9,7 @@ use crate::prelude::*;
 use crate::sqlx_client::*;
 
 impl SqlxClient {
+    #[allow(dead_code)]
     pub async fn get_token_transaction_event_by_mh(
         &self,
         message_hash: String,
@@ -79,6 +80,7 @@ impl SqlxClient {
         .map_err(From::from)
     }
 
+    #[allow(dead_code)]
     pub async fn get_token_transaction_events(
         &self,
         service_id: ServiceId,

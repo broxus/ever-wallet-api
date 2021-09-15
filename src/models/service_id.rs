@@ -30,6 +30,7 @@ impl ServiceId {
         &self.0
     }
 
+    #[allow(dead_code)]
     pub fn generate() -> Self {
         ServiceId(Uuid::new_v4())
     }

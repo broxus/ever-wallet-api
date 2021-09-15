@@ -3,6 +3,7 @@ use crate::prelude::*;
 use crate::sqlx_client::*;
 
 impl SqlxClient {
+    #[allow(dead_code)]
     pub async fn create_token_balances(
         &self,
         payload: CreateTokenBalanceInDb,
@@ -45,6 +46,7 @@ impl SqlxClient {
             .await
             .map_err(From::from)
     }
+    #[allow(dead_code)]
     pub async fn get_token_balance_by_workchain_hex(
         &self,
         account_workchain_id: i32,
