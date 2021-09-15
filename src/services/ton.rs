@@ -152,11 +152,16 @@ impl TonServiceImpl {
                 .unwrap_or_default();
             let event_status = match self
                 .callback_client
-                .send(url, payload.clone(), secret)
+                .send(url.clone(), payload.clone(), secret)
                 .await
             {
                 Err(e) => {
-                    log::error!("{}", e);
+                    log::error!(
+                        "Error on callback sending to {} with payload: {:#?}- {}",
+                        url,
+                        payload,
+                        e
+                    );
                     TonEventStatus::Error
                 }
                 Ok(_) => TonEventStatus::Notified,
@@ -164,14 +169,14 @@ impl TonServiceImpl {
             if let Err(e) = self
                 .sqlx_client
                 .update_event_status_of_token_transaction_event(
-                    payload.message_hash,
+                    payload.message_hash.clone(),
                     payload.account.workchain_id,
-                    payload.account.hex.0,
-                    event_status,
+                    payload.account.hex.0.clone(),
+                    event_status.clone(),
                 )
                 .await
             {
-                log::error!("{}", e);
+                log::error!("Error on update event status of token transaction event sending with payload: {:#?} , event status: {:#?} - {}", payload, event_status, e);
             }
         }
     }
@@ -185,11 +190,16 @@ impl TonServiceImpl {
                 .unwrap_or_default();
             let event_status = match self
                 .callback_client
-                .send(url, payload.clone(), secret)
+                .send(url.clone(), payload.clone(), secret)
                 .await
             {
                 Err(e) => {
-                    log::error!("{}", e);
+                    log::error!(
+                        "Error on callback sending to {} with payload: {:#?} - {}",
+                        url,
+                        payload,
+                        e
+                    );
                     TonEventStatus::Error
                 }
                 Ok(_) => TonEventStatus::Notified,
@@ -197,14 +207,14 @@ impl TonServiceImpl {
             if let Err(e) = self
                 .sqlx_client
                 .update_event_status_of_transaction_event(
-                    payload.message_hash,
+                    payload.message_hash.clone(),
                     payload.account.workchain_id,
-                    payload.account.hex.0,
-                    event_status,
+                    payload.account.hex.0.clone(),
+                    event_status.clone(),
                 )
                 .await
             {
-                log::error!("{}", e);
+                log::error!("Error on update event status of transaction event sending with payload: {:#?} , event status: {:#?} - {}", payload, event_status, e);
             }
         }
     }
@@ -250,14 +260,24 @@ impl TonServiceImpl {
             tokio::spawn(async move {
                 if let Err(err) = ton_service
                     .send_transaction_helper(
-                        message_hash,
-                        account_hex,
+                        message_hash.clone(),
+                        account_hex.clone(),
                         account_workchain_id,
                         signed_message,
                     )
                     .await
                 {
-                    log::error!("{:?}", err);
+                    log::error!(
+                        "Error on send transaction helper - {:?},
+                        message_hash - {},
+                        account_hex - {},
+                        account_workchain_id - {}
+                        ",
+                        err,
+                        message_hash,
+                        account_hex,
+                        account_workchain_id,
+                    );
                 };
             });
             Ok(())
@@ -800,7 +820,7 @@ impl TonService for TonServiceImpl {
         .await
         .trust_me();
 
-        self.notify_token(service_id, event.into()).await;
+        self.notify(service_id, event.into()).await;
 
         Ok(transaction)
     }
