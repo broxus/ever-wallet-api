@@ -798,9 +798,10 @@ impl TonService for TonServiceImpl {
                 input.value.clone(),
                 input.notify_receiver,
                 input.fee.to_u64().unwrap_or(TOKEN_FEE),
-                address.account_type,
                 &public_key,
                 &private_key,
+                &address.account_type,
+                &address.custodians,
                 current_state,
             )
             .await?;

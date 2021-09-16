@@ -63,9 +63,10 @@ pub trait TonClient: Send + Sync {
         tokens: BigDecimal,
         notify_receiver: bool,
         attached_amount: u64,
-        account_type: AccountType,
         public_key: &[u8],
         private_key: &[u8],
+        account_type: &AccountType,
+        custodians: &Option<i32>,
         current_state: Option<AccountStuff>,
     ) -> Result<(SentTransaction, SignedMessage)>;
     async fn send_transaction(
@@ -220,13 +221,12 @@ impl TonClient for TonClientImpl {
                     .clone()
                     .map(|pks| serde_json::from_value(pks).unwrap_or_default())
                     .unwrap_or_default();
-                let owners = owners
-                    .into_iter()
-                    .map(|o| hex::decode(o).unwrap_or_default())
-                    .collect::<Vec<Vec<u8>>>();
                 let mut owners = owners
                     .into_iter()
-                    .map(|item| PublicKey::from_bytes(&item).unwrap_or_default())
+                    .map(|item| {
+                        let owner = hex::decode(item).unwrap_or_default();
+                        PublicKey::from_bytes(&owner).unwrap_or_default()
+                    })
                     .collect::<Vec<PublicKey>>();
                 owners.push(public_key);
                 nekoton::core::ton_wallet::multisig::prepare_deploy(
@@ -295,24 +295,20 @@ impl TonClient for TonClientImpl {
                     .into_iter()
                     .map(|item| {
                         let flags = item.output_type.unwrap_or_default().value();
-                        let destination = nekoton_utils::repack_address(&item.recipient_address.0)?;
+                        let destination = nekoton_utils::repack_address(&item.recipient_address.0)
+                            .unwrap_or_default();
                         let amount = item.value.to_u64().unwrap_or_default();
 
-                        Ok(nekoton::core::ton_wallet::highload_wallet_v2::Gift {
+                        nekoton::core::ton_wallet::highload_wallet_v2::Gift {
                             flags,
                             bounce,
                             destination,
                             amount,
                             body: None,
                             state_init: None,
-                        })
+                        }
                     })
-                    .collect::<Vec<Result<nekoton::core::ton_wallet::highload_wallet_v2::Gift>>>();
-
-                let gifts = gifts
-                    .into_iter()
-                    .collect::<Result<Vec<nekoton::core::ton_wallet::highload_wallet_v2::Gift>>>(
-                    )?;
+                    .collect::<Vec<nekoton::core::ton_wallet::highload_wallet_v2::Gift>>();
 
                 nekoton::core::ton_wallet::highload_wallet_v2::prepare_transfer(
                     &public_key,
@@ -455,9 +451,10 @@ impl TonClient for TonClientImpl {
         tokens: BigDecimal,
         notify_receiver: bool,
         attached_amount: u64,
-        account_type: AccountType,
         public_key: &[u8],
         private_key: &[u8],
+        account_type: &AccountType,
+        custodians: &Option<i32>,
         current_state: Option<AccountStuff>,
     ) -> Result<(SentTransaction, SignedMessage)> {
         let version = DEFAULT_TOKEN_WALLET_VERSION;
@@ -526,7 +523,10 @@ impl TonClient for TonClientImpl {
                 )?
             }
             AccountType::SafeMultisig => {
-                let has_multiple_owners = false; // TODO
+                let has_multiple_owners = match custodians {
+                    Some(custodians) => *custodians > 1,
+                    None => return Err(TonClientError::CustodiansNotFound.into()),
+                };
 
                 nekoton::core::ton_wallet::multisig::prepare_transfer(
                     &public_key,
