@@ -142,6 +142,65 @@ impl TonServiceImpl {
             secret,
         }
     }
+
+    pub async fn start(&self) -> Result<(), ServiceError> {
+        // Load unprocessed sent messages
+
+        let transactions: Vec<TransactionDb> = self
+            .sqlx_client
+            .get_all_transactions_by_status(TonTransactionStatus::New)
+            .await?;
+
+        for transaction in transactions {
+            let account = UInt256::from_be_bytes(
+                &hex::decode(transaction.account_hex.clone()).unwrap_or_default(),
+            );
+            let message_hash = UInt256::from_be_bytes(
+                &hex::decode(transaction.message_hash.clone()).unwrap_or_default(),
+            );
+            let expire_at = transaction.created_at.timestamp() as u32 + DEFAULT_EXPIRATION_TIMEOUT;
+
+            let rx = self
+                .ton_api_client
+                .add_pending_message(account, message_hash, expire_at)?;
+
+            let ton_service = self.clone();
+            tokio::spawn(async move {
+                match rx.await {
+                    Ok(MessageStatus::Delivered) => {
+                        log::info!("Successfully sent message `{}`", transaction.message_hash)
+                    }
+                    Ok(MessageStatus::Expired) => {
+                        if let Err(err) = ton_service
+                            .upsert_sent_transaction(
+                                transaction.message_hash.clone(),
+                                transaction.account_workchain_id,
+                                transaction.account_hex.clone(),
+                                UpdateSendTransaction::error("Expired".to_string()),
+                            )
+                            .await
+                        {
+                            log::error!(
+                                "Failed to upsert expired message `{}` for reason: {:?}",
+                                message_hash.to_hex_string(),
+                                err
+                            )
+                        }
+                    }
+                    Err(err) => {
+                        log::error!(
+                            "Failed to get pending message `{}` for reason: {:?}",
+                            message_hash,
+                            err
+                        )
+                    }
+                }
+            });
+        }
+
+        Ok(())
+    }
+
     async fn notify_token(&self, service_id: &ServiceId, payload: AccountTransactionEvent) {
         if let Ok(url) = self.sqlx_client.get_callback(*service_id).await {
             let secret = self
@@ -180,6 +239,7 @@ impl TonServiceImpl {
             }
         }
     }
+
     async fn notify(&self, service_id: &ServiceId, payload: AccountTransactionEvent) {
         if let Ok(url) = self.sqlx_client.get_callback(*service_id).await {
             let secret = self
@@ -268,11 +328,7 @@ impl TonServiceImpl {
                     .await
                 {
                     log::error!(
-                        "Error on send transaction helper - {:?},
-                        message_hash - {},
-                        account_hex - {},
-                        account_workchain_id - {}
-                        ",
+                        "Failed to send transaction - {:?} (message_hash - {}, account {}:{})",
                         err,
                         message_hash,
                         account_hex,
@@ -300,50 +356,25 @@ impl TonServiceImpl {
         signed_message: SignedMessage,
     ) -> Result<(), ServiceError> {
         let account = UInt256::from_be_bytes(&hex::decode(&account_hex).unwrap_or_default());
-        match self
+        let status = self
             .ton_api_client
             .send_transaction(account, signed_message)
-            .await
-        {
-            Ok(MessageStatus::Delivered) => {
-                log::info!("Successfully sent message `{}`", message_hash);
-                Ok(())
+            .await?;
+
+        match status {
+            MessageStatus::Delivered => log::info!("Successfully sent message `{}`", message_hash),
+            MessageStatus::Expired => {
+                self.upsert_sent_transaction(
+                    message_hash,
+                    account_workchain_id,
+                    account_hex,
+                    UpdateSendTransaction::error("Expired".to_string()),
+                )
+                .await?;
             }
-            Ok(MessageStatus::Expired) => {
-                log::info!("Message `{}` expired", message_hash);
-                match self
-                    .upsert_sent_transaction(
-                        message_hash,
-                        account_workchain_id,
-                        account_hex,
-                        UpdateSendTransaction::error("Expired".to_string()),
-                    )
-                    .await
-                {
-                    Ok(_) => Ok(()),
-                    Err(err) => Err(ServiceError::Other(
-                        TonServiceError::UpdateMessageFail(err).into(),
-                    )),
-                }
-            }
-            Err(e) => {
-                log::error!("Failed to send message: {:?}", e);
-                match self
-                    .upsert_sent_transaction(
-                        message_hash,
-                        account_workchain_id,
-                        account_hex,
-                        UpdateSendTransaction::error("Fail".to_string()),
-                    )
-                    .await
-                {
-                    Ok(_) => Ok(()),
-                    Err(err) => Err(ServiceError::Other(
-                        TonServiceError::UpdateMessageFail(err).into(),
-                    )),
-                }
-            }
-        }
+        };
+
+        Ok(())
     }
 
     async fn deploy_wallet(
@@ -848,8 +879,6 @@ impl TonService for TonServiceImpl {
 
 #[derive(thiserror::Error, Debug)]
 enum TonServiceError {
-    #[error("Failed to update sent transaction: {0}")]
-    UpdateMessageFail(ServiceError),
     #[error("Account not : {0}")]
     AccountNotExist(String),
 }

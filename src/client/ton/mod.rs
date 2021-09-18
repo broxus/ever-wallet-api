@@ -7,12 +7,15 @@ use ed25519_dalek::{Keypair, PublicKey, SecretKey, Signer};
 use nekoton::core::models::{Expiration, TokenWalletVersion, TransferRecipient};
 use nekoton::core::ton_wallet::{MultisigType, TransferAction};
 use nekoton::crypto::SignedMessage;
+use nekoton_utils::TrustMe;
 use num_bigint::BigUint;
 use num_traits::FromPrimitive;
+use tokio::sync::oneshot;
 use ton_block::{AccountStuff, GetRepresentationHash, MsgAddressInt};
 use ton_types::UInt256;
 
 use crate::models::*;
+use crate::sqlx_client::*;
 use crate::ton_core::*;
 use crate::utils::*;
 
@@ -22,7 +25,8 @@ pub use self::utils::*;
 mod responses;
 mod utils;
 
-const DEFAULT_EXPIRATION_TIMEOUT: u32 = 60;
+pub const DEFAULT_EXPIRATION_TIMEOUT: u32 = 60;
+
 const DEFAULT_MULTISIG_TYPE: MultisigType = MultisigType::SafeMultisigWallet;
 const DEFAULT_TOKEN_WALLET_VERSION: TokenWalletVersion = TokenWalletVersion::Tip3v4;
 
@@ -74,20 +78,72 @@ pub trait TonClient: Send + Sync {
         account: UInt256,
         signed_message: SignedMessage,
     ) -> Result<MessageStatus>;
+    fn add_pending_message(
+        &self,
+        account: UInt256,
+        message_hash: UInt256,
+        expire_at: u32,
+    ) -> Result<oneshot::Receiver<MessageStatus>>;
 }
 
 #[derive(Clone)]
 pub struct TonClientImpl {
     ton_core: Arc<TonCore>,
+    sqlx_client: SqlxClient,
     root_contract_cache: RootContractCache,
 }
 
 impl TonClientImpl {
-    pub fn new(ton_core: Arc<TonCore>, root_contract_cache: RootContractCache) -> Self {
+    pub fn new(
+        ton_core: Arc<TonCore>,
+        sqlx_client: SqlxClient,
+        root_contract_cache: RootContractCache,
+    ) -> Self {
         Self {
             ton_core,
+            sqlx_client,
             root_contract_cache,
         }
+    }
+
+    pub async fn start(&self) -> Result<()> {
+        // Make subscriptions
+
+        let owner_addresses = self
+            .sqlx_client
+            .get_all_addresses()
+            .await?
+            .into_iter()
+            .map(|item| {
+                nekoton_utils::repack_address(&format!("{}:{}", item.workchain_id, item.hex))
+                    .trust_me()
+            })
+            .collect::<Vec<MsgAddressInt>>();
+
+        // Subscribe to all accounts
+        {
+            let owner_accounts = owner_addresses
+                .iter()
+                .map(|item| UInt256::from_be_bytes(&item.address().get_bytestring(0)))
+                .collect::<Vec<UInt256>>();
+
+            self.ton_core.add_ton_account_subscription(owner_accounts);
+        }
+
+        // Subscribe to all token accounts
+        {
+            let mut token_accounts = Vec::new();
+            for owner_address in &owner_addresses {
+                for (_, root_contract) in self.root_contract_cache.read().iter() {
+                    let account = get_token_wallet_account(root_contract, owner_address)?;
+                    token_accounts.push(account);
+                }
+            }
+
+            self.ton_core.add_token_account_subscription(token_accounts);
+        }
+
+        Ok(())
     }
 }
 
@@ -281,6 +337,8 @@ impl TonClient for TonClientImpl {
         let public_key = PublicKey::from_bytes(public_key).unwrap_or_default();
         let address = nekoton_utils::repack_address(&transaction.from_address.0)?;
 
+        let expiration = Expiration::Timeout(DEFAULT_EXPIRATION_TIMEOUT);
+
         let transfer_action = match account_type {
             AccountType::HighloadWallet => {
                 let current_state = if let Some(current_state) = current_state {
@@ -314,7 +372,7 @@ impl TonClient for TonClientImpl {
                     &public_key,
                     &current_state,
                     gifts,
-                    Expiration::Timeout(DEFAULT_EXPIRATION_TIMEOUT),
+                    expiration,
                 )?
             }
             AccountType::Wallet => {
@@ -341,7 +399,7 @@ impl TonClient for TonClientImpl {
                     amount,
                     bounce,
                     None,
-                    Expiration::Timeout(DEFAULT_EXPIRATION_TIMEOUT),
+                    expiration,
                 )?
             }
             AccountType::SafeMultisig => {
@@ -366,7 +424,7 @@ impl TonClient for TonClientImpl {
                     amount,
                     bounce,
                     None,
-                    Expiration::Timeout(DEFAULT_EXPIRATION_TIMEOUT),
+                    expiration,
                 )?
             }
         };
@@ -577,6 +635,15 @@ impl TonClient for TonClientImpl {
         self.ton_core
             .send_ton_message(&account, &signed_message.message, signed_message.expire_at)
             .await
+    }
+    fn add_pending_message(
+        &self,
+        account: UInt256,
+        message_hash: UInt256,
+        expire_at: u32,
+    ) -> Result<oneshot::Receiver<MessageStatus>> {
+        self.ton_core
+            .add_pending_message(account, message_hash, expire_at)
     }
 }
 

@@ -36,9 +36,11 @@ impl TonSubscriber {
         })
     }
 
-    pub async fn start(self: &Arc<Self>) -> Result<()> {
-        self.wait_sync().await;
-        Ok(())
+    pub async fn wait_sync(&self) {
+        if self.ready.load(Ordering::Acquire) {
+            return;
+        }
+        self.ready_signal.notified().await;
     }
 
     pub async fn get_contract_state(&self, account: UInt256) -> Result<RawContractState> {
@@ -100,13 +102,6 @@ impl TonSubscriber {
 
     pub fn get_current_utime(&self) -> u32 {
         self.current_utime.load(Ordering::Acquire)
-    }
-
-    async fn wait_sync(&self) {
-        if self.ready.load(Ordering::Acquire) {
-            return;
-        }
-        self.ready_signal.notified().await;
     }
 
     fn handle_masterchain_block(&self, block: &ton_block::Block) -> Result<()> {
@@ -206,10 +201,6 @@ impl ton_indexer::Subscriber for TonSubscriber {
         _block_proof: Option<&BlockProofStuff>,
         shard_state: &ShardStateStuff,
     ) -> Result<()> {
-        if !self.ready.load(Ordering::Acquire) {
-            return Ok(());
-        }
-
         if block.id().is_masterchain() {
             self.handle_masterchain_block(block.block())?;
         } else {

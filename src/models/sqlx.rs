@@ -162,4 +162,5 @@ pub struct TokenOwnerFromDb {
 pub struct TokenWhitelistFromDb {
     pub name: String,
     pub address: String,
+    pub contract: serde_json::Value,
 }

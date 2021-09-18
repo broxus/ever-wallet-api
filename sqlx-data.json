@@ -943,6 +943,36 @@
       ]
     }
   },
+  "24514da846eb4c26b09a9bed46b263b8baef99ab3469172f6d523c706b93eed5": {
+    "query": "SELECT name, address, contract FROM token_whitelist",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "name",
+          "type_info": "Varchar"
+        },
+        {
+          "ordinal": 1,
+          "name": "address",
+          "type_info": "Varchar"
+        },
+        {
+          "ordinal": 2,
+          "name": "contract",
+          "type_info": "Jsonb"
+        }
+      ],
+      "parameters": {
+        "Left": []
+      },
+      "nullable": [
+        false,
+        false,
+        false
+      ]
+    }
+  },
   "271f5fcb3fc356619aca727bb852514d54f152a79ebed65ab6571425a506ee9e": {
     "query": "INSERT INTO token_owners (address, owner_account_workchain_id, owner_account_hex, root_address, code_hash)\n            VALUES ($1, $2, $3, $4, $5)\n            ON CONFLICT DO NOTHING",
     "describe": {
@@ -4351,30 +4381,6 @@
         false,
         false,
         false,
-        false,
-        false
-      ]
-    }
-  },
-  "b4be96581ae89d07ac26b78babf24f461777797d21e574cfebd747761dd3b5d7": {
-    "query": "SELECT name, address FROM token_whitelist",
-    "describe": {
-      "columns": [
-        {
-          "ordinal": 0,
-          "name": "name",
-          "type_info": "Varchar"
-        },
-        {
-          "ordinal": 1,
-          "name": "address",
-          "type_info": "Varchar"
-        }
-      ],
-      "parameters": {
-        "Left": []
-      },
-      "nullable": [
         false,
         false
       ]

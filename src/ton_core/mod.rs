@@ -6,7 +6,7 @@ use nekoton::transport::models::*;
 use nekoton_abi::*;
 use parking_lot::Mutex;
 use serde::Deserialize;
-use tokio::sync::mpsc;
+use tokio::sync::{mpsc, oneshot};
 use ton_block::{GetRepresentationHash, MsgAddressInt, Serializable};
 use ton_types::UInt256;
 
@@ -35,31 +35,28 @@ impl TonCore {
         global_config: ton_indexer::GlobalConfig,
         sqlx_client: SqlxClient,
         owners_cache: OwnersCache,
+        ton_transaction_producer: CaughtTonTransactionTx,
+        token_transaction_producer: CaughtTokenTransactionTx,
     ) -> Result<Arc<Self>> {
         let context = TonCoreContext::new(config, global_config, sqlx_client, owners_cache).await?;
 
+        let ton_transaction =
+            TonTransaction::new(context.clone(), ton_transaction_producer).await?;
+
+        let token_transaction =
+            TokenTransaction::new(context.clone(), token_transaction_producer).await?;
+
         Ok(Arc::new(Self {
             context,
-            ton_transaction: Mutex::new(None),
-            token_transaction: Mutex::new(None),
+            ton_transaction: Mutex::new(Some(ton_transaction)),
+            token_transaction: Mutex::new(Some(token_transaction)),
         }))
     }
 
-    pub async fn start(
-        &self,
-        ton_transaction_producer: CaughtTonTransactionTx,
-        token_transaction_producer: CaughtTokenTransactionTx,
-    ) -> Result<()> {
+    pub async fn start(&self) -> Result<()> {
         // Sync node and subscribers
         self.context.start().await?;
-
-        let ton_transaction =
-            TonTransaction::new(self.context.clone(), ton_transaction_producer).await?;
-        *self.ton_transaction.lock() = Some(ton_transaction);
-
-        let token_transaction =
-            TokenTransaction::new(self.context.clone(), token_transaction_producer).await?;
-        *self.token_transaction.lock() = Some(token_transaction);
+        self.context.wait_sync().await?;
 
         // Done
         Ok(())
@@ -101,6 +98,16 @@ impl TonCore {
     pub fn get_current_utime(&self) -> u32 {
         self.context.ton_subscriber.get_current_utime()
     }
+
+    pub fn add_pending_message(
+        &self,
+        account: UInt256,
+        message_hash: UInt256,
+        expire_at: u32,
+    ) -> Result<oneshot::Receiver<MessageStatus>> {
+        self.context
+            .add_pending_message(account, message_hash, expire_at)
+    }
 }
 
 pub struct TonCoreContext {
@@ -141,7 +148,11 @@ impl TonCoreContext {
 
     async fn start(&self) -> Result<()> {
         self.ton_engine.start().await?;
-        self.ton_subscriber.start().await?;
+        Ok(())
+    }
+
+    async fn wait_sync(&self) -> Result<()> {
+        self.ton_subscriber.wait_sync().await;
         Ok(())
     }
 
@@ -182,22 +193,15 @@ impl TonCoreContext {
         Ok(status)
     }
 
-    /*async fn load_unprocessed_transactions(&self) -> Result<()> {
-        let transactions: Vec<TransactionDb> = self
-            .sqlx_client
-            .get_all_transactions_by_status(TonTransactionStatus::New)
-            .await?;
-
-        for transaction in transactions {
-            let account = UInt256::from_be_bytes(&hex::decode(transaction.account_hex)?);
-            let message_hash = UInt256::from_be_bytes(&hex::decode(transaction.message_hash)?);
-            let expire_at = transaction.created_at.timestamp() as u32 + DEFAULT_EXPIRATION_TIMEOUT;
-            self.messages_queue
-                .add_message(account, message_hash, expire_at)?;
-        }
-
-        Ok(())
-    }*/
+    fn add_pending_message(
+        &self,
+        account: UInt256,
+        message_hash: UInt256,
+        expire_at: u32,
+    ) -> Result<oneshot::Receiver<MessageStatus>> {
+        self.messages_queue
+            .add_message(account, message_hash, expire_at)
+    }
 }
 
 /// Generic listener for transactions
