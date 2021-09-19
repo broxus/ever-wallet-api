@@ -245,8 +245,8 @@ async fn sender_is_token_wallet(
         }
 
         let account = UInt256::from_be_bytes(&sender.address().get_bytestring(0));
-        let state = parse_ctx.ton_subscriber.get_contract_state(account).await?;
-        if let RawContractState::Exists(contract) = state {
+        let contract = parse_ctx.ton_subscriber.get_contract_state(account).await?;
+        if let Some(contract) = contract {
             let token_wallet = nekoton::core::token_wallet::TokenWalletContractState(&contract);
             if token_wallet.get_version().is_ok() {
                 return Ok(true);

@@ -56,7 +56,6 @@ impl TonCore {
     pub async fn start(&self) -> Result<()> {
         // Sync node and subscribers
         self.context.start().await?;
-        self.context.wait_sync().await?;
 
         // Done
         Ok(())
@@ -95,8 +94,8 @@ impl TonCore {
             .await
     }
 
-    pub fn get_current_utime(&self) -> u32 {
-        self.context.ton_subscriber.get_current_utime()
+    pub fn current_utime(&self) -> u32 {
+        self.context.ton_subscriber.current_utime()
     }
 
     pub fn add_pending_message(
@@ -148,20 +147,14 @@ impl TonCoreContext {
 
     async fn start(&self) -> Result<()> {
         self.ton_engine.start().await?;
-        Ok(())
-    }
-
-    async fn wait_sync(&self) -> Result<()> {
-        self.ton_subscriber.wait_sync().await;
+        self.ton_subscriber.start().await?;
         Ok(())
     }
 
     async fn get_contract_state(&self, account: UInt256) -> Result<ExistingContract> {
         match self.ton_subscriber.get_contract_state(account).await? {
-            RawContractState::Exists(contract) => Ok(contract),
-            RawContractState::NotExists => {
-                Err(TonCoreError::AccountNotExist(account.to_hex_string()).into())
-            }
+            Some(contract) => Ok(contract),
+            None => Err(TonCoreError::AccountNotExist(account.to_hex_string()).into()),
         }
     }
 
@@ -203,40 +196,6 @@ impl TonCoreContext {
             .add_message(account, message_hash, expire_at)
     }
 }
-
-/// Generic listener for transactions
-struct AccountObserver<T>(AccountEventsTx<T>);
-
-impl<T> AccountObserver<T> {
-    fn new(tx: AccountEventsTx<T>) -> Arc<Self> {
-        Arc::new(Self(tx))
-    }
-}
-
-impl<T> TransactionsSubscription for AccountObserver<T>
-where
-    T: ReadFromTransaction + std::fmt::Debug + Send + Sync,
-{
-    fn handle_transaction(&self, ctx: TxContext<'_>) -> Result<()> {
-        let event = T::read_from_transaction(&ctx);
-
-        log::info!(
-            "Got transaction on account {}: {:?}",
-            ctx.account.to_hex_string(),
-            event
-        );
-
-        // Send event to event manager if it exist
-        if let Some(event) = event {
-            self.0.send(event).ok();
-        }
-
-        // Done
-        Ok(())
-    }
-}
-
-pub type AccountEventsTx<T> = mpsc::UnboundedSender<T>;
 
 pub enum CaughtTonTransaction {
     Create(CreateReceiveTransaction),
