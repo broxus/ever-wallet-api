@@ -18,9 +18,6 @@ pub async fn get_node_config(config: &TonCoreConfig) -> Result<ton_indexer::Node
         None => anyhow::bail!("External ip not found"),
     };
 
-    // temp decision to recreate adnl keys
-    std::fs::remove_file(config.keys_path.clone())?;
-
     let adnl_keys = match read_keys_config(config.keys_path.clone()) {
         Ok(keys) => keys,
         Err(err) => {
