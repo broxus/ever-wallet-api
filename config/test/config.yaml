@@ -15,7 +15,7 @@ logger_settings:
       encoder:
         pattern: "{d(%Y-%m-%d %H:%M:%S %Z)(utc)} - {h({l})} {M} = {m} {n}"
   root:
-    level: error
+    level: info
     appenders:
       - stdout
   loggers:
