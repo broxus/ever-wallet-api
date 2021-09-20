@@ -1,6 +1,6 @@
 use std::collections::{hash_map, HashMap};
 use std::ops::Deref;
-use std::sync::atomic::{AtomicBool, AtomicU32, AtomicUsize, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicU32, Ordering};
 use std::sync::{Arc, Weak};
 
 use anyhow::{Context, Result};
@@ -8,7 +8,7 @@ use nekoton::transport::models::ExistingContract;
 use parking_lot::Mutex;
 use tiny_adnl::utils::FxHashMap;
 use tokio::sync::{watch, Notify};
-use ton_block::{BinTreeType, Deserializable, HashmapAugType};
+use ton_block::{Deserializable, HashmapAugType};
 use ton_indexer::utils::{BlockIdExtExtension, BlockProofStuff, BlockStuff, ShardStateStuff};
 use ton_indexer::EngineStatus;
 use ton_types::{HashmapType, UInt256};
@@ -41,98 +41,11 @@ impl TonSubscriber {
 
     pub async fn start(self: &Arc<Self>) -> Result<()> {
         self.wait_sync().await;
-
-        let now = chrono::Utc::now().timestamp() as u32;
-        log::info!("Waiting masterchain block for {}", now);
-        self.wait_shards(Some(now)).await?;
-        log::info!("Finished waiting masterchain block for {}", now);
-
         Ok(())
     }
 
     pub fn current_utime(&self) -> u32 {
         self.current_utime.load(Ordering::Acquire)
-    }
-
-    pub async fn wait_shards(&self, since: Option<u32>) -> Result<LatestShardBlocks> {
-        struct Handler {
-            since: Option<u32>,
-            tx: Option<oneshot::Sender<Result<LatestShardBlocks>>>,
-        }
-
-        impl BlockAwaiter for Handler {
-            fn handle_block(
-                &mut self,
-                block: &ton_block::Block,
-                block_info: &ton_block::BlockInfo,
-            ) -> Result<BlockAwaiterAction> {
-                if matches!(self.since, Some(since) if block_info.gen_utime().0 < since) {
-                    return Ok(BlockAwaiterAction::Retain);
-                }
-
-                if let Some(tx) = self.tx.take() {
-                    let _ = tx.send(extract_shards(block, block_info));
-                }
-                Ok(BlockAwaiterAction::Remove)
-            }
-        }
-
-        fn extract_shards(
-            block: &ton_block::Block,
-            block_info: &ton_block::BlockInfo,
-        ) -> Result<LatestShardBlocks> {
-            let current_utime = block_info.gen_utime().0;
-            let extra = block.extra.read_struct()?;
-            let custom = match extra.read_custom()? {
-                Some(custom) => custom,
-                None => {
-                    return Ok(LatestShardBlocks {
-                        current_utime,
-                        block_ids: Default::default(),
-                    })
-                }
-            };
-
-            let mut block_ids = HashMap::with_capacity(16);
-
-            custom.shards().iterate_with_keys(
-                |wc_id: i32, ton_block::InRefValue(shards_tree)| {
-                    if wc_id == ton_block::MASTERCHAIN_ID {
-                        return Ok(true);
-                    }
-
-                    shards_tree.iterate(|prefix, descr| {
-                        let shard_id = ton_block::ShardIdent::with_prefix_slice(wc_id, prefix)?;
-
-                        block_ids.insert(
-                            shard_id,
-                            ton_block::BlockIdExt::with_params(
-                                shard_id,
-                                descr.seq_no,
-                                descr.root_hash,
-                                descr.file_hash,
-                            ),
-                        );
-                        Ok(true)
-                    })
-                },
-            )?;
-
-            Ok(LatestShardBlocks {
-                current_utime,
-                block_ids,
-            })
-        }
-
-        let (tx, rx) = oneshot::channel();
-        self.mc_block_awaiters.lock().insert(
-            BLOCK_AWAITER_ID.fetch_add(1, Ordering::Relaxed),
-            Box::new(Handler {
-                since,
-                tx: Some(tx),
-            }),
-        );
-        rx.await?
     }
 
     pub fn add_transactions_subscription<I, T>(&self, accounts: I, subscription: &Arc<T>)
@@ -293,8 +206,6 @@ impl ton_indexer::Subscriber for TonSubscriber {
     }
 }
 
-static BLOCK_AWAITER_ID: AtomicUsize = AtomicUsize::new(0);
-
 struct StateSubscription {
     state_tx: ShardAccountTx,
     state_rx: ShardAccountRx,
@@ -433,7 +344,6 @@ trait BlockAwaiter: Send + Sync {
 #[derive(Debug, Copy, Clone, Eq, PartialEq)]
 enum BlockAwaiterAction {
     Retain,
-    Remove,
 }
 
 pub trait TransactionsSubscription: Send + Sync {
