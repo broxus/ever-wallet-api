@@ -15,7 +15,7 @@ logger_settings:
       encoder:
         pattern: "{d(%Y-%m-%d %H:%M:%S %Z)(utc)} - {h({l})} {M} = {m} {n}"
   root:
-    level: info
+    level: error
     appenders:
       - stdout
   loggers:
@@ -35,6 +35,11 @@ logger_settings:
         - stdout
       additive: false
     ton_indexer:
+      level: info
+      appenders:
+        - stdout
+      additive: false
+    tiny_adnl:
       level: error
       appenders:
         - stdout
