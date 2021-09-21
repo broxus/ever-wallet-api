@@ -19,11 +19,13 @@ pub struct CreatedAddress {
 impl CreateAddressInDb {
     pub fn new(
         c: CreatedAddress,
+        id: uuid::Uuid,
         service_id: ServiceId,
         public_key: String,
         private_key: String,
     ) -> Self {
         Self {
+            id,
             service_id,
             workchain_id: c.workchain_id,
             hex: c.hex,

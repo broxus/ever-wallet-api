@@ -1,14 +1,11 @@
+use std::convert::TryInto;
 use std::str::FromStr;
 use std::sync::Arc;
 
-use aes::Aes256;
 use async_trait::async_trait;
 use bigdecimal::{BigDecimal, ToPrimitive};
-use block_modes::block_padding::Pkcs7;
-use block_modes::{BlockMode, Ecb};
 use nekoton::crypto::SignedMessage;
 use nekoton_utils::{repack_address, unpack_std_smc_addr, TrustMe};
-use sha2::{Digest, Sha256};
 use ton_block::MsgAddressInt;
 use ton_types::UInt256;
 use uuid::Uuid;
@@ -18,8 +15,6 @@ use crate::models::*;
 use crate::prelude::*;
 use crate::sqlx_client::*;
 use crate::utils::*;
-
-type Aes128Ecb = Ecb<Aes256, Pkcs7>;
 
 #[async_trait]
 pub trait TonService: Send + Sync + 'static {
@@ -279,34 +274,6 @@ impl TonServiceImpl {
         }
     }
 
-    async fn encrypt_private_key(&self, private_key: &[u8]) -> String {
-        // create sha256 from secret
-        let mut hasher = Sha256::new();
-        hasher.update(&self.secret);
-        let secret_sha256 = hasher.finalize();
-
-        // encrypt address private key
-        let cipher = Aes128Ecb::new_from_slices(&secret_sha256, &secret_sha256).unwrap();
-        let mut buffer = [0u8; 64];
-        let pos = private_key.len();
-        buffer[..pos].copy_from_slice(private_key);
-        let ciphertext = cipher.encrypt(&mut buffer, pos).unwrap();
-        base64::encode(ciphertext)
-    }
-
-    async fn decrypt_private_key(&self, private_key: String) -> Vec<u8> {
-        // create sha256 from secret
-        let mut hasher = Sha256::new();
-        hasher.update(&self.secret);
-        let secret_sha256 = hasher.finalize();
-
-        // decrypt address private key
-        let private_key = base64::decode(private_key).unwrap_or_default();
-        let cipher = Aes128Ecb::new_from_slices(&secret_sha256, &secret_sha256).unwrap();
-        let mut buf = private_key.to_vec();
-        cipher.decrypt(&mut buf).unwrap().to_vec()
-    }
-
     async fn send_transaction(
         &self,
         message_hash: String,
@@ -418,14 +385,24 @@ impl TonService for TonServiceImpl {
         service_id: &ServiceId,
         input: CreateAddress,
     ) -> Result<AddressDb, ServiceError> {
+        let id = uuid::Uuid::new_v4();
         let payload = self.ton_api_client.create_address(input).await?;
 
         let public_key = hex::encode(&payload.public_key);
-        let private_key = self.encrypt_private_key(&payload.private_key).await;
+        let private_key = encrypt_private_key(
+            &payload.private_key,
+            self.secret
+                .as_bytes()
+                .try_into()
+                .map_err(|_| ServiceError::Other(TonServiceError::EncryptPrivateKeyError.into()))?,
+            &id,
+        )
+        .map_err(|_| ServiceError::Other(TonServiceError::EncryptPrivateKeyError.into()))?;
 
         self.sqlx_client
             .create_address(CreateAddressInDb::new(
                 payload,
+                id,
                 *service_id,
                 public_key,
                 private_key,
@@ -489,7 +466,15 @@ impl TonService for TonServiceImpl {
             .await?;
 
         let public_key = hex::decode(address.public_key.clone()).unwrap_or_default();
-        let private_key = self.decrypt_private_key(address.private_key.clone()).await;
+        let private_key = decrypt_private_key(
+            &address.private_key,
+            self.secret
+                .as_bytes()
+                .try_into()
+                .map_err(|_| ServiceError::Other(TonServiceError::DecryptPrivateKeyError.into()))?,
+            &address.id,
+        )
+        .map_err(|_| ServiceError::Other(TonServiceError::DecryptPrivateKeyError.into()))?;
 
         if network.account_status == AccountStatus::UnInit {
             self.deploy_wallet(service_id, &address, &public_key, &private_key)
@@ -796,7 +781,15 @@ impl TonService for TonServiceImpl {
         }
 
         let public_key = hex::decode(address.public_key.clone()).unwrap_or_default();
-        let private_key = self.decrypt_private_key(address.private_key.clone()).await;
+        let private_key = decrypt_private_key(
+            &address.private_key,
+            self.secret
+                .as_bytes()
+                .try_into()
+                .map_err(|_| ServiceError::Other(TonServiceError::DecryptPrivateKeyError.into()))?,
+            &address.id,
+        )
+        .map_err(|_| ServiceError::Other(TonServiceError::DecryptPrivateKeyError.into()))?;
 
         let (owner_network, current_state) =
             self.ton_api_client.get_address_info(owner.clone()).await?;
@@ -879,6 +872,10 @@ impl TonService for TonServiceImpl {
 
 #[derive(thiserror::Error, Debug)]
 enum TonServiceError {
-    #[error("Account not : {0}")]
+    #[error("Account not exist: {0}")]
     AccountNotExist(String),
+    #[error("Failed to encrypt private key")]
+    EncryptPrivateKeyError,
+    #[error("Failed to decrypt private key")]
+    DecryptPrivateKeyError,
 }

@@ -33,6 +33,7 @@ pub struct CreateAddress {
 
 #[derive(Clone, Debug, serde::Serialize, serde::Deserialize, Eq, PartialEq)]
 pub struct CreateAddressInDb {
+    pub id: uuid::Uuid,
     pub service_id: ServiceId,
     pub workchain_id: i32,
     pub hex: String,

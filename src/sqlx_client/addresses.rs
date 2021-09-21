@@ -9,11 +9,12 @@ impl SqlxClient {
     ) -> Result<AddressDb, ServiceError> {
         sqlx::query_as!(AddressDb,
                 r#"INSERT INTO address
-                (service_id, workchain_id, hex, base64url, public_key, private_key, account_type, custodians, confirmations, custodians_public_keys)
-                VALUES ($1, $2, $3, $4, $5, $6, $7::twa_account_type, $8, $9, $10)
+                (id, service_id, workchain_id, hex, base64url, public_key, private_key, account_type, custodians, confirmations, custodians_public_keys)
+                VALUES ($1, $2, $3, $4, $5, $6, $7, $8::twa_account_type, $9, $10, $11)
                 RETURNING
                 id, service_id as "service_id: _", workchain_id, hex, base64url, public_key, private_key, account_type as "account_type: _", custodians, confirmations, custodians_public_keys, balance, created_at, updated_at
 "#,
+                payload.id,
                 payload.service_id as ServiceId,
                 payload.workchain_id,
                 payload.hex,
