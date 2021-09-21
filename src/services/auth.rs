@@ -76,6 +76,26 @@ impl AuthService for AuthServiceImpl {
 
         let key = self.get_key(api_key).await?;
 
+        if let Some(whitelist) = key.whitelist {
+            let whitelist: Vec<String> = serde_json::from_value(whitelist)
+                .map_err(|_| ServiceError::Auth("Can not parse ips whitelist".to_string()))?;
+
+            if let Some(real_ip) = headers.get("x-real-ip") {
+                let ip = real_ip
+                    .to_str()
+                    .map_err(|_| ServiceError::Auth("Can not parse ip header".to_string()))?;
+
+                if !whitelist.contains(&ip.to_string()) {
+                    return Err(ServiceError::Auth(format!(
+                        "Ip {} is not in whitelist.",
+                        ip
+                    )));
+                }
+            } else {
+                return Err(ServiceError::Auth(format!("Can not parse request ip")));
+            }
+        }
+
         let timestamp_header = headers
             .get("timestamp")
             .ok_or_else(|| ServiceError::Auth("TIMESTAMP Header Not Found".to_string()))?;
