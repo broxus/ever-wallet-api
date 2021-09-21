@@ -27,19 +27,25 @@ pub async fn get_node_config(config: &TonCoreConfig) -> Result<ton_indexer::Node
         }
     };
 
-    Ok(ton_indexer::NodeConfig {
-        ip_address,
-        adnl_keys,
-        rocks_db_path: config.rocks_db_path.clone(),
-        file_db_path: config.file_db_path.clone(),
-        old_blocks_policy: Default::default(),
-        shard_state_cache_enabled: false,
-        max_db_memory_usage: ton_indexer::default_max_db_memory_usage(),
-        adnl_options: Default::default(),
-        rldp_options: Default::default(),
-        dht_options: Default::default(),
-        neighbours_options: Default::default(),
-        overlay_shard_options: Default::default(),
+    Ok(unsafe {
+        ton_indexer::NodeConfig {
+            ip_address,
+            adnl_keys,
+            rocks_db_path: config.rocks_db_path.clone(),
+            file_db_path: config.file_db_path.clone(),
+            old_blocks_policy: Default::default(),
+            shard_state_cache_enabled: false,
+            max_db_memory_usage: ton_indexer::default_max_db_memory_usage(),
+            parallel_downloads: core::num::NonZeroUsize::new_unchecked(16),
+            adnl_options: Default::default(),
+            rldp_options: Default::default(),
+            dht_options: tiny_adnl::DhtNodeOptions {
+                value_timeout_sec: 3600,
+                max_dht_tasks: 64,
+            },
+            neighbours_options: Default::default(),
+            overlay_shard_options: Default::default(),
+        }
     })
 }
 

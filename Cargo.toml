@@ -71,7 +71,7 @@ nekoton-utils = { git = "https://github.com/broxus/nekoton.git" }
 nekoton-contracts = { git = "https://github.com/broxus/nekoton.git" }
 
 # Indexer engine
-ton-indexer = { git = "https://github.com/broxus/ton-indexer.git" }
+ton-indexer = { git = "https://github.com/broxus/ton-indexer.git", rev = "0b277cf8942a6a7d743a2814dafe400e4fd9a8d5" }
 
 [dependencies.ton_api]
 git = "https://github.com/broxus/ton-labs-tl.git"
