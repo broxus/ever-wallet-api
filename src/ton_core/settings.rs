@@ -38,12 +38,23 @@ pub async fn get_node_config(config: &TonCoreConfig) -> Result<ton_indexer::Node
             max_db_memory_usage: ton_indexer::default_max_db_memory_usage(),
             parallel_downloads: core::num::NonZeroUsize::new_unchecked(16),
             adnl_options: Default::default(),
-            rldp_options: Default::default(),
+            rldp_options: tiny_adnl::RldpNodeOptions {
+                max_peer_queries: 32,
+            },
             dht_options: tiny_adnl::DhtNodeOptions {
                 value_timeout_sec: 3600,
-                max_dht_tasks: 64,
+                max_dht_tasks: 32,
             },
-            neighbours_options: Default::default(),
+            neighbours_options: tiny_adnl::NeighboursOptions {
+                max_neighbours: 32,
+                reloading_min_interval_sec: 10,
+                reloading_max_interval_sec: 30,
+                ping_interval_ms: 500,
+                search_interval_ms: 1000,
+                ping_min_timeout_ms: 10,
+                ping_max_timeout_ms: 1000,
+                max_ping_tasks: 6,
+            },
             overlay_shard_options: Default::default(),
         }
     })

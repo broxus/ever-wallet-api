@@ -92,7 +92,7 @@ impl AuthService for AuthServiceImpl {
                     )));
                 }
             } else {
-                return Err(ServiceError::Auth(format!("Can not parse request ip")));
+                return Err(ServiceError::Auth("Can not parse request ip".to_string()));
             }
         }
 
