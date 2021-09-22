@@ -233,7 +233,7 @@ impl TonClient for TonClientImpl {
         owner: MsgAddressInt,
     ) -> Result<(NetworkAddressData, Option<AccountStuff>)> {
         let account = UInt256::from_be_bytes(&owner.address().get_bytestring(0));
-        let contract = match self.ton_core.get_contract_state(account).await {
+        let contract = match self.ton_core.get_contract_state(&account) {
             Ok(contract) => contract,
             Err(_) => return Ok((NetworkAddressData::uninit(&owner), None)),
         };
@@ -345,7 +345,7 @@ impl TonClient for TonClientImpl {
                     current_state
                 } else {
                     let account = UInt256::from_be_bytes(&address.address().get_bytestring(0));
-                    self.ton_core.get_contract_state(account).await?.account
+                    self.ton_core.get_contract_state(&account)?.account
                 };
 
                 let gifts = transaction
@@ -380,7 +380,7 @@ impl TonClient for TonClientImpl {
                     current_state
                 } else {
                     let account = UInt256::from_be_bytes(&address.address().get_bytestring(0));
-                    self.ton_core.get_contract_state(account).await?.account
+                    self.ton_core.get_contract_state(&account)?.account
                 };
 
                 let recipient = transaction
@@ -471,7 +471,7 @@ impl TonClient for TonClientImpl {
 
         let token_address = get_token_wallet_address(root_contract, owner)?;
         let token_account = UInt256::from_be_bytes(&token_address.address().get_bytestring(0));
-        let token_contract = match self.ton_core.get_contract_state(token_account).await {
+        let token_contract = match self.ton_core.get_contract_state(&token_account) {
             Ok(contract) => contract,
             Err(_) => {
                 return Ok(NetworkTokenAddressData::uninit(
@@ -543,7 +543,7 @@ impl TonClient for TonClientImpl {
                     current_state
                 } else {
                     let account = UInt256::from_be_bytes(&owner.address().get_bytestring(0));
-                    self.ton_core.get_contract_state(account).await?.account
+                    self.ton_core.get_contract_state(&account)?.account
                 };
 
                 let gift = nekoton::core::ton_wallet::highload_wallet_v2::Gift {
@@ -567,7 +567,7 @@ impl TonClient for TonClientImpl {
                     current_state
                 } else {
                     let account = UInt256::from_be_bytes(&owner.address().get_bytestring(0));
-                    self.ton_core.get_contract_state(account).await?.account
+                    self.ton_core.get_contract_state(&account)?.account
                 };
 
                 nekoton::core::ton_wallet::wallet_v3::prepare_transfer(

@@ -20,6 +20,7 @@ pub struct TonSubscriber {
     ready_signal: Notify,
     current_utime: AtomicU32,
     state_subscriptions: Mutex<HashMap<UInt256, StateSubscription>>,
+    shard_accounts_cache: Mutex<HashMap<ton_block::ShardIdent, ton_block::ShardAccounts>>,
     mc_block_awaiters: Mutex<FxHashMap<usize, Box<dyn BlockAwaiter>>>,
     messages_queue: Arc<PendingMessagesQueue>,
 }
@@ -31,6 +32,7 @@ impl TonSubscriber {
             ready_signal: Notify::new(),
             current_utime: AtomicU32::new(0),
             state_subscriptions: Mutex::new(HashMap::new()),
+            shard_accounts_cache: Mutex::new(HashMap::new()),
             mc_block_awaiters: Mutex::new(FxHashMap::with_capacity_and_hasher(
                 4,
                 Default::default(),
@@ -74,7 +76,7 @@ impl TonSubscriber {
         }
     }
 
-    pub async fn get_contract_state(&self, account: UInt256) -> Result<Option<ExistingContract>> {
+    pub async fn wait_contract_state(&self, account: UInt256) -> Result<Option<ExistingContract>> {
         let mut state_rx = match self.state_subscriptions.lock().entry(account) {
             hash_map::Entry::Vacant(entry) => {
                 let (state_tx, state_rx) = watch::channel(None);
@@ -93,6 +95,24 @@ impl TonSubscriber {
         state_rx.changed().await?;
         let account = state_rx.borrow_and_update();
         ExistingContract::from_shard_account_opt(account.deref())
+    }
+
+    pub fn get_contract_state(&self, account: &UInt256) -> Result<Option<ExistingContract>> {
+        let state = None;
+
+        let shard_accounts_cache = self.shard_accounts_cache.lock();
+        for (shard_ident, shard_accounts) in shard_accounts_cache.iter() {
+            if contains_account(shard_ident, account) {
+                match shard_accounts.get(account) {
+                    Ok(account) => return ExistingContract::from_shard_account_opt(&account),
+                    Err(e) => {
+                        log::error!("Failed to get account {}: {:?}", account.to_hex_string(), e);
+                    }
+                };
+            }
+        }
+
+        Ok(state)
     }
 
     fn handle_masterchain_block(&self, block: &ton_block::Block) -> Result<()> {
@@ -124,6 +144,11 @@ impl TonSubscriber {
         let extra = block.extra.read_struct()?;
         let account_blocks = extra.read_account_blocks()?;
         let shard_accounts = shard_state.read_accounts()?;
+
+        let mut shard_accounts_cache = self.shard_accounts_cache.lock();
+        *shard_accounts_cache
+            .entry(*block_info.shard())
+            .or_insert_with(ton_block::ShardAccounts::new) = shard_accounts.clone();
 
         {
             let mut subscriptions = self.state_subscriptions.lock();
