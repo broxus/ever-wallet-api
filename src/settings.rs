@@ -1,9 +1,6 @@
-use std::borrow::Cow;
-use std::env;
-use std::fs::File;
 use std::path::Path;
 
-use anyhow::Result;
+use anyhow::{Context, Result};
 use serde::{Deserialize, Serialize};
 
 use crate::ton_core::*;
@@ -19,23 +16,15 @@ pub struct Config {
     pub logger_settings: serde_yaml::Value,
 }
 
-impl Config {
-    pub fn load_env(mut self) -> Self {
-        self.database_url = expand_env(&self.database_url).into_owned();
-        self.secret = expand_env(&self.secret).into_owned();
-        self
-    }
-}
-
 impl ConfigExt for Config {
     fn from_file<P>(path: &P) -> Result<Self>
     where
         P: AsRef<Path>,
     {
-        let file = File::open(path)?;
-        let reader = std::io::BufReader::new(file);
-        let config: Config = serde_yaml::from_reader(reader)?;
-        Ok(config)
+        let mut config = config::Config::new();
+        config.merge(read_config(path).context("Failed to read config")?)?;
+        config.merge(config::Environment::new())?;
+        Ok(config.try_into()?)
     }
 }
 
@@ -78,12 +67,21 @@ fn default_logger_settings() -> serde_yaml::Value {
     serde_yaml::from_str(DEFAULT_LOG4RS_SETTINGS).unwrap()
 }
 
-pub fn expand_env(raw_config: &str) -> Cow<str> {
+fn read_config<P>(path: P) -> Result<config::File<config::FileSourceString>>
+where
+    P: AsRef<std::path::Path>,
+{
+    let data = std::fs::read_to_string(path)?;
     let re = regex::Regex::new(r"\$\{([a-zA-Z_][0-9a-zA-Z_]*)\}").unwrap();
-    re.replace_all(raw_config, |caps: &regex::Captures| {
-        match env::var(&caps[1]) {
-            Ok(val) => val,
+    let result = re.replace_all(&data, |caps: &regex::Captures| {
+        match std::env::var(&caps[1]) {
+            Ok(value) => value,
             Err(_) => (&caps[0]).to_string(),
         }
-    })
+    });
+
+    Ok(config::File::from_str(
+        result.as_ref(),
+        config::FileFormat::Yaml,
+    ))
 }

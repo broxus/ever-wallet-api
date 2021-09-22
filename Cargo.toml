@@ -14,7 +14,7 @@ aes = "*"
 block-modes = "*"
 base64 = "*"
 chrono = { version = "*", features = ["serde"] }
-config = { version = "0.11.0", default-features = false }
+config = { version = "0.11", default-features = false, features = ["yaml"] }
 derive_more = "*"
 futures = { version = "0.3" }
 rand = "0.7"

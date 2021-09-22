@@ -410,6 +410,7 @@ dependencies = [
  "lazy_static",
  "nom 5.1.2",
  "serde",
+ "yaml-rust",
 ]
 
 [[package]]
