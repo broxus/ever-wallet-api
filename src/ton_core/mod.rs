@@ -1,17 +1,14 @@
-use std::path::PathBuf;
 use std::sync::Arc;
 
-use anyhow::Result;
+use anyhow::{Context, Result};
 use nekoton::transport::models::*;
 use nekoton_abi::*;
 use parking_lot::Mutex;
-use serde::Deserialize;
 use tokio::sync::{mpsc, oneshot};
 use ton_block::{GetRepresentationHash, MsgAddressInt, Serializable};
 use ton_types::UInt256;
 
 use self::monitoring::*;
-use self::settings::*;
 use self::ton_contracts::*;
 use self::ton_subscriber::*;
 use crate::models::*;
@@ -23,6 +20,8 @@ mod settings;
 mod ton_contracts;
 mod ton_subscriber;
 
+pub use self::settings::*;
+
 pub struct TonCore {
     context: Arc<TonCoreContext>,
     ton_transaction: Mutex<Option<Arc<TonTransaction>>>,
@@ -31,14 +30,15 @@ pub struct TonCore {
 
 impl TonCore {
     pub async fn new(
-        config: TonCoreConfig,
+        node_config: NodeConfig,
         global_config: ton_indexer::GlobalConfig,
         sqlx_client: SqlxClient,
         owners_cache: OwnersCache,
         ton_transaction_producer: CaughtTonTransactionTx,
         token_transaction_producer: CaughtTokenTransactionTx,
     ) -> Result<Arc<Self>> {
-        let context = TonCoreContext::new(config, global_config, sqlx_client, owners_cache).await?;
+        let context =
+            TonCoreContext::new(node_config, global_config, sqlx_client, owners_cache).await?;
 
         let ton_transaction =
             TonTransaction::new(context.clone(), ton_transaction_producer).await?;
@@ -119,12 +119,15 @@ pub struct TonCoreContext {
 
 impl TonCoreContext {
     async fn new(
-        config: TonCoreConfig,
+        node_config: NodeConfig,
         global_config: ton_indexer::GlobalConfig,
         sqlx_client: SqlxClient,
         owners_cache: OwnersCache,
     ) -> Result<Arc<Self>> {
-        let node_config = get_node_config(&config).await?;
+        let node_config = node_config
+            .build_indexer_config()
+            .await
+            .context("Failed to build node config")?;
 
         let messages_queue = PendingMessagesQueue::new(1000);
 
@@ -207,14 +210,6 @@ pub type CaughtTonTransactionRx = mpsc::UnboundedReceiver<CaughtTonTransaction>;
 
 pub type CaughtTokenTransactionTx = mpsc::UnboundedSender<CreateTokenTransaction>;
 pub type CaughtTokenTransactionRx = mpsc::UnboundedReceiver<CreateTokenTransaction>;
-
-#[derive(Deserialize, Clone, Debug)]
-pub struct TonCoreConfig {
-    pub port: u16,
-    pub rocks_db_path: PathBuf,
-    pub file_db_path: PathBuf,
-    pub keys_path: PathBuf,
-}
 
 #[derive(thiserror::Error, Debug)]
 enum TonCoreError {

@@ -43,8 +43,8 @@ pub fn handle_panic(panic_info: &PanicInfo<'_>) {
 pub async fn start_server() -> Result<(), Box<dyn std::error::Error + Send + Sync + 'static>> {
     let config = ApplicationConfig::from_env()?;
 
-    let global_config = ton_indexer::GlobalConfig::from_file(&config.global_config)?;
     let service_config = Config::from_file(&config.service_config)?.load_env();
+    let global_config = ton_indexer::GlobalConfig::from_file(&config.global_config)?;
 
     init_logger(&service_config.logger_settings)?;
 

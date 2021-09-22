@@ -4,18 +4,17 @@ use std::fs::File;
 use std::path::Path;
 
 use anyhow::Result;
-use regex::{Captures, Regex};
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 
 use crate::ton_core::*;
 
-#[derive(Deserialize, Clone, Debug)]
+#[derive(Serialize, Deserialize)]
 pub struct Config {
     pub server_addr: String,
     pub database_url: String,
     pub db_pool_size: u32,
     pub secret: String,
-    pub ton_core: TonCoreConfig,
+    pub ton_core: NodeConfig,
     #[serde(default = "default_logger_settings")]
     pub logger_settings: serde_yaml::Value,
 }
@@ -80,9 +79,11 @@ fn default_logger_settings() -> serde_yaml::Value {
 }
 
 pub fn expand_env(raw_config: &str) -> Cow<str> {
-    let re = Regex::new(r"\$\{([a-zA-Z_][0-9a-zA-Z_]*)\}").unwrap();
-    re.replace_all(raw_config, |caps: &Captures| match env::var(&caps[1]) {
-        Ok(val) => val,
-        Err(_) => (&caps[0]).to_string(),
+    let re = regex::Regex::new(r"\$\{([a-zA-Z_][0-9a-zA-Z_]*)\}").unwrap();
+    re.replace_all(raw_config, |caps: &regex::Captures| {
+        match env::var(&caps[1]) {
+            Ok(val) => val,
+            Err(_) => (&caps[0]).to_string(),
+        }
     })
 }

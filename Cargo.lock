@@ -84,17 +84,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "23b62fc65de8e4e7f52534fb52b0f3ed04746ae267519eef2a83941e8085068b"
 
 [[package]]
-name = "async-recursion"
-version = "0.3.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d7d78656ba01f1b93024b7c3a0467f1608e4be67d725749fdcd7d2c7678fd7a2"
-dependencies = [
- "proc-macro2 1.0.29",
- "quote 1.0.9",
- "syn 1.0.76",
-]
-
-[[package]]
 name = "async-trait"
 version = "0.1.51"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3364,10 +3353,9 @@ dependencies = [
 [[package]]
 name = "ton-indexer"
 version = "0.1.0"
-source = "git+https://github.com/broxus/ton-indexer.git?rev=0d8cdc7ef425f36a49122f900c1f159be131e33f#0d8cdc7ef425f36a49122f900c1f159be131e33f"
+source = "git+https://github.com/broxus/ton-indexer.git#80b37a3a086441439764a11f1fdb4d643bc0a28d"
 dependencies = [
  "anyhow",
- "async-recursion",
  "async-trait",
  "base64 0.13.0",
  "bincode",
@@ -3377,7 +3365,6 @@ dependencies = [
  "fdlimit",
  "futures",
  "hex",
- "itertools",
  "libc",
  "log",
  "nekoton-utils",
@@ -3403,7 +3390,7 @@ dependencies = [
 [[package]]
 name = "ton-indexer-alloc"
 version = "0.1.0"
-source = "git+https://github.com/broxus/ton-indexer.git?rev=0d8cdc7ef425f36a49122f900c1f159be131e33f#0d8cdc7ef425f36a49122f900c1f159be131e33f"
+source = "git+https://github.com/broxus/ton-indexer.git#80b37a3a086441439764a11f1fdb4d643bc0a28d"
 dependencies = [
  "errno",
  "log",

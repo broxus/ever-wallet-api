@@ -4,10 +4,9 @@ database_url: "postgresql://${DB_USER}:${DB_PASSWORD}@${DB_HOST}/${DB_NAME}"
 db_pool_size: 5
 secret: "${API_SECRET}"
 ton_core:
-  port: 30310
-  rocks_db_path: "/var/ton/ton-wallet-api/data/rocksdb"
-  file_db_path: "/var/ton/ton-wallet-api/data/file"
-  keys_path: "/var/ton/ton-wallet-api/data/keys"
+  adnl_port: 30310
+  db_path: "/var/ton/ton-wallet-api/data"
+  keys_path: "/var/ton/ton-wallet-api/data/adnl-keys.json"
 logger_settings:
   appenders:
     stdout:
