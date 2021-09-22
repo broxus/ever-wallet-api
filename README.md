@@ -46,10 +46,10 @@ ton_core:
   adnl_port: 30303
   # Root directory for relay DB. Default: "./db"
   db_path: "/var/ton-wallet-api/db"
-  # Path to temporary ADNL keys. 
+  # Path to ADNL keys.
   # NOTE: Will be generated if it was not there.
   # Default: "./adnl-keys.json"
-  keys_path: "/var/ton-wallet-api/db/adnl-keys.json"
+  keys_path: "/var/ton-wallet-api/adnl-keys.json"
 # log4rs settings.
 # See https://docs.rs/log4rs/1.0.0/log4rs/ for more details
 logger_settings:

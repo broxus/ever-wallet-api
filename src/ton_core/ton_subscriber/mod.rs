@@ -139,17 +139,25 @@ impl TonSubscriber {
 
                 let mut keep = true;
 
-                match shard_accounts.get(account) {
-                    Ok(account) => {
-                        if subscription.state_tx.send(account).is_err() {
-                            log::error!("Shard subscription somehow dropped");
-                            keep = false;
+                if subscription_status == StateSubscriptionStatus::Alive {
+                    match shard_accounts.get(account) {
+                        Ok(account) => {
+                            if subscription.state_tx.send(account).is_err() {
+                                log::error!("Shard subscription somehow dropped");
+                                keep = false;
+                            }
                         }
-                    }
-                    Err(e) => {
-                        log::error!("Failed to get account {}: {:?}", account.to_hex_string(), e);
-                    }
-                };
+                        Err(e) => {
+                            log::error!(
+                                "Failed to get account {}: {:?}",
+                                account.to_hex_string(),
+                                e
+                            );
+                        }
+                    };
+                } else {
+                    subscription.state_rx.borrow_and_update();
+                }
 
                 if let Err(e) = subscription.handle_block(
                     &self.messages_queue,
