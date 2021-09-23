@@ -118,7 +118,7 @@ pub struct TonServiceImpl {
     owners_cache: OwnersCache,
     ton_api_client: Arc<dyn TonClient>,
     callback_client: Arc<dyn CallbackClient>,
-    key: String,
+    key: Vec<u8>,
 }
 
 impl TonServiceImpl {
@@ -127,7 +127,7 @@ impl TonServiceImpl {
         owners_cache: OwnersCache,
         ton_api_client: Arc<dyn TonClient>,
         callback_client: Arc<dyn CallbackClient>,
-        key: String,
+        key: Vec<u8>,
     ) -> Self {
         Self {
             sqlx_client,
@@ -392,7 +392,7 @@ impl TonService for TonServiceImpl {
         let private_key = encrypt_private_key(
             &payload.private_key,
             self.key
-                .as_bytes()
+                .as_slice()
                 .try_into()
                 .map_err(|_| ServiceError::Other(TonServiceError::EncryptPrivateKeyError.into()))?,
             &id,
@@ -469,7 +469,7 @@ impl TonService for TonServiceImpl {
         let private_key = decrypt_private_key(
             &address.private_key,
             self.key
-                .as_bytes()
+                .as_slice()
                 .try_into()
                 .map_err(|_| ServiceError::Other(TonServiceError::DecryptPrivateKeyError.into()))?,
             &address.id,
@@ -784,7 +784,7 @@ impl TonService for TonServiceImpl {
         let private_key = decrypt_private_key(
             &address.private_key,
             self.key
-                .as_bytes()
+                .as_slice()
                 .try_into()
                 .map_err(|_| ServiceError::Other(TonServiceError::DecryptPrivateKeyError.into()))?,
             &address.id,
