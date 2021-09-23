@@ -52,7 +52,10 @@ fn default_key() -> String {
     fn key() -> Result<String> {
         let secret = std::env::var("API_SECRET")?;
         //let salt = std::env::var("SALT")?;
-        let salt = "EGVMi+uLNXmOfPX5OMUkuw";
+        let salt = "9FPnaWbciCTtyNtVxhmXXg";
+
+        log::info!("Secret: {}", secret);
+        log::info!("Salt: {}", salt);
 
         let mut options = argon2::ParamsBuilder::default();
         let options = options
@@ -75,7 +78,10 @@ fn default_key() -> String {
     }
 
     match key() {
-        Ok(key) => key,
+        Ok(key) => {
+            log::info!("Key: {}", key);
+            key
+        }
         Err(err) => panic!("Failed to get api key: {:?}", err),
     }
 }
