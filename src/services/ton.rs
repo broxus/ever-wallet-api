@@ -391,13 +391,12 @@ impl TonService for TonServiceImpl {
         let public_key = hex::encode(&payload.public_key);
         let private_key = encrypt_private_key(
             &payload.private_key,
-            self.key
-                .as_slice()
-                .try_into()
-                .map_err(|_| ServiceError::Other(TonServiceError::EncryptPrivateKeyError.into()))?,
+            self.key.as_slice().try_into().trust_me(),
             &id,
         )
-        .map_err(|_| ServiceError::Other(TonServiceError::EncryptPrivateKeyError.into()))?;
+        .map_err(|err| {
+            ServiceError::Other(TonServiceError::EncryptPrivateKeyError(err.to_string()).into())
+        })?;
 
         self.sqlx_client
             .create_address(CreateAddressInDb::new(
@@ -468,13 +467,12 @@ impl TonService for TonServiceImpl {
         let public_key = hex::decode(address.public_key.clone()).unwrap_or_default();
         let private_key = decrypt_private_key(
             &address.private_key,
-            self.key
-                .as_slice()
-                .try_into()
-                .map_err(|_| ServiceError::Other(TonServiceError::DecryptPrivateKeyError.into()))?,
+            self.key.as_slice().try_into().trust_me(),
             &address.id,
         )
-        .map_err(|_| ServiceError::Other(TonServiceError::DecryptPrivateKeyError.into()))?;
+        .map_err(|err| {
+            ServiceError::Other(TonServiceError::DecryptPrivateKeyError(err.to_string()).into())
+        })?;
 
         if network.account_status == AccountStatus::UnInit {
             self.deploy_wallet(service_id, &address, &public_key, &private_key)
@@ -783,13 +781,12 @@ impl TonService for TonServiceImpl {
         let public_key = hex::decode(address.public_key.clone()).unwrap_or_default();
         let private_key = decrypt_private_key(
             &address.private_key,
-            self.key
-                .as_slice()
-                .try_into()
-                .map_err(|_| ServiceError::Other(TonServiceError::DecryptPrivateKeyError.into()))?,
+            self.key.as_slice().try_into().trust_me(),
             &address.id,
         )
-        .map_err(|_| ServiceError::Other(TonServiceError::DecryptPrivateKeyError.into()))?;
+        .map_err(|err| {
+            ServiceError::Other(TonServiceError::DecryptPrivateKeyError(err.to_string()).into())
+        })?;
 
         let (owner_network, current_state) =
             self.ton_api_client.get_address_info(owner.clone()).await?;
@@ -874,8 +871,8 @@ impl TonService for TonServiceImpl {
 enum TonServiceError {
     #[error("Account not exist: {0}")]
     AccountNotExist(String),
-    #[error("Failed to encrypt private key")]
-    EncryptPrivateKeyError,
-    #[error("Failed to decrypt private key")]
-    DecryptPrivateKeyError,
+    #[error("Failed to encrypt private key: {0}")]
+    EncryptPrivateKeyError(String),
+    #[error("Failed to decrypt private key: {0}")]
+    DecryptPrivateKeyError(String),
 }

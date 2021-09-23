@@ -1,4 +1,5 @@
-use chacha20poly1305::aead::{AeadMut, Result};
+use anyhow::{Error, Result};
+use chacha20poly1305::aead::AeadMut;
 use chacha20poly1305::{ChaCha20Poly1305, Nonce};
 
 pub fn encrypt_private_key(private_key: &[u8], key: [u8; 32], id: &uuid::Uuid) -> Result<String> {
@@ -6,7 +7,7 @@ pub fn encrypt_private_key(private_key: &[u8], key: [u8; 32], id: &uuid::Uuid) -
     let nonce = Nonce::from_slice(&id.as_bytes()[0..12]);
     let key = chacha20poly1305::Key::from_slice(&key[..]);
     let mut encryptor = ChaCha20Poly1305::new(key);
-    let res = encryptor.encrypt(nonce, private_key)?;
+    let res = encryptor.encrypt(nonce, private_key).map_err(Error::msg)?;
     Ok(base64::encode(res))
 }
 
@@ -15,8 +16,8 @@ pub fn decrypt_private_key(private_key: &str, key: [u8; 32], id: &uuid::Uuid) ->
     let nonce = Nonce::from_slice(&id.as_bytes()[0..12]);
     let key = chacha20poly1305::Key::from_slice(&key[..]);
     let mut decrypter = ChaCha20Poly1305::new(key);
-    decrypter.decrypt(
-        nonce,
-        base64::decode(private_key).unwrap_or_default().as_slice(),
-    )
+    let decrypted = decrypter
+        .decrypt(nonce, base64::decode(private_key)?.as_slice())
+        .map_err(Error::msg)?;
+    Ok(base64::decode(String::from_utf8(decrypted)?)?)
 }

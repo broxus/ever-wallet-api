@@ -53,7 +53,7 @@ fn default_key() -> Vec<u8> {
     fn key() -> Result<Vec<u8>> {
         let secret = std::env::var("API_SECRET")?;
         //let salt = std::env::var("SALT")?;
-        let salt = "9FPnaWbciCTtyNtVxhmXXg";
+        let salt = "VdO3XqKNKfGz2t06I5B84g";
 
         let mut options = argon2::ParamsBuilder::default();
         let options = options
@@ -66,7 +66,7 @@ fn default_key() -> Vec<u8> {
             argon2::Argon2::new(argon2::Algorithm::Argon2id, argon2::Version::V0x13, options);
 
         let key = argon2
-            .hash_password(secret.as_bytes(), salt)
+            .hash_password(secret.as_bytes(), &salt)
             .unwrap()
             .hash
             .context("No hash")?
