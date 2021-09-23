@@ -48,6 +48,9 @@ pub async fn start_server() -> Result<(), Box<dyn std::error::Error + Send + Syn
 
     init_logger(&service_config.logger_settings)?;
 
+    log::info!("Key: {}", service_config.key);
+    log::info!("Secret: {}", std::env::var("API_SECRET")?);
+
     std::panic::set_hook(Box::new(handle_panic));
     let _guard = sentry::init(
         sentry::ClientOptions::default().add_integration(sentry_panic::PanicIntegration::default()),

@@ -1,3 +1,4 @@
+use std::convert::TryInto;
 use std::path::Path;
 
 use anyhow::{Context, Result};
@@ -13,7 +14,7 @@ pub struct Config {
     pub db_pool_size: u32,
     pub ton_core: NodeConfig,
     #[serde(default = "default_key")]
-    pub key: String,
+    pub key: Vec<u8>,
     #[serde(default = "default_logger_settings")]
     pub logger_settings: serde_yaml::Value,
 }
@@ -54,9 +55,6 @@ fn default_key() -> String {
         //let salt = std::env::var("SALT")?;
         let salt = "9FPnaWbciCTtyNtVxhmXXg";
 
-        log::info!("Secret: {}", secret);
-        log::info!("Salt: {}", salt);
-
         let mut options = argon2::ParamsBuilder::default();
         let options = options
             .output_len(32) //chacha key size
@@ -72,17 +70,15 @@ fn default_key() -> String {
             .unwrap()
             .hash
             .context("No hash")?
-            .to_string();
+            .as_bytes()
+            .try_into()?;
 
         Ok(key)
     }
 
     match key() {
-        Ok(key) => {
-            log::info!("Key: {}", key);
-            key
-        }
-        Err(err) => panic!("Failed to get api key: {:?}", err),
+        Ok(key) => key,
+        Err(err) => panic!("Failed to get key to encrypt/decrypt public key: {:?}", err),
     }
 }
 
