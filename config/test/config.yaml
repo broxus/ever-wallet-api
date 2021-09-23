@@ -2,7 +2,6 @@
 server_addr: "0.0.0.0:8080"
 database_url: "postgresql://${DB_USER}:${DB_PASSWORD}@${DB_HOST}/${DB_NAME}"
 db_pool_size: 5
-secret: "${API_SECRET}"
 ton_core:
   adnl_port: 30310
   db_path: "/var/ton/ton-wallet-api/data"
@@ -14,7 +13,7 @@ logger_settings:
       encoder:
         pattern: "{d(%Y-%m-%d %H:%M:%S %Z)(utc)} - {h({l})} {M} = {m} {n}"
   root:
-    level: info
+    level: error
     appenders:
       - stdout
   loggers:
