@@ -37,6 +37,9 @@ impl NodeConfig {
         };
         log::info!("Using public ip: {}", ip_address);
 
+        // temp decision to recreate adnl keys
+        std::fs::remove_file(self.keys_path.clone())?;
+
         let adnl_keys = match read_adnl_keys(self.keys_path.clone()) {
             Ok(keys) => keys,
             Err(err) => {
