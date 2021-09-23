@@ -89,7 +89,7 @@ pub async fn start_server() -> Result<(), Box<dyn std::error::Error + Send + Syn
         owners_cache.clone(),
         ton_api_client.clone(),
         callback_client.clone(),
-        service_config.secret.clone(),
+        service_config.key.clone(),
     ));
     ton_service.start().await?;
 

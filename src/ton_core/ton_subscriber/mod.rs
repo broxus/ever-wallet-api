@@ -76,6 +76,7 @@ impl TonSubscriber {
         }
     }
 
+    #[allow(dead_code)]
     pub async fn wait_contract_state(&self, account: UInt256) -> Result<Option<ExistingContract>> {
         let mut state_rx = match self.state_subscriptions.lock().entry(account) {
             hash_map::Entry::Vacant(entry) => {

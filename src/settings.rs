@@ -1,6 +1,7 @@
 use std::path::Path;
 
 use anyhow::{Context, Result};
+use argon2::password_hash::PasswordHasher;
 use serde::{Deserialize, Serialize};
 
 use crate::ton_core::*;
@@ -10,8 +11,9 @@ pub struct Config {
     pub server_addr: String,
     pub database_url: String,
     pub db_pool_size: u32,
-    pub secret: String,
     pub ton_core: NodeConfig,
+    #[serde(default = "default_key")]
+    pub key: String,
     #[serde(default = "default_logger_settings")]
     pub logger_settings: serde_yaml::Value,
 }
@@ -44,6 +46,38 @@ pub trait ConfigExt: Sized {
     fn from_file<P>(path: &P) -> Result<Self>
     where
         P: AsRef<Path>;
+}
+
+fn default_key() -> String {
+    fn key() -> Result<String> {
+        let secret = std::env::var("API_SECRET")?;
+        //let salt = std::env::var("SALT")?;
+        let salt = "EGVMi+uLNXmOfPX5OMUkuw";
+
+        let mut options = argon2::ParamsBuilder::default();
+        let options = options
+            .output_len(32) //chacha key size
+            .and_then(|x| x.clone().params())
+            .unwrap();
+
+        // Argon2 with default params (Argon2id v19)
+        let argon2 =
+            argon2::Argon2::new(argon2::Algorithm::Argon2id, argon2::Version::V0x13, options);
+
+        let key = argon2
+            .hash_password(secret.as_bytes(), salt)
+            .unwrap()
+            .hash
+            .context("No hash")?
+            .to_string();
+
+        Ok(key)
+    }
+
+    match key() {
+        Ok(key) => key,
+        Err(err) => panic!("Failed to get api key: {:?}", err),
+    }
 }
 
 fn default_logger_settings() -> serde_yaml::Value {
