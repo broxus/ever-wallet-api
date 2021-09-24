@@ -3393,7 +3393,7 @@ dependencies = [
 [[package]]
 name = "ton-indexer"
 version = "0.1.0"
-source = "git+https://github.com/broxus/ton-indexer.git#80b37a3a086441439764a11f1fdb4d643bc0a28d"
+source = "git+https://github.com/broxus/ton-indexer.git#d2c4bf18718e920356fb8d031ef0e4572639833f"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -3405,6 +3405,7 @@ dependencies = [
  "fdlimit",
  "futures",
  "hex",
+ "itertools",
  "libc",
  "log",
  "nekoton-utils",
@@ -3430,7 +3431,7 @@ dependencies = [
 [[package]]
 name = "ton-indexer-alloc"
 version = "0.1.0"
-source = "git+https://github.com/broxus/ton-indexer.git#80b37a3a086441439764a11f1fdb4d643bc0a28d"
+source = "git+https://github.com/broxus/ton-indexer.git#d2c4bf18718e920356fb8d031ef0e4572639833f"
 dependencies = [
  "errno",
  "log",
@@ -3446,7 +3447,7 @@ dependencies = [
  "anyhow",
  "argon2",
  "async-trait",
- "base64 0.13.0",
+ "base64 0.11.0",
  "bigdecimal",
  "block-modes",
  "chacha20poly1305",
@@ -3633,7 +3634,7 @@ dependencies = [
 [[package]]
 name = "ton_types"
 version = "1.10.2"
-source = "git+https://github.com/broxus/ton-labs-types#560f78494e1dd0ab4ba767cf4c5be551bedd44cb"
+source = "git+https://github.com/broxus/ton-labs-types#7f6c82071b3d7976b1fef628c4129fc3775ec765"
 dependencies = [
  "anyhow",
  "base64 0.13.0",
