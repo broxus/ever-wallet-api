@@ -12,15 +12,20 @@
 
 ### Native build
 
-A little bit more complex way, but gives some performance boost and reduces load.
-
 #### Requirements
 - Rust 1.54+
 - Clang 11
 
 #### How to run
 ```bash
+# Set 'salt' and 'secret' env vars
+export SALT=${SALT}
+export API_SECRET=${API_SECRET}
+
+# Download network global config
 wget https://raw.githubusercontent.com/tonlabs/main.ton.dev/master/configs/main.ton.dev/ton-global.config.json
+
+# Run
 SERVICE_CONFIG=config.yaml GLOBAL_CONFIG=ton-global.config.json RUSTFLAGS='-C target-cpu=native' \
   cargo run --release -- server
 ```
@@ -39,8 +44,6 @@ server_addr: "0.0.0.0:8080"
 database_url: "postgresql://${DB_USER}:${DB_PASSWORD}@${DB_HOST}/${DB_NAME}"
 # Database Connection Pools
 db_pool_size: 5
-# API secret
-secret: "${API_SECRET}"
 ton_core:
   # UDP port, used for ADNL node. Default: 30303
   adnl_port: 30303
