@@ -5,5 +5,7 @@ secret.toml
 
 .env
 
+.DS_Store
+
 /packer/gcp/.gcp_account.json
 /packer/gcp/variables.json
