@@ -16,8 +16,7 @@ pub fn decrypt_private_key(private_key: &str, key: [u8; 32], id: &uuid::Uuid) ->
     let nonce = Nonce::from_slice(&id.as_bytes()[0..12]);
     let key = chacha20poly1305::Key::from_slice(&key[..]);
     let mut decrypter = ChaCha20Poly1305::new(key);
-    let decrypted = decrypter
+    decrypter
         .decrypt(nonce, base64::decode(private_key)?.as_slice())
-        .map_err(Error::msg)?;
-    Ok(base64::decode(&String::from_utf8(decrypted)?)?)
+        .map_err(Error::msg)
 }
