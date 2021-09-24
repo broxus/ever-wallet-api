@@ -9,9 +9,9 @@ cloudbuild:rust-artifact:
   variables:
     CONFIG_BUILDER: gcr.io/dexpa-175115/rust/rust-builder:stable
     BINARY_NAME: ton-wallet-api
-    CONFIG_APPLICATION: $CI_PROJECT_NAME
-    CONFIG_GROUP: $CI_PROJECT_NAMESPACE
-    IMAGE_NAME: gcr.io/dexpa-175115/$CI_PROJECT_NAMESPACE/$CI_PROJECT_NAME
+    CONFIG_APPLICATION: ton-wallet-api
+    CONFIG_GROUP: ton
+    IMAGE_NAME: gcr.io/broxus/ton/ton-wallet-api/ton-wallet-api
     BUILD: test
   before_script:
     - export COMMIT_TIME=$(git show -s --format=%ct $CI_COMMIT_SHA)
