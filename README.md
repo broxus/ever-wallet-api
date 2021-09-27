@@ -48,11 +48,11 @@ When node syncs and server starts you will see next messages:
 
 
 ### Swagger
-When server starts locally the swagger schema can be accessible by http://localhost:8080/ton/v4/swagger.yaml (see [config.yaml](README.md/#Example config))
+When server starts locally the swagger schema can be accessible by http://localhost:8080/ton/v4/swagger.yaml.
 
 
 ### HMAC Authentication
-[pre-request-script.js](pre-request-script.js) is javascript for use with Postman's pre-request script feature. It generates HTTP request headers for HMAC authentication.
+[pre-request-script.js](pre-request-script.js) is javascript for using with Postman's pre-request script feature. It generates HTTP request headers for HMAC authentication.
 Copy the contents of [pre-request-script.js](pre-request-script.js) into the "Pre-request Script" tab in Postman to send request.
 
 
