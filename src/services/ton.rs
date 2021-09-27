@@ -542,7 +542,7 @@ impl TonService for TonServiceImpl {
             .get_address_by_workchain_hex(account_workchain_id, account_hex.clone())
             .await?;
 
-        if self
+        let (transaction, event) = if self
             .sqlx_client
             .get_sent_transaction_by_mh_account(
                 address.service_id,
@@ -566,7 +566,7 @@ impl TonService for TonServiceImpl {
                     input,
                 )
                 .await?
-        }
+        };
 
         self.notify(&address.service_id, event.into()).await;
 
