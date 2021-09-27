@@ -146,10 +146,29 @@ impl TonSubscriber {
         let account_blocks = extra.read_account_blocks()?;
         let shard_accounts = shard_state.read_accounts()?;
 
-        let mut shard_accounts_cache = self.shard_accounts_cache.lock();
-        *shard_accounts_cache
-            .entry(*block_info.shard())
-            .or_insert_with(ton_block::ShardAccounts::new) = shard_accounts.clone();
+        {
+            let mut shard_accounts_cache = self.shard_accounts_cache.lock();
+            shard_accounts_cache.insert(*block_info.shard(), shard_accounts.clone());
+            if block_info.after_merge() || block_info.after_split() {
+                let block_ids = block_info.read_prev_ids()?;
+                match block_ids.len() {
+                    1 => {
+                        let (left, right) = block_ids[0].shard_id.split()?;
+                        if shard_accounts_cache.contains_key(&left)
+                            && shard_accounts_cache.contains_key(&right)
+                        {
+                            shard_accounts_cache.remove(&block_ids[0].shard_id);
+                        }
+                    }
+                    len if len > 1 => {
+                        for block_id in block_info.read_prev_ids()? {
+                            shard_accounts_cache.remove(&block_id.shard_id);
+                        }
+                    }
+                    _ => {}
+                }
+            }
+        }
 
         {
             let mut subscriptions = self.state_subscriptions.lock();
