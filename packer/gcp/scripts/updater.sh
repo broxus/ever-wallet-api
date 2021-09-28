@@ -14,6 +14,9 @@ NEW_VERSION=`gsutil ls $UPSTREAM | sort | tail -n 1 | cut -d '/' -f 7`
 
 echo "INFO: check new version, current version is $CURRENT_VERSION"
 
+RUN_SCRIPT=`cat run.sh`
+echo "$RUN_SCRIPT"
+
 if [ "$CURRENT_VERSION" != "$NEW_VERSION" ]; then
 
   echo "INFO: new version is available, $NEW_VERSION, start downloading..."
