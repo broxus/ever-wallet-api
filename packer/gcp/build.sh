@@ -41,8 +41,6 @@ Type=simple
 Restart=always
 RestartSec=60
 WorkingDirectory=/opt/ton/ton-wallet-api
-Environment="GLOBAL_CONFIG=/opt/ton/ton-wallet-api/app/config/ton-global.config.json"
-Environment="SERVICE_CONFIG=/opt/ton/ton-wallet-api/app/config/config.yaml"
 ExecStart=bash ./run.sh
 
 [Install]

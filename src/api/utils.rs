@@ -1,6 +1,6 @@
 use http::status::StatusCode;
 use http::{HeaderValue, Response};
-use serde::{Deserialize, Serialize};
+use serde::Deserialize;
 
 #[derive(Debug)]
 pub struct BadRequestError(pub String);
@@ -33,6 +33,7 @@ pub fn bad_request(err: String) -> http::Response<hyper::Body> {
     Response::from_parts(parts, body.into())
 }
 
+#[allow(dead_code)]
 pub fn not_found_request() -> http::Response<hyper::Body> {
     let body = serde_json::json!({
     "description": "Not found",

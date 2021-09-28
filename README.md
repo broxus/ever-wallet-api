@@ -34,8 +34,9 @@ export API_SECRET=${API_SECRET}
 wget https://raw.githubusercontent.com/tonlabs/main.ton.dev/master/configs/main.ton.dev/ton-global.config.json
 
 # Run
-SERVICE_CONFIG=config.yaml GLOBAL_CONFIG=ton-global.config.json RUSTFLAGS='-C target-cpu=native' \
-  cargo run --release -- server
+RUSTFLAGS='-C target-cpu=native' cargo run \
+  --release -- \
+  --config config.yaml server --global-config ton-global.config.json
 ```
 
 When node syncs and server starts you will see next messages:

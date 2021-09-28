@@ -472,7 +472,7 @@ impl From<Result<PostAddressValidResponse, ServiceError>> for PostCheckedAddress
                 status: TonStatus::Ok,
                 data: Some(data),
             },
-            Err(e) => Self {
+            Err(_) => Self {
                 status: TonStatus::Error,
                 data: None,
             },
@@ -495,7 +495,7 @@ impl From<Result<PostAddressBalanceDataResponse, ServiceError>> for AddressBalan
                 status: TonStatus::Ok,
                 data: Some(data),
             },
-            Err(e) => Self {
+            Err(_) => Self {
                 status: TonStatus::Error,
                 data: None,
             },

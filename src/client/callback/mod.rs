@@ -30,6 +30,12 @@ impl CallbackClientImpl {
     }
 }
 
+impl Default for CallbackClientImpl {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 #[async_trait]
 impl CallbackClient for CallbackClientImpl {
     async fn send(

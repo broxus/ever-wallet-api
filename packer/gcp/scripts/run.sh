@@ -15,4 +15,4 @@ cd ..
 
 echo "INFO: start ton-wallet-api server..."
 
-app/ton-wallet-api server
+app/ton-wallet-api --config app/config/config.yaml server --global-config app/config/ton-global.config.json

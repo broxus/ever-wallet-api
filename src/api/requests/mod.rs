@@ -1,5 +1,3 @@
-use std::str::FromStr;
-
 use bigdecimal::{BigDecimal, FromPrimitive};
 use nekoton_utils::TrustMe;
 use serde::{Deserialize, Serialize};

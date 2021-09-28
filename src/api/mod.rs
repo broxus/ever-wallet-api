@@ -4,19 +4,15 @@ pub mod requests;
 pub mod responses;
 mod utils;
 
-use std::collections::HashMap;
 use std::net::SocketAddr;
 use std::sync::Arc;
 
-use tokio::sync::{Mutex, RwLock};
 use warp::Filter;
 
 use self::controllers::*;
-use super::settings::Config;
 use crate::api::utils::{bad_request, BadRequestError};
 use crate::prelude::ServiceError;
 use crate::services::{AuthService, TonService};
-use crate::sqlx_client::SqlxClient;
 
 pub async fn http_service(
     server_http_addr: SocketAddr,
@@ -51,16 +47,13 @@ async fn customize_error(err: warp::Rejection) -> Result<impl warp::Reply, warp:
 }
 
 mod filters {
-    use std::collections::HashMap;
     use std::pin::Pin;
     use std::sync::Arc;
 
-    use futures::{Future, TryFutureExt};
+    use futures::Future;
     use http::{HeaderMap, HeaderValue};
-    use serde::{Deserialize, Serialize};
-    use snafu::*;
     use warp::filters::BoxedFilter;
-    use warp::{Filter, Rejection, Reply};
+    use warp::{Filter, Rejection};
 
     use hyper::body::Bytes;
 
@@ -325,6 +318,7 @@ mod filters {
         })
     }
 
+    #[allow(dead_code)]
     fn query<T>() -> impl Filter<Extract = (T,), Error = warp::Rejection> + Clone
     where
         T: for<'de> serde::Deserialize<'de> + Send + 'static,
@@ -332,6 +326,7 @@ mod filters {
         warp::query()
     }
 
+    #[allow(dead_code)]
     fn optional_query<T>() -> impl Filter<Extract = (T,), Error = std::convert::Infallible> + Clone
     where
         T: for<'de> serde::Deserialize<'de> + Default + Send + 'static,
@@ -341,6 +336,7 @@ mod filters {
             .unify()
     }
 
+    #[allow(dead_code)]
     fn optional_param<T>(
     ) -> impl Filter<Extract = (Option<T>,), Error = std::convert::Infallible> + Clone
     where
@@ -355,6 +351,7 @@ mod filters {
             .unify()
     }
 
+    #[allow(dead_code)]
     pub fn default_value<T: Default + Send + 'static>(
     ) -> impl Filter<Extract = (T,), Error = std::convert::Infallible> + Copy {
         warp::any().map(Default::default)
