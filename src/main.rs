@@ -4,6 +4,7 @@ use futures::prelude::*;
 
 use ton_wallet_api::server::*;
 use ton_wallet_api::settings::*;
+use ton_wallet_api::token::*;
 
 #[global_allocator]
 static GLOBAL: ton_indexer::alloc::Allocator = ton_indexer::alloc::allocator();
@@ -20,6 +21,7 @@ async fn run(app: App) -> Result<()> {
 
     match app.command {
         Subcommand::Server(run) => run.execute(config.try_into()?).await,
+        Subcommand::Token(run) => run.execute(config.try_into()?).await,
     }
 }
 
@@ -38,6 +40,7 @@ struct App {
 #[argh(subcommand)]
 enum Subcommand {
     Server(CmdServer),
+    Token(CmdToken),
 }
 
 #[derive(Debug, PartialEq, FromArgs)]
@@ -59,6 +62,32 @@ impl CmdServer {
         server_run(config, global_config).await?;
 
         future::pending().await
+    }
+}
+
+#[derive(Debug, PartialEq, FromArgs)]
+/// Add root token address
+#[argh(subcommand, name = "token")]
+struct CmdToken {
+    /// path to global config file
+    #[argh(option, short = 'g')]
+    global_config: String,
+    /// root token name
+    #[argh(option, short = 'n')]
+    name: String,
+    /// root token address
+    #[argh(option, short = 'a')]
+    address: String,
+}
+
+impl CmdToken {
+    async fn execute(self, config: AppConfig) -> Result<()> {
+        let global_config = ton_indexer::GlobalConfig::from_file(&self.global_config)
+            .context("Failed to open global config")?;
+
+        init_logger(&config.logger_settings).context("Failed to init logger")?;
+
+        add_root_token(config, global_config, self.name, self.address).await
     }
 }
 

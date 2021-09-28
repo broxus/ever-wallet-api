@@ -47,6 +47,15 @@ When node syncs and server starts you will see next messages:
 2021-09-23 16:19:19 UTC - INFO warp::server = listening on http://127.0.0.1:8080
 ```
 
+#### Add root token to whitelist
+```bash
+# WTON as example
+RUSTFLAGS='-C target-cpu=native' cargo run \
+  --release -- \
+  --config config.yaml token --global-config ton-global.config.json \
+  --name WTON --address 0:0ee39330eddb680ce731cd6a443c71d9069db06d149a9bec9569d1eb8d04eb37
+```
+
 
 ### Swagger
 When server starts locally the swagger schema can be accessible by http://localhost:8080/ton/v4/swagger.yaml.
