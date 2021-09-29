@@ -107,22 +107,12 @@ logger_settings:
       appenders:
         - stdout
       additive: false
-    ton_wallet_api_lib:
-      level: info
-      appenders:
-        - stdout
-      additive: false
     warp:
-      level: debug
+      level: info
       appenders:
         - stdout
       additive: false
     ton_indexer:
-      level: info
-      appenders:
-        - stdout
-      additive: false
-    tiny_adnl:
       level: error
       appenders:
         - stdout
