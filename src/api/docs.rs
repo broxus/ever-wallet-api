@@ -3,6 +3,7 @@
 use opg::*;
 
 use crate::api::*;
+use crate::models::*;
 
 pub fn swagger() -> String {
     let api = describe_api! {
@@ -28,6 +29,7 @@ pub fn swagger() -> String {
                     tags: { addresses },
                     summary: "Address creation",
                     description: "Create user address.",
+                    parameters: { (header "api-key") },
                     body: requests::CreateAddressRequest,
                     200: responses::AccountAddressResponse,
                 }
@@ -37,6 +39,7 @@ pub fn swagger() -> String {
                     tags: { addresses },
                     summary: "Check address",
                     description: "Check correction of TON address.",
+                    parameters: { (header "api-key") },
                     body: requests::PostAddressBalanceRequest,
                     200: responses::PostCheckedAddressResponse,
                 }
@@ -46,6 +49,7 @@ pub fn swagger() -> String {
                     tags: { addresses },
                     summary: "Address balance",
                     description: "Get address balance.",
+                    parameters: { (header "api-key") },
                     200: responses::AddressBalanceResponse,
                 }
             },
@@ -54,8 +58,26 @@ pub fn swagger() -> String {
                     tags: { transactions },
                     summary: "Create transaction",
                     description: "Send transaction.",
+                    parameters: { (header "api-key") },
                     body: requests::PostTonTransactionSendRequest,
                     200: responses::AccountTransactionResponse,
+                    callbacks: {
+                        transactionSent: {
+                            ("callbackUrl"): {
+                                POST: {
+                                    description: "Event transaction sent. If address are not \
+                                    deployed the event will be sent a twice since in this case \
+                                    will be created two transactions.",
+                                    parameters: {
+                                        (header "timestamp"),
+                                        (header "sign")
+                                    },
+                                    body: AccountTransactionEvent,
+                                    200: None,
+                                }
+                            }
+                        }
+                    }
                 }
             },
             ("transactions" / "mh" / String): {
@@ -63,6 +85,7 @@ pub fn swagger() -> String {
                     tags: { transactions },
                     summary: "Get transaction",
                     description: "Get transaction by message hash.",
+                    parameters: { (header "api-key") },
                     200: responses::AccountTransactionResponse,
                 }
             },
@@ -71,6 +94,7 @@ pub fn swagger() -> String {
                     tags: { transactions },
                     summary: "Get transaction",
                     description: "Get transaction by transaction hash.",
+                    parameters: { (header "api-key") },
                     200: responses::AccountTransactionResponse,
                 }
             },
@@ -79,6 +103,7 @@ pub fn swagger() -> String {
                     tags: { transactions },
                     summary: "Get transaction",
                     description: "Get transaction by id.",
+                    parameters: { (header "api-key") },
                     200: responses::AccountTransactionResponse,
                 }
             },
@@ -87,6 +112,7 @@ pub fn swagger() -> String {
                     tags: { events },
                     summary: "Get events",
                     description: "Get events.",
+                    parameters: { (header "api-key") },
                     body: requests::PostTonTransactionEventsRequest,
                     200: responses::TonEventsResponse,
                 }
@@ -96,6 +122,7 @@ pub fn swagger() -> String {
                     tags: { events },
                     summary: "Mark event",
                     description: "Mark event by id.",
+                    parameters: { (header "api-key") },
                     body: requests::PostTonMarkEventsRequest,
                     200: responses::MarkEventsResponse,
                 }
@@ -105,6 +132,7 @@ pub fn swagger() -> String {
                     tags: { events },
                     summary: "Mark events",
                     description: "Mark events by status optional.",
+                    parameters: { (header "api-key") },
                     body: requests::MarkAllTransactionEventRequest,
                     200: responses::MarkEventsResponse,
                 }
@@ -122,8 +150,26 @@ pub fn swagger() -> String {
                     tags: { transactions, tokens },
                     summary: "Create token transaction",
                     description: "Send token transaction.",
+                    parameters: { (header "api-key") },
                     body: requests::PostTonTokenTransactionSendRequest,
                     200: responses::AccountTokenTransactionResponse,
+                    callbacks: {
+                        tokenTransactionSent: {
+                            ("callbackUrl"): {
+                                POST: {
+                                    description: "Event token transaction sent. If address are not \
+                                    deployed the event will be sent a twice since in this case \
+                                    will be created two transactions.",
+                                    parameters: {
+                                        (header "timestamp"),
+                                        (header "sign")
+                                    },
+                                    body: AccountTransactionEvent,
+                                    200: None,
+                                }
+                            }
+                        }
+                    }
                 }
             },
             ("tokens" / "transactions" / "mh" / String): {
@@ -131,6 +177,7 @@ pub fn swagger() -> String {
                     tags: { transactions, tokens  },
                     summary: "Get tokens transaction",
                     description: "Get tokens transaction by message hash.",
+                    parameters: { (header "api-key") },
                     200: responses::AccountTokenTransactionResponse,
                 }
             },
@@ -139,6 +186,7 @@ pub fn swagger() -> String {
                     tags: { transactions, tokens },
                     summary: "Get tokens transaction",
                     description: "Get tokens transaction by id.",
+                    parameters: { (header "api-key") },
                     200: responses::AccountTokenTransactionResponse,
                 }
             },
@@ -147,6 +195,7 @@ pub fn swagger() -> String {
                     tags: { events, tokens },
                     summary: "Get token events",
                     description: "Get token events.",
+                    parameters: { (header "api-key") },
                     body: requests::PostTonTokenTransactionEventsRequest,
                     200: responses::TonTokenEventsResponse,
                 }
@@ -156,6 +205,7 @@ pub fn swagger() -> String {
                     tags: { events, tokens },
                     summary: "Mark tokens event",
                     description: "Mark tokens event by id.",
+                    parameters: { (header "api-key") },
                     body: requests::PostTonTokenMarkEventsRequest,
                     200: responses::MarkTokenEventsResponse,
                 }
@@ -165,6 +215,7 @@ pub fn swagger() -> String {
                     tags: { metrics  },
                     summary: "Get metrics",
                     description: "Get metrics of api health.",
+                    parameters: { (header "api-key") },
                     200: responses::MetricsResponse,
                 }
             },
