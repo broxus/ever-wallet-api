@@ -1751,7 +1751,7 @@ dependencies = [
 [[package]]
 name = "nekoton-utils"
 version = "0.7.0"
-source = "git+https://github.com/broxus/nekoton.git#eb678cfc0b8f09ac179b555303838a57ec318590"
+source = "git+https://github.com/broxus/nekoton.git#a1eca3572de1286e0deceaaf7fc1dee6e8d0680a"
 dependencies = [
  "anyhow",
  "base64",
@@ -3313,7 +3313,7 @@ dependencies = [
 [[package]]
 name = "ton-indexer"
 version = "0.1.0"
-source = "git+https://github.com/broxus/ton-indexer.git#174be22962d0bba6b1368ef16c279fab7ca66f5b"
+source = "git+https://github.com/broxus/ton-indexer.git#192a03376dc4553c28366de74080178ede1592fc"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -3332,6 +3332,7 @@ dependencies = [
  "num-traits",
  "num_cpus",
  "parking_lot",
+ "pin-project-lite",
  "rand 0.8.4",
  "rlimit",
  "rocksdb",
@@ -3351,7 +3352,7 @@ dependencies = [
 [[package]]
 name = "ton-indexer-alloc"
 version = "0.1.0"
-source = "git+https://github.com/broxus/ton-indexer.git#174be22962d0bba6b1368ef16c279fab7ca66f5b"
+source = "git+https://github.com/broxus/ton-indexer.git#192a03376dc4553c28366de74080178ede1592fc"
 dependencies = [
  "errno",
  "log",
