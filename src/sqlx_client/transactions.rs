@@ -9,6 +9,7 @@ use nekoton_utils::repack_address;
 use sqlx::postgres::PgArguments;
 use sqlx::Arguments;
 use sqlx::Row;
+use chrono::NaiveDateTime;
 
 impl SqlxClient {
     pub async fn create_send_transaction(
@@ -600,13 +601,13 @@ pub fn filter_transaction_query(
     if let Some(created_at_min) = created_at_min {
         updates.push(format!(" AND created_at >= ${} ", *args_len + 1,));
         *args_len += 1;
-        args.add(created_at_min)
+        args.add(NaiveDateTime::from_timestamp(created_at_min, 0))
     }
 
     if let Some(created_at_max) = created_at_max {
         updates.push(format!(" AND created_at <= ${} ", *args_len + 1,));
         *args_len += 1;
-        args.add(created_at_max)
+        args.add(NaiveDateTime::from_timestamp(created_at_max, 0))
     }
 
     updates
