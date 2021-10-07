@@ -4,6 +4,12 @@ use crate::models::*;
 use crate::prelude::*;
 use crate::sqlx_client::*;
 
+use itertools::Itertools;
+use nekoton_utils::repack_address;
+use sqlx::postgres::PgArguments;
+use sqlx::Arguments;
+use sqlx::Row;
+
 impl SqlxClient {
     pub async fn create_send_transaction(
         &self,
@@ -452,6 +458,158 @@ impl SqlxClient {
             .await
             .map_err(From::from)
     }
+
+    pub async fn get_all_transactions(
+        &self,
+        service_id: ServiceId,
+        input: &TransactionsSearch,
+    ) -> Result<Vec<TransactionDb>, ServiceError> {
+        let mut args = PgArguments::default();
+        args.add(service_id.inner());
+        let mut args_len = 1;
+
+        let order_by = match input.ordering {
+            None => "",
+            Some(ref o) => match o {
+                TransactionsSearchOrdering::CreatedAtAsc => "ORDER BY created_at asc",
+                TransactionsSearchOrdering::CreatedAtDesc => "ORDER BY created_at desc",
+                TransactionsSearchOrdering::TransactionLtAsc => "ORDER BY transaction_lt asc",
+                TransactionsSearchOrdering::TransactionLtDesc => "ORDER BY transaction_lt desc",
+                TransactionsSearchOrdering::TransactionTimestampAsc => {
+                    "ORDER BY transaction_timestamp asc"
+                }
+                TransactionsSearchOrdering::TransactionTimestampDesc => {
+                    "ORDER BY transaction_timestamp desc"
+                }
+            },
+        };
+
+        let updates = filter_transaction_query(&mut args, &mut args_len, input);
+
+        let query: String = format!(
+            r#"SELECTid, service_id as "service_id: _", message_hash, transaction_hash, transaction_lt, transaction_timeout,
+                transaction_scan_lt, sender_workchain_id, sender_hex, account_workchain_id, account_hex, messages, messages_hash, data,
+                original_value, original_outputs, value, fee, balance_change, direction as "direction: _", status as "status: _",
+                error, aborted, bounce, created_at, updated_at, sender_is_token_wallet
+                FROM transactions WHERE service_id = $1 {updates} {order_by} DESC OFFSET ${offset} LIMIT ${limit}"#,
+            updates = updates.iter().format(""),
+            order_by = order_by,
+            offset = args_len + 1,
+            limit = args_len + 2
+        );
+
+        args.add(input.offset);
+        args.add(input.limit);
+        let transactions = sqlx::query_with(&query, args).fetch_all(&self.pool).await?;
+
+        let res = transactions
+            .iter()
+            .map(|x| TransactionDb {
+                id: x.get(0),
+                service_id: x.get(1),
+                message_hash: x.get(2),
+                transaction_hash: x.get(3),
+                transaction_lt: x.get(4),
+                transaction_timeout: x.get(5),
+                transaction_scan_lt: x.get(6),
+                sender_workchain_id: x.get(7),
+                sender_hex: x.get(8),
+                account_workchain_id: x.get(9),
+                account_hex: x.get(10),
+                messages: x.get(11),
+                messages_hash: x.get(12),
+                data: x.get(13),
+                original_value: x.get(14),
+                original_outputs: x.get(15),
+                value: x.get(16),
+                fee: x.get(17),
+                balance_change: x.get(18),
+                direction: x.get(19),
+                status: x.get(20),
+                error: x.get(21),
+                aborted: x.get(22),
+                bounce: x.get(23),
+                created_at: x.get(24),
+                updated_at: x.get(25),
+                sender_is_token_wallet: x.get(26),
+            })
+            .collect::<Vec<_>>();
+        Ok(res)
+    }
+}
+
+pub fn filter_transaction_query(
+    args: &mut PgArguments,
+    args_len: &mut i32,
+    input: &TransactionsSearch,
+) -> Vec<String> {
+    let TransactionsSearch {
+        id,
+        message_hash,
+        transaction_hash,
+        account,
+        status,
+        direction,
+        created_at_min,
+        created_at_max,
+        ..
+    } = input.clone();
+    let mut updates = Vec::new();
+
+    if let Some(id) = id {
+        updates.push(format!(" AND id = ${} ", *args_len + 1,));
+        *args_len += 1;
+        args.add(id)
+    }
+
+    if let Some(transaction_hash) = transaction_hash {
+        updates.push(format!(" AND transaction_hash = ${} ", *args_len + 1,));
+        *args_len += 1;
+        args.add(transaction_hash)
+    }
+
+    if let Some(message_hash) = message_hash {
+        updates.push(format!(" AND message_hash = ${} ", *args_len + 1,));
+        *args_len += 1;
+        args.add(message_hash)
+    }
+
+    if let Some(account) = account {
+        if let Ok(account) = repack_address(&account) {
+            updates.push(format!(" AND account_workchain_id = ${} ", *args_len + 1,));
+            *args_len += 1;
+            args.add(account.workchain_id());
+            updates.push(format!(" AND account_hex = ${} ", *args_len + 1,));
+            *args_len += 1;
+            args.add(account.address().to_hex_string());
+        }
+    }
+
+    if let Some(status) = status {
+        updates.push(format!(" AND status = ${} ", *args_len + 1,));
+        *args_len += 1;
+        args.add(status)
+    }
+
+    if let Some(direction) = direction {
+        updates.push(format!(" AND direction = ${} ", *args_len + 1,));
+        *args_len += 1;
+        args.add(direction)
+    }
+
+    if let Some(created_at_min) = created_at_min {
+        updates.push(format!(" AND created_at >= ${} ", *args_len + 1,));
+        *args_len += 1;
+        args.add(created_at_min)
+    }
+
+    if let Some(created_at_max) = created_at_max {
+        updates.push(format!(" AND created_at <= ${} ", *args_len + 1,));
+        *args_len += 1;
+        args.add(created_at_max)
+    }
+
+    updates
 }
 
 #[cfg(test)]

@@ -59,6 +59,41 @@ impl From<PostTonTransactionSendRequest> for TransactionSend {
 
 #[derive(Debug, Deserialize, Serialize, Clone, opg::OpgModel)]
 #[serde(rename_all = "camelCase")]
+#[opg("PostTonTransactionsRequest")]
+pub struct PostTonTransactionsRequest {
+    pub id: Option<Uuid>,
+    pub message_hash: Option<String>,
+    pub transaction_hash: Option<String>,
+    pub account: Option<String>,
+    pub status: Option<TonTransactionStatus>,
+    pub direction: Option<TonTransactionDirection>,
+    pub created_at_min: Option<i64>,
+    pub created_at_max: Option<i64>,
+    pub ordering: Option<TransactionsSearchOrdering>,
+    pub limit: Option<i64>,
+    pub offset: Option<i64>,
+}
+
+impl From<PostTonTransactionsRequest> for TransactionsSearch {
+    fn from(c: PostTonTransactionsRequest) -> Self {
+        TransactionsSearch {
+            limit: c.limit.unwrap_or(MAX_LIMIT_SEARCH),
+            offset: c.offset.unwrap_or(0),
+            id: c.id,
+            message_hash: c.message_hash,
+            transaction_hash: c.transaction_hash,
+            account: c.account,
+            status: c.status,
+            direction: c.direction,
+            created_at_min: c.created_at_min,
+            created_at_max: c.created_at_max,
+            ordering: c.ordering,
+        }
+    }
+}
+
+#[derive(Debug, Deserialize, Serialize, Clone, opg::OpgModel)]
+#[serde(rename_all = "camelCase")]
 #[opg("PostTonTokenTransactionSendRequest")]
 pub struct PostTonTokenTransactionSendRequest {
     pub id: Uuid,

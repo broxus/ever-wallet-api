@@ -106,3 +106,18 @@ pub struct CreateReceiveTransaction {
     pub bounce: bool,
     pub sender_is_token_wallet: bool,
 }
+
+#[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
+pub struct TransactionsSearch {
+    pub id: Option<Uuid>,
+    pub message_hash: Option<String>,
+    pub transaction_hash: Option<String>,
+    pub account: Option<String>,
+    pub status: Option<TonTransactionStatus>,
+    pub direction: Option<TonTransactionDirection>,
+    pub created_at_min: Option<i64>,
+    pub created_at_max: Option<i64>,
+    pub ordering: Option<TransactionsSearchOrdering>,
+    pub limit: i64,
+    pub offset: i64,
+}

@@ -107,6 +107,16 @@ pub fn swagger() -> String {
                     200: responses::AccountTransactionResponse,
                 }
             },
+            ("transactions"): {
+                GET: {
+                    tags: { transactions },
+                    summary: "Search transactions",
+                    description: "Search transactions.",
+                    parameters: { (header "api-key") },
+                    body: requests::PostTonTransactionsRequest,
+                    200: responses::TonTransactionsResponse,
+                }
+            },
             ("events" ): {
                 POST: {
                     tags: { events },

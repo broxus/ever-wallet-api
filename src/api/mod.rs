@@ -82,13 +82,14 @@ mod filters {
 
     pub fn api_v4(ctx: Context) -> BoxedFilter<(impl warp::Reply,)> {
         warp::path("ton")
-            .and(warp::path("v4"))
+            .and(warp::path("v3"))
             .and(
                 swagger()
                     .or(post_address_create(ctx.clone()))
                     .or(post_address_check(ctx.clone()))
                     .or(get_address_balance(ctx.clone()))
                     .or(post_transactions_create(ctx.clone()))
+                    .or(post_transactions(ctx.clone()))
                     .or(get_transactions_mh(ctx.clone()))
                     .or(get_transactions_h(ctx.clone()))
                     .or(get_transactions_id(ctx.clone()))
@@ -113,6 +114,16 @@ mod filters {
             .and(auth_by_key(ctx.auth_service.clone()).untuple_one())
             .and(with_ctx(ctx))
             .and_then(controllers::post_transactions_create)
+            .boxed()
+    }
+
+    pub fn post_transactions(ctx: Context) -> BoxedFilter<(impl warp::Reply,)> {
+        warp::path("transactions")
+            .and(warp::path::end())
+            .and(warp::post())
+            .and(auth_by_key(ctx.auth_service.clone()).untuple_one())
+            .and(with_ctx(ctx))
+            .and_then(controllers::post_transactions)
             .boxed()
     }
 

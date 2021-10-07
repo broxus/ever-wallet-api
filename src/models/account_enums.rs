@@ -120,6 +120,17 @@ pub enum TransactionSendOutputType {
     AllBalanceDeleteNetworkAccount,
 }
 
+#[derive(Debug, Deserialize, Serialize, Clone, opg::OpgModel)]
+#[opg("TransactionSendOutputType")]
+pub enum TransactionsSearchOrdering {
+    CreatedAtAsc,
+    CreatedAtDesc,
+    TransactionLtAsc,
+    TransactionLtDesc,
+    TransactionTimestampAsc,
+    TransactionTimestampDesc,
+}
+
 impl TransactionSendOutputType {
     pub fn value(&self) -> u8 {
         match *self {

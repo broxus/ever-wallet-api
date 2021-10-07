@@ -98,6 +98,32 @@ impl From<Result<EventsResponse, ServiceError>> for TonEventsResponse {
 
 #[derive(Debug, Deserialize, Serialize, Clone, opg::OpgModel)]
 #[serde(rename_all = "camelCase")]
+#[opg("TonTransactionsResponse")]
+pub struct TonTransactionsResponse {
+    pub status: TonStatus,
+    pub data: Option<TransactionsResponse>,
+    pub error_message: Option<String>,
+}
+
+impl From<Result<TransactionsResponse, ServiceError>> for TonTransactionsResponse {
+    fn from(r: Result<TransactionsResponse, ServiceError>) -> Self {
+        match r {
+            Ok(data) => Self {
+                status: TonStatus::Ok,
+                error_message: None,
+                data: Some(data),
+            },
+            Err(e) => Self {
+                status: TonStatus::Error,
+                error_message: Some(e.to_string()),
+                data: None,
+            },
+        }
+    }
+}
+
+#[derive(Debug, Deserialize, Serialize, Clone, opg::OpgModel)]
+#[serde(rename_all = "camelCase")]
 #[opg("TonEventsResponse")]
 pub struct TonTokenEventsResponse {
     pub status: TonStatus,
@@ -128,6 +154,14 @@ impl From<Result<TokenEventsResponse, ServiceError>> for TonTokenEventsResponse 
 pub struct EventsResponse {
     pub count: i32,
     pub items: Vec<AccountTransactionEvent>,
+}
+
+#[derive(Debug, Deserialize, Serialize, Clone, opg::OpgModel)]
+#[serde(rename_all = "camelCase")]
+#[opg("TransactionsResponse")]
+pub struct TransactionsResponse {
+    pub count: i32,
+    pub items: Vec<AccountTransactionDataResponse>,
 }
 
 #[derive(Debug, Deserialize, Serialize, Clone, opg::OpgModel)]

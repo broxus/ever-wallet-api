@@ -75,6 +75,34 @@ pub fn post_transactions_create(
     .boxed()
 }
 
+pub fn post_transactions(
+    service_id: ServiceId,
+    input: PostTonTransactionsRequest,
+    ctx: Context,
+) -> BoxFuture<'static, Result<impl warp::Reply, warp::Rejection>> {
+    async move {
+        let transactions = ctx
+            .ton_service
+            .search_transaction(&service_id, &input.into())
+            .await
+            .map(|transactions| {
+                let transactions: Vec<_> = transactions
+                    .into_iter()
+                    .map(AccountTransactionDataResponse::from)
+                    .collect();
+                TransactionsResponse {
+                    count: transactions.len() as i32,
+                    items: transactions,
+                }
+            });
+
+        let res = TonTransactionsResponse::from(transactions);
+
+        Ok(warp::reply::json(&(res)))
+    }
+    .boxed()
+}
+
 pub fn get_transactions_mh(
     message_hash: String,
     service_id: ServiceId,

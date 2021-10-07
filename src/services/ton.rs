@@ -60,6 +60,11 @@ pub trait TonService: Send + Sync + 'static {
         service_id: &ServiceId,
         id: &uuid::Uuid,
     ) -> Result<TransactionDb, ServiceError>;
+    async fn search_transaction(
+        &self,
+        service_id: &ServiceId,
+        payload: &TransactionsSearch,
+    ) -> Result<Vec<TransactionDb>, ServiceError>;
     async fn search_events(
         &self,
         service_id: &ServiceId,
@@ -600,6 +605,16 @@ impl TonService for TonServiceImpl {
     ) -> Result<TransactionDb, ServiceError> {
         self.sqlx_client
             .get_transaction_by_id(*service_id, id)
+            .await
+    }
+
+    async fn search_transaction(
+        &self,
+        service_id: &ServiceId,
+        payload: &TransactionsSearch,
+    ) -> Result<Vec<TransactionDb>, ServiceError> {
+        self.sqlx_client
+            .get_all_transactions(*service_id, payload)
             .await
     }
 
