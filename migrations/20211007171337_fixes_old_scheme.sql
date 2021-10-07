@@ -11,3 +11,12 @@ CREATE INDEX transactions_messages_hash_gin_idx ON transactions USING gin (messa
 
 ALTER TABLE transaction_events ADD COLUMN sender_workchain_id INT;
 ALTER TABLE transaction_events ADD COLUMN sender_hex VARCHAR(64);
+
+ALTER TABLE ONLY api_service ALTER COLUMN id SET DEFAULT uuid_generate_v4();
+ALTER TABLE ONLY api_service_key ALTER COLUMN id SET DEFAULT uuid_generate_v4();
+ALTER TABLE ONLY address ALTER COLUMN id SET DEFAULT uuid_generate_v4();
+ALTER TABLE ONLY address ALTER COLUMN created_at SET DEFAULT current_timestamp;
+ALTER TABLE ONLY api_service_callback ALTER COLUMN id SET DEFAULT uuid_generate_v4();
+ALTER TABLE ONLY api_service_callback ALTER COLUMN created_at SET DEFAULT current_timestamp;
+ALTER TABLE ONLY transactions ALTER COLUMN created_at SET DEFAULT current_timestamp;
+ALTER TABLE ONLY transaction_events ALTER COLUMN created_at SET DEFAULT current_timestamp;
