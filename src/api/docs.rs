@@ -127,6 +127,15 @@ pub fn swagger() -> String {
                     200: responses::TonEventsResponse,
                 }
             },
+            ("events" / "id" / String): {
+                GET: {
+                    tags: { events },
+                    summary: "Get event",
+                    description: "Get event by id.",
+                    parameters: { (header "api-key") },
+                    200: responses::AccountTransactionEventResponse,
+                }
+            },
             ("events" / "mark" ): {
                 POST: {
                     tags: { events },

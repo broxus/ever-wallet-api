@@ -173,6 +173,39 @@ impl SqlxClient {
         Ok(res)
     }
 
+    pub async fn get_event_by_id(
+        &self,
+        service_id: ServiceId,
+        id: &uuid::Uuid,
+    ) -> Result<TransactionEventDb, ServiceError> {
+        sqlx::query_as!(
+            TransactionEventDb,
+            r#"
+            SELECT id,
+                service_id as "service_id: _",
+                transaction_id,
+                message_hash,
+                account_workchain_id,
+                account_hex,
+                sender_workchain_id,
+                sender_hex,
+                balance_change,
+                transaction_direction as "transaction_direction: _",
+                transaction_status as "transaction_status: _",
+                event_status as "event_status: _",
+                created_at,
+                updated_at,
+                sender_is_token_wallet
+            FROM transaction_events
+            WHERE service_id = $1 AND id = $2"#,
+            service_id as ServiceId,
+            id,
+        )
+        .fetch_one(&self.pool)
+        .await
+        .map_err(From::from)
+    }
+
     pub async fn get_all_transaction_events(
         &self,
         service_id: ServiceId,

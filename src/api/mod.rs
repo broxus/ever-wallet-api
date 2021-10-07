@@ -93,6 +93,7 @@ mod filters {
                     .or(get_transactions_mh(ctx.clone()))
                     .or(get_transactions_h(ctx.clone()))
                     .or(get_transactions_id(ctx.clone()))
+                    .or(get_events_id(ctx.clone()))
                     .or(post_events(ctx.clone()))
                     .or(post_events_mark(ctx.clone()))
                     .or(post_events_mark_all(ctx.clone()))
@@ -220,6 +221,18 @@ mod filters {
             .and(auth_by_key_get(ctx.auth_service.clone()))
             .and(with_ctx(ctx))
             .and_then(controllers::get_transactions_id)
+            .boxed()
+    }
+
+    pub fn get_events_id(ctx: Context) -> BoxedFilter<(impl warp::Reply,)> {
+        warp::path("events")
+            .and(warp::path("id"))
+            .and(warp::path::param())
+            .and(warp::path::end())
+            .and(warp::get())
+            .and(auth_by_key_get(ctx.auth_service.clone()))
+            .and(with_ctx(ctx))
+            .and_then(controllers::get_events_id)
             .boxed()
     }
 

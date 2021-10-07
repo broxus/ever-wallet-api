@@ -294,6 +294,32 @@ impl From<Result<AccountTransactionDataResponse, ServiceError>> for AccountTrans
 
 #[derive(Debug, Deserialize, Serialize, Clone, opg::OpgModel)]
 #[serde(rename_all = "camelCase")]
+#[opg("AccountTransactionEventResponse")]
+pub struct AccountTransactionEventResponse {
+    pub status: TonStatus,
+    pub data: Option<AccountTransactionEvent>,
+    pub error_message: Option<String>,
+}
+
+impl From<Result<AccountTransactionEvent, ServiceError>> for AccountTransactionEventResponse {
+    fn from(r: Result<AccountTransactionEvent, ServiceError>) -> Self {
+        match r {
+            Ok(data) => Self {
+                status: TonStatus::Ok,
+                error_message: None,
+                data: Some(data),
+            },
+            Err(e) => Self {
+                status: TonStatus::Error,
+                error_message: Some(e.to_string()),
+                data: None,
+            },
+        }
+    }
+}
+
+#[derive(Debug, Deserialize, Serialize, Clone, opg::OpgModel)]
+#[serde(rename_all = "camelCase")]
 #[opg("AccountTransactionsResponse")]
 pub struct AccountTransactionsResponse {
     pub count: i32,

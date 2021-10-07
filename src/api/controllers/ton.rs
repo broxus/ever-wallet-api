@@ -157,6 +157,24 @@ pub fn get_transactions_id(
     .boxed()
 }
 
+pub fn get_events_id(
+    id: uuid::Uuid,
+    service_id: ServiceId,
+    ctx: Context,
+) -> BoxFuture<'static, Result<impl warp::Reply, warp::Rejection>> {
+    async move {
+        let event = ctx
+            .ton_service
+            .get_event_by_id(&service_id, &id)
+            .await
+            .map(From::from);
+        let res = AccountTransactionEventResponse::from(event);
+
+        Ok(warp::reply::json(&(res)))
+    }
+    .boxed()
+}
+
 pub fn post_events(
     service_id: ServiceId,
     input: PostTonTransactionEventsRequest,
