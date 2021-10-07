@@ -1,3 +1,4 @@
+use chrono::prelude::*;
 use uuid::Uuid;
 
 use crate::models::*;
@@ -5,7 +6,7 @@ use crate::prelude::*;
 use crate::sqlx_client::*;
 
 use itertools::Itertools;
-use nekoton_utils::repack_address;
+use nekoton_utils::{repack_address, TrustMe};
 use sqlx::postgres::PgArguments;
 use sqlx::Arguments;
 use sqlx::Row;
@@ -23,7 +24,7 @@ impl SqlxClient {
             (id, service_id, message_hash, account_workchain_id, account_hex, original_value, original_outputs, direction, status, aborted, bounce)
             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
             RETURNING id, service_id as "service_id: _", message_hash, transaction_hash, transaction_lt, transaction_timeout,
-                transaction_scan_lt, sender_workchain_id, sender_hex, account_workchain_id, account_hex, messages, messages_hash, data,
+                transaction_scan_lt, transaction_timestamp, sender_workchain_id, sender_hex, account_workchain_id, account_hex, messages, messages_hash, data,
                 original_value, original_outputs, value, fee, balance_change, direction as "direction: _", status as "status: _",
                 error, aborted, bounce, created_at, updated_at, sender_is_token_wallet"#,
                 payload.id,
@@ -97,7 +98,7 @@ impl SqlxClient {
             ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
             WHERE message_hash = $14 AND account_workchain_id = $15 and account_hex = $16 and direction = 'Send'::twa_transaction_direction and transaction_hash is NULL
             RETURNING id, service_id as "service_id: _", message_hash, transaction_hash, transaction_lt, transaction_timeout,
-                transaction_scan_lt, sender_workchain_id, sender_hex, account_workchain_id, account_hex, messages, messages_hash, data,
+                transaction_scan_lt, transaction_timestamp, sender_workchain_id, sender_hex, account_workchain_id, account_hex, messages, messages_hash, data,
                 original_value, original_outputs, value, fee, balance_change, direction as "direction: _", status as "status: _",
                 error, aborted, bounce, created_at, updated_at, sender_is_token_wallet"#,
                 payload.transaction_hash,
@@ -166,13 +167,16 @@ impl SqlxClient {
     ) -> Result<(TransactionDb, TransactionEventDb), ServiceError> {
         let mut tx = self.pool.begin().await.map_err(ServiceError::from)?;
         let transaction_id = Uuid::new_v4();
+        let transaction_timestamp =
+            NaiveDateTime::from_timestamp(payload.transaction_timestamp.trust_me() as i64, 0);
+
         let transaction = sqlx::query_as!(TransactionDb,
                 r#"
                  INSERT INTO transactions
-            (id, service_id, message_hash, transaction_hash, transaction_lt, sender_workchain_id, sender_hex, account_workchain_id, account_hex, messages, messages_hash, data, value, fee, balance_change, direction, status, error, aborted, bounce, sender_is_token_wallet)
-            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21)
+            (id, service_id, message_hash, transaction_hash, transaction_lt, transaction_timestamp, sender_workchain_id, sender_hex, account_workchain_id, account_hex, messages, messages_hash, data, value, fee, balance_change, direction, status, error, aborted, bounce, sender_is_token_wallet)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22)
             RETURNING id, service_id as "service_id: _", message_hash, transaction_hash, transaction_lt, transaction_timeout,
-                transaction_scan_lt, sender_workchain_id, sender_hex, account_workchain_id, account_hex, messages, messages_hash, data,
+                transaction_scan_lt, transaction_timestamp, sender_workchain_id, sender_hex, account_workchain_id, account_hex, messages, messages_hash, data,
                 original_value, original_outputs, value, fee, balance_change, direction as "direction: _", status as "status: _",
                 error, aborted, bounce, created_at, updated_at, sender_is_token_wallet"#,
                 transaction_id,
@@ -180,6 +184,7 @@ impl SqlxClient {
                 message_hash,
                 payload.transaction_hash,
                 payload.transaction_lt,
+                transaction_timestamp,
                 payload.sender_workchain_id,
                 payload.sender_hex,
                 account_workchain_id,
@@ -250,14 +255,16 @@ impl SqlxClient {
         service_id: ServiceId,
     ) -> Result<(TransactionDb, TransactionEventDb), ServiceError> {
         let mut tx = self.pool.begin().await.map_err(ServiceError::from)?;
+        let transaction_timestamp =
+            NaiveDateTime::from_timestamp(payload.transaction_timestamp.trust_me() as i64, 0);
 
         let transaction = sqlx::query_as!(TransactionDb,
                 r#"
             INSERT INTO transactions
-            (id, service_id, message_hash, transaction_hash, transaction_lt, transaction_timeout, transaction_scan_lt, sender_workchain_id, sender_hex, account_workchain_id, account_hex, messages, messages_hash, data, original_value, original_outputs, value, fee, balance_change, direction, status, error, aborted, bounce, sender_is_token_wallet)
-            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25)
+            (id, service_id, message_hash, transaction_hash, transaction_lt, transaction_timeout, transaction_scan_lt, transaction_timestamp, sender_workchain_id, sender_hex, account_workchain_id, account_hex, messages, messages_hash, data, original_value, original_outputs, value, fee, balance_change, direction, status, error, aborted, bounce, sender_is_token_wallet)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26)
             RETURNING id, service_id as "service_id: _", message_hash, transaction_hash, transaction_lt, transaction_timeout,
-                transaction_scan_lt, sender_workchain_id, sender_hex, account_workchain_id, account_hex, messages, messages_hash, data,
+                transaction_scan_lt, transaction_timestamp, sender_workchain_id, sender_hex, account_workchain_id, account_hex, messages, messages_hash, data,
                 original_value, original_outputs, value, fee, balance_change, direction as "direction: _", status as "status: _",
                 error, aborted, bounce, created_at, updated_at, sender_is_token_wallet"#,
                 payload.id,
@@ -267,6 +274,7 @@ impl SqlxClient {
                 payload.transaction_lt,
                 payload.transaction_timeout,
                 payload.transaction_scan_lt,
+                transaction_timestamp,
                 payload.sender_workchain_id,
                 payload.sender_hex,
                 payload.account_workchain_id,
@@ -341,7 +349,7 @@ impl SqlxClient {
         sqlx::query_as!(TransactionDb,
                 r#"
             SELECT id, service_id as "service_id: _", message_hash, transaction_hash, transaction_lt, transaction_timeout,
-                transaction_scan_lt, sender_workchain_id, sender_hex, account_workchain_id, account_hex, messages, messages_hash, data,
+                transaction_scan_lt, transaction_timestamp, sender_workchain_id, sender_hex, account_workchain_id, account_hex, messages, messages_hash, data,
                 original_value, original_outputs, value, fee, balance_change, direction as "direction: _", status as "status: _",
                 error, aborted, bounce, created_at, updated_at, sender_is_token_wallet
             FROM transactions
@@ -364,7 +372,7 @@ impl SqlxClient {
         sqlx::query_as!(TransactionDb,
                 r#"
             SELECT id, service_id as "service_id: _", message_hash, transaction_hash, transaction_lt, transaction_timeout,
-                transaction_scan_lt, sender_workchain_id, sender_hex, account_workchain_id, account_hex, messages, messages_hash, data,
+                transaction_scan_lt, transaction_timestamp, sender_workchain_id, sender_hex, account_workchain_id, account_hex, messages, messages_hash, data,
                 original_value, original_outputs, value, fee, balance_change, direction as "direction: _", status as "status: _",
                 error, aborted, bounce, created_at, updated_at, sender_is_token_wallet
             FROM transactions
@@ -387,7 +395,7 @@ impl SqlxClient {
         sqlx::query_as!(TransactionDb,
                 r#"
             SELECT id, service_id as "service_id: _", message_hash, transaction_hash, transaction_lt, transaction_timeout,
-                transaction_scan_lt, sender_workchain_id, sender_hex, account_workchain_id, account_hex, messages, messages_hash, data,
+                transaction_scan_lt, transaction_timestamp, sender_workchain_id, sender_hex, account_workchain_id, account_hex, messages, messages_hash, data,
                 original_value, original_outputs, value, fee, balance_change, direction as "direction: _", status as "status: _",
                 error, aborted, bounce, created_at, updated_at, sender_is_token_wallet
             FROM transactions
@@ -407,7 +415,7 @@ impl SqlxClient {
         sqlx::query_as!(TransactionDb,
                 r#"
             SELECT id, service_id as "service_id: _", message_hash, transaction_hash, transaction_lt, transaction_timeout,
-                transaction_scan_lt, sender_workchain_id, sender_hex, account_workchain_id, account_hex, messages, messages_hash, data,
+                transaction_scan_lt, transaction_timestamp, sender_workchain_id, sender_hex, account_workchain_id, account_hex, messages, messages_hash, data,
                 original_value, original_outputs, value, fee, balance_change, direction as "direction: _", status as "status: _",
                 error, aborted, bounce, created_at, updated_at, sender_is_token_wallet
             FROM transactions
@@ -428,7 +436,7 @@ impl SqlxClient {
         sqlx::query_as!(TransactionDb,
                 r#"
             SELECT id, service_id as "service_id: _", message_hash, transaction_hash, transaction_lt, transaction_timeout,
-                transaction_scan_lt, sender_workchain_id, sender_hex, account_workchain_id, account_hex, messages, messages_hash, data,
+                transaction_scan_lt, transaction_timestamp, sender_workchain_id, sender_hex, account_workchain_id, account_hex, messages, messages_hash, data,
                 original_value, original_outputs, value, fee, balance_change, direction as "direction: _", status as "status: _",
                 error, aborted, bounce, created_at, updated_at, sender_is_token_wallet
             FROM transactions
@@ -448,7 +456,7 @@ impl SqlxClient {
         sqlx::query_as!(TransactionDb,
                 r#"
             SELECT id, service_id as "service_id: _", message_hash, transaction_hash, transaction_lt, transaction_timeout,
-                transaction_scan_lt, sender_workchain_id, sender_hex, account_workchain_id, account_hex, messages, messages_hash, data,
+                transaction_scan_lt, transaction_timestamp, sender_workchain_id, sender_hex, account_workchain_id, account_hex, messages, messages_hash, data,
                 original_value, original_outputs, value, fee, balance_change, direction as "direction: _", status as "status: _",
                 error, aborted, bounce, created_at, updated_at, sender_is_token_wallet
             FROM transactions
@@ -488,8 +496,8 @@ impl SqlxClient {
         let updates = filter_transaction_query(&mut args, &mut args_len, input);
 
         let query: String = format!(
-            r#"SELECT id, service_id as "service_id: _", message_hash, transaction_hash, transaction_lt, transaction_timeout,
-                transaction_scan_lt, sender_workchain_id, sender_hex, account_workchain_id, account_hex, messages, messages_hash, data,
+            r#"SELECTid, service_id as "service_id: _", message_hash, transaction_hash, transaction_lt, transaction_timeout,
+                transaction_scan_lt, transaction_timestamp, sender_workchain_id, sender_hex, account_workchain_id, account_hex, messages, messages_hash, data,
                 original_value, original_outputs, value, fee, balance_change, direction as "direction: _", status as "status: _",
                 error, aborted, bounce, created_at, updated_at, sender_is_token_wallet
                 FROM transactions WHERE service_id = $1 {updates} {order_by} OFFSET ${offset} LIMIT ${limit}"#,
@@ -513,26 +521,27 @@ impl SqlxClient {
                 transaction_lt: x.get(4),
                 transaction_timeout: x.get(5),
                 transaction_scan_lt: x.get(6),
-                sender_workchain_id: x.get(7),
-                sender_hex: x.get(8),
-                account_workchain_id: x.get(9),
-                account_hex: x.get(10),
-                messages: x.get(11),
-                messages_hash: x.get(12),
-                data: x.get(13),
-                original_value: x.get(14),
-                original_outputs: x.get(15),
-                value: x.get(16),
-                fee: x.get(17),
-                balance_change: x.get(18),
-                direction: x.get(19),
-                status: x.get(20),
-                error: x.get(21),
-                aborted: x.get(22),
-                bounce: x.get(23),
-                created_at: x.get(24),
-                updated_at: x.get(25),
-                sender_is_token_wallet: x.get(26),
+                transaction_timestamp: x.get(7),
+                sender_workchain_id: x.get(8),
+                sender_hex: x.get(9),
+                account_workchain_id: x.get(10),
+                account_hex: x.get(11),
+                messages: x.get(12),
+                messages_hash: x.get(13),
+                data: x.get(14),
+                original_value: x.get(15),
+                original_outputs: x.get(16),
+                value: x.get(17),
+                fee: x.get(18),
+                balance_change: x.get(19),
+                direction: x.get(20),
+                status: x.get(21),
+                error: x.get(22),
+                aborted: x.get(23),
+                bounce: x.get(24),
+                created_at: x.get(25),
+                updated_at: x.get(26),
+                sender_is_token_wallet: x.get(27),
             })
             .collect::<Vec<_>>();
         Ok(res)

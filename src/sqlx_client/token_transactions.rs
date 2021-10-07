@@ -1,4 +1,6 @@
 use anyhow::Result;
+use chrono::prelude::*;
+use nekoton_utils::TrustMe;
 
 use crate::models::*;
 use crate::prelude::*;
@@ -11,16 +13,20 @@ impl SqlxClient {
         service_id: ServiceId,
     ) -> Result<(TokenTransactionFromDb, TokenTransactionEventDb), ServiceError> {
         let mut tx = self.pool.begin().await.map_err(ServiceError::from)?;
+        let transaction_timestamp =
+            NaiveDateTime::from_timestamp(payload.transaction_timestamp.trust_me() as i64, 0);
+
         let transaction = sqlx::query_as!(TokenTransactionFromDb,
                 r#"
             INSERT INTO token_transactions
-            (id, service_id, transaction_hash, message_hash, owner_message_hash, account_workchain_id, account_hex, value, root_address, payload, error, block_hash, block_time, direction, status)
-            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
-            RETURNING id, service_id as "service_id: _", transaction_hash, message_hash, owner_message_hash, account_workchain_id, account_hex,
+            (id, service_id, transaction_hash, transaction_timestamp, message_hash, owner_message_hash, account_workchain_id, account_hex, value, root_address, payload, error, block_hash, block_time, direction, status)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)
+            RETURNING id, service_id as "service_id: _", transaction_hash, transaction_timestamp, message_hash, owner_message_hash, account_workchain_id, account_hex,
             value, root_address, payload, error, block_hash, block_time, direction as "direction: _", status as "status: _", created_at, updated_at"#,
                 payload.id,
                 service_id as ServiceId,
                 payload.transaction_hash,
+                transaction_timestamp,
                 payload.message_hash,
                 payload.owner_message_hash,
                 payload.account_workchain_id,
@@ -87,7 +93,7 @@ impl SqlxClient {
     ) -> Result<TokenTransactionFromDb, ServiceError> {
         sqlx::query_as!(TokenTransactionFromDb,
                 r#"
-            SELECT id, service_id as "service_id: _", transaction_hash, message_hash, owner_message_hash, account_workchain_id, account_hex,
+            SELECT id, service_id as "service_id: _", transaction_hash, transaction_timestamp, message_hash, owner_message_hash, account_workchain_id, account_hex,
             value, root_address, payload, error, block_hash, block_time, direction as "direction: _", status as "status: _", created_at, updated_at
             FROM token_transactions
             WHERE service_id = $1 AND (message_hash = $2 OR owner_message_hash = $2)"#,
@@ -106,7 +112,7 @@ impl SqlxClient {
     ) -> Result<TokenTransactionFromDb, ServiceError> {
         sqlx::query_as!(TokenTransactionFromDb,
                 r#"
-            SELECT id, service_id as "service_id: _", transaction_hash, message_hash, owner_message_hash, account_workchain_id, account_hex,
+            SELECT id, service_id as "service_id: _", transaction_hash, transaction_timestamp, message_hash, owner_message_hash, account_workchain_id, account_hex,
             value, root_address, payload, error, block_hash, block_time, direction as "direction: _", status as "status: _", created_at, updated_at
             FROM token_transactions
             WHERE service_id = $1 AND id = $2"#,
@@ -126,7 +132,7 @@ impl SqlxClient {
     ) -> Result<TokenTransactionFromDb, ServiceError> {
         sqlx::query_as!(TokenTransactionFromDb,
                 r#"
-            SELECT id, service_id as "service_id: _", transaction_hash, message_hash, owner_message_hash, account_workchain_id, account_hex,
+            SELECT id, service_id as "service_id: _", transaction_hash, transaction_timestamp, message_hash, owner_message_hash, account_workchain_id, account_hex,
             value, root_address, payload, error, block_hash, block_time, direction as "direction: _", status as "status: _", created_at, updated_at
             FROM token_transactions
             WHERE service_id = $1 AND transaction_hash = $2"#,

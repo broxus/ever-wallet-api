@@ -8,23 +8,24 @@ CREATE TYPE twa_token_transaction_status as ENUM (
 
 CREATE TABLE token_transactions
 (
-    id                   UUID NOT NULL,
-    service_id           UUID NOT NULL,
-    transaction_hash     VARCHAR(64),
-    message_hash         VARCHAR(64) NOT NULL,
-    owner_message_hash   VARCHAR(64),
-    account_workchain_id INT NOT NULL,
-    account_hex          VARCHAR(64) NOT NULL,
-    value                DECIMAL NOT NULL,
-    root_address         VARCHAR NOT NULL,
-    payload              BYTEA,
-    error                VARCHAR,
-    block_hash           VARCHAR(64),
-    block_time           INTEGER,
-    direction            twa_transaction_direction NOT NULL,
-    status               twa_token_transaction_status NOT NULL,
-    created_at           TIMESTAMP NOT NULL DEFAULT current_timestamp,
-    updated_at           TIMESTAMP NOT NULL DEFAULT current_timestamp,
+    id                      UUID NOT NULL,
+    service_id              UUID NOT NULL,
+    transaction_hash        VARCHAR(64),
+    transaction_timestamp   TIMESTAMP,
+    message_hash            VARCHAR(64) NOT NULL,
+    owner_message_hash      VARCHAR(64),
+    account_workchain_id    INT NOT NULL,
+    account_hex             VARCHAR(64) NOT NULL,
+    value                   DECIMAL NOT NULL,
+    root_address            VARCHAR NOT NULL,
+    payload                 BYTEA,
+    error                   VARCHAR,
+    block_hash              VARCHAR(64),
+    block_time              INTEGER,
+    direction               twa_transaction_direction NOT NULL,
+    status                  twa_token_transaction_status NOT NULL,
+    created_at              TIMESTAMP NOT NULL DEFAULT current_timestamp,
+    updated_at              TIMESTAMP NOT NULL DEFAULT current_timestamp,
     PRIMARY KEY (id),
     CONSTRAINT token_transactions_to_api_service_fk FOREIGN KEY (service_id) REFERENCES api_service (id),
     CONSTRAINT token_transactions_account_wc_hex_to_address_fk FOREIGN KEY (account_workchain_id, account_hex) REFERENCES address(workchain_id, hex)
@@ -34,6 +35,7 @@ CREATE INDEX token_transactions_service_id_idx ON token_transactions (service_id
 CREATE INDEX token_transactions_m_hash_idx ON token_transactions (message_hash);
 CREATE INDEX token_transactions_owner_m_hash_idx ON token_transactions (owner_message_hash) WHERE owner_message_hash IS NOT NULL;
 CREATE INDEX token_transactions_t_hash_idx ON token_transactions (transaction_hash);
+CREATE INDEX token_transactions_t_timestamp_idx ON token_transactions (transaction_timestamp);
 CREATE INDEX token_transactions_created_at_idx ON token_transactions (created_at);
 CREATE UNIQUE INDEX token_transactions_t_hash_a_wi_hex_d_idx ON token_transactions (transaction_hash, account_workchain_id, account_hex, direction)
     WHERE transaction_hash IS NOT NULL;

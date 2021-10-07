@@ -23,6 +23,7 @@ CREATE TABLE transactions (
                               transaction_lt              NUMERIC,
                               transaction_timeout         BIGINT,
                               transaction_scan_lt         BIGINT,
+                              transaction_timestamp       TIMESTAMP,
                               sender_workchain_id         INT,
                               sender_hex                  VARCHAR(64),
                               account_workchain_id        INT NOT NULL,
@@ -52,6 +53,7 @@ CREATE UNIQUE INDEX transactions_m_hash_account_wc_hex_idx ON transactions (mess
 CREATE INDEX transactions_service_id_idx ON transactions (service_id);
 CREATE INDEX transactions_m_hash_idx ON transactions (message_hash);
 CREATE INDEX transactions_t_hash_idx ON transactions (transaction_hash);
+CREATE INDEX transactions_t_timeout_idx ON transactions (transaction_timeout);
 CREATE INDEX transactions_account_wc_hex_idx ON transactions (account_workchain_id, account_hex);
 CREATE INDEX transactions_created_at_idx ON transactions (created_at);
 CREATE UNIQUE INDEX transactions_t_hash_a_wi_hex_d_idx ON transactions (transaction_hash, account_workchain_id, account_hex, direction)

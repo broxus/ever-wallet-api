@@ -17,41 +17,10 @@ pub struct TokenTransactionSend {
 }
 
 #[derive(Clone, Debug, serde::Serialize, serde::Deserialize, Eq, PartialEq)]
-pub struct UpdateSendTokenTransaction {
-    pub transaction_hash: Option<String>,
-    pub payload: Option<Vec<u8>>,
-    pub block_hash: Option<String>,
-    pub block_time: Option<i32>,
-    pub status: TonTokenTransactionStatus,
-    pub error: Option<String>,
-}
-impl UpdateSendTokenTransaction {
-    #[allow(dead_code)]
-    pub fn error(error: String) -> Self {
-        Self {
-            transaction_hash: None,
-            payload: None,
-            block_hash: None,
-            block_time: None,
-            status: TonTokenTransactionStatus::Error,
-            error: Some(error),
-        }
-    }
-}
-
-#[derive(Debug)]
-pub struct UpdateSentTokenTransaction {
-    pub message_hash: String,
-    pub account_workchain_id: i32,
-    pub account_hex: String,
-    pub root_address: String,
-    pub input: UpdateSendTokenTransaction,
-}
-
-#[derive(Clone, Debug, serde::Serialize, serde::Deserialize, Eq, PartialEq)]
 pub struct CreateTokenTransaction {
     pub id: Uuid,
     pub transaction_hash: Option<String>,
+    pub transaction_timestamp: Option<u32>,
     pub message_hash: String,
     pub owner_message_hash: Option<String>,
     pub account_workchain_id: i32,

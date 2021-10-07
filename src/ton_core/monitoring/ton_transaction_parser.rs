@@ -52,6 +52,7 @@ pub async fn parse_ton_transaction(
     let transaction_hash = Some(event.transaction_hash.to_hex_string());
     let transaction_lt = BigDecimal::from_u64(transaction.lt);
     let transaction_scan_lt = Some(event.transaction.lt as i64);
+    let transaction_timestamp = Some(event.block_utime);
     let sender_address = get_sender_address(&transaction)?;
     let messages = Some(serde_json::to_value(get_messages(&transaction)?)?);
     let messages_hash = Some(serde_json::to_value(get_messages_hash(&transaction)?)?);
@@ -72,6 +73,7 @@ pub async fn parse_ton_transaction(
                 transaction_lt,
                 transaction_timeout: None,
                 transaction_scan_lt,
+                transaction_timestamp,
                 sender_workchain_id,
                 sender_hex,
                 account_workchain_id: address.workchain_id(),
@@ -101,6 +103,7 @@ pub async fn parse_ton_transaction(
                     transaction_hash,
                     transaction_lt,
                     transaction_scan_lt,
+                    transaction_timestamp,
                     sender_workchain_id,
                     sender_hex,
                     messages,
