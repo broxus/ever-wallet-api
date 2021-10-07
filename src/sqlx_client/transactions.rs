@@ -491,7 +491,7 @@ impl SqlxClient {
                 transaction_scan_lt, sender_workchain_id, sender_hex, account_workchain_id, account_hex, messages, messages_hash, data,
                 original_value, original_outputs, value, fee, balance_change, direction as "direction: _", status as "status: _",
                 error, aborted, bounce, created_at, updated_at, sender_is_token_wallet
-                FROM transactions WHERE service_id = $1 {updates} {order_by} DESC OFFSET ${offset} LIMIT ${limit}"#,
+                FROM transactions WHERE service_id = $1 {updates} {order_by} OFFSET ${offset} LIMIT ${limit}"#,
             updates = updates.iter().format(""),
             order_by = order_by,
             offset = args_len + 1,
