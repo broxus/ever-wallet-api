@@ -5,7 +5,6 @@ use crate::models::*;
 use crate::prelude::*;
 use crate::sqlx_client::*;
 
-use chrono::NaiveDateTime;
 use itertools::Itertools;
 use nekoton_utils::{repack_address, TrustMe};
 use sqlx::postgres::PgArguments;
@@ -91,12 +90,15 @@ impl SqlxClient {
         payload: UpdateSendTransaction,
     ) -> Result<(TransactionDb, TransactionEventDb), ServiceError> {
         let mut tx = self.pool.begin().await.map_err(ServiceError::from)?;
+        let transaction_timestamp =
+            NaiveDateTime::from_timestamp(payload.transaction_timestamp.trust_me() as i64, 0);
+
         let transaction = sqlx::query_as!(TransactionDb,
                 r#"
             UPDATE transactions SET
-            (transaction_hash, transaction_lt, transaction_scan_lt, sender_workchain_id, sender_hex, messages, messages_hash, data, value, fee, balance_change, status, error) =
-            ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
-            WHERE message_hash = $14 AND account_workchain_id = $15 and account_hex = $16 and direction = 'Send'::twa_transaction_direction and transaction_hash is NULL
+            (transaction_hash, transaction_lt, transaction_scan_lt, transaction_timestamp, sender_workchain_id, sender_hex, messages, messages_hash, data, value, fee, balance_change, status, error) =
+            ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
+            WHERE message_hash = $15 AND account_workchain_id = $16 and account_hex = $17 and direction = 'Send'::twa_transaction_direction and transaction_hash is NULL
             RETURNING id, service_id as "service_id: _", message_hash, transaction_hash, transaction_lt, transaction_timeout,
                 transaction_scan_lt, transaction_timestamp, sender_workchain_id, sender_hex, account_workchain_id, account_hex, messages, messages_hash, data,
                 original_value, original_outputs, value, fee, balance_change, direction as "direction: _", status as "status: _",
@@ -104,6 +106,7 @@ impl SqlxClient {
                 payload.transaction_hash,
                 payload.transaction_lt,
                 payload.transaction_scan_lt,
+                transaction_timestamp,
                 payload.sender_workchain_id,
                 payload.sender_hex,
                 payload.messages,
