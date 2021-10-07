@@ -1,4 +1,7 @@
-CREATE INDEX address_balance_idx ON address (balance);
+ALTER TABLE address ADD COLUMN balance NUMERIC NOT NULL DEFAULT 0;
+ALTER TABLE address ADD COLUMN updated_at TIMESTAMP NOT NULL DEFAULT current_timestamp;
+
+CREATE UNIQUE INDEX address_balance_idx ON address (balance);
 
 CREATE OR REPLACE FUNCTION update_account_balance_on_insert() RETURNS TRIGGER AS
 $$
@@ -50,5 +53,3 @@ CREATE TRIGGER transactions_tg_delete_update_balance
     ON transactions
     FOR EACH ROW
 EXECUTE PROCEDURE update_account_balance_on_delete();
-
-
