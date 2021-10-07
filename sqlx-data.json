@@ -1143,8 +1143,54 @@
       ]
     }
   },
-  "242a8d3cfdd26e9ba851b5af5a0eb851d5629186c3242482894a18d1d45332c5": {
-    "query": "\n            UPDATE transaction_events SET\n            (balance_change, transaction_status) =\n            ($1, $2)\n            WHERE message_hash = $3 and transaction_direction = 'Send'::twa_transaction_direction\n            RETURNING id,\n                service_id as \"service_id: _\",\n                transaction_id,\n                message_hash,\n                account_workchain_id,\n                account_hex,\n                sender_workchain_id,\n                sender_hex,\n                balance_change,\n                transaction_direction as \"transaction_direction: _\",\n                transaction_status as \"transaction_status: _\",\n                event_status as \"event_status: _\",\n                created_at, updated_at, sender_is_token_wallet",
+  "24514da846eb4c26b09a9bed46b263b8baef99ab3469172f6d523c706b93eed5": {
+    "query": "SELECT name, address, contract FROM token_whitelist",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "name",
+          "type_info": "Varchar"
+        },
+        {
+          "ordinal": 1,
+          "name": "address",
+          "type_info": "Varchar"
+        },
+        {
+          "ordinal": 2,
+          "name": "contract",
+          "type_info": "Jsonb"
+        }
+      ],
+      "parameters": {
+        "Left": []
+      },
+      "nullable": [
+        false,
+        false,
+        false
+      ]
+    }
+  },
+  "271f5fcb3fc356619aca727bb852514d54f152a79ebed65ab6571425a506ee9e": {
+    "query": "INSERT INTO token_owners (address, owner_account_workchain_id, owner_account_hex, root_address, code_hash)\n            VALUES ($1, $2, $3, $4, $5)\n            ON CONFLICT DO NOTHING",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": [
+          "Varchar",
+          "Int4",
+          "Varchar",
+          "Varchar",
+          "Bytea"
+        ]
+      },
+      "nullable": []
+    }
+  },
+  "32f5eabec7ebb7cbe4911aff9990402b6b21454132284159ef5e0b6cc94b5f5d": {
+    "query": "\n            UPDATE transaction_events SET\n            (balance_change, transaction_status, updated_at) =\n            ($1, $2, $3)\n            WHERE message_hash = $4 and transaction_direction = 'Send'::twa_transaction_direction\n            RETURNING id,\n                service_id as \"service_id: _\",\n                transaction_id,\n                message_hash,\n                account_workchain_id,\n                account_hex,\n                sender_workchain_id,\n                sender_hex,\n                balance_change,\n                transaction_direction as \"transaction_direction: _\",\n                transaction_status as \"transaction_status: _\",\n                event_status as \"event_status: _\",\n                created_at, updated_at, sender_is_token_wallet",
     "describe": {
       "columns": [
         {
@@ -1272,6 +1318,7 @@
               }
             }
           },
+          "Timestamp",
           "Text"
         ]
       },
@@ -1292,52 +1339,6 @@
         false,
         false
       ]
-    }
-  },
-  "24514da846eb4c26b09a9bed46b263b8baef99ab3469172f6d523c706b93eed5": {
-    "query": "SELECT name, address, contract FROM token_whitelist",
-    "describe": {
-      "columns": [
-        {
-          "ordinal": 0,
-          "name": "name",
-          "type_info": "Varchar"
-        },
-        {
-          "ordinal": 1,
-          "name": "address",
-          "type_info": "Varchar"
-        },
-        {
-          "ordinal": 2,
-          "name": "contract",
-          "type_info": "Jsonb"
-        }
-      ],
-      "parameters": {
-        "Left": []
-      },
-      "nullable": [
-        false,
-        false,
-        false
-      ]
-    }
-  },
-  "271f5fcb3fc356619aca727bb852514d54f152a79ebed65ab6571425a506ee9e": {
-    "query": "INSERT INTO token_owners (address, owner_account_workchain_id, owner_account_hex, root_address, code_hash)\n            VALUES ($1, $2, $3, $4, $5)\n            ON CONFLICT DO NOTHING",
-    "describe": {
-      "columns": [],
-      "parameters": {
-        "Left": [
-          "Varchar",
-          "Int4",
-          "Varchar",
-          "Varchar",
-          "Bytea"
-        ]
-      },
-      "nullable": []
     }
   },
   "360413903546da5311999f0665280dc8c1e82fb74be273da9ae8f3debd2dafcf": {
@@ -2747,6 +2748,239 @@
         true,
         true,
         false,
+        false,
+        false,
+        false,
+        false,
+        false
+      ]
+    }
+  },
+  "625a20aedaaf8d7e701293e8845e2a60a140144f7712336e341e2339f272c408": {
+    "query": "\n            UPDATE transactions SET\n            (transaction_hash, transaction_lt, transaction_scan_lt, transaction_timestamp, sender_workchain_id, sender_hex, messages, messages_hash, data, value, fee, balance_change, status, error, updated_at) =\n            ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)\n            WHERE message_hash = $16 AND account_workchain_id = $17 and account_hex = $18 and direction = 'Send'::twa_transaction_direction and transaction_hash is NULL\n            RETURNING id, service_id as \"service_id: _\", message_hash, transaction_hash, transaction_lt, transaction_timeout,\n                transaction_scan_lt, transaction_timestamp, sender_workchain_id, sender_hex, account_workchain_id, account_hex, messages, messages_hash, data,\n                original_value, original_outputs, value, fee, balance_change, direction as \"direction: _\", status as \"status: _\",\n                error, aborted, bounce, created_at, updated_at, sender_is_token_wallet",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "id",
+          "type_info": "Uuid"
+        },
+        {
+          "ordinal": 1,
+          "name": "service_id: _",
+          "type_info": "Uuid"
+        },
+        {
+          "ordinal": 2,
+          "name": "message_hash",
+          "type_info": "Varchar"
+        },
+        {
+          "ordinal": 3,
+          "name": "transaction_hash",
+          "type_info": "Varchar"
+        },
+        {
+          "ordinal": 4,
+          "name": "transaction_lt",
+          "type_info": "Numeric"
+        },
+        {
+          "ordinal": 5,
+          "name": "transaction_timeout",
+          "type_info": "Int8"
+        },
+        {
+          "ordinal": 6,
+          "name": "transaction_scan_lt",
+          "type_info": "Int8"
+        },
+        {
+          "ordinal": 7,
+          "name": "transaction_timestamp",
+          "type_info": "Timestamp"
+        },
+        {
+          "ordinal": 8,
+          "name": "sender_workchain_id",
+          "type_info": "Int4"
+        },
+        {
+          "ordinal": 9,
+          "name": "sender_hex",
+          "type_info": "Varchar"
+        },
+        {
+          "ordinal": 10,
+          "name": "account_workchain_id",
+          "type_info": "Int4"
+        },
+        {
+          "ordinal": 11,
+          "name": "account_hex",
+          "type_info": "Varchar"
+        },
+        {
+          "ordinal": 12,
+          "name": "messages",
+          "type_info": "Jsonb"
+        },
+        {
+          "ordinal": 13,
+          "name": "messages_hash",
+          "type_info": "Jsonb"
+        },
+        {
+          "ordinal": 14,
+          "name": "data",
+          "type_info": "Jsonb"
+        },
+        {
+          "ordinal": 15,
+          "name": "original_value",
+          "type_info": "Numeric"
+        },
+        {
+          "ordinal": 16,
+          "name": "original_outputs",
+          "type_info": "Jsonb"
+        },
+        {
+          "ordinal": 17,
+          "name": "value",
+          "type_info": "Numeric"
+        },
+        {
+          "ordinal": 18,
+          "name": "fee",
+          "type_info": "Numeric"
+        },
+        {
+          "ordinal": 19,
+          "name": "balance_change",
+          "type_info": "Numeric"
+        },
+        {
+          "ordinal": 20,
+          "name": "direction: _",
+          "type_info": {
+            "Custom": {
+              "name": "twa_transaction_direction",
+              "kind": {
+                "Enum": [
+                  "Send",
+                  "Receive"
+                ]
+              }
+            }
+          }
+        },
+        {
+          "ordinal": 21,
+          "name": "status: _",
+          "type_info": {
+            "Custom": {
+              "name": "twa_transaction_status",
+              "kind": {
+                "Enum": [
+                  "New",
+                  "Done",
+                  "PartiallyDone",
+                  "Error"
+                ]
+              }
+            }
+          }
+        },
+        {
+          "ordinal": 22,
+          "name": "error",
+          "type_info": "Text"
+        },
+        {
+          "ordinal": 23,
+          "name": "aborted",
+          "type_info": "Bool"
+        },
+        {
+          "ordinal": 24,
+          "name": "bounce",
+          "type_info": "Bool"
+        },
+        {
+          "ordinal": 25,
+          "name": "created_at",
+          "type_info": "Timestamp"
+        },
+        {
+          "ordinal": 26,
+          "name": "updated_at",
+          "type_info": "Timestamp"
+        },
+        {
+          "ordinal": 27,
+          "name": "sender_is_token_wallet",
+          "type_info": "Bool"
+        }
+      ],
+      "parameters": {
+        "Left": [
+          "Varchar",
+          "Numeric",
+          "Int8",
+          "Timestamp",
+          "Int4",
+          "Varchar",
+          "Jsonb",
+          "Jsonb",
+          "Jsonb",
+          "Numeric",
+          "Numeric",
+          "Numeric",
+          {
+            "Custom": {
+              "name": "twa_transaction_status",
+              "kind": {
+                "Enum": [
+                  "New",
+                  "Done",
+                  "PartiallyDone",
+                  "Error"
+                ]
+              }
+            }
+          },
+          "Text",
+          "Timestamp",
+          "Text",
+          "Int4",
+          "Text"
+        ]
+      },
+      "nullable": [
+        false,
+        false,
+        false,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        false,
+        false,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        false,
+        false,
+        true,
         false,
         false,
         false,
@@ -4376,238 +4610,6 @@
           "Bool",
           "Bool",
           "Bool"
-        ]
-      },
-      "nullable": [
-        false,
-        false,
-        false,
-        true,
-        true,
-        true,
-        true,
-        true,
-        true,
-        true,
-        false,
-        false,
-        true,
-        true,
-        true,
-        true,
-        true,
-        true,
-        true,
-        true,
-        false,
-        false,
-        true,
-        false,
-        false,
-        false,
-        false,
-        false
-      ]
-    }
-  },
-  "ccd51d0f77fbe93b746fcae09c663aa244d21f98a8671c03824bcd377cea6d71": {
-    "query": "\n            UPDATE transactions SET\n            (transaction_hash, transaction_lt, transaction_scan_lt, transaction_timestamp, sender_workchain_id, sender_hex, messages, messages_hash, data, value, fee, balance_change, status, error) =\n            ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)\n            WHERE message_hash = $15 AND account_workchain_id = $16 and account_hex = $17 and direction = 'Send'::twa_transaction_direction and transaction_hash is NULL\n            RETURNING id, service_id as \"service_id: _\", message_hash, transaction_hash, transaction_lt, transaction_timeout,\n                transaction_scan_lt, transaction_timestamp, sender_workchain_id, sender_hex, account_workchain_id, account_hex, messages, messages_hash, data,\n                original_value, original_outputs, value, fee, balance_change, direction as \"direction: _\", status as \"status: _\",\n                error, aborted, bounce, created_at, updated_at, sender_is_token_wallet",
-    "describe": {
-      "columns": [
-        {
-          "ordinal": 0,
-          "name": "id",
-          "type_info": "Uuid"
-        },
-        {
-          "ordinal": 1,
-          "name": "service_id: _",
-          "type_info": "Uuid"
-        },
-        {
-          "ordinal": 2,
-          "name": "message_hash",
-          "type_info": "Varchar"
-        },
-        {
-          "ordinal": 3,
-          "name": "transaction_hash",
-          "type_info": "Varchar"
-        },
-        {
-          "ordinal": 4,
-          "name": "transaction_lt",
-          "type_info": "Numeric"
-        },
-        {
-          "ordinal": 5,
-          "name": "transaction_timeout",
-          "type_info": "Int8"
-        },
-        {
-          "ordinal": 6,
-          "name": "transaction_scan_lt",
-          "type_info": "Int8"
-        },
-        {
-          "ordinal": 7,
-          "name": "transaction_timestamp",
-          "type_info": "Timestamp"
-        },
-        {
-          "ordinal": 8,
-          "name": "sender_workchain_id",
-          "type_info": "Int4"
-        },
-        {
-          "ordinal": 9,
-          "name": "sender_hex",
-          "type_info": "Varchar"
-        },
-        {
-          "ordinal": 10,
-          "name": "account_workchain_id",
-          "type_info": "Int4"
-        },
-        {
-          "ordinal": 11,
-          "name": "account_hex",
-          "type_info": "Varchar"
-        },
-        {
-          "ordinal": 12,
-          "name": "messages",
-          "type_info": "Jsonb"
-        },
-        {
-          "ordinal": 13,
-          "name": "messages_hash",
-          "type_info": "Jsonb"
-        },
-        {
-          "ordinal": 14,
-          "name": "data",
-          "type_info": "Jsonb"
-        },
-        {
-          "ordinal": 15,
-          "name": "original_value",
-          "type_info": "Numeric"
-        },
-        {
-          "ordinal": 16,
-          "name": "original_outputs",
-          "type_info": "Jsonb"
-        },
-        {
-          "ordinal": 17,
-          "name": "value",
-          "type_info": "Numeric"
-        },
-        {
-          "ordinal": 18,
-          "name": "fee",
-          "type_info": "Numeric"
-        },
-        {
-          "ordinal": 19,
-          "name": "balance_change",
-          "type_info": "Numeric"
-        },
-        {
-          "ordinal": 20,
-          "name": "direction: _",
-          "type_info": {
-            "Custom": {
-              "name": "twa_transaction_direction",
-              "kind": {
-                "Enum": [
-                  "Send",
-                  "Receive"
-                ]
-              }
-            }
-          }
-        },
-        {
-          "ordinal": 21,
-          "name": "status: _",
-          "type_info": {
-            "Custom": {
-              "name": "twa_transaction_status",
-              "kind": {
-                "Enum": [
-                  "New",
-                  "Done",
-                  "PartiallyDone",
-                  "Error"
-                ]
-              }
-            }
-          }
-        },
-        {
-          "ordinal": 22,
-          "name": "error",
-          "type_info": "Text"
-        },
-        {
-          "ordinal": 23,
-          "name": "aborted",
-          "type_info": "Bool"
-        },
-        {
-          "ordinal": 24,
-          "name": "bounce",
-          "type_info": "Bool"
-        },
-        {
-          "ordinal": 25,
-          "name": "created_at",
-          "type_info": "Timestamp"
-        },
-        {
-          "ordinal": 26,
-          "name": "updated_at",
-          "type_info": "Timestamp"
-        },
-        {
-          "ordinal": 27,
-          "name": "sender_is_token_wallet",
-          "type_info": "Bool"
-        }
-      ],
-      "parameters": {
-        "Left": [
-          "Varchar",
-          "Numeric",
-          "Int8",
-          "Timestamp",
-          "Int4",
-          "Varchar",
-          "Jsonb",
-          "Jsonb",
-          "Jsonb",
-          "Numeric",
-          "Numeric",
-          "Numeric",
-          {
-            "Custom": {
-              "name": "twa_transaction_status",
-              "kind": {
-                "Enum": [
-                  "New",
-                  "Done",
-                  "PartiallyDone",
-                  "Error"
-                ]
-              }
-            }
-          },
-          "Text",
-          "Text",
-          "Int4",
-          "Text"
         ]
       },
       "nullable": [

@@ -92,13 +92,14 @@ impl SqlxClient {
         let mut tx = self.pool.begin().await.map_err(ServiceError::from)?;
         let transaction_timestamp =
             NaiveDateTime::from_timestamp(payload.transaction_timestamp.trust_me() as i64, 0);
+        let updated_at = Utc::now().naive_utc();
 
         let transaction = sqlx::query_as!(TransactionDb,
                 r#"
             UPDATE transactions SET
-            (transaction_hash, transaction_lt, transaction_scan_lt, transaction_timestamp, sender_workchain_id, sender_hex, messages, messages_hash, data, value, fee, balance_change, status, error) =
-            ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
-            WHERE message_hash = $15 AND account_workchain_id = $16 and account_hex = $17 and direction = 'Send'::twa_transaction_direction and transaction_hash is NULL
+            (transaction_hash, transaction_lt, transaction_scan_lt, transaction_timestamp, sender_workchain_id, sender_hex, messages, messages_hash, data, value, fee, balance_change, status, error, updated_at) =
+            ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
+            WHERE message_hash = $16 AND account_workchain_id = $17 and account_hex = $18 and direction = 'Send'::twa_transaction_direction and transaction_hash is NULL
             RETURNING id, service_id as "service_id: _", message_hash, transaction_hash, transaction_lt, transaction_timeout,
                 transaction_scan_lt, transaction_timestamp, sender_workchain_id, sender_hex, account_workchain_id, account_hex, messages, messages_hash, data,
                 original_value, original_outputs, value, fee, balance_change, direction as "direction: _", status as "status: _",
@@ -117,6 +118,7 @@ impl SqlxClient {
                 payload.balance_change,
                 payload.status as TonTransactionStatus,
                 payload.error,
+                updated_at,
                 message_hash,
                 account_workchain_id,
                 account_hex,
@@ -131,9 +133,9 @@ impl SqlxClient {
             TransactionEventDb,
             r#"
             UPDATE transaction_events SET
-            (balance_change, transaction_status) =
-            ($1, $2)
-            WHERE message_hash = $3 and transaction_direction = 'Send'::twa_transaction_direction
+            (balance_change, transaction_status, updated_at) =
+            ($1, $2, $3)
+            WHERE message_hash = $4 and transaction_direction = 'Send'::twa_transaction_direction
             RETURNING id,
                 service_id as "service_id: _",
                 transaction_id,
@@ -149,6 +151,7 @@ impl SqlxClient {
                 created_at, updated_at, sender_is_token_wallet"#,
             payload.balance_change,
             payload.transaction_status as TonTransactionStatus,
+            updated_at,
             message_hash,
         )
         .fetch_one(&mut tx)
