@@ -108,7 +108,7 @@ pub fn swagger() -> String {
                 }
             },
             ("transactions"): {
-                GET: {
+                POST: {
                     tags: { transactions },
                     summary: "Search transactions",
                     description: "Search transactions.",
