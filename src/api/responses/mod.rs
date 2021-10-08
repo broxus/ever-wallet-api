@@ -478,7 +478,7 @@ impl From<TransactionDb> for AccountTransactionDataResponse {
             aborted: c.aborted,
             bounce: c.bounce,
             sender_is_token_wallet: c.sender_is_token_wallet,
-            transaction_timestamp: c.transaction_timestamp.map(|t| t.timestamp()),
+            transaction_timestamp: c.transaction_timestamp.map(|t| t.timestamp_millis()),
             created_at: c.created_at.timestamp_millis(),
             updated_at: c.updated_at.timestamp_millis(),
             error: c.error,
