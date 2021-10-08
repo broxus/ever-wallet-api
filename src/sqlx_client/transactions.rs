@@ -616,13 +616,19 @@ pub fn filter_transaction_query(
     if let Some(created_at_min) = created_at_min {
         updates.push(format!(" AND created_at >= ${} ", *args_len + 1,));
         *args_len += 1;
-        args.add(NaiveDateTime::from_timestamp(created_at_min, 0))
+        args.add(NaiveDateTime::from_timestamp(
+            created_at_min / 1000,
+            ((created_at_min % 1000) * 1_000_000) as u32,
+        ))
     }
 
     if let Some(created_at_max) = created_at_max {
         updates.push(format!(" AND created_at <= ${} ", *args_len + 1,));
         *args_len += 1;
-        args.add(NaiveDateTime::from_timestamp(created_at_max, 0))
+        args.add(NaiveDateTime::from_timestamp(
+            created_at_max / 1000,
+            ((created_at_max % 1000) * 1_000_000) as u32,
+        ))
     }
 
     updates
