@@ -1,13 +1,12 @@
 use std::collections::{hash_map, HashMap};
-use std::ops::Deref;
 use std::sync::atomic::{AtomicBool, AtomicU32, Ordering};
 use std::sync::{Arc, Weak};
 
-use anyhow::{Context, Result};
+use anyhow::Result;
 use nekoton::transport::models::ExistingContract;
-use parking_lot::Mutex;
+use parking_lot::{Mutex, RwLock};
 use tiny_adnl::utils::FxHashMap;
-use tokio::sync::{watch, Notify};
+use tokio::sync::Notify;
 use ton_block::{Deserializable, HashmapAugType};
 use ton_indexer::utils::{BlockIdExtExtension, BlockProofStuff, BlockStuff, ShardStateStuff};
 use ton_indexer::EngineStatus;
@@ -19,7 +18,7 @@ pub struct TonSubscriber {
     ready: AtomicBool,
     ready_signal: Notify,
     current_utime: AtomicU32,
-    state_subscriptions: Mutex<HashMap<UInt256, StateSubscription>>,
+    state_subscriptions: RwLock<HashMap<UInt256, StateSubscription>>,
     shard_accounts_cache: Mutex<HashMap<ton_block::ShardIdent, ton_block::ShardAccounts>>,
     mc_block_awaiters: Mutex<FxHashMap<usize, Box<dyn BlockAwaiter>>>,
     messages_queue: Arc<PendingMessagesQueue>,
@@ -31,7 +30,7 @@ impl TonSubscriber {
             ready: AtomicBool::new(false),
             ready_signal: Notify::new(),
             current_utime: AtomicU32::new(0),
-            state_subscriptions: Mutex::new(HashMap::new()),
+            state_subscriptions: RwLock::new(HashMap::new()),
             shard_accounts_cache: Mutex::new(HashMap::new()),
             mc_block_awaiters: Mutex::new(FxHashMap::with_capacity_and_hasher(
                 4,
@@ -55,17 +54,14 @@ impl TonSubscriber {
         I: IntoIterator<Item = UInt256>,
         T: TransactionsSubscription + 'static,
     {
-        let mut state_subscriptions = self.state_subscriptions.lock();
+        let mut state_subscriptions = self.state_subscriptions.write();
 
         let weak = Arc::downgrade(subscription) as Weak<dyn TransactionsSubscription>;
 
         for account in accounts {
             match state_subscriptions.entry(account) {
                 hash_map::Entry::Vacant(entry) => {
-                    let (state_tx, state_rx) = watch::channel(None);
                     entry.insert(StateSubscription {
-                        state_tx,
-                        state_rx,
                         transaction_subscriptions: vec![weak.clone()],
                     });
                 }
@@ -74,28 +70,6 @@ impl TonSubscriber {
                 }
             };
         }
-    }
-
-    #[allow(dead_code)]
-    pub async fn wait_contract_state(&self, account: UInt256) -> Result<Option<ExistingContract>> {
-        let mut state_rx = match self.state_subscriptions.lock().entry(account) {
-            hash_map::Entry::Vacant(entry) => {
-                let (state_tx, state_rx) = watch::channel(None);
-                entry
-                    .insert(StateSubscription {
-                        state_tx,
-                        state_rx,
-                        transaction_subscriptions: Vec::new(),
-                    })
-                    .state_rx
-                    .clone()
-            }
-            hash_map::Entry::Occupied(entry) => entry.get().state_rx.clone(),
-        };
-
-        state_rx.changed().await?;
-        let account = state_rx.borrow_and_update();
-        ExistingContract::from_shard_account_opt(account.deref())
     }
 
     pub fn get_contract_state(&self, account: &UInt256) -> Result<Option<ExistingContract>> {
@@ -170,54 +144,26 @@ impl TonSubscriber {
             }
         }
 
-        {
-            let mut subscriptions = self.state_subscriptions.lock();
-            subscriptions.retain(|account, subscription| {
-                let subscription_status = subscription.update_status();
-                if subscription_status == StateSubscriptionStatus::Stopped {
-                    return false;
-                }
+        let subscriptions = self.state_subscriptions.read();
+        account_blocks.iterate_with_keys(|account, account_block| {
+            let subscription = match subscriptions.get(&account) {
+                Some(subscription) => subscription,
+                None => return Ok(true),
+            };
 
-                if !contains_account(block_info.shard(), account) {
-                    return true;
-                }
+            if let Err(e) = subscription.handle_block(
+                &self.messages_queue,
+                &shard_accounts,
+                &block_info,
+                &account_block,
+                &account,
+                block_hash,
+            ) {
+                log::error!("Failed to handle block: {:?}", e);
+            }
 
-                let mut keep = true;
-
-                if subscription_status == StateSubscriptionStatus::Alive {
-                    match shard_accounts.get(account) {
-                        Ok(account) => {
-                            if subscription.state_tx.send(account).is_err() {
-                                log::error!("Shard subscription somehow dropped");
-                                keep = false;
-                            }
-                        }
-                        Err(e) => {
-                            log::error!(
-                                "Failed to get account {}: {:?}",
-                                account.to_hex_string(),
-                                e
-                            );
-                        }
-                    };
-                } else {
-                    subscription.state_rx.borrow_and_update();
-                }
-
-                if let Err(e) = subscription.handle_block(
-                    &self.messages_queue,
-                    &shard_accounts,
-                    &block_info,
-                    &account_blocks,
-                    account,
-                    block_hash,
-                ) {
-                    log::error!("Failed to handle block: {:?}", e);
-                }
-
-                keep
-            });
-        }
+            Ok(true)
+        })?;
 
         self.messages_queue
             .update(block_info.shard(), block_info.gen_utime().0);
@@ -260,47 +206,22 @@ impl ton_indexer::Subscriber for TonSubscriber {
 }
 
 struct StateSubscription {
-    state_tx: ShardAccountTx,
-    state_rx: ShardAccountRx,
     transaction_subscriptions: Vec<Weak<dyn TransactionsSubscription>>,
 }
 
 impl StateSubscription {
-    fn update_status(&mut self) -> StateSubscriptionStatus {
-        self.transaction_subscriptions
-            .retain(|item| item.strong_count() > 0);
-
-        if self.state_tx.receiver_count() > 1 {
-            StateSubscriptionStatus::Alive
-        } else if !self.transaction_subscriptions.is_empty() {
-            StateSubscriptionStatus::PartlyAlive
-        } else {
-            StateSubscriptionStatus::Stopped
-        }
-    }
-
     fn handle_block(
         &self,
         messages_queue: &PendingMessagesQueue,
         shard_accounts: &ton_block::ShardAccounts,
         block_info: &ton_block::BlockInfo,
-        account_blocks: &ton_block::ShardAccountBlocks,
+        account_block: &ton_block::AccountBlock,
         account: &UInt256,
         block_hash: &UInt256,
     ) -> Result<()> {
         if self.transaction_subscriptions.is_empty() {
             return Ok(());
         }
-
-        let account_block = match account_blocks.get_with_aug(account).with_context(|| {
-            format!(
-                "Failed to get account block for {}",
-                account.to_hex_string()
-            )
-        })? {
-            Some((account_block, _)) => account_block,
-            None => return Ok(()),
-        };
 
         for transaction in account_block.transactions().iter() {
             let (hash, transaction) = match transaction.and_then(|(_, value)| {
@@ -379,13 +300,6 @@ impl StateSubscription {
     }
 }
 
-#[derive(Copy, Clone, Eq, PartialEq)]
-enum StateSubscriptionStatus {
-    Alive,
-    PartlyAlive,
-    Stopped,
-}
-
 trait BlockAwaiter: Send + Sync {
     fn handle_block(
         &mut self,
@@ -436,8 +350,5 @@ where
         Ok(())
     }
 }
-
-type ShardAccountTx = watch::Sender<Option<ton_block::ShardAccount>>;
-type ShardAccountRx = watch::Receiver<Option<ton_block::ShardAccount>>;
 
 pub type AccountEventsTx<T> = mpsc::UnboundedSender<T>;

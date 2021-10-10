@@ -129,19 +129,27 @@ impl TonClientImpl {
 
             self.ton_core.add_ton_account_subscription(owner_accounts);
         }
+        log::info!("Subscribing to ton accounts complete");
 
         // Subscribe to all token accounts
         {
             let mut token_accounts = Vec::new();
-            for owner_address in &owner_addresses {
+            for (i, owner_address) in owner_addresses.iter().enumerate() {
                 for (_, root_contract) in self.root_contract_cache.read().iter() {
                     let account = get_token_wallet_account(root_contract, owner_address)?;
                     token_accounts.push(account);
+                }
+                if i % (owner_addresses.len() / 100) == 0 {
+                    log::info!(
+                        "Subscribing to token accounts in progress.. {}%",
+                        i / (owner_addresses.len() / 100)
+                    );
                 }
             }
 
             self.ton_core.add_token_account_subscription(token_accounts);
         }
+        log::info!("Subscribing to token accounts complete");
 
         Ok(())
     }

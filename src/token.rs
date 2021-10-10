@@ -8,6 +8,8 @@ use crate::settings::*;
 use crate::sqlx_client::*;
 use crate::ton_core::*;
 
+const TIME_TO_SLEEP: u64 = 1; // sec
+
 pub async fn add_root_token(
     config: AppConfig,
     global_config: ton_indexer::GlobalConfig,
@@ -39,7 +41,21 @@ pub async fn add_root_token(
 
     let address = nekoton_utils::repack_address(&token_address)?;
     let account = UInt256::from_be_bytes(&address.address().get_bytestring(0));
-    let contract = ton_core.wait_contract_state(account).await?;
+
+    let contract;
+    loop {
+        match ton_core.get_contract_state(&account) {
+            Ok(c) => {
+                contract = c;
+                break;
+            }
+            Err(_) => {
+                tokio::time::sleep(std::time::Duration::from_secs(TIME_TO_SLEEP)).await;
+                continue;
+            }
+        };
+    }
+
     let contract = serde_json::to_value(contract)?;
 
     sqlx_client

@@ -83,10 +83,6 @@ impl TonCore {
         self.context.get_contract_state(account)
     }
 
-    pub async fn wait_contract_state(&self, account: UInt256) -> Result<ExistingContract> {
-        self.context.wait_contract_state(account).await
-    }
-
     pub async fn send_ton_message(
         &self,
         account: &ton_types::UInt256,
@@ -160,13 +156,6 @@ impl TonCoreContext {
 
     fn get_contract_state(&self, account: &UInt256) -> Result<ExistingContract> {
         match self.ton_subscriber.get_contract_state(account)? {
-            Some(contract) => Ok(contract),
-            None => Err(TonCoreError::AccountNotExist(account.to_hex_string()).into()),
-        }
-    }
-
-    async fn wait_contract_state(&self, account: UInt256) -> Result<ExistingContract> {
-        match self.ton_subscriber.wait_contract_state(account).await? {
             Some(contract) => Ok(contract),
             None => Err(TonCoreError::AccountNotExist(account.to_hex_string()).into()),
         }
