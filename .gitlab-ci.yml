@@ -1,4 +1,3 @@
-
 stages:
   - cloudbuild
 
@@ -13,6 +12,24 @@ cloudbuild:rust-artifact:
     CONFIG_GROUP: ton
     IMAGE_NAME: gcr.io/broxus/ton/ton-wallet-api/ton-wallet-api
     BUILD: test
+  before_script:
+    - export COMMIT_TIME=$(git show -s --format=%ct $CI_COMMIT_SHA)
+    - export IMAGE_VERSION=$CI_COMMIT_REF_SLUG/$COMMIT_TIME
+    - envsubst < cloudbuild-template.yaml > cloudbuild.yaml
+  script:
+    - gcloud builds submit --machine-type=n1-highcpu-8 --config cloudbuild.yaml .
+
+cloudbuild:rust-artifact-prod:
+  stage: cloudbuild
+  only:
+    - prod
+  variables:
+    CONFIG_BUILDER: gcr.io/dexpa-175115/rust/rust-builder:stable
+    BINARY_NAME: ton-wallet-api
+    CONFIG_APPLICATION: ton-wallet-api
+    CONFIG_GROUP: ton
+    IMAGE_NAME: gcr.io/broxus/ton/ton-wallet-api/ton-wallet-api
+    BUILD: prod
   before_script:
     - export COMMIT_TIME=$(git show -s --format=%ct $CI_COMMIT_SHA)
     - export IMAGE_VERSION=$CI_COMMIT_REF_SLUG/$COMMIT_TIME
