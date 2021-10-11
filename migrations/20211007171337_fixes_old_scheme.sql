@@ -13,7 +13,9 @@ ALTER TABLE transaction_events ADD COLUMN sender_workchain_id INT;
 ALTER TABLE transaction_events ADD COLUMN sender_hex VARCHAR(64);
 
 ALTER TABLE ONLY api_service ALTER COLUMN id SET DEFAULT uuid_generate_v4();
+ALTER TABLE ONLY api_service ALTER COLUMN created_at SET DEFAULT current_timestamp;
 ALTER TABLE ONLY api_service_key ALTER COLUMN id SET DEFAULT uuid_generate_v4();
+ALTER TABLE ONLY api_service_key ALTER COLUMN created_at SET DEFAULT current_timestamp;
 ALTER TABLE ONLY address ALTER COLUMN id SET DEFAULT uuid_generate_v4();
 ALTER TABLE ONLY address ALTER COLUMN created_at SET DEFAULT current_timestamp;
 ALTER TABLE ONLY api_service_callback ALTER COLUMN id SET DEFAULT uuid_generate_v4();
