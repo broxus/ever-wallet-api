@@ -89,7 +89,7 @@ pub struct CreateReceiveTransaction {
     pub transaction_lt: Option<BigDecimal>,
     pub transaction_timeout: Option<i64>,
     pub transaction_scan_lt: Option<i64>,
-    pub transaction_timestamp: Option<u32>,
+    pub transaction_timestamp: u32,
     pub sender_workchain_id: Option<i32>,
     pub sender_hex: Option<String>,
     pub account_workchain_id: i32,

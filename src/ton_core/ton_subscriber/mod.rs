@@ -19,7 +19,7 @@ pub struct TonSubscriber {
     ready_signal: Notify,
     current_utime: AtomicU32,
     state_subscriptions: RwLock<HashMap<UInt256, StateSubscription>>,
-    shard_accounts_cache: Mutex<HashMap<ton_block::ShardIdent, ton_block::ShardAccounts>>,
+    shard_accounts_cache: RwLock<HashMap<ton_block::ShardIdent, ton_block::ShardAccounts>>,
     mc_block_awaiters: Mutex<FxHashMap<usize, Box<dyn BlockAwaiter>>>,
     messages_queue: Arc<PendingMessagesQueue>,
 }
@@ -31,7 +31,7 @@ impl TonSubscriber {
             ready_signal: Notify::new(),
             current_utime: AtomicU32::new(0),
             state_subscriptions: RwLock::new(HashMap::new()),
-            shard_accounts_cache: Mutex::new(HashMap::new()),
+            shard_accounts_cache: RwLock::new(HashMap::new()),
             mc_block_awaiters: Mutex::new(FxHashMap::with_capacity_and_hasher(
                 4,
                 Default::default(),
@@ -73,9 +73,7 @@ impl TonSubscriber {
     }
 
     pub fn get_contract_state(&self, account: &UInt256) -> Result<Option<ExistingContract>> {
-        let state = None;
-
-        let shard_accounts_cache = self.shard_accounts_cache.lock();
+        let shard_accounts_cache = self.shard_accounts_cache.read();
         for (shard_ident, shard_accounts) in shard_accounts_cache.iter() {
             if contains_account(shard_ident, account) {
                 match shard_accounts.get(account) {
@@ -87,7 +85,7 @@ impl TonSubscriber {
             }
         }
 
-        Ok(state)
+        Ok(None)
     }
 
     fn handle_masterchain_block(&self, block: &ton_block::Block) -> Result<()> {
@@ -120,29 +118,28 @@ impl TonSubscriber {
         let account_blocks = extra.read_account_blocks()?;
         let shard_accounts = shard_state.read_accounts()?;
 
-        {
-            let mut shard_accounts_cache = self.shard_accounts_cache.lock();
-            shard_accounts_cache.insert(*block_info.shard(), shard_accounts.clone());
-            if block_info.after_merge() || block_info.after_split() {
-                let block_ids = block_info.read_prev_ids()?;
-                match block_ids.len() {
-                    1 => {
-                        let (left, right) = block_ids[0].shard_id.split()?;
-                        if shard_accounts_cache.contains_key(&left)
-                            && shard_accounts_cache.contains_key(&right)
-                        {
-                            shard_accounts_cache.remove(&block_ids[0].shard_id);
-                        }
+        let mut shard_accounts_cache = self.shard_accounts_cache.write();
+        shard_accounts_cache.insert(*block_info.shard(), shard_accounts.clone());
+        if block_info.after_merge() || block_info.after_split() {
+            let block_ids = block_info.read_prev_ids()?;
+            match block_ids.len() {
+                1 => {
+                    let (left, right) = block_ids[0].shard_id.split()?;
+                    if shard_accounts_cache.contains_key(&left)
+                        && shard_accounts_cache.contains_key(&right)
+                    {
+                        shard_accounts_cache.remove(&block_ids[0].shard_id);
                     }
-                    len if len > 1 => {
-                        for block_id in block_info.read_prev_ids()? {
-                            shard_accounts_cache.remove(&block_id.shard_id);
-                        }
-                    }
-                    _ => {}
                 }
+                len if len > 1 => {
+                    for block_id in block_info.read_prev_ids()? {
+                        shard_accounts_cache.remove(&block_id.shard_id);
+                    }
+                }
+                _ => {}
             }
         }
+        drop(shard_accounts_cache);
 
         let subscriptions = self.state_subscriptions.read();
         account_blocks.iterate_with_keys(|account, account_block| {

@@ -8,8 +8,6 @@ use crate::settings::*;
 use crate::sqlx_client::*;
 use crate::ton_core::*;
 
-const TIME_TO_SLEEP: u64 = 1; // sec
-
 pub async fn add_root_token(
     config: AppConfig,
     global_config: ton_indexer::GlobalConfig,
@@ -50,6 +48,7 @@ pub async fn add_root_token(
                 break;
             }
             Err(_) => {
+                const TIME_TO_SLEEP: u64 = 1; // sec
                 tokio::time::sleep(std::time::Duration::from_secs(TIME_TO_SLEEP)).await;
                 continue;
             }

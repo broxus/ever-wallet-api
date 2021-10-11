@@ -1,6 +1,5 @@
 use anyhow::Result;
 use chrono::prelude::*;
-use nekoton_utils::TrustMe;
 
 use crate::models::*;
 use crate::prelude::*;
@@ -14,7 +13,7 @@ impl SqlxClient {
     ) -> Result<(TokenTransactionFromDb, TokenTransactionEventDb), ServiceError> {
         let mut tx = self.pool.begin().await.map_err(ServiceError::from)?;
         let transaction_timestamp =
-            NaiveDateTime::from_timestamp(payload.transaction_timestamp.trust_me() as i64, 0);
+            NaiveDateTime::from_timestamp(payload.transaction_timestamp as i64, 0);
 
         let transaction = sqlx::query_as!(TokenTransactionFromDb,
                 r#"

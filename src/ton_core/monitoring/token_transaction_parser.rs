@@ -97,7 +97,7 @@ async fn internal_transfer_send(
     let mut transaction = CreateTokenTransaction {
         id: Uuid::new_v4(),
         transaction_hash: Some(token_transaction_ctx.transaction_hash.to_hex_string()),
-        transaction_timestamp: Some(token_transaction_ctx.block_utime),
+        transaction_timestamp: token_transaction_ctx.block_utime,
         message_hash,
         owner_message_hash,
         account_workchain_id: owner_info.owner_address.workchain_id(),
@@ -149,7 +149,7 @@ async fn internal_transfer_receive(
     let mut transaction = CreateTokenTransaction {
         id: Uuid::new_v4(),
         transaction_hash: Some(token_transaction_ctx.transaction_hash.to_hex_string()),
-        transaction_timestamp: Some(token_transaction_ctx.block_utime),
+        transaction_timestamp: token_transaction_ctx.block_utime,
         message_hash,
         owner_message_hash: None,
         account_workchain_id: owner_info.owner_address.get_workchain_id(),
@@ -200,7 +200,7 @@ async fn internal_transfer_bounced(
     let mut transaction = CreateTokenTransaction {
         id: Uuid::new_v4(),
         transaction_hash: Some(token_transaction_ctx.transaction_hash.to_hex_string()),
-        transaction_timestamp: Some(token_transaction_ctx.block_utime),
+        transaction_timestamp: token_transaction_ctx.block_utime,
         message_hash,
         owner_message_hash: None,
         account_workchain_id: owner_info.owner_address.workchain_id(),
@@ -251,7 +251,7 @@ async fn internal_transfer_mint(
     let mut transaction = CreateTokenTransaction {
         id: Uuid::new_v4(),
         transaction_hash: Some(token_transaction_ctx.transaction_hash.to_hex_string()),
-        transaction_timestamp: Some(token_transaction_ctx.block_utime),
+        transaction_timestamp: token_transaction_ctx.block_utime,
         message_hash: message_hash.to_hex_string(),
         owner_message_hash: None,
         account_workchain_id: owner_info.owner_address.get_workchain_id(),

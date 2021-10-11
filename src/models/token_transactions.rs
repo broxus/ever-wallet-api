@@ -20,7 +20,7 @@ pub struct TokenTransactionSend {
 pub struct CreateTokenTransaction {
     pub id: Uuid,
     pub transaction_hash: Option<String>,
-    pub transaction_timestamp: Option<u32>,
+    pub transaction_timestamp: u32,
     pub message_hash: String,
     pub owner_message_hash: Option<String>,
     pub account_workchain_id: i32,

@@ -90,8 +90,9 @@ impl SqlxClient {
         payload: UpdateSendTransaction,
     ) -> Result<(TransactionDb, TransactionEventDb), ServiceError> {
         let mut tx = self.pool.begin().await.map_err(ServiceError::from)?;
-        let transaction_timestamp =
-            NaiveDateTime::from_timestamp(payload.transaction_timestamp.trust_me() as i64, 0);
+        let transaction_timestamp = payload.transaction_timestamp.map(|transaction_timestamp| {
+            NaiveDateTime::from_timestamp(transaction_timestamp as i64, 0)
+        });
         let updated_at = Utc::now().naive_utc();
 
         let transaction = sqlx::query_as!(TransactionDb,
@@ -262,7 +263,7 @@ impl SqlxClient {
     ) -> Result<(TransactionDb, TransactionEventDb), ServiceError> {
         let mut tx = self.pool.begin().await.map_err(ServiceError::from)?;
         let transaction_timestamp =
-            NaiveDateTime::from_timestamp(payload.transaction_timestamp.trust_me() as i64, 0);
+            NaiveDateTime::from_timestamp(payload.transaction_timestamp as i64, 0);
 
         let transaction = sqlx::query_as!(TransactionDb,
                 r#"
