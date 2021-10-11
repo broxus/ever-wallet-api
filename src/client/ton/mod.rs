@@ -139,12 +139,6 @@ impl TonClientImpl {
                     let account = get_token_wallet_account(root_contract, owner_address)?;
                     token_accounts.push(account);
                 }
-                if i % (owner_addresses.len() / 100) == 0 {
-                    log::info!(
-                        "Subscribing to token accounts in progress.. {}%",
-                        i / (owner_addresses.len() / 100)
-                    );
-                }
             }
 
             self.ton_core.add_token_account_subscription(token_accounts);
