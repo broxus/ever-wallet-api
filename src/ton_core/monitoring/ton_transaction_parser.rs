@@ -248,12 +248,23 @@ async fn sender_is_token_wallet(
         }
 
         let account = UInt256::from_be_bytes(&sender.address().get_bytestring(0));
-        let contract = parse_ctx.ton_subscriber.get_contract_state(&account)?;
-        if let Some(contract) = contract {
-            let token_wallet = nekoton::core::token_wallet::TokenWalletContractState(&contract);
-            if token_wallet.get_version().is_ok() {
-                return Ok(true);
-            }
+
+        let contract = loop {
+            match parse_ctx.ton_subscriber.get_contract_state(&account)? {
+                Some(contract) => {
+                    break contract;
+                }
+                None => {
+                    const TIME_TO_SLEEP: u64 = 1; // sec
+                    tokio::time::sleep(std::time::Duration::from_secs(TIME_TO_SLEEP)).await;
+                    continue;
+                }
+            };
+        };
+
+        let token_wallet = nekoton::core::token_wallet::TokenWalletContractState(&contract);
+        if token_wallet.get_version().is_ok() {
+            return Ok(true);
         }
     }
 

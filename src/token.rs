@@ -40,12 +40,10 @@ pub async fn add_root_token(
     let address = nekoton_utils::repack_address(&token_address)?;
     let account = UInt256::from_be_bytes(&address.address().get_bytestring(0));
 
-    let contract;
-    loop {
+    let contract = loop {
         match ton_core.get_contract_state(&account) {
-            Ok(c) => {
-                contract = c;
-                break;
+            Ok(contract) => {
+                break contract;
             }
             Err(_) => {
                 const TIME_TO_SLEEP: u64 = 1; // sec
@@ -53,7 +51,7 @@ pub async fn add_root_token(
                 continue;
             }
         };
-    }
+    };
 
     let contract = serde_json::to_value(contract)?;
 
