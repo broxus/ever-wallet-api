@@ -6,3 +6,34 @@ ton_core:
   adnl_port: 30310
   db_path: "/var/ton/ton-wallet-api/data"
   keys_path: "/var/ton/ton-wallet-api/data/adnl-keys.json"
+logger_settings:
+  appenders:
+    stdout:
+      kind: console
+      encoder:
+        pattern: "{d(%Y-%m-%d %H:%M:%S %Z)(utc)} - {h({l})} {M} = {m} {n}"
+  root:
+    level: error
+    appenders:
+      - stdout
+  loggers:
+    ton_wallet_api:
+      level: info
+      appenders:
+        - stdout
+      additive: false
+    warp:
+      level: info
+      appenders:
+        - stdout
+      additive: false
+    ton_indexer:
+      level: error
+      appenders:
+        - stdout
+      additive: false
+    tiny_adnl:
+      level: error
+      appenders:
+        - stdout
+      additive: false
