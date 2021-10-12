@@ -3,7 +3,9 @@ use std::sync::atomic::{AtomicBool, AtomicU32, Ordering};
 use std::sync::{Arc, Weak};
 
 use anyhow::Result;
+use nekoton::core::models::TokenWalletVersion;
 use nekoton::transport::models::ExistingContract;
+use nekoton_utils::TrustMe;
 use parking_lot::{Mutex, RwLock};
 use tiny_adnl::utils::FxHashMap;
 use tokio::sync::Notify;
@@ -19,6 +21,7 @@ pub struct TonSubscriber {
     ready_signal: Notify,
     current_utime: AtomicU32,
     state_subscriptions: RwLock<HashMap<UInt256, StateSubscription>>,
+    token_subscription: RwLock<Option<TokenSubscription>>,
     shard_accounts_cache: RwLock<HashMap<ton_block::ShardIdent, ton_block::ShardAccounts>>,
     mc_block_awaiters: Mutex<FxHashMap<usize, Box<dyn BlockAwaiter>>>,
     messages_queue: Arc<PendingMessagesQueue>,
@@ -31,6 +34,7 @@ impl TonSubscriber {
             ready_signal: Notify::new(),
             current_utime: AtomicU32::new(0),
             state_subscriptions: RwLock::new(HashMap::new()),
+            token_subscription: RwLock::new(None),
             shard_accounts_cache: RwLock::new(HashMap::new()),
             mc_block_awaiters: Mutex::new(FxHashMap::with_capacity_and_hasher(
                 4,
@@ -70,6 +74,16 @@ impl TonSubscriber {
                 }
             };
         }
+    }
+
+    pub fn add_token_subscription<T>(&self, subscription: &Arc<T>)
+    where
+        T: TransactionsSubscription + 'static,
+    {
+        let mut token_subscription = self.token_subscription.write();
+        let _ = token_subscription.insert(TokenSubscription {
+            transaction_subscription: subscription.clone(),
+        });
     }
 
     pub fn get_contract_state(&self, account: &UInt256) -> Result<Option<ExistingContract>> {
@@ -142,22 +156,36 @@ impl TonSubscriber {
         drop(shard_accounts_cache);
 
         let subscriptions = self.state_subscriptions.read();
+        let token_subscription = self.token_subscription.read();
         account_blocks.iterate_with_keys(|account, account_block| {
-            let subscription = match subscriptions.get(&account) {
-                Some(subscription) => subscription,
-                None => return Ok(true),
+            match subscriptions.get(&account) {
+                Some(subscription) => {
+                    if let Err(e) = subscription.handle_block(
+                        &self.messages_queue,
+                        &shard_accounts,
+                        &block_info,
+                        &account_block,
+                        &account,
+                        block_hash,
+                    ) {
+                        log::error!("Failed to handle block: {:?}", e);
+                    }
+                }
+                None => {
+                    if token_subscription.is_some() {
+                        if let Err(e) = token_subscription.as_ref().trust_me().handle_block(
+                            &self.state_subscriptions,
+                            &shard_accounts,
+                            &block_info,
+                            &account_block,
+                            &account,
+                            block_hash,
+                        ) {
+                            log::error!("Failed to handle block: {:?}", e);
+                        }
+                    }
+                }
             };
-
-            if let Err(e) = subscription.handle_block(
-                &self.messages_queue,
-                &shard_accounts,
-                &block_info,
-                &account_block,
-                &account,
-                block_hash,
-            ) {
-                log::error!("Failed to handle block: {:?}", e);
-            }
 
             Ok(true)
         })?;
@@ -269,6 +297,7 @@ impl StateSubscription {
                 transaction_info: &transaction_info,
                 transaction: &transaction,
                 in_msg: &in_msg,
+                token_transaction: &None,
             };
 
             // Handle transaction
@@ -294,6 +323,100 @@ impl StateSubscription {
             .iter()
             .map(Weak::upgrade)
             .flatten()
+    }
+}
+
+struct TokenSubscription {
+    transaction_subscription: Arc<dyn TransactionsSubscription>,
+}
+
+impl TokenSubscription {
+    fn handle_block(
+        &self,
+        state_subscriptions: &RwLock<HashMap<UInt256, StateSubscription>>,
+        shard_accounts: &ton_block::ShardAccounts,
+        block_info: &ton_block::BlockInfo,
+        account_block: &ton_block::AccountBlock,
+        account: &UInt256,
+        block_hash: &UInt256,
+    ) -> Result<()> {
+        for transaction in account_block.transactions().iter() {
+            let (hash, transaction) = match transaction.and_then(|(_, value)| {
+                let cell = value.into_cell().reference(0)?;
+                let hash = cell.repr_hash();
+                ton_block::Transaction::construct_from_cell(cell)
+                    .map(|transaction| (hash, transaction))
+            }) {
+                Ok(tx) => tx,
+                Err(e) => {
+                    log::error!(
+                        "Failed to parse transaction in block {} for account {}: {:?}",
+                        block_info.seq_no(),
+                        account.to_hex_string(),
+                        e
+                    );
+                    continue;
+                }
+            };
+
+            // Skip non-ordinary transactions
+            let transaction_info = match transaction.description.read_struct() {
+                Ok(ton_block::TransactionDescr::Ordinary(info)) => info,
+                _ => continue,
+            };
+
+            let parsed_token_transaction = nekoton::core::parsing::parse_token_transaction(
+                &transaction,
+                &transaction_info,
+                TokenWalletVersion::Tip3v4,
+            );
+
+            if let Some(parsed) = parsed_token_transaction {
+                let address = MsgAddressInt::with_standart(
+                    None,
+                    ton_block::BASE_WORKCHAIN_ID as i8,
+                    ton_types::AccountId::from(account),
+                )?;
+
+                let (token_wallet, _) = get_token_wallet_details(&address, shard_accounts)?;
+                let owner =
+                    UInt256::from_be_bytes(&token_wallet.owner_address.address().get_bytestring(0));
+
+                if state_subscriptions.read().get(&owner).is_some() {
+                    let in_msg = match transaction
+                        .in_msg
+                        .as_ref()
+                        .map(|message| (message, message.read_struct()))
+                    {
+                        Some((_, Ok(message))) => message,
+                        _ => continue,
+                    };
+
+                    let ctx = TxContext {
+                        shard_accounts,
+                        block_info,
+                        block_hash,
+                        account,
+                        transaction_hash: &hash,
+                        transaction_info: &transaction_info,
+                        transaction: &transaction,
+                        in_msg: &in_msg,
+                        token_transaction: &Some(parsed),
+                    };
+
+                    if let Err(e) = self.transaction_subscription.handle_transaction(ctx) {
+                        log::error!(
+                            "Failed to handle transaction {} for account {}: {:?}",
+                            hash.to_hex_string(),
+                            account.to_hex_string(),
+                            e
+                        );
+                    }
+                }
+            }
+        }
+
+        Ok(())
     }
 }
 
@@ -329,12 +452,6 @@ where
 {
     fn handle_transaction(&self, ctx: TxContext<'_>) -> Result<()> {
         let event = T::read_from_transaction(&ctx);
-
-        log::info!(
-            "Got transaction on account {}: {:?}",
-            ctx.account.to_hex_string(),
-            event
-        );
 
         // Send event to event manager if it exist
         if let Some(event) = event {

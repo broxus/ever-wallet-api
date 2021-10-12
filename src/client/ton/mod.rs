@@ -90,19 +90,13 @@ pub trait TonClient: Send + Sync {
 pub struct TonClientImpl {
     ton_core: Arc<TonCore>,
     sqlx_client: SqlxClient,
-    root_contract_cache: RootContractCache,
 }
 
 impl TonClientImpl {
-    pub fn new(
-        ton_core: Arc<TonCore>,
-        sqlx_client: SqlxClient,
-        root_contract_cache: RootContractCache,
-    ) -> Self {
+    pub fn new(ton_core: Arc<TonCore>, sqlx_client: SqlxClient) -> Self {
         Self {
             ton_core,
             sqlx_client,
-            root_contract_cache,
         }
     }
 
@@ -120,36 +114,16 @@ impl TonClientImpl {
             })
             .collect::<Vec<MsgAddressInt>>();
 
-        // Subscribe to all accounts
-        {
-            let owner_accounts = owner_addresses
-                .iter()
-                .map(|item| UInt256::from_be_bytes(&item.address().get_bytestring(0)))
-                .collect::<Vec<UInt256>>();
+        // Subscribe to ton accounts
+        let owner_accounts = owner_addresses
+            .iter()
+            .map(|item| UInt256::from_be_bytes(&item.address().get_bytestring(0)))
+            .collect::<Vec<UInt256>>();
 
-            self.ton_core.add_ton_account_subscription(owner_accounts);
-        }
-        log::info!("Subscribing to ton accounts complete");
+        self.ton_core.add_ton_account_subscription(owner_accounts);
 
-        // Subscribe to all token accounts
-        {
-            let mut token_accounts = Vec::new();
-            for (i, owner_address) in owner_addresses.iter().enumerate() {
-                for (_, root_contract) in self.root_contract_cache.read().iter() {
-                    let account = get_token_wallet_account(root_contract, owner_address)?;
-                    token_accounts.push(account);
-                }
-                if owner_addresses.len() > 1000 && i % (owner_addresses.len() / 100) == 0 {
-                    log::info!(
-                        "Subscribing to token accounts in progress.. {}%",
-                        i / (owner_addresses.len() / 100)
-                    );
-                }
-            }
-
-            self.ton_core.add_token_account_subscription(token_accounts);
-        }
-        log::info!("Subscribing to token accounts complete");
+        // Add token subscription
+        self.ton_core.init_token_subscription();
 
         Ok(())
     }
@@ -209,20 +183,10 @@ impl TonClient for TonClientImpl {
         };
 
         // Subscribe to wallets
-        {
-            let account = UInt256::from_be_bytes(
-                &hex::decode(address.address().to_hex_string()).unwrap_or_default(),
-            );
-
-            let mut token_accounts = Vec::new();
-            for (_, root_contract) in self.root_contract_cache.read().iter() {
-                let account = get_token_wallet_account(root_contract, &address)?;
-                token_accounts.push(account);
-            }
-
-            self.ton_core.add_ton_account_subscription([account]);
-            self.ton_core.add_token_account_subscription(token_accounts);
-        }
+        let account = UInt256::from_be_bytes(
+            &hex::decode(address.address().to_hex_string()).unwrap_or_default(),
+        );
+        self.ton_core.add_ton_account_subscription([account]);
 
         Ok(CreatedAddress {
             workchain_id: address.workchain_id(),
@@ -470,12 +434,8 @@ impl TonClient for TonClientImpl {
         owner: &MsgAddressInt,
         root_address: &MsgAddressInt,
     ) -> Result<NetworkTokenAddressData> {
-        let root_contract = self
-            .root_contract_cache
-            .read()
-            .get(root_address)
-            .ok_or(TonClientError::UnknownRootContract)?
-            .clone();
+        let root_account = UInt256::from_be_bytes(&root_address.address().get_bytestring(0));
+        let root_contract = self.ton_core.get_contract_state(&root_account)?;
 
         let token_address = get_token_wallet_address(root_contract, owner)?;
         let token_account = UInt256::from_be_bytes(&token_address.address().get_bytestring(0));
@@ -489,7 +449,7 @@ impl TonClient for TonClientImpl {
             }
         };
 
-        let (version, network_balance) = get_token_wallet_details(&token_contract)?;
+        let (version, network_balance) = get_token_wallet_basic_info(&token_contract)?;
         let account_status = transform_account_state(&token_contract.account.storage.state);
         let sync_u_time = token_contract.timings.current_utime() as i64;
 
@@ -663,6 +623,4 @@ enum TonClientError {
     AccountNotDeployed(String),
     #[error("Custodians not found")]
     CustodiansNotFound,
-    #[error("Unknown root contract")]
-    UnknownRootContract,
 }

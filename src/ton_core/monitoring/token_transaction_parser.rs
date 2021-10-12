@@ -1,9 +1,9 @@
 use anyhow::Result;
 use bigdecimal::BigDecimal;
-use nekoton::core::models::{TokenIncomingTransfer, TokenWalletDetails, TokenWalletTransaction};
+use nekoton::core::models::{TokenIncomingTransfer, TokenWalletTransaction};
 use num_bigint::BigUint;
 use ton_block::MsgAddressInt;
-use ton_types::{AccountId, UInt256};
+use ton_types::AccountId;
 use uuid::Uuid;
 
 use crate::ton_core::*;
@@ -281,7 +281,7 @@ async fn get_token_wallet_info(
 ) -> Result<OwnerInfo> {
     let res = match owners_cache.get(contract_address).await {
         None => {
-            let (wallet, hash) = get_token_wallet_details(contract_address, shard_accounts).await?;
+            let (wallet, hash) = get_token_wallet_details(contract_address, shard_accounts)?;
             let info = OwnerInfo {
                 owner_address: wallet.owner_address,
                 root_address: wallet.root_address,
@@ -295,20 +295,4 @@ async fn get_token_wallet_info(
         Some(a) => a,
     };
     Ok(res)
-}
-
-async fn get_token_wallet_details(
-    address: &MsgAddressInt,
-    shard_accounts: &ton_block::ShardAccounts,
-) -> Result<(TokenWalletDetails, [u8; 32])> {
-    let account = UInt256::from_be_bytes(&address.address().get_bytestring(0));
-    let state = shard_accounts
-        .find_account(&account)?
-        .ok_or_else(|| TonCoreError::AccountNotExist(account.to_hex_string()))?;
-
-    let state = nekoton::core::token_wallet::TokenWalletContractState(&state);
-    let hash = *state.get_code_hash()?.as_slice();
-    let version = state.get_version()?;
-    let details = state.get_details(version)?;
-    Ok((details, hash))
 }

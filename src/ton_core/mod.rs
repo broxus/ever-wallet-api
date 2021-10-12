@@ -70,12 +70,9 @@ impl TonCore {
         }
     }
 
-    pub fn add_token_account_subscription<I>(&self, accounts: I)
-    where
-        I: IntoIterator<Item = UInt256>,
-    {
+    pub fn init_token_subscription(&self) {
         if let Some(token_transaction) = &*self.token_transaction.lock() {
-            token_transaction.add_account_subscription(accounts);
+            token_transaction.init_token_subscription();
         }
     }
 

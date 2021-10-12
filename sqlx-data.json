@@ -1143,36 +1143,6 @@
       ]
     }
   },
-  "24514da846eb4c26b09a9bed46b263b8baef99ab3469172f6d523c706b93eed5": {
-    "query": "SELECT name, address, contract FROM token_whitelist",
-    "describe": {
-      "columns": [
-        {
-          "ordinal": 0,
-          "name": "name",
-          "type_info": "Varchar"
-        },
-        {
-          "ordinal": 1,
-          "name": "address",
-          "type_info": "Varchar"
-        },
-        {
-          "ordinal": 2,
-          "name": "contract",
-          "type_info": "Jsonb"
-        }
-      ],
-      "parameters": {
-        "Left": []
-      },
-      "nullable": [
-        false,
-        false,
-        false
-      ]
-    }
-  },
   "271f5fcb3fc356619aca727bb852514d54f152a79ebed65ab6571425a506ee9e": {
     "query": "INSERT INTO token_owners (address, owner_account_workchain_id, owner_account_hex, root_address, code_hash)\n            VALUES ($1, $2, $3, $4, $5)\n            ON CONFLICT DO NOTHING",
     "describe": {
@@ -4012,40 +3982,6 @@
       ]
     }
   },
-  "ae12135ee77c821a1b2375622b198857f1d79b03ed8d011605778dbe9b55a121": {
-    "query": "INSERT INTO token_whitelist\n                (name, address, contract)\n                VALUES ($1, $2, $3)\n                RETURNING\n                name, address, contract",
-    "describe": {
-      "columns": [
-        {
-          "ordinal": 0,
-          "name": "name",
-          "type_info": "Varchar"
-        },
-        {
-          "ordinal": 1,
-          "name": "address",
-          "type_info": "Varchar"
-        },
-        {
-          "ordinal": 2,
-          "name": "contract",
-          "type_info": "Jsonb"
-        }
-      ],
-      "parameters": {
-        "Left": [
-          "Varchar",
-          "Varchar",
-          "Jsonb"
-        ]
-      },
-      "nullable": [
-        false,
-        false,
-        false
-      ]
-    }
-  },
   "b07560cf0c54dddc13cb6f941fa45d536b2e7d85e0e86e22fa911156d9704168": {
     "query": "SELECT id, service_id as \"service_id: _\", workchain_id, hex, base64url, public_key, private_key, account_type as \"account_type: _\", custodians, confirmations, custodians_public_keys, balance, created_at, updated_at\n                FROM address\n                WHERE workchain_id = $1 AND hex = $2",
     "describe": {
@@ -4151,6 +4087,30 @@
         true,
         true,
         false,
+        false,
+        false
+      ]
+    }
+  },
+  "b4be96581ae89d07ac26b78babf24f461777797d21e574cfebd747761dd3b5d7": {
+    "query": "SELECT name, address FROM token_whitelist",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "name",
+          "type_info": "Varchar"
+        },
+        {
+          "ordinal": 1,
+          "name": "address",
+          "type_info": "Varchar"
+        }
+      ],
+      "parameters": {
+        "Left": []
+      },
+      "nullable": [
         false,
         false
       ]
@@ -4639,6 +4599,33 @@
         false,
         false,
         false,
+        false,
+        false
+      ]
+    }
+  },
+  "c26b647591b4e3e4a48bde35b7dbfae4452ec68d2823efdc11280e64b75e92a5": {
+    "query": "INSERT INTO token_whitelist\n                (name, address)\n                VALUES ($1, $2)\n                RETURNING\n                name, address",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "name",
+          "type_info": "Varchar"
+        },
+        {
+          "ordinal": 1,
+          "name": "address",
+          "type_info": "Varchar"
+        }
+      ],
+      "parameters": {
+        "Left": [
+          "Varchar",
+          "Varchar"
+        ]
+      },
+      "nullable": [
         false,
         false
       ]

@@ -32,13 +32,10 @@ impl TokenTransaction {
         Ok(token_transaction)
     }
 
-    pub fn add_account_subscription<I>(&self, accounts: I)
-    where
-        I: IntoIterator<Item = UInt256>,
-    {
+    pub fn init_token_subscription(&self) {
         self.context
             .ton_subscriber
-            .add_transactions_subscription(accounts, &self.token_transaction_observer);
+            .add_token_subscription(&self.token_transaction_observer);
     }
 
     fn start_listening_token_transaction_events(
@@ -104,13 +101,7 @@ impl ReadFromTransaction for TokenTransactionEvent {
             return event;
         }
 
-        let parsed = nekoton::core::parsing::parse_token_transaction(
-            ctx.transaction,
-            ctx.transaction_info,
-            TokenWalletVersion::Tip3v4,
-        );
-
-        if let Some(parsed) = parsed {
+        if let Some(parsed) = ctx.token_transaction {
             event = Some(TokenTransactionEvent {
                 ctx: TokenTransactionContext {
                     account: *ctx.account,
@@ -120,7 +111,7 @@ impl ReadFromTransaction for TokenTransactionEvent {
                     transaction: ctx.transaction.clone(),
                     shard_accounts: ctx.shard_accounts.clone(),
                 },
-                parsed,
+                parsed: parsed.clone(),
             })
         }
 

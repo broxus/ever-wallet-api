@@ -10,6 +10,8 @@ use num_bigint::BigUint;
 use ton_block::MsgAddressInt;
 use ton_types::UInt256;
 
+use crate::utils::*;
+
 const INITIAL_BALANCE: u64 = 100_000_000; // 0.1 TON
 
 pub fn prepare_token_transfer(
@@ -83,7 +85,7 @@ pub fn get_token_wallet_account(
     Ok(token_wallet_account)
 }
 
-pub fn get_token_wallet_details(
+pub fn get_token_wallet_basic_info(
     token_contract: &ExistingContract,
 ) -> Result<(TokenWalletVersion, BigDecimal)> {
     let token_wallet_state = TokenWalletContractState(token_contract);
@@ -92,6 +94,22 @@ pub fn get_token_wallet_details(
     let balance = BigDecimal::new(token_wallet_state.get_balance(version)?.into(), 0);
 
     Ok((version, balance))
+}
+
+pub fn get_token_wallet_details(
+    address: &MsgAddressInt,
+    shard_accounts: &ton_block::ShardAccounts,
+) -> Result<(TokenWalletDetails, [u8; 32])> {
+    let account = UInt256::from_be_bytes(&address.address().get_bytestring(0));
+    let state = shard_accounts
+        .find_account(&account)?
+        .ok_or_else(|| TokenWalletError::AccountNotExist(account.to_hex_string()))?;
+
+    let state = nekoton::core::token_wallet::TokenWalletContractState(&state);
+    let hash = *state.get_code_hash()?.as_slice();
+    let version = state.get_version()?;
+    let details = state.get_details(version)?;
+    Ok((details, hash))
 }
 
 fn select_token_contract(version: TokenWalletVersion) -> Result<&'static ton_abi::Contract> {
@@ -107,4 +125,6 @@ fn select_token_contract(version: TokenWalletVersion) -> Result<&'static ton_abi
 enum TokenWalletError {
     #[error("Unsupported version")]
     UnsupportedVersion,
+    #[error("Account `{0}` not exist")]
+    AccountNotExist(String),
 }
