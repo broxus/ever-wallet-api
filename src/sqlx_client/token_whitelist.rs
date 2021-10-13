@@ -12,6 +12,22 @@ impl SqlxClient {
         Ok(res)
     }
 
+    pub async fn get_root_token(
+        &self,
+        address: &str,
+    ) -> Result<TokenWhitelistFromDb, anyhow::Error> {
+        let res = sqlx::query_as!(
+            TokenWhitelistFromDb,
+            r#"SELECT name, address
+                FROM token_whitelist
+                WHERE address = $1"#,
+            address
+        )
+        .fetch_one(&self.pool)
+        .await?;
+        Ok(res)
+    }
+
     pub async fn create_root_token(
         &self,
         root_token: TokenWhitelistFromDb,

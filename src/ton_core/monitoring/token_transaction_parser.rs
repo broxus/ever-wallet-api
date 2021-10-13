@@ -62,12 +62,8 @@ async fn internal_transfer_send(
         AccountId::from(token_transaction_ctx.account),
     )?;
 
-    let owner_info = get_token_wallet_info(
-        &address,
-        &token_transaction_ctx.shard_accounts,
-        parse_ctx.owners_cache,
-    )
-    .await?;
+    let owner_info =
+        get_token_wallet_info(&address, &token_transaction_ctx.shard_accounts, &parse_ctx).await?;
 
     let mut message_hash = Default::default();
     let _ = token_transaction_ctx
@@ -132,12 +128,8 @@ async fn internal_transfer_receive(
         AccountId::from(token_transaction_ctx.account),
     )?;
 
-    let owner_info = get_token_wallet_info(
-        &address,
-        &token_transaction_ctx.shard_accounts,
-        parse_ctx.owners_cache,
-    )
-    .await?;
+    let owner_info =
+        get_token_wallet_info(&address, &token_transaction_ctx.shard_accounts, &parse_ctx).await?;
 
     let message_hash = token_transaction_ctx
         .transaction
@@ -183,12 +175,8 @@ async fn internal_transfer_bounced(
         AccountId::from(token_transaction_ctx.account),
     )?;
 
-    let owner_info = get_token_wallet_info(
-        &address,
-        &token_transaction_ctx.shard_accounts,
-        parse_ctx.owners_cache,
-    )
-    .await?;
+    let owner_info =
+        get_token_wallet_info(&address, &token_transaction_ctx.shard_accounts, &parse_ctx).await?;
 
     let message_hash = token_transaction_ctx
         .transaction
@@ -234,12 +222,8 @@ async fn internal_transfer_mint(
         AccountId::from(token_transaction_ctx.account),
     )?;
 
-    let owner_info = get_token_wallet_info(
-        &address,
-        &token_transaction_ctx.shard_accounts,
-        parse_ctx.owners_cache,
-    )
-    .await?;
+    let owner_info =
+        get_token_wallet_info(&address, &token_transaction_ctx.shard_accounts, &parse_ctx).await?;
 
     let message_hash = token_transaction_ctx
         .transaction
@@ -277,9 +261,9 @@ async fn internal_transfer_mint(
 async fn get_token_wallet_info(
     contract_address: &MsgAddressInt,
     shard_accounts: &ton_block::ShardAccounts,
-    owners_cache: &OwnersCache,
+    parse_ctx: &ParseContext<'_>,
 ) -> Result<OwnerInfo> {
-    let res = match owners_cache.get(contract_address).await {
+    let res = match parse_ctx.owners_cache.get(contract_address).await {
         None => {
             let (wallet, hash) = get_token_wallet_details(contract_address, shard_accounts)?;
             let info = OwnerInfo {
@@ -287,7 +271,15 @@ async fn get_token_wallet_info(
                 root_address: wallet.root_address,
                 code_hash: hash.to_vec(),
             };
-            owners_cache
+
+            let _check_root_address = parse_ctx
+                .sqlx_client
+                .get_root_token(&info.root_address.to_string())
+                .await
+                .map_err(|_| TonCoreError::InvalidRootToken(info.root_address.to_string()));
+
+            parse_ctx
+                .owners_cache
                 .insert(contract_address.clone(), info.clone())
                 .await;
             info
