@@ -505,6 +505,39 @@
       ]
     }
   },
+  "091fd0c15e1a898226e63188b8f16353b7965c7f26068299d9254057191fe3f6": {
+    "query": "INSERT INTO api_service\n                (id, name)\n                VALUES ($1, $2)\n                RETURNING\n                id as \"id: _\", name, created_at",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "id: _",
+          "type_info": "Uuid"
+        },
+        {
+          "ordinal": 1,
+          "name": "name",
+          "type_info": "Varchar"
+        },
+        {
+          "ordinal": 2,
+          "name": "created_at",
+          "type_info": "Timestamp"
+        }
+      ],
+      "parameters": {
+        "Left": [
+          "Uuid",
+          "Varchar"
+        ]
+      },
+      "nullable": [
+        false,
+        false,
+        false
+      ]
+    }
+  },
   "0d682d9963004a6b29b671a1e16cebedc71ec7d33a4436e144871c32c754537b": {
     "query": "\n            INSERT INTO transaction_events\n            (id, service_id, transaction_id, message_hash, account_workchain_id, account_hex, balance_change, transaction_direction, transaction_status, event_status, sender_is_token_wallet)\n            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)\n            RETURNING id,\n                service_id as \"service_id: _\",\n                transaction_id,\n                message_hash,\n                account_workchain_id,\n                account_hex,\n                sender_workchain_id,\n                sender_hex,\n                balance_change,\n                transaction_direction as \"transaction_direction: _\",\n                transaction_status as \"transaction_status: _\",\n                event_status as \"event_status: _\",\n                created_at, updated_at, sender_is_token_wallet",
     "describe": {
@@ -3843,6 +3876,58 @@
         false,
         false,
         false,
+        false
+      ]
+    }
+  },
+  "8f570865727553da5877fc92ec7be220616074f816910ca7ef183aed70e3dfb8": {
+    "query": "INSERT INTO api_service_key\n                (service_id, key, secret)\n                VALUES ($1, $2, $3)\n                RETURNING\n                id, service_id as \"service_id: _\", key, secret, whitelist, created_at",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "id",
+          "type_info": "Uuid"
+        },
+        {
+          "ordinal": 1,
+          "name": "service_id: _",
+          "type_info": "Uuid"
+        },
+        {
+          "ordinal": 2,
+          "name": "key",
+          "type_info": "Varchar"
+        },
+        {
+          "ordinal": 3,
+          "name": "secret",
+          "type_info": "Varchar"
+        },
+        {
+          "ordinal": 4,
+          "name": "whitelist",
+          "type_info": "Jsonb"
+        },
+        {
+          "ordinal": 5,
+          "name": "created_at",
+          "type_info": "Timestamp"
+        }
+      ],
+      "parameters": {
+        "Left": [
+          "Uuid",
+          "Varchar",
+          "Varchar"
+        ]
+      },
+      "nullable": [
+        false,
+        false,
+        false,
+        false,
+        true,
         false
       ]
     }

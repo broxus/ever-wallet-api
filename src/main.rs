@@ -2,9 +2,9 @@ use anyhow::{Context, Result};
 use argh::FromArgs;
 use futures::prelude::*;
 
+use ton_wallet_api::commands::*;
 use ton_wallet_api::server::*;
 use ton_wallet_api::settings::*;
-use ton_wallet_api::token::*;
 
 #[global_allocator]
 static GLOBAL: ton_indexer::alloc::Allocator = ton_indexer::alloc::allocator();
@@ -21,7 +21,9 @@ async fn run(app: App) -> Result<()> {
 
     match app.command {
         Subcommand::Server(run) => run.execute(config.try_into()?).await,
-        Subcommand::Token(run) => run.execute(config.try_into()?).await,
+        Subcommand::RootToken(run) => run.execute(config.try_into()?).await,
+        Subcommand::ApiService(run) => run.execute(config.try_into()?).await,
+        Subcommand::ApiServiceKey(run) => run.execute(config.try_into()?).await,
     }
 }
 
@@ -40,7 +42,9 @@ struct App {
 #[argh(subcommand)]
 enum Subcommand {
     Server(CmdServer),
-    Token(CmdToken),
+    RootToken(CmdRootToken),
+    ApiService(CmdApiService),
+    ApiServiceKey(CmdApiServiceKey),
 }
 
 #[derive(Debug, PartialEq, FromArgs)]
@@ -67,11 +71,8 @@ impl CmdServer {
 
 #[derive(Debug, PartialEq, FromArgs)]
 /// Add root token address
-#[argh(subcommand, name = "token")]
-struct CmdToken {
-    /// path to global config file
-    #[argh(option, short = 'g')]
-    global_config: String,
+#[argh(subcommand, name = "root_token")]
+struct CmdRootToken {
     /// root token name
     #[argh(option, short = 'n')]
     name: String,
@@ -80,10 +81,51 @@ struct CmdToken {
     address: String,
 }
 
-impl CmdToken {
+impl CmdRootToken {
     async fn execute(self, config: AppConfig) -> Result<()> {
         init_logger(&config.logger_settings).context("Failed to init logger")?;
         add_root_token(config, self.name, self.address).await
+    }
+}
+
+#[derive(Debug, PartialEq, FromArgs)]
+/// Create a new api service
+#[argh(subcommand, name = "api_service")]
+struct CmdApiService {
+    /// service name
+    #[argh(option, short = 'n')]
+    name: String,
+    /// service id
+    #[argh(option, short = 'i')]
+    id: Option<String>,
+}
+
+impl CmdApiService {
+    async fn execute(self, config: AppConfig) -> Result<()> {
+        init_logger(&config.logger_settings).context("Failed to init logger")?;
+        create_api_service(config, self.name, self.id).await
+    }
+}
+
+#[derive(Debug, PartialEq, FromArgs)]
+/// Create a new api service key
+#[argh(subcommand, name = "api_service_key")]
+struct CmdApiServiceKey {
+    /// service id
+    #[argh(option, short = 'i')]
+    id: String,
+    /// service key
+    #[argh(option, short = 'k')]
+    key: String,
+    /// service secret
+    #[argh(option, short = 's')]
+    secret: String,
+}
+
+impl CmdApiServiceKey {
+    async fn execute(self, config: AppConfig) -> Result<()> {
+        init_logger(&config.logger_settings).context("Failed to init logger")?;
+        create_api_service_key(config, self.id, self.key, self.secret).await
     }
 }
 

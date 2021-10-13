@@ -18,7 +18,7 @@ pub struct ApiServiceKeyDb {
     pub service_id: ServiceId,
     pub key: String,
     pub secret: String,
-    pub whitelist: serde_json::Value,
+    pub whitelist: Option<serde_json::Value>,
     pub created_at: NaiveDateTime,
 }
 

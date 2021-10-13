@@ -4,12 +4,12 @@
 
 pub mod api;
 pub mod client;
+pub mod commands;
 pub mod models;
 pub mod prelude;
 pub mod server;
 pub mod services;
 pub mod settings;
 pub mod sqlx_client;
-pub mod token;
 pub mod ton_core;
 pub mod utils;
