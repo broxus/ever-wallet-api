@@ -51,18 +51,11 @@ When node syncs and server starts you will see next messages:
 ### Tips and tricks
 Before running service you should create <b>api service</b> and <b>api service key</b>.
 
-#### Create api service
+#### Create api service and api service key
 ```bash
 DATABASE_URL=${DATABASE_URL} RUSTFLAGS='-C target-cpu=native' cargo run \
   --release -- api_service \
-  --name ${SERVICE_NAME} --id ${SERVICE_ID}
-```
-
-#### Create api service key
-```bash
-DATABASE_URL=${DATABASE_URL} RUSTFLAGS='-C target-cpu=native' cargo run \
-  --release -- api_service_key \
-  --id ${SERVICE_ID} --key ${KEY} --secret ${SECRET}
+  --id ${SERVICE_ID} --name ${SERVICE_NAME} --key ${KEY} --secret ${SECRET}
 ```
 
 #### Add root token to whitelist

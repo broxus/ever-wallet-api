@@ -31,7 +31,12 @@ pub async fn add_root_token(token_name: String, token_address: String) -> Result
     Ok(())
 }
 
-pub async fn create_api_service(service_name: String, service_id: Option<String>) -> Result<()> {
+pub async fn create_api_service(
+    service_id: Option<String>,
+    service_name: String,
+    service_key: String,
+    service_secret: String,
+) -> Result<()> {
     let database_url = std::env::var("DATABASE_URL")
         .context("The DATABASE_URL environment variable must be set")?;
 
@@ -48,13 +53,20 @@ pub async fn create_api_service(service_name: String, service_id: Option<String>
 
     let sqlx_client = SqlxClient::new(pool);
     let api_service = sqlx_client.create_api_service(id, &service_name).await?;
-
     println!("Api service {:?} created successfully!", api_service);
+
+    let api_service_key = sqlx_client
+        .create_api_service_key(id, &service_key, &service_secret)
+        .await?;
+    println!(
+        "Api service key {:?} created successfully!",
+        api_service_key
+    );
 
     Ok(())
 }
 
-pub async fn create_api_service_key(
+/*pub async fn create_api_service_key(
     service_id: String,
     service_key: String,
     service_secret: String,
@@ -81,4 +93,4 @@ pub async fn create_api_service_key(
     );
 
     Ok(())
-}
+}*/

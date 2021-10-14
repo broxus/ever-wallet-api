@@ -25,7 +25,6 @@ async fn run(app: App) -> Result<()> {
         }
         Subcommand::RootToken(run) => run.execute().await,
         Subcommand::ApiService(run) => run.execute().await,
-        Subcommand::ApiServiceKey(run) => run.execute().await,
     }
 }
 
@@ -46,7 +45,6 @@ enum Subcommand {
     Server(CmdServer),
     RootToken(CmdRootToken),
     ApiService(CmdApiService),
-    ApiServiceKey(CmdApiServiceKey),
 }
 
 #[derive(Debug, PartialEq, FromArgs)]
@@ -93,27 +91,12 @@ impl CmdRootToken {
 /// Create a new api service
 #[argh(subcommand, name = "api_service")]
 struct CmdApiService {
-    /// service name
-    #[argh(option, short = 'n')]
-    name: String,
     /// service id
     #[argh(option, short = 'i')]
     id: Option<String>,
-}
-
-impl CmdApiService {
-    async fn execute(self) -> Result<()> {
-        create_api_service(self.name, self.id).await
-    }
-}
-
-#[derive(Debug, PartialEq, FromArgs)]
-/// Create a new api service key
-#[argh(subcommand, name = "api_service_key")]
-struct CmdApiServiceKey {
-    /// service id
-    #[argh(option, short = 'i')]
-    id: String,
+    /// service name
+    #[argh(option, short = 'n')]
+    name: String,
     /// service key
     #[argh(option, short = 'k')]
     key: String,
@@ -122,9 +105,9 @@ struct CmdApiServiceKey {
     secret: String,
 }
 
-impl CmdApiServiceKey {
+impl CmdApiService {
     async fn execute(self) -> Result<()> {
-        create_api_service_key(self.id, self.key, self.secret).await
+        create_api_service(self.id, self.name, self.key, self.secret).await
     }
 }
 
