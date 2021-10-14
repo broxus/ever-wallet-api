@@ -53,26 +53,23 @@ Before running service you should create <b>api service</b> and <b>api service k
 
 #### Create api service
 ```bash
-RUSTFLAGS='-C target-cpu=native' cargo run \
-  --release -- \
-  --config config.yaml api_service \
+DATABASE_URL=${DATABASE_URL} RUSTFLAGS='-C target-cpu=native' cargo run \
+  --release -- api_service \
   --name ${SERVICE_NAME} --id ${SERVICE_ID}
 ```
 
 #### Create api service key
 ```bash
-RUSTFLAGS='-C target-cpu=native' cargo run \
-  --release -- \
-  --config config.yaml api_service_key \
+DATABASE_URL=${DATABASE_URL} RUSTFLAGS='-C target-cpu=native' cargo run \
+  --release -- api_service_key \
   --id ${SERVICE_ID} --key ${KEY} --secret ${SECRET}
 ```
 
 #### Add root token to whitelist
 ```bash
 # WTON as example
-RUSTFLAGS='-C target-cpu=native' cargo run \
-  --release -- \
-  --config config.yaml root_token \
+DATABASE_URL=${DATABASE_URL} RUSTFLAGS='-C target-cpu=native' cargo run \
+  --release -- root_token \
   --name WTON --address 0:0ee39330eddb680ce731cd6a443c71d9069db06d149a9bec9569d1eb8d04eb37
 ```
 

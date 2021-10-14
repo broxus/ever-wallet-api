@@ -15,15 +15,17 @@ async fn main() -> Result<()> {
 }
 
 async fn run(app: App) -> Result<()> {
-    let mut config = config::Config::new();
-    config.merge(read_config(app.config).context("Failed to read config")?)?;
-    config.merge(config::Environment::new())?;
-
     match app.command {
-        Subcommand::Server(run) => run.execute(config.try_into()?).await,
-        Subcommand::RootToken(run) => run.execute(config.try_into()?).await,
-        Subcommand::ApiService(run) => run.execute(config.try_into()?).await,
-        Subcommand::ApiServiceKey(run) => run.execute(config.try_into()?).await,
+        Subcommand::Server(run) => {
+            let mut config = config::Config::new();
+            config.merge(read_config(app.config).context("Failed to read config")?)?;
+            config.merge(config::Environment::new())?;
+
+            run.execute(config.try_into()?).await
+        }
+        Subcommand::RootToken(run) => run.execute().await,
+        Subcommand::ApiService(run) => run.execute().await,
+        Subcommand::ApiServiceKey(run) => run.execute().await,
     }
 }
 
@@ -82,9 +84,8 @@ struct CmdRootToken {
 }
 
 impl CmdRootToken {
-    async fn execute(self, config: AppConfig) -> Result<()> {
-        init_logger(&config.logger_settings).context("Failed to init logger")?;
-        add_root_token(config, self.name, self.address).await
+    async fn execute(self) -> Result<()> {
+        add_root_token(self.name, self.address).await
     }
 }
 
@@ -101,9 +102,8 @@ struct CmdApiService {
 }
 
 impl CmdApiService {
-    async fn execute(self, config: AppConfig) -> Result<()> {
-        init_logger(&config.logger_settings).context("Failed to init logger")?;
-        create_api_service(config, self.name, self.id).await
+    async fn execute(self) -> Result<()> {
+        create_api_service(self.name, self.id).await
     }
 }
 
@@ -123,9 +123,8 @@ struct CmdApiServiceKey {
 }
 
 impl CmdApiServiceKey {
-    async fn execute(self, config: AppConfig) -> Result<()> {
-        init_logger(&config.logger_settings).context("Failed to init logger")?;
-        create_api_service_key(config, self.id, self.key, self.secret).await
+    async fn execute(self) -> Result<()> {
+        create_api_service_key(self.id, self.key, self.secret).await
     }
 }
 
