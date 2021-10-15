@@ -13,8 +13,8 @@ pub fn swagger() -> String {
             description: r##"This API allows you to use TON api"##,
         },
         servers: {
-            "https://ton-api.broxus.com/ton/v4",
-            "https://ton-api-test.broxus.com/ton/v4"
+            "https://ton-api.broxus.com/ton/v3",
+            "https://ton-api-test.broxus.com/ton/v3"
         },
         tags: {
             addresses,

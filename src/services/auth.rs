@@ -74,7 +74,10 @@ impl AuthService for AuthServiceImpl {
             .to_str()
             .map_err(|_| ServiceError::Auth("API-KEY Header Not Found".to_string()))?;
 
-        let key = self.get_key(api_key).await?;
+        let key = self
+            .get_key(api_key)
+            .await
+            .map_err(|_| ServiceError::Auth(format!("Can not find api key {} in db", api_key)))?;
 
         if let Some(whitelist) = key.whitelist {
             let whitelist: Vec<String> = serde_json::from_value(whitelist)
