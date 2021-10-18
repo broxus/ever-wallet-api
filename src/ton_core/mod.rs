@@ -9,7 +9,6 @@ use ton_block::{GetRepresentationHash, MsgAddressInt, Serializable};
 use ton_types::UInt256;
 
 use self::monitoring::*;
-use self::ton_contracts::*;
 use self::ton_subscriber::*;
 use crate::models::*;
 use crate::sqlx_client::*;
@@ -17,7 +16,6 @@ use crate::utils::*;
 
 mod monitoring;
 mod settings;
-mod ton_contracts;
 mod ton_subscriber;
 
 pub use self::settings::*;
