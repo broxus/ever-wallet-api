@@ -19,6 +19,8 @@ pub async fn parse_ton_transaction(
     owners_cache: &OwnersCache,
     ton_subscriber: &TonSubscriber,
 ) -> Result<CaughtTonTransaction> {
+    log::info!("Parse ton transaction");
+
     let parse_ctx = ParseContext {
         owners_cache,
         ton_subscriber,
@@ -240,6 +242,8 @@ async fn sender_is_token_wallet(
     sender: &Option<MsgAddressInt>,
     parse_ctx: ParseContext<'_>,
 ) -> Result<bool> {
+    let now = std::time::Instant::now();
+
     if let Some(sender) = sender {
         if let Some(owner_info) = parse_ctx.owners_cache.get(sender).await {
             if owner_info.owner_address == *address {
@@ -249,7 +253,7 @@ async fn sender_is_token_wallet(
 
         let account = UInt256::from_be_bytes(&sender.address().get_bytestring(0));
 
-        let contract = loop {
+        let contract: ExistingContract = loop {
             match parse_ctx.ton_subscriber.get_contract_state(&account)? {
                 Some(contract) => {
                     break contract;
@@ -259,13 +263,20 @@ async fn sender_is_token_wallet(
                     tokio::time::sleep(std::time::Duration::from_secs(TIME_TO_SLEEP)).await;
                     continue;
                 }
-            };
+            }
         };
+
+        // check code hash
 
         let token_wallet = nekoton::core::token_wallet::TokenWalletContractState(&contract);
         if token_wallet.get_version().is_ok() {
             return Ok(true);
         }
+    }
+
+    let elapsed = now.elapsed();
+    if elapsed > std::time::Duration::from_millis(500) {
+        log::info!("Elapsed time: {} ms", elapsed.as_millis(),);
     }
 
     Ok(false)

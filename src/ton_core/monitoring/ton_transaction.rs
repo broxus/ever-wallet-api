@@ -58,10 +58,13 @@ impl TonTransaction {
                 .await
                 {
                     Ok(transaction) => {
-                        ton_transaction
-                            .ton_transaction_producer
-                            .send(transaction)
-                            .ok();
+                        if let Err(err) = ton_transaction.ton_transaction_producer.send(transaction)
+                        {
+                            log::error!(
+                                "Failed to send parsed ton transaction. Channel is dropped: {:?}",
+                                err
+                            );
+                        }
                     }
                     Err(e) => {
                         log::error!("Failed to handle received transaction: {}", e);

@@ -60,10 +60,15 @@ impl TokenTransaction {
                 .await
                 {
                     Ok(transaction) => {
-                        token_transaction
+                        if let Err(err) = token_transaction
                             .token_transaction_producer
                             .send(transaction)
-                            .ok();
+                        {
+                            log::error!(
+                                "Failed to send parsed token transaction. Channel is dropped: {:?}",
+                                err
+                            );
+                        }
                     }
                     Err(e) => {
                         log::error!("Failed to handle received token transaction: {}", e);
