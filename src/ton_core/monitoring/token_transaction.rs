@@ -65,7 +65,7 @@ impl TokenTransaction {
                             .send(transaction)
                         {
                             log::error!(
-                                "Failed to send parsed token transaction. Channel is dropped: {:?}",
+                                "Failed to send received token transaction into channel: {:?}",
                                 err
                             );
                         }

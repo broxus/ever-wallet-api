@@ -50,18 +50,12 @@ impl TonTransaction {
                     None => break,
                 };
 
-                match parse_ton_transaction(
-                    event,
-                    &ton_transaction.context.owners_cache,
-                    &ton_transaction.context.ton_subscriber,
-                )
-                .await
-                {
+                match parse_ton_transaction(event, &ton_transaction.context.owners_cache).await {
                     Ok(transaction) => {
                         if let Err(err) = ton_transaction.ton_transaction_producer.send(transaction)
                         {
                             log::error!(
-                                "Failed to send parsed ton transaction. Channel is dropped: {:?}",
+                                "Failed to send received ton transaction into channel: {:?}",
                                 err
                             );
                         }
