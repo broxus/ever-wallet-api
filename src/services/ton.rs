@@ -829,6 +829,11 @@ impl TonService for TonServiceImpl {
         let recipient = repack_address(&input.recipient_address.0)?;
         let destination = nekoton::core::models::TransferRecipient::OwnerWallet(recipient);
 
+        let send_gas_to = match &input.send_gas_to {
+            Some(send_gas_to) => repack_address(send_gas_to.0.as_str())?,
+            None => owner.clone(),
+        };
+
         let (payload, signed_message) = self
             .ton_api_client
             .prepare_token_transaction(
@@ -836,6 +841,7 @@ impl TonService for TonServiceImpl {
                 owner,
                 token_address,
                 destination,
+                send_gas_to,
                 input.value.clone(),
                 input.notify_receiver,
                 input.fee.to_u64().unwrap_or(TOKEN_FEE),

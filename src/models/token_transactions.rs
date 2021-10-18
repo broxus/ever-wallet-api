@@ -12,6 +12,7 @@ pub struct TokenTransactionSend {
     pub recipient_address: Address,
     pub value: BigDecimal,
     pub notify_receiver: bool,
+    pub send_gas_to: Option<Address>,
     pub fee: BigDecimal,
     pub bounce: Option<bool>,
 }

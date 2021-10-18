@@ -77,7 +77,6 @@ pub struct TransactionDb {
     pub bounce: bool,
     pub created_at: NaiveDateTime,
     pub updated_at: NaiveDateTime,
-    pub sender_is_token_wallet: bool,
 }
 
 #[derive(Clone, Debug, serde::Serialize, serde::Deserialize, Eq, PartialEq)]
@@ -96,7 +95,6 @@ pub struct TransactionEventDb {
     pub event_status: TonEventStatus,
     pub created_at: NaiveDateTime,
     pub updated_at: NaiveDateTime,
-    pub sender_is_token_wallet: bool,
 }
 
 #[derive(Clone, Debug, serde::Serialize, serde::Deserialize, Eq, PartialEq)]

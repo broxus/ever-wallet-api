@@ -18,6 +18,7 @@ pub fn prepare_token_transfer(
     owner: MsgAddressInt,
     token_wallet: MsgAddressInt,
     destination: TransferRecipient,
+    send_gas_to: MsgAddressInt,
     version: TokenWalletVersion,
     tokens: BigUint,
     notify_receiver: bool,
@@ -43,7 +44,7 @@ pub fn prepare_token_transfer(
         }
     }
     .arg(BigUint128(Default::default())) // grams / transfer_grams
-    .arg(&owner) // send_gas_to
+    .arg(&send_gas_to) // send_gas_to
     .arg(notify_receiver) // notify_receiver
     .arg(payload) // payload
     .build();

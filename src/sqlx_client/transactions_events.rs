@@ -32,7 +32,7 @@ impl SqlxClient {
                 transaction_direction as "transaction_direction: _",
                 transaction_status as "transaction_status: _",
                 event_status as "event_status: _",
-                created_at, updated_at, sender_is_token_wallet
+                created_at, updated_at
             FROM transaction_events
             WHERE service_id = $1 AND message_hash = $2 AND account_workchain_id = $3 AND account_hex = $4"#,
             service_id as ServiceId,
@@ -69,7 +69,7 @@ impl SqlxClient {
                 transaction_direction as "transaction_direction: _",
                 transaction_status as "transaction_status: _",
                 event_status as "event_status: _",
-                created_at, updated_at, sender_is_token_wallet"#,
+                created_at, updated_at"#,
             event_status as TonEventStatus,
             message_hash,
             account_workchain_id,
@@ -103,7 +103,7 @@ impl SqlxClient {
                 transaction_direction as "transaction_direction: _",
                 transaction_status as "transaction_status: _",
                 event_status as "event_status: _",
-                created_at, updated_at, sender_is_token_wallet"#,
+                created_at, updated_at"#,
             event_status as TonEventStatus,
             service_id as ServiceId,
             id,
@@ -144,7 +144,7 @@ impl SqlxClient {
                 transaction_direction as "transaction_direction: _",
                 transaction_status as "transaction_status: _",
                 event_status as "event_status: _",
-                created_at, updated_at, sender_is_token_wallet"#,
+                created_at, updated_at"#,
             old
         );
 
@@ -167,7 +167,6 @@ impl SqlxClient {
                 event_status: x.get(11),
                 created_at: x.get(12),
                 updated_at: x.get(13),
-                sender_is_token_wallet: x.get(14),
             })
             .collect::<Vec<_>>();
         Ok(res)
@@ -194,8 +193,7 @@ impl SqlxClient {
                 transaction_status as "transaction_status: _",
                 event_status as "event_status: _",
                 created_at,
-                updated_at,
-                sender_is_token_wallet
+                updated_at
             FROM transaction_events
             WHERE service_id = $1 AND id = $2"#,
             service_id as ServiceId,
@@ -232,8 +230,7 @@ impl SqlxClient {
                 transaction_status as "transaction_status: _",
                 event_status as "event_status: _",
                 created_at,
-                updated_at,
-                sender_is_token_wallet
+                updated_at
                 FROM transaction_events WHERE service_id = $1 {} ORDER BY created_at DESC OFFSET ${} LIMIT ${}"#,
             updates.iter().format(""),
             args_len + 1,
@@ -261,7 +258,6 @@ impl SqlxClient {
                 event_status: x.get(11),
                 created_at: x.get(12),
                 updated_at: x.get(13),
-                sender_is_token_wallet: x.get(14),
             })
             .collect::<Vec<_>>();
         Ok(res)

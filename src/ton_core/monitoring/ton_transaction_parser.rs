@@ -9,17 +9,8 @@ use uuid::Uuid;
 
 use crate::ton_core::*;
 
-struct ParseContext<'a> {
-    owners_cache: &'a OwnersCache,
-}
-
-pub async fn parse_ton_transaction(
-    event: TonTransactionEvent,
-    owners_cache: &OwnersCache,
-) -> Result<CaughtTonTransaction> {
+pub async fn parse_ton_transaction(event: TonTransactionEvent) -> Result<CaughtTonTransaction> {
     log::info!("Parse ton transaction");
-
-    let parse_ctx = ParseContext { owners_cache };
 
     let transaction = event.transaction.clone();
 
@@ -50,7 +41,6 @@ pub async fn parse_ton_transaction(
     let transaction_lt = BigDecimal::from_u64(transaction.lt);
     let transaction_scan_lt = Some(event.transaction.lt as i64);
     let transaction_timestamp = event.block_utime;
-    let sender_address = get_sender_address(&transaction)?;
     let messages = Some(serde_json::to_value(get_messages(&transaction)?)?);
     let messages_hash = Some(serde_json::to_value(get_messages_hash(&transaction)?)?);
     let fee = BigDecimal::from_u64(compute_fees(&transaction));
@@ -60,9 +50,6 @@ pub async fn parse_ton_transaction(
 
     let parsed = match in_msg.header() {
         CommonMsgInfo::IntMsgInfo(header) => {
-            let sender_is_token_wallet =
-                sender_is_token_wallet(&address, &sender_address, parse_ctx).await?;
-
             CaughtTonTransaction::Create(CreateReceiveTransaction {
                 id: Uuid::new_v4(),
                 message_hash,
@@ -88,7 +75,6 @@ pub async fn parse_ton_transaction(
                 error: None,
                 aborted: is_aborted(&transaction),
                 bounce: header.bounce,
-                sender_is_token_wallet,
             })
         }
         CommonMsgInfo::ExtInMsgInfo(_) => {
@@ -230,22 +216,6 @@ fn is_aborted(transaction: &ton_block::Transaction) -> bool {
         aborted = description.aborted
     }
     aborted
-}
-
-async fn sender_is_token_wallet(
-    address: &MsgAddressInt,
-    sender: &Option<MsgAddressInt>,
-    parse_ctx: ParseContext<'_>,
-) -> Result<bool> {
-    if let Some(sender) = sender {
-        if let Some(owner_info) = parse_ctx.owners_cache.get(sender).await {
-            if owner_info.owner_address == *address {
-                return Ok(true);
-            }
-        }
-    }
-
-    Ok(false)
 }
 
 #[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]

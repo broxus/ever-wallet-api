@@ -50,7 +50,7 @@ impl TonTransaction {
                     None => break,
                 };
 
-                match parse_ton_transaction(event, &ton_transaction.context.owners_cache).await {
+                match parse_ton_transaction(event).await {
                     Ok(transaction) => {
                         if let Err(err) = ton_transaction.ton_transaction_producer.send(transaction)
                         {

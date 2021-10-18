@@ -107,7 +107,6 @@ pub struct CreateReceiveTransaction {
     pub error: Option<String>,
     pub aborted: bool,
     pub bounce: bool,
-    pub sender_is_token_wallet: bool,
 }
 
 #[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]

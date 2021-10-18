@@ -61,7 +61,6 @@ pub struct CreateReceiveTransactionEvent {
     pub transaction_direction: TonTransactionDirection,
     pub transaction_status: TonTransactionStatus,
     pub event_status: TonEventStatus,
-    pub sender_is_token_wallet: bool,
 }
 
 impl CreateReceiveTransactionEvent {
@@ -76,7 +75,6 @@ impl CreateReceiveTransactionEvent {
             sender_workchain_id: payload.sender_workchain_id,
             sender_hex: payload.sender_hex,
             balance_change: payload.balance_change,
-            sender_is_token_wallet: payload.sender_is_token_wallet,
             transaction_direction: TonTransactionDirection::Receive,
             transaction_status: TonTransactionStatus::Done,
             event_status: TonEventStatus::New,

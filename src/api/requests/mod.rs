@@ -100,6 +100,7 @@ pub struct PostTonTokenTransactionSendRequest {
     pub from_address: Address,
     pub root_address: String,
     pub recipient_address: Address,
+    pub send_gas_to: Option<Address>,
     #[opg("value", string)]
     pub value: BigDecimal,
     pub notify_receiver: Option<bool>,
@@ -115,6 +116,7 @@ impl From<PostTonTokenTransactionSendRequest> for TokenTransactionSend {
             from_address: c.from_address,
             root_address: c.root_address,
             recipient_address: c.recipient_address,
+            send_gas_to: c.send_gas_to,
             value: c.value,
             bounce: c.bounce,
             notify_receiver: c.notify_receiver.unwrap_or(false),
