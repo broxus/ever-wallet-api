@@ -25,8 +25,8 @@ impl CreateSendTransactionEvent {
             message_hash: payload.message_hash,
             account_workchain_id: payload.account_workchain_id,
             account_hex: payload.account_hex,
-            transaction_direction: TonTransactionDirection::Send,
-            transaction_status: TonTransactionStatus::New,
+            transaction_direction: payload.direction,
+            transaction_status: payload.status,
             event_status: TonEventStatus::New,
         }
     }
@@ -75,8 +75,8 @@ impl CreateReceiveTransactionEvent {
             sender_workchain_id: payload.sender_workchain_id,
             sender_hex: payload.sender_hex,
             balance_change: payload.balance_change,
-            transaction_direction: TonTransactionDirection::Receive,
-            transaction_status: TonTransactionStatus::Done,
+            transaction_direction: payload.direction,
+            transaction_status: payload.status,
             event_status: TonEventStatus::New,
         }
     }
