@@ -197,6 +197,7 @@ impl TonCoreContext {
     }
 }
 
+#[derive(Debug)]
 pub enum CaughtTonTransaction {
     Create(CreateReceiveTransaction),
     UpdateSent(UpdateSentTransaction),
