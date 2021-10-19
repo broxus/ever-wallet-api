@@ -14,6 +14,7 @@ pub struct CreateSendTransactionEvent {
     pub transaction_direction: TonTransactionDirection,
     pub transaction_status: TonTransactionStatus,
     pub event_status: TonEventStatus,
+    pub balance_change: Option<BigDecimal>,
 }
 
 impl CreateSendTransactionEvent {
@@ -27,6 +28,7 @@ impl CreateSendTransactionEvent {
             account_hex: payload.account_hex,
             transaction_direction: payload.direction,
             transaction_status: payload.status,
+            balance_change: payload.balance_change,
             event_status: TonEventStatus::New,
         }
     }
