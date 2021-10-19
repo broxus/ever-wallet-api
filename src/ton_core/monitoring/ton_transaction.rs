@@ -47,21 +47,34 @@ impl TonTransaction {
             while let Some(event) = rx.recv().await {
                 let ton_transaction = match ton_transaction.upgrade() {
                     Some(engine) => engine,
-                    None => break,
+                    None => {
+                        event.state.send(HandleTransactionStatus::Fail).ok();
+                        log::error!("Failed to handle received ton transaction: Ton transaction handler was dropped");
+                        break;
+                    }
                 };
 
-                match parse_ton_transaction(event).await {
+                match parse_ton_transaction(
+                    event.account,
+                    event.block_utime,
+                    event.transaction_hash,
+                    event.transaction,
+                )
+                .await
+                {
                     Ok(transaction) => {
-                        if let Err(err) = ton_transaction.ton_transaction_producer.send(transaction)
-                        {
-                            log::error!(
-                                "Failed to send received ton transaction into channel: {:?}",
-                                err
-                            );
-                        }
+                        ton_transaction
+                            .ton_transaction_producer
+                            .send((transaction, event.state))
+                            .ok();
                     }
                     Err(e) => {
-                        log::error!("Failed to handle received transaction: {}", e);
+                        event.state.send(HandleTransactionStatus::Fail).ok();
+                        log::error!(
+                            "Failed to handle received ton transaction `{}`: {}",
+                            event.transaction_hash,
+                            e
+                        );
                     }
                 }
             }
@@ -78,15 +91,20 @@ pub struct TonTransactionEvent {
     pub block_utime: u32,
     pub transaction_hash: UInt256,
     pub transaction: ton_block::Transaction,
+    pub state: HandleTransactionStatusTx,
 }
 
 impl ReadFromTransaction for TonTransactionEvent {
-    fn read_from_transaction(ctx: &TxContext<'_>) -> Option<Self> {
+    fn read_from_transaction(
+        ctx: &TxContext<'_>,
+        state: HandleTransactionStatusTx,
+    ) -> Option<Self> {
         Some(TonTransactionEvent {
             account: *ctx.account,
             block_utime: ctx.block_info.gen_utime().0,
             transaction_hash: *ctx.transaction_hash,
             transaction: ctx.transaction.clone(),
+            state,
         })
     }
 }

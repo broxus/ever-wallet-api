@@ -201,11 +201,15 @@ pub enum CaughtTonTransaction {
     UpdateSent(UpdateSentTransaction),
 }
 
-pub type CaughtTonTransactionTx = mpsc::UnboundedSender<CaughtTonTransaction>;
-pub type CaughtTonTransactionRx = mpsc::UnboundedReceiver<CaughtTonTransaction>;
+pub type CaughtTonTransactionTx =
+    mpsc::UnboundedSender<(CaughtTonTransaction, HandleTransactionStatusTx)>;
+pub type CaughtTonTransactionRx =
+    mpsc::UnboundedReceiver<(CaughtTonTransaction, HandleTransactionStatusTx)>;
 
-pub type CaughtTokenTransactionTx = mpsc::UnboundedSender<CreateTokenTransaction>;
-pub type CaughtTokenTransactionRx = mpsc::UnboundedReceiver<CreateTokenTransaction>;
+pub type CaughtTokenTransactionTx =
+    mpsc::UnboundedSender<(CreateTokenTransaction, HandleTransactionStatusTx)>;
+pub type CaughtTokenTransactionRx =
+    mpsc::UnboundedReceiver<(CreateTokenTransaction, HandleTransactionStatusTx)>;
 
 #[derive(thiserror::Error, Debug)]
 enum TonCoreError {

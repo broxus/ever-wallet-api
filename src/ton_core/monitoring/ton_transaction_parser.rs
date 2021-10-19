@@ -9,10 +9,13 @@ use uuid::Uuid;
 
 use crate::ton_core::*;
 
-pub async fn parse_ton_transaction(event: TonTransactionEvent) -> Result<CaughtTonTransaction> {
+pub async fn parse_ton_transaction(
+    account: UInt256,
+    block_utime: u32,
+    transaction_hash: UInt256,
+    transaction: ton_block::Transaction,
+) -> Result<CaughtTonTransaction> {
     log::info!("Parse ton transaction");
-
-    let transaction = event.transaction.clone();
 
     let in_msg = match &transaction.in_msg {
         Some(message) => message
@@ -24,7 +27,7 @@ pub async fn parse_ton_transaction(event: TonTransactionEvent) -> Result<CaughtT
     let address = MsgAddressInt::with_standart(
         None,
         ton_block::BASE_WORKCHAIN_ID as i8,
-        AccountId::from(event.account),
+        AccountId::from(account),
     )?;
 
     let sender_address = get_sender_address(&transaction)?;
@@ -37,10 +40,10 @@ pub async fn parse_ton_transaction(event: TonTransactionEvent) -> Result<CaughtT
     };
 
     let message_hash = in_msg.hash()?.to_hex_string();
-    let transaction_hash = Some(event.transaction_hash.to_hex_string());
+    let transaction_hash = Some(transaction_hash.to_hex_string());
     let transaction_lt = BigDecimal::from_u64(transaction.lt);
-    let transaction_scan_lt = Some(event.transaction.lt as i64);
-    let transaction_timestamp = event.block_utime;
+    let transaction_scan_lt = Some(transaction.lt as i64);
+    let transaction_timestamp = block_utime;
     let messages = Some(serde_json::to_value(get_messages(&transaction)?)?);
     let messages_hash = Some(serde_json::to_value(get_messages_hash(&transaction)?)?);
     let fee = BigDecimal::from_u64(compute_fees(&transaction));

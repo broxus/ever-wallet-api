@@ -1,7 +1,9 @@
+use tokio::sync::oneshot;
 use ton_types::UInt256;
 
 pub trait ReadFromTransaction: Sized {
-    fn read_from_transaction(ctx: &TxContext<'_>) -> Option<Self>;
+    fn read_from_transaction(ctx: &TxContext<'_>, state: HandleTransactionStatusTx)
+        -> Option<Self>;
 }
 
 #[derive(Copy, Clone)]
@@ -108,3 +110,12 @@ impl TxContext<'_> {
             .ok();
     }
 }
+
+#[derive(Debug, Copy, Clone, Eq, PartialEq)]
+pub enum HandleTransactionStatus {
+    Success,
+    Fail,
+}
+
+pub type HandleTransactionStatusTx = oneshot::Sender<HandleTransactionStatus>;
+pub type HandleTransactionStatusRx = oneshot::Receiver<HandleTransactionStatus>;

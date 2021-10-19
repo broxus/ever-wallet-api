@@ -3,6 +3,8 @@ use std::sync::atomic::{AtomicBool, AtomicU32, Ordering};
 use std::sync::{Arc, Weak};
 
 use anyhow::Result;
+use futures::stream::FuturesUnordered;
+use futures::StreamExt;
 use nekoton::core::models::TokenWalletVersion;
 use nekoton::transport::models::ExistingContract;
 use nekoton_utils::TrustMe;
@@ -126,7 +128,7 @@ impl TonSubscriber {
         block: &ton_block::Block,
         shard_state: &ton_block::ShardStateUnsplit,
         block_hash: &UInt256,
-    ) -> Result<()> {
+    ) -> Result<FuturesUnordered<HandleTransactionStatusRx>> {
         let block_info = block.info.read_struct()?;
         let extra = block.extra.read_struct()?;
         let account_blocks = extra.read_account_blocks()?;
@@ -155,12 +157,15 @@ impl TonSubscriber {
         }
         drop(shard_accounts_cache);
 
+        let states = FuturesUnordered::new();
+
         let subscriptions = self.state_subscriptions.read();
         let token_subscription = self.token_subscription.read();
+
         account_blocks.iterate_with_keys(|account, account_block| {
             match subscriptions.get(&account) {
                 Some(subscription) => {
-                    if let Err(e) = subscription.handle_block(
+                    match subscription.handle_block(
                         &self.messages_queue,
                         &shard_accounts,
                         &block_info,
@@ -168,12 +173,19 @@ impl TonSubscriber {
                         &account,
                         block_hash,
                     ) {
-                        log::error!("Failed to handle block: {:?}", e);
-                    }
+                        Ok(rx_states) => {
+                            for state in rx_states {
+                                states.push(state);
+                            }
+                        }
+                        Err(e) => {
+                            log::error!("Failed to handle block: {:?}", e);
+                        }
+                    };
                 }
                 None => {
                     if token_subscription.is_some() {
-                        if let Err(e) = token_subscription.as_ref().trust_me().handle_block(
+                        match token_subscription.as_ref().trust_me().handle_block(
                             &self.state_subscriptions,
                             &shard_accounts,
                             &block_info,
@@ -181,7 +193,14 @@ impl TonSubscriber {
                             &account,
                             block_hash,
                         ) {
-                            log::error!("Failed to handle block: {:?}", e);
+                            Ok(rx_states) => {
+                                for state in rx_states {
+                                    states.push(state);
+                                }
+                            }
+                            Err(e) => {
+                                log::error!("Failed to handle block: {:?}", e);
+                            }
                         }
                     }
                 }
@@ -193,7 +212,7 @@ impl TonSubscriber {
         self.messages_queue
             .update(block_info.shard(), block_info.gen_utime().0);
 
-        Ok(())
+        Ok(states)
     }
 
     async fn wait_sync(&self) {
@@ -223,7 +242,13 @@ impl ton_indexer::Subscriber for TonSubscriber {
         if block.id().is_masterchain() {
             self.handle_masterchain_block(block.block())?;
         } else {
-            self.handle_shard_block(block.block(), shard_state.state(), &block.id().root_hash)?;
+            let mut states =
+                self.handle_shard_block(block.block(), shard_state.state(), &block.id().root_hash)?;
+            while let Some(status) = states.next().await {
+                if let Err(err) = status {
+                    log::error!("Failed to receive transaction status: {}", err);
+                }
+            }
         }
 
         Ok(())
@@ -243,9 +268,11 @@ impl StateSubscription {
         account_block: &ton_block::AccountBlock,
         account: &UInt256,
         block_hash: &UInt256,
-    ) -> Result<()> {
+    ) -> Result<FuturesUnordered<HandleTransactionStatusRx>> {
+        let states = FuturesUnordered::new();
+
         if self.transaction_subscriptions.is_empty() {
-            return Ok(());
+            return Ok(states);
         }
 
         for transaction in account_block.transactions().iter() {
@@ -302,18 +329,24 @@ impl StateSubscription {
 
             // Handle transaction
             for subscription in self.iter_transaction_subscriptions() {
-                if let Err(e) = subscription.handle_transaction(ctx) {
-                    log::error!(
-                        "Failed to handle transaction {} for account {}: {:?}",
-                        hash.to_hex_string(),
-                        account.to_hex_string(),
-                        e
-                    );
-                }
+                let (tx, rx) = oneshot::channel();
+                match subscription.handle_transaction(ctx, tx) {
+                    Ok(_) => {
+                        states.push(rx);
+                    }
+                    Err(e) => {
+                        log::error!(
+                            "Failed to handle transaction {} for account {}: {:?}",
+                            hash.to_hex_string(),
+                            account.to_hex_string(),
+                            e
+                        );
+                    }
+                };
             }
         }
 
-        Ok(())
+        Ok(states)
     }
 
     fn iter_transaction_subscriptions(
@@ -339,7 +372,9 @@ impl TokenSubscription {
         account_block: &ton_block::AccountBlock,
         account: &UInt256,
         block_hash: &UInt256,
-    ) -> Result<()> {
+    ) -> Result<FuturesUnordered<HandleTransactionStatusRx>> {
+        let states = FuturesUnordered::new();
+
         for transaction in account_block.transactions().iter() {
             let (hash, transaction) = match transaction.and_then(|(_, value)| {
                 let cell = value.into_cell().reference(0)?;
@@ -404,19 +439,25 @@ impl TokenSubscription {
                         token_transaction: &Some(parsed),
                     };
 
-                    if let Err(e) = self.transaction_subscription.handle_transaction(ctx) {
-                        log::error!(
-                            "Failed to handle transaction {} for account {}: {:?}",
-                            hash.to_hex_string(),
-                            account.to_hex_string(),
-                            e
-                        );
-                    }
+                    let (tx, rx) = oneshot::channel();
+                    match self.transaction_subscription.handle_transaction(ctx, tx) {
+                        Ok(_) => {
+                            states.push(rx);
+                        }
+                        Err(e) => {
+                            log::error!(
+                                "Failed to handle token transaction {} for account {}: {:?}",
+                                hash.to_hex_string(),
+                                account.to_hex_string(),
+                                e
+                            );
+                        }
+                    };
                 }
             }
         }
 
-        Ok(())
+        Ok(states)
     }
 }
 
@@ -434,7 +475,11 @@ enum BlockAwaiterAction {
 }
 
 pub trait TransactionsSubscription: Send + Sync {
-    fn handle_transaction(&self, ctx: TxContext<'_>) -> Result<()>;
+    fn handle_transaction(
+        &self,
+        ctx: TxContext<'_>,
+        state: HandleTransactionStatusTx,
+    ) -> Result<()>;
 }
 
 /// Generic listener for transactions
@@ -450,8 +495,12 @@ impl<T> TransactionsSubscription for AccountObserver<T>
 where
     T: ReadFromTransaction + std::fmt::Debug + Send + Sync,
 {
-    fn handle_transaction(&self, ctx: TxContext<'_>) -> Result<()> {
-        let event = T::read_from_transaction(&ctx);
+    fn handle_transaction(
+        &self,
+        ctx: TxContext<'_>,
+        state: HandleTransactionStatusTx,
+    ) -> Result<()> {
+        let event = T::read_from_transaction(&ctx, state);
 
         // Send event to event manager if it exist
         if let Some(event) = event {

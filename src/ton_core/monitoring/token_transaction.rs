@@ -48,7 +48,11 @@ impl TokenTransaction {
             while let Some(event) = rx.recv().await {
                 let token_transaction = match token_transaction.upgrade() {
                     Some(engine) => engine,
-                    None => break,
+                    None => {
+                        event.state.send(HandleTransactionStatus::Fail).ok();
+                        log::error!("Failed to handle received token transaction: Token transaction handler was dropped");
+                        break;
+                    }
                 };
 
                 match parse_token_transaction(
@@ -60,17 +64,13 @@ impl TokenTransaction {
                 .await
                 {
                     Ok(transaction) => {
-                        if let Err(err) = token_transaction
+                        token_transaction
                             .token_transaction_producer
-                            .send(transaction)
-                        {
-                            log::error!(
-                                "Failed to send received token transaction into channel: {:?}",
-                                err
-                            );
-                        }
+                            .send((transaction, event.state))
+                            .ok();
                     }
                     Err(e) => {
+                        event.state.send(HandleTransactionStatus::Fail).ok();
                         log::error!("Failed to handle received token transaction: {}", e);
                     }
                 }
@@ -96,10 +96,14 @@ pub struct TokenTransactionContext {
 pub struct TokenTransactionEvent {
     ctx: TokenTransactionContext,
     parsed: TokenWalletTransaction,
+    state: HandleTransactionStatusTx,
 }
 
 impl ReadFromTransaction for TokenTransactionEvent {
-    fn read_from_transaction(ctx: &TxContext<'_>) -> Option<Self> {
+    fn read_from_transaction(
+        ctx: &TxContext<'_>,
+        state: HandleTransactionStatusTx,
+    ) -> Option<Self> {
         let mut event = None;
 
         if ctx.transaction_info.aborted {
@@ -117,6 +121,7 @@ impl ReadFromTransaction for TokenTransactionEvent {
                     shard_accounts: ctx.shard_accounts.clone(),
                 },
                 parsed: parsed.clone(),
+                state,
             })
         }
 
