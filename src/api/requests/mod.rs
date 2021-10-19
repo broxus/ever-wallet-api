@@ -40,7 +40,7 @@ pub struct BalanceRequest {
 #[serde(rename_all = "camelCase")]
 #[opg("PostTonTransactionSendRequest")]
 pub struct PostTonTransactionSendRequest {
-    pub id: Uuid,
+    pub id: Option<Uuid>,
     pub from_address: Address,
     pub outputs: Vec<PostTonTransactionSendOutputRequest>,
     pub bounce: Option<bool>,
@@ -49,7 +49,7 @@ pub struct PostTonTransactionSendRequest {
 impl From<PostTonTransactionSendRequest> for TransactionSend {
     fn from(c: PostTonTransactionSendRequest) -> Self {
         TransactionSend {
-            id: c.id,
+            id: c.id.unwrap_or(Uuid::new_v4()),
             from_address: c.from_address,
             bounce: c.bounce,
             outputs: c.outputs.into_iter().map(From::from).collect(),
@@ -96,7 +96,7 @@ impl From<PostTonTransactionsRequest> for TransactionsSearch {
 #[serde(rename_all = "camelCase")]
 #[opg("PostTonTokenTransactionSendRequest")]
 pub struct PostTonTokenTransactionSendRequest {
-    pub id: Uuid,
+    pub id: Option<Uuid>,
     pub from_address: Address,
     pub root_address: String,
     pub recipient_address: Address,
@@ -112,7 +112,7 @@ pub struct PostTonTokenTransactionSendRequest {
 impl From<PostTonTokenTransactionSendRequest> for TokenTransactionSend {
     fn from(c: PostTonTokenTransactionSendRequest) -> Self {
         TokenTransactionSend {
-            id: c.id,
+            id: c.id.unwrap_or(Uuid::new_v4()),
             from_address: c.from_address,
             root_address: c.root_address,
             recipient_address: c.recipient_address,
