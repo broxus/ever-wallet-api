@@ -42,7 +42,7 @@ pub struct AddressResponse {
 impl From<AddressDb> for AddressResponse {
     fn from(a: AddressDb) -> Self {
         let account = MsgAddressInt::from_str(&format!("{}:{}", a.workchain_id, a.hex)).unwrap();
-        let base64url = Address(pack_std_smc_addr(true, &account, false).unwrap());
+        let base64url = Address(pack_std_smc_addr(true, &account, true).unwrap());
         Self {
             workchain_id: a.workchain_id,
             hex: Address(a.hex),

@@ -144,7 +144,7 @@ fn get_messages(transaction: &ton_block::Transaction) -> Result<Vec<Message>> {
             let recipient = match item.header().get_dst_address() {
                 Some(dst) => Some(MessageRecipient {
                     hex: dst.address().to_hex_string(),
-                    base64url: nekoton_utils::pack_std_smc_addr(true, &dst, false)?,
+                    base64url: nekoton_utils::pack_std_smc_addr(true, &dst, true)?,
                     workchain_id: dst.workchain_id(),
                 }),
                 None => None,

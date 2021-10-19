@@ -195,7 +195,7 @@ impl TokenBalanceResponse {
         let account =
             MsgAddressInt::from_str(&format!("{}:{}", a.account_workchain_id, a.account_hex))
                 .unwrap();
-        let base64url = Address(pack_std_smc_addr(true, &account, false).unwrap());
+        let base64url = Address(pack_std_smc_addr(true, &account, true).unwrap());
 
         Self {
             service_id: a.service_id,
@@ -412,7 +412,7 @@ impl From<TransactionDb> for AccountTransactionDataResponse {
             let sender =
                 MsgAddressInt::from_str(&format!("{}:{}", sender_workchain_id, sender_hex))
                     .unwrap();
-            let sender_base64url = Address(pack_std_smc_addr(true, &sender, false).unwrap());
+            let sender_base64url = Address(pack_std_smc_addr(true, &sender, true).unwrap());
             Some(AddressResponse {
                 workchain_id: sender_workchain_id,
                 hex: Address(sender_hex),
@@ -432,7 +432,7 @@ impl From<TransactionDb> for AccountTransactionDataResponse {
                         let output_address =
                             nekoton_utils::repack_address(&output.recipient_address.0).unwrap();
                         let output_base64url =
-                            Address(pack_std_smc_addr(true, &output_address, false).unwrap());
+                            Address(pack_std_smc_addr(true, &output_address, true).unwrap());
                         AccountTransactionOutput {
                             value: output.value.to_string(),
                             recipient: AddressResponse {
@@ -451,7 +451,7 @@ impl From<TransactionDb> for AccountTransactionDataResponse {
         let account =
             MsgAddressInt::from_str(&format!("{}:{}", c.account_workchain_id, c.account_hex))
                 .unwrap();
-        let base64url = Address(pack_std_smc_addr(true, &account, false).unwrap());
+        let base64url = Address(pack_std_smc_addr(true, &account, true).unwrap());
 
         AccountTransactionDataResponse {
             id: c.id,
@@ -572,7 +572,7 @@ impl From<TokenTransactionFromDb> for AccountTokenTransactionDataResponse {
         let account =
             MsgAddressInt::from_str(&format!("{}:{}", c.account_workchain_id, c.account_hex))
                 .unwrap();
-        let base64url = Address(pack_std_smc_addr(true, &account, false).unwrap());
+        let base64url = Address(pack_std_smc_addr(true, &account, true).unwrap());
 
         AccountTokenTransactionDataResponse {
             id: c.id,
@@ -632,6 +632,7 @@ impl From<Result<PostAddressValidResponse, ServiceError>> for PostCheckedAddress
 pub struct AddressBalanceResponse {
     pub status: TonStatus,
     pub data: Option<PostAddressBalanceDataResponse>,
+    pub error_message: Option<String>,
 }
 
 impl From<Result<PostAddressBalanceDataResponse, ServiceError>> for AddressBalanceResponse {
@@ -640,10 +641,12 @@ impl From<Result<PostAddressBalanceDataResponse, ServiceError>> for AddressBalan
             Ok(data) => Self {
                 status: TonStatus::Ok,
                 data: Some(data),
+                error_message: None,
             },
-            Err(_) => Self {
+            Err(e) => Self {
                 status: TonStatus::Error,
                 data: None,
+                error_message: Some(format!("{:?}", e)),
             },
         }
     }
@@ -673,7 +676,7 @@ pub struct PostAddressBalanceDataResponse {
 impl PostAddressBalanceDataResponse {
     pub fn new(a: AddressDb, b: NetworkAddressData) -> Self {
         let account = MsgAddressInt::from_str(&format!("{}:{}", a.workchain_id, a.hex)).unwrap();
-        let base64url = Address(pack_std_smc_addr(true, &account, false).unwrap());
+        let base64url = Address(pack_std_smc_addr(true, &account, true).unwrap());
 
         Self {
             id: a.id,

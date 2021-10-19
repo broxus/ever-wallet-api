@@ -192,7 +192,7 @@ impl TonClient for TonClientImpl {
         Ok(CreatedAddress {
             workchain_id: address.workchain_id(),
             hex: address.address().to_hex_string(),
-            base64url: nekoton_utils::pack_std_smc_addr(true, &address, false)?,
+            base64url: nekoton_utils::pack_std_smc_addr(true, &address, true)?,
             public_key: public.to_bytes().to_vec(),
             private_key: secret.to_bytes().to_vec(),
             account_type,
