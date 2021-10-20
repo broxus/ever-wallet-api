@@ -69,7 +69,7 @@ impl NodeConfig {
             dht_options: Default::default(),
             neighbours_options: Default::default(),
             overlay_shard_options: tiny_adnl::OverlayShardOptions {
-                broadcast_target_count: 6,
+                broadcast_target_count: 10,
                 ..Default::default()
             },
         })
