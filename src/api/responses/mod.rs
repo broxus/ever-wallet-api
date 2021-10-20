@@ -434,7 +434,7 @@ impl From<TransactionDb> for AccountTransactionDataResponse {
                             let output_base64url =
                                 Address(pack_std_smc_addr(true, &output_address, true).unwrap());
                             AccountTransactionOutput {
-                                value: output.value.to_string(),
+                                value: output.value,
                                 recipient: AddressResponse {
                                     workchain_id: output_address.workchain_id(),
                                     hex: Address(output_address.address().to_hex_string()),
@@ -491,8 +491,10 @@ impl From<TransactionDb> for AccountTransactionDataResponse {
 #[opg("AccountTransactionMessage")]
 pub struct AccountTransactionMessage {
     pub message_hash: String,
-    pub value: String,
-    pub fee: String,
+    #[opg("value", string)]
+    pub value: BigDecimal,
+    #[opg("fee", string)]
+    pub fee: BigDecimal,
     pub recipient: AddressResponse,
 }
 
@@ -500,7 +502,8 @@ pub struct AccountTransactionMessage {
 #[serde(rename_all = "camelCase")]
 #[opg("AccountTransactionOutput")]
 pub struct AccountTransactionOutput {
-    pub value: String,
+    #[opg("value", string)]
+    pub value: BigDecimal,
     pub recipient: AddressResponse,
 }
 
