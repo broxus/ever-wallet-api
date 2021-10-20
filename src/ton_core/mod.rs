@@ -162,12 +162,6 @@ impl TonCoreContext {
         message: &ton_block::Message,
         expire_at: u32,
     ) -> Result<MessageStatus> {
-        log::info!(
-            "Expire at {}; Current time: {}",
-            expire_at,
-            self.ton_subscriber.current_utime()
-        );
-
         let to = match message.header() {
             ton_block::CommonMsgInfo::ExtInMsgInfo(header) => {
                 ton_block::AccountIdPrefixFull::prefix(&header.dst)?
@@ -181,6 +175,13 @@ impl TonCoreContext {
         let rx = self
             .messages_queue
             .add_message(*account, cells.repr_hash(), expire_at)?;
+
+        log::info!(
+            "Broadcast: now - {}; current - {}; expire_at - {}",
+            chrono::Utc::now().timestamp(),
+            self.ton_subscriber.current_utime(),
+            expire_at
+        );
 
         self.ton_engine
             .broadcast_external_message(&to, &serialized)
