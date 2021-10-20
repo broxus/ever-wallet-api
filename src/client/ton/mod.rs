@@ -321,25 +321,21 @@ impl TonClient for TonClientImpl {
                     self.ton_core.get_contract_state(&account)?.account
                 };
 
-                let gifts = transaction
-                    .outputs
-                    .into_iter()
-                    .map(|item| {
-                        let flags = item.output_type.unwrap_or_default().value();
-                        let destination = nekoton_utils::repack_address(&item.recipient_address.0)
-                            .unwrap_or_default();
-                        let amount = item.value.to_u64().unwrap_or_default();
+                let mut gifts: Vec<nekoton::core::ton_wallet::highload_wallet_v2::Gift> = vec![];
+                for item in transaction.outputs {
+                    let flags = item.output_type.unwrap_or_default().value();
+                    let destination = nekoton_utils::repack_address(&item.recipient_address.0)?;
+                    let amount = item.value.to_u64().unwrap_or_default();
 
-                        nekoton::core::ton_wallet::highload_wallet_v2::Gift {
-                            flags,
-                            bounce,
-                            destination,
-                            amount,
-                            body: None,
-                            state_init: None,
-                        }
-                    })
-                    .collect::<Vec<nekoton::core::ton_wallet::highload_wallet_v2::Gift>>();
+                    gifts.push(nekoton::core::ton_wallet::highload_wallet_v2::Gift {
+                        flags,
+                        bounce,
+                        destination,
+                        amount,
+                        body: None,
+                        state_init: None,
+                    });
+                }
 
                 nekoton::core::ton_wallet::highload_wallet_v2::prepare_transfer(
                     &public_key,
