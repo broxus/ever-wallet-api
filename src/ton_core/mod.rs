@@ -162,6 +162,12 @@ impl TonCoreContext {
         message: &ton_block::Message,
         expire_at: u32,
     ) -> Result<MessageStatus> {
+        log::info!(
+            "Expire at {}; Current time: {}",
+            expire_at,
+            self.ton_subscriber.current_utime()
+        );
+
         let to = match message.header() {
             ton_block::CommonMsgInfo::ExtInMsgInfo(header) => {
                 ton_block::AccountIdPrefixFull::prefix(&header.dst)?

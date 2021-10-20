@@ -49,7 +49,7 @@ pub struct PostTonTransactionSendRequest {
 impl From<PostTonTransactionSendRequest> for TransactionSend {
     fn from(c: PostTonTransactionSendRequest) -> Self {
         TransactionSend {
-            id: c.id.unwrap_or(Uuid::new_v4()),
+            id: c.id.unwrap_or_else(Uuid::new_v4),
             from_address: c.from_address,
             bounce: c.bounce,
             outputs: c.outputs.into_iter().map(From::from).collect(),
@@ -112,7 +112,7 @@ pub struct PostTonTokenTransactionSendRequest {
 impl From<PostTonTokenTransactionSendRequest> for TokenTransactionSend {
     fn from(c: PostTonTokenTransactionSendRequest) -> Self {
         TokenTransactionSend {
-            id: c.id.unwrap_or(Uuid::new_v4()),
+            id: c.id.unwrap_or_else(Uuid::new_v4),
             from_address: c.from_address,
             root_address: c.root_address,
             recipient_address: c.recipient_address,

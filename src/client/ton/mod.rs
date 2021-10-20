@@ -434,7 +434,7 @@ impl TonClient for TonClientImpl {
         let root_account = UInt256::from_be_bytes(&root_address.address().get_bytestring(0));
         let root_contract = self.ton_core.get_contract_state(&root_account)?;
 
-        let token_address = get_token_wallet_address(root_contract, owner)?;
+        let token_address = get_token_wallet_address(&root_contract, owner)?;
         let token_account = UInt256::from_be_bytes(&token_address.address().get_bytestring(0));
         let token_contract = match self.ton_core.get_contract_state(&token_account) {
             Ok(contract) => contract,

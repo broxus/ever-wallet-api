@@ -444,7 +444,7 @@ impl From<TransactionDb> for AccountTransactionDataResponse {
                         })
                         .collect()
                 })
-                .or(serde_json::from_value(outputs))
+                .or_else(|_| serde_json::from_value(outputs))
                 .ok()
         } else {
             None

@@ -63,10 +63,10 @@ pub fn prepare_token_transfer(
 }
 
 pub fn get_token_wallet_address(
-    root_contract: ExistingContract,
+    root_contract: &ExistingContract,
     owner: &MsgAddressInt,
 ) -> Result<MsgAddressInt> {
-    let root_contract_state = RootTokenContractState(&root_contract);
+    let root_contract_state = RootTokenContractState(root_contract);
     let RootTokenContractDetails { version, .. } = root_contract_state.guess_details()?;
 
     root_contract_state.get_wallet_address(version, owner, None)

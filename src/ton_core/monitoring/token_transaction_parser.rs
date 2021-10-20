@@ -24,8 +24,6 @@ pub async fn parse_token_transaction(
     sqlx_client: &SqlxClient,
     owners_cache: &OwnersCache,
 ) -> Result<CreateTokenTransaction> {
-    log::info!("Parse token transaction");
-
     let parse_ctx = ParseContext {
         sqlx_client,
         owners_cache,
