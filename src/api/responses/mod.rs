@@ -411,7 +411,7 @@ impl From<TransactionDb> for AccountTransactionDataResponse {
         {
             let sender =
                 MsgAddressInt::from_str(&format!("{}:{}", sender_workchain_id, sender_hex))
-                    .unwrap();
+                    .unwrap_or_default();
             let sender_base64url = Address(pack_std_smc_addr(true, &sender, true).unwrap());
             Some(AddressResponse {
                 workchain_id: sender_workchain_id,
@@ -423,27 +423,29 @@ impl From<TransactionDb> for AccountTransactionDataResponse {
         };
 
         let original_outputs = if let Some(outputs) = c.original_outputs {
-            let original_outputs: Vec<TransactionSendOutput> =
-                serde_json::from_value(outputs).unwrap_or_default();
-            Some(
-                original_outputs
-                    .into_iter()
-                    .map(|output| {
-                        let output_address =
-                            nekoton_utils::repack_address(&output.recipient_address.0).unwrap();
-                        let output_base64url =
-                            Address(pack_std_smc_addr(true, &output_address, true).unwrap());
-                        AccountTransactionOutput {
-                            value: output.value.to_string(),
-                            recipient: AddressResponse {
-                                workchain_id: output_address.workchain_id(),
-                                hex: Address(output_address.address().to_hex_string()),
-                                base64url: output_base64url,
-                            },
-                        }
-                    })
-                    .collect(),
-            )
+            serde_json::from_value(outputs.clone())
+                .map(|original_outputs: Vec<TransactionSendOutput>| {
+                    original_outputs
+                        .into_iter()
+                        .map(|output| {
+                            let output_address =
+                                nekoton_utils::repack_address(&output.recipient_address.0)
+                                    .unwrap_or_default();
+                            let output_base64url =
+                                Address(pack_std_smc_addr(true, &output_address, true).unwrap());
+                            AccountTransactionOutput {
+                                value: output.value.to_string(),
+                                recipient: AddressResponse {
+                                    workchain_id: output_address.workchain_id(),
+                                    hex: Address(output_address.address().to_hex_string()),
+                                    base64url: output_base64url,
+                                },
+                            }
+                        })
+                        .collect()
+                })
+                .or(serde_json::from_value(outputs))
+                .ok()
         } else {
             None
         };
