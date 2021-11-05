@@ -16,6 +16,7 @@ The wallet http api for telegram open network client.
 - RAM: 16 GB
 - Storage: 200 GB fast SSD
 - Network: 100 MBit/s
+- Postgres: 11 or higher
 
 
 ### Native build
@@ -24,9 +25,28 @@ The wallet http api for telegram open network client.
 - Rust 1.54+
 - Clang 11
 
+
+#### Postgresql migrations
+
+To fill database with default data one must run database migrations.
+To do so sqlx-cli is needed. It can be installed via cargo:
+
+```bash
+cargo install sqlx-cli
+```
+
+Migrations can be applied after that by this:
+
+```bash
+cargo sqlx migrate run
+```
+
+Beside default scheme creation, the whitelist of token roots is also added to the database data.
+API works only with tokens in `token_whitelist` table. It can be modified via command shown below.
+
 #### How to run
 ```bash
-# Set 'salt' and 'secret' env vars
+# Set 'salt' and 'secret' env vars needed to encrypt/decrypt all addresses private keys
 export SALT=${SALT}
 export API_SECRET=${API_SECRET}
 
@@ -65,6 +85,11 @@ DATABASE_URL=${DATABASE_URL} RUSTFLAGS='-C target-cpu=native' cargo run \
   --release -- root_token \
   --name WTON --address 0:0ee39330eddb680ce731cd6a443c71d9069db06d149a9bec9569d1eb8d04eb37
 ```
+
+#### Callbacks
+API can send callbacks to services using it. One can set callback url in `api_service_callback` table for any service.
+`service_id` and `callback` columns must be set. After receiving or sending new transactions or token transactions 
+API will call web hook with POST method on `callback` url. Body will contain `AccountTransactionEvent` from swagger. 
 
 
 ### Swagger
