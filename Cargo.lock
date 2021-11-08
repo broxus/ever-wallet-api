@@ -211,7 +211,7 @@ version = "0.2.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d1e50562e37200edf7c6c43e54a08e64a5553bfb59d9c297d5572512aa517256"
 dependencies = [
- "num-bigint 0.3.3",
+ "num-bigint",
  "num-integer",
  "num-traits",
  "serde",
@@ -799,28 +799,6 @@ name = "extfmt"
 version = "0.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a48fe53466ab1f4ea6303bf9d7a0ca8060778590f09fd6c3304cc817aeb9935d"
-
-[[package]]
-name = "failure"
-version = "0.1.8"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d32e9bd16cc02eae7db7ef620b392808b89f6a5e16bb3497d159c6b92a0f4f86"
-dependencies = [
- "backtrace",
- "failure_derive",
-]
-
-[[package]]
-name = "failure_derive"
-version = "0.1.8"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "aa4da3c766cd7a0db8242e326e9e4e081edd567072893ed320008189715366a4"
-dependencies = [
- "proc-macro2 1.0.30",
- "quote 1.0.10",
- "syn 1.0.80",
- "synstructure",
-]
 
 [[package]]
 name = "fdlimit"
@@ -1677,7 +1655,7 @@ dependencies = [
  "nekoton-abi",
  "nekoton-contracts",
  "nekoton-utils",
- "num-bigint 0.3.3",
+ "num-bigint",
  "num-traits",
  "once_cell",
  "parking_lot",
@@ -1695,7 +1673,7 @@ dependencies = [
  "ton_abi",
  "ton_block",
  "ton_executor",
- "ton_types 1.10.2",
+ "ton_types",
  "ton_vm",
  "zeroize",
 ]
@@ -1713,7 +1691,7 @@ dependencies = [
  "log",
  "nekoton-derive",
  "nekoton-utils",
- "num-bigint 0.3.3",
+ "num-bigint",
  "num-traits",
  "serde",
  "serde_json",
@@ -1723,7 +1701,7 @@ dependencies = [
  "ton_abi",
  "ton_block",
  "ton_executor",
- "ton_types 1.10.2",
+ "ton_types",
  "ton_vm",
 ]
 
@@ -1734,7 +1712,7 @@ source = "git+https://github.com/broxus/nekoton.git#25a122d7fefc7a41f1e6fd445e89
 dependencies = [
  "once_cell",
  "ton_abi",
- "ton_types 1.10.2",
+ "ton_types",
 ]
 
 [[package]]
@@ -1759,7 +1737,7 @@ dependencies = [
  "ed25519-dalek",
  "hex",
  "log",
- "num-bigint 0.3.3",
+ "num-bigint",
  "num-traits",
  "ring",
  "secstr",
@@ -1767,7 +1745,7 @@ dependencies = [
  "sha2",
  "thiserror",
  "ton_block",
- "ton_types 1.10.2",
+ "ton_types",
  "zeroize",
 ]
 
@@ -1820,25 +1798,11 @@ version = "0.3.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8b7a8e9be5e039e2ff869df49155f1c06bd01ade2117ec783e56ab0932b67a8f"
 dependencies = [
- "num-bigint 0.3.3",
- "num-complex 0.3.1",
+ "num-bigint",
+ "num-complex",
  "num-integer",
  "num-iter",
- "num-rational 0.3.2",
- "num-traits",
-]
-
-[[package]]
-name = "num"
-version = "0.4.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "43db66d1170d347f9a065114077f7dccb00c1b9478c89384490a3425279a4606"
-dependencies = [
- "num-bigint 0.4.2",
- "num-complex 0.4.0",
- "num-integer",
- "num-iter",
- "num-rational 0.4.0",
+ "num-rational",
  "num-traits",
 ]
 
@@ -1855,30 +1819,10 @@ dependencies = [
 ]
 
 [[package]]
-name = "num-bigint"
-version = "0.4.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "74e768dff5fb39a41b3bcd30bb25cf989706c90d028d1ad71971987aa309d535"
-dependencies = [
- "autocfg",
- "num-integer",
- "num-traits",
-]
-
-[[package]]
 name = "num-complex"
 version = "0.3.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "747d632c0c558b87dbabbe6a82f3b4ae03720d0646ac5b7b4dae89394be5f2c5"
-dependencies = [
- "num-traits",
-]
-
-[[package]]
-name = "num-complex"
-version = "0.4.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "26873667bbbb7c5182d4a37c1add32cdf09f841af72da53318fdb81543c15085"
 dependencies = [
  "num-traits",
 ]
@@ -1922,19 +1866,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "12ac428b1cb17fce6f731001d307d351ec70a6d202fc2e60f7d4c5e42d8f4f07"
 dependencies = [
  "autocfg",
- "num-bigint 0.3.3",
- "num-integer",
- "num-traits",
-]
-
-[[package]]
-name = "num-rational"
-version = "0.4.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d41702bd167c2df5520b384281bc111a4b5efcf7fbc4c9c222c815b07e0a6a6a"
-dependencies = [
- "autocfg",
- "num-bigint 0.4.2",
+ "num-bigint",
  "num-integer",
  "num-traits",
 ]
@@ -2921,7 +2853,7 @@ dependencies = [
  "log",
  "md-5",
  "memchr",
- "num-bigint 0.3.3",
+ "num-bigint",
  "once_cell",
  "parking_lot",
  "percent-encoding",
@@ -3171,8 +3103,8 @@ dependencies = [
  "thiserror",
  "tokio",
  "tokio-io-timeout",
- "ton_api 0.0.1 (git+https://github.com/broxus/ton-labs-tl.git)",
- "ton_types 1.10.2",
+ "ton_api",
+ "ton_types",
  "x25519-dalek-ng",
 ]
 
@@ -3344,9 +3276,9 @@ dependencies = [
  "tiny-adnl",
  "tokio",
  "ton-indexer-alloc",
- "ton_api 0.0.1 (git+https://github.com/broxus/ton-labs-tl.git)",
+ "ton_api",
  "ton_block",
- "ton_types 1.10.2",
+ "ton_types",
 ]
 
 [[package]]
@@ -3393,7 +3325,7 @@ dependencies = [
  "nekoton-abi",
  "nekoton-contracts",
  "nekoton-utils",
- "num-bigint 0.3.3",
+ "num-bigint",
  "num-traits",
  "once_cell",
  "opg",
@@ -3415,9 +3347,8 @@ dependencies = [
  "tokio",
  "ton-indexer",
  "ton_abi",
- "ton_api 0.0.1 (git+https://github.com/broxus/ton-labs-tl.git?branch=original)",
  "ton_block",
- "ton_types 1.10.2",
+ "ton_types",
  "url",
  "urlencoding",
  "uuid",
@@ -3436,7 +3367,7 @@ dependencies = [
  "ed25519",
  "ed25519-dalek",
  "hex",
- "num-bigint 0.3.3",
+ "num-bigint",
  "num-traits",
  "serde",
  "serde_json",
@@ -3444,26 +3375,7 @@ dependencies = [
  "smallvec",
  "thiserror",
  "ton_block",
- "ton_types 1.10.2",
-]
-
-[[package]]
-name = "ton_api"
-version = "0.0.1"
-source = "git+https://github.com/broxus/ton-labs-tl.git?branch=original#aafd7003577542836e2b34383fdff8477ff7d3a0"
-dependencies = [
- "byteorder",
- "erased-serde",
- "extfmt",
- "failure",
- "hex",
- "lazy_static",
- "ordered-float",
- "rand 0.7.3",
- "secstr",
- "serde",
- "ton_tl_codegen 0.0.1 (git+https://github.com/broxus/ton-labs-tl.git?branch=original)",
- "ton_types 1.10.10",
+ "ton_types",
 ]
 
 [[package]]
@@ -3482,8 +3394,8 @@ dependencies = [
  "secstr",
  "serde",
  "thiserror",
- "ton_tl_codegen 0.0.1 (git+https://github.com/broxus/ton-labs-tl.git)",
- "ton_types 1.10.2",
+ "ton_tl_codegen",
+ "ton_types",
 ]
 
 [[package]]
@@ -3499,13 +3411,13 @@ dependencies = [
  "ed25519-dalek",
  "hex",
  "log",
- "num 0.3.1",
+ "num",
  "num-traits",
  "rand 0.8.4",
  "sha2",
  "smallvec",
  "thiserror",
- "ton_types 1.10.2",
+ "ton_types",
 ]
 
 [[package]]
@@ -3517,25 +3429,12 @@ dependencies = [
  "base64",
  "clear_on_drop",
  "log",
- "num 0.3.1",
+ "num",
  "num-traits",
  "thiserror",
  "ton_block",
- "ton_types 1.10.2",
+ "ton_types",
  "ton_vm",
-]
-
-[[package]]
-name = "ton_tl_codegen"
-version = "0.0.1"
-source = "git+https://github.com/broxus/ton-labs-tl.git?branch=original#aafd7003577542836e2b34383fdff8477ff7d3a0"
-dependencies = [
- "crc 1.8.1",
- "failure",
- "pom",
- "proc-macro2 0.4.30",
- "quote 0.6.13",
- "syn 0.14.9",
 ]
 
 [[package]]
@@ -3562,33 +3461,13 @@ dependencies = [
  "hex",
  "lockfree",
  "log",
- "num 0.3.1",
+ "num",
  "num-derive",
  "num-traits",
  "rand 0.8.4",
  "sha2",
  "smallvec",
  "thiserror",
-]
-
-[[package]]
-name = "ton_types"
-version = "1.10.10"
-source = "git+https://github.com/tonlabs/ton-labs-types.git#74470c064b8f6ffb271c16e22285dbbefd3fbf4c"
-dependencies = [
- "base64",
- "crc 1.8.1",
- "failure",
- "hex",
- "lazy_static",
- "lockfree",
- "log",
- "num 0.4.0",
- "num-derive",
- "num-traits",
- "rand 0.8.4",
- "sha2",
- "smallvec",
 ]
 
 [[package]]
@@ -3601,13 +3480,13 @@ dependencies = [
  "ed25519-dalek",
  "hex",
  "log",
- "num 0.3.1",
+ "num",
  "num-traits",
  "rand 0.8.4",
  "sha2",
  "smallvec",
  "thiserror",
- "ton_types 1.10.2",
+ "ton_types",
 ]
 
 [[package]]
