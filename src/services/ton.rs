@@ -501,13 +501,6 @@ impl TonService for TonServiceImpl {
             )
             .await?;
 
-        log::info!(
-            "Prepare: now - {}; current - {}; expire_at - {}",
-            chrono::Utc::now().timestamp(),
-            self.ton_api_client.get_metrics().await?.gen_utime,
-            signed_message.expire_at
-        );
-
         let (transaction, event) = self
             .sqlx_client
             .create_send_transaction(CreateSendTransaction::new(payload, *service_id))

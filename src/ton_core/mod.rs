@@ -176,13 +176,6 @@ impl TonCoreContext {
             .messages_queue
             .add_message(*account, cells.repr_hash(), expire_at)?;
 
-        log::info!(
-            "Broadcast: now - {}; current - {}; expire_at - {}",
-            chrono::Utc::now().timestamp(),
-            self.ton_subscriber.current_utime(),
-            expire_at
-        );
-
         self.ton_engine
             .broadcast_external_message(&to, &serialized)
             .await?;
