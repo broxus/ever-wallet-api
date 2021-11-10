@@ -1636,14 +1636,13 @@ dependencies = [
 
 [[package]]
 name = "nekoton"
-version = "0.7.0"
-source = "git+https://github.com/broxus/nekoton.git#25a122d7fefc7a41f1e6fd445e89b965fa11a2f1"
+version = "0.9.0"
+source = "git+https://github.com/broxus/nekoton.git#d843ae5c749510f901758f17a1d7b1b5c99e3d10"
 dependencies = [
  "anyhow",
  "async-trait",
  "base64",
  "chacha20poly1305",
- "chrono",
  "curve25519-dalek-ng",
  "downcast-rs",
  "dyn-clone",
@@ -1680,12 +1679,11 @@ dependencies = [
 
 [[package]]
 name = "nekoton-abi"
-version = "0.7.0"
-source = "git+https://github.com/broxus/nekoton.git#25a122d7fefc7a41f1e6fd445e89b965fa11a2f1"
+version = "0.9.0"
+source = "git+https://github.com/broxus/nekoton.git#d843ae5c749510f901758f17a1d7b1b5c99e3d10"
 dependencies = [
  "anyhow",
  "base64",
- "chrono",
  "ed25519-dalek",
  "hex",
  "log",
@@ -1707,8 +1705,8 @@ dependencies = [
 
 [[package]]
 name = "nekoton-contracts"
-version = "0.7.0"
-source = "git+https://github.com/broxus/nekoton.git#25a122d7fefc7a41f1e6fd445e89b965fa11a2f1"
+version = "0.9.0"
+source = "git+https://github.com/broxus/nekoton.git#d843ae5c749510f901758f17a1d7b1b5c99e3d10"
 dependencies = [
  "once_cell",
  "ton_abi",
@@ -1717,8 +1715,8 @@ dependencies = [
 
 [[package]]
 name = "nekoton-derive"
-version = "0.7.0"
-source = "git+https://github.com/broxus/nekoton.git#25a122d7fefc7a41f1e6fd445e89b965fa11a2f1"
+version = "0.9.0"
+source = "git+https://github.com/broxus/nekoton.git#d843ae5c749510f901758f17a1d7b1b5c99e3d10"
 dependencies = [
  "either",
  "proc-macro2 1.0.30",
@@ -1728,8 +1726,8 @@ dependencies = [
 
 [[package]]
 name = "nekoton-utils"
-version = "0.7.0"
-source = "git+https://github.com/broxus/nekoton.git#25a122d7fefc7a41f1e6fd445e89b965fa11a2f1"
+version = "0.9.0"
+source = "git+https://github.com/broxus/nekoton.git#d843ae5c749510f901758f17a1d7b1b5c99e3d10"
 dependencies = [
  "anyhow",
  "base64",
@@ -3332,7 +3330,7 @@ dependencies = [
  "parking_lot",
  "pin-project 0.4.28",
  "r2d2",
- "rand 0.7.3",
+ "rand 0.8.4",
  "regex",
  "reqwest",
  "sentry",
@@ -3358,7 +3356,7 @@ dependencies = [
 [[package]]
 name = "ton_abi"
 version = "2.1.0"
-source = "git+https://github.com/broxus/ton-labs-abi#a5f3dc33b3531288b6ae428cfbd365d3e36e5ad0"
+source = "git+https://github.com/broxus/ton-labs-abi#731a6da544bd44d26bb387cfa16783536d1adfc0"
 dependencies = [
  "anyhow",
  "base64",

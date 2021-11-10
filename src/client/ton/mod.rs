@@ -226,7 +226,7 @@ impl TonClient for TonClientImpl {
                 network_balance,
                 last_transaction_hash,
                 last_transaction_lt,
-                sync_u_time: contract.timings.current_utime() as i64,
+                sync_u_time: contract.timings.current_utime(&nekoton_utils::SimpleClock) as i64,
             },
             Some(contract.account),
         ))
@@ -259,6 +259,7 @@ impl TonClient for TonClientImpl {
                     .collect::<Vec<PublicKey>>();
                 owners.push(public_key);
                 nekoton::core::ton_wallet::multisig::prepare_deploy(
+                    &nekoton_utils::SimpleClock,
                     &public_key,
                     DEFAULT_MULTISIG_TYPE,
                     address.workchain_id as i8,
@@ -323,12 +324,12 @@ impl TonClient for TonClientImpl {
 
                 let mut gifts: Vec<nekoton::core::ton_wallet::highload_wallet_v2::Gift> = vec![];
                 for item in transaction.outputs {
-                    let flags = item.output_type.unwrap_or_default().value();
+                    let flags = item.output_type.unwrap_or_default();
                     let destination = nekoton_utils::repack_address(&item.recipient_address.0)?;
                     let amount = item.value.to_u64().unwrap_or_default();
 
                     gifts.push(nekoton::core::ton_wallet::highload_wallet_v2::Gift {
-                        flags,
+                        flags: flags.into(),
                         bounce,
                         destination,
                         amount,
@@ -338,6 +339,7 @@ impl TonClient for TonClientImpl {
                 }
 
                 nekoton::core::ton_wallet::highload_wallet_v2::prepare_transfer(
+                    &nekoton_utils::SimpleClock,
                     &public_key,
                     &current_state,
                     gifts,
@@ -360,12 +362,15 @@ impl TonClient for TonClientImpl {
                 let destination = nekoton_utils::repack_address(&recipient.recipient_address.0)?;
                 let amount = recipient.value.clone();
                 let amount = amount.to_u64().unwrap_or_default();
+                let flags = recipient.output_type.clone().unwrap_or_default();
 
                 nekoton::core::ton_wallet::wallet_v3::prepare_transfer(
+                    &nekoton_utils::SimpleClock,
                     &public_key,
                     &current_state,
                     destination,
                     amount,
+                    flags.into(),
                     bounce,
                     None,
                     expiration,
@@ -379,6 +384,7 @@ impl TonClient for TonClientImpl {
 
                 let destination = nekoton_utils::repack_address(&recipient.recipient_address.0)?;
                 let amount = recipient.value.to_u64().unwrap_or_default();
+                let flags = recipient.output_type.clone().unwrap_or_default();
 
                 let has_multiple_owners = match custodians {
                     Some(custodians) => *custodians > 1,
@@ -386,11 +392,13 @@ impl TonClient for TonClientImpl {
                 };
 
                 nekoton::core::ton_wallet::multisig::prepare_transfer(
+                    &nekoton_utils::SimpleClock,
                     &public_key,
                     has_multiple_owners,
                     address.clone(),
                     destination,
                     amount,
+                    flags.into(),
                     bounce,
                     None,
                     expiration,
@@ -448,7 +456,9 @@ impl TonClient for TonClientImpl {
 
         let (version, network_balance) = get_token_wallet_basic_info(&token_contract)?;
         let account_status = transform_account_state(&token_contract.account.storage.state);
-        let sync_u_time = token_contract.timings.current_utime() as i64;
+        let sync_u_time = token_contract
+            .timings
+            .current_utime(&nekoton_utils::SimpleClock) as i64;
 
         let (last_transaction_hash, last_transaction_lt) =
             parse_last_transaction(&token_contract.last_transaction_id);
@@ -496,6 +506,8 @@ impl TonClient for TonClientImpl {
             Default::default(),
         )?;
 
+        let flags = TransactionSendOutputType::default();
+
         let bounce = internal_message.bounce;
         let destination = internal_message.destination;
         let amount = internal_message.amount;
@@ -514,7 +526,7 @@ impl TonClient for TonClientImpl {
                 };
 
                 let gift = nekoton::core::ton_wallet::highload_wallet_v2::Gift {
-                    flags: TransactionSendOutputType::Normal.value(),
+                    flags: flags.into(),
                     bounce,
                     destination,
                     amount,
@@ -523,6 +535,7 @@ impl TonClient for TonClientImpl {
                 };
 
                 nekoton::core::ton_wallet::highload_wallet_v2::prepare_transfer(
+                    &nekoton_utils::SimpleClock,
                     &public_key,
                     &current_state,
                     vec![gift],
@@ -538,10 +551,12 @@ impl TonClient for TonClientImpl {
                 };
 
                 nekoton::core::ton_wallet::wallet_v3::prepare_transfer(
+                    &nekoton_utils::SimpleClock,
                     &public_key,
                     &current_state,
                     destination,
                     amount,
+                    flags.into(),
                     bounce,
                     body,
                     expiration,
@@ -554,11 +569,13 @@ impl TonClient for TonClientImpl {
                 };
 
                 nekoton::core::ton_wallet::multisig::prepare_transfer(
+                    &nekoton_utils::SimpleClock,
                     &public_key,
                     has_multiple_owners,
                     owner.clone(),
                     destination,
                     amount,
+                    flags.into(),
                     bounce,
                     body,
                     expiration,
