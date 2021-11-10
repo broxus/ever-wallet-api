@@ -18,7 +18,6 @@ chacha20poly1305 = "0.9.0"
 chrono = { version = "*", features = ["serde"] }
 config = { version = "0.11", default-features = false, features = ["yaml"] }
 derive_more = "*"
-external-ip = "4.1.0"
 futures = { version = "0.3" }
 hex = "*"
 hmac = "0.11.0"
@@ -36,6 +35,7 @@ once_cell = "1.8"
 opg = { version = "0.0", features = ["uuid"] }
 parking_lot = { version = "0.11.1", default_features = false }
 pin-project = "0.4"
+public-ip = "0.2"
 rand = "0.8"
 regex = "1.5.4"
 reqwest = { version = "0.11", features = ["json"] }

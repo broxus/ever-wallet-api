@@ -1,5 +1,5 @@
 use std::collections::{hash_map, HashMap};
-use std::sync::atomic::{AtomicBool, AtomicU32, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicI64, AtomicU32, Ordering};
 use std::sync::{Arc, Weak};
 
 use anyhow::Result;
@@ -10,10 +10,11 @@ use nekoton::transport::models::ExistingContract;
 use nekoton_utils::TrustMe;
 use parking_lot::{Mutex, RwLock};
 use tiny_adnl::utils::FxHashMap;
+use tiny_adnl::utils::*;
 use tokio::sync::Notify;
 use ton_block::{Deserializable, HashmapAugType};
 use ton_indexer::utils::{BlockIdExtExtension, BlockProofStuff, BlockStuff, ShardStateStuff};
-use ton_indexer::EngineStatus;
+use ton_indexer::{BriefBlockMeta, EngineStatus};
 use ton_types::{HashmapType, UInt256};
 
 use crate::ton_core::*;
@@ -22,6 +23,7 @@ pub struct TonSubscriber {
     ready: AtomicBool,
     ready_signal: Notify,
     current_utime: AtomicU32,
+    current_time_diff: AtomicI64,
     state_subscriptions: RwLock<HashMap<UInt256, StateSubscription>>,
     token_subscription: RwLock<Option<TokenSubscription>>,
     shard_accounts_cache: RwLock<HashMap<ton_block::ShardIdent, ton_block::ShardAccounts>>,
@@ -35,6 +37,7 @@ impl TonSubscriber {
             ready: AtomicBool::new(false),
             ready_signal: Notify::new(),
             current_utime: AtomicU32::new(0),
+            current_time_diff: AtomicI64::new(now() as i64),
             state_subscriptions: RwLock::new(HashMap::new()),
             token_subscription: RwLock::new(None),
             shard_accounts_cache: RwLock::new(HashMap::new()),
@@ -104,10 +107,21 @@ impl TonSubscriber {
         Ok(None)
     }
 
-    fn handle_masterchain_block(&self, block: &ton_block::Block) -> Result<()> {
+    fn handle_masterchain_block(
+        &self,
+        meta: BriefBlockMeta,
+        block: &ton_block::Block,
+    ) -> Result<()> {
+        let gen_utime = meta.gen_utime();
+        self.current_utime.store(gen_utime, Ordering::Release);
+        self.current_time_diff
+            .store(now() as i64 - gen_utime as i64, Ordering::Release);
+
+        if !self.ready.load(Ordering::Acquire) {
+            return Ok(());
+        }
+
         let block_info = block.info.read_struct()?;
-        self.current_utime
-            .store(block_info.gen_utime().0, Ordering::Release);
 
         let mut mc_block_awaiters = self.mc_block_awaiters.lock();
         mc_block_awaiters.retain(
@@ -235,12 +249,13 @@ impl ton_indexer::Subscriber for TonSubscriber {
 
     async fn process_block(
         &self,
+        meta: BriefBlockMeta,
         block: &BlockStuff,
         _block_proof: Option<&BlockProofStuff>,
         shard_state: &ShardStateStuff,
     ) -> Result<()> {
         if block.id().is_masterchain() {
-            self.handle_masterchain_block(block.block())?;
+            self.handle_masterchain_block(meta, block.block())?;
         } else {
             let mut states =
                 self.handle_shard_block(block.block(), shard_state.state(), &block.id().root_hash)?;
