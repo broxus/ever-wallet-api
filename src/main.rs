@@ -6,6 +6,9 @@ use ton_wallet_api::commands::*;
 use ton_wallet_api::server::*;
 use ton_wallet_api::settings::*;
 
+#[global_allocator]
+static GLOBAL: ton_indexer::alloc::Allocator = ton_indexer::alloc::allocator();
+
 #[tokio::main]
 async fn main() -> Result<()> {
     run(argh::from_env()).await
