@@ -106,6 +106,10 @@ impl PendingMessagesQueue {
         });
 
         self.min_expire_at.store(min_expire_at, Ordering::Release);
+
+        if entries.len() > 10 {
+            log::info!("Pending messages: {}", entries.len());
+        }
     }
 }
 

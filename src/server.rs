@@ -85,65 +85,61 @@ async fn start_listening_ton_transaction(
     ton_service: Arc<TonServiceImpl>,
     mut rx: CaughtTonTransactionRx,
 ) {
-    tokio::spawn(async move {
-        while let Some((transaction, state)) = rx.recv().await {
-            match transaction {
-                CaughtTonTransaction::Create(transaction) => {
-                    match ton_service.create_receive_transaction(transaction).await {
-                        Ok(_) => {
-                            state.send(HandleTransactionStatus::Success).ok();
-                        }
-                        Err(err) => {
-                            state.send(HandleTransactionStatus::Fail).ok();
-                            log::error!("Failed to create receive transaction: {:?}", err)
-                        }
+    while let Some((transaction, state)) = rx.recv().await {
+        match transaction {
+            CaughtTonTransaction::Create(transaction) => {
+                match ton_service.create_receive_transaction(transaction).await {
+                    Ok(_) => {
+                        state.send(HandleTransactionStatus::Success).ok();
+                    }
+                    Err(err) => {
+                        state.send(HandleTransactionStatus::Fail).ok();
+                        log::error!("Failed to create receive transaction: {:?}", err)
                     }
                 }
-                CaughtTonTransaction::UpdateSent(transaction) => {
-                    match ton_service
-                        .upsert_sent_transaction(
-                            transaction.message_hash,
-                            transaction.account_workchain_id,
-                            transaction.account_hex,
-                            transaction.input,
-                        )
-                        .await
-                    {
-                        Ok(_) => {
-                            state.send(HandleTransactionStatus::Success).ok();
-                        }
-                        Err(err) => {
-                            state.send(HandleTransactionStatus::Fail).ok();
-                            log::error!("Failed to update sent transaction: {:?}", err)
-                        }
+            }
+            CaughtTonTransaction::UpdateSent(transaction) => {
+                match ton_service
+                    .upsert_sent_transaction(
+                        transaction.message_hash,
+                        transaction.account_workchain_id,
+                        transaction.account_hex,
+                        transaction.input,
+                    )
+                    .await
+                {
+                    Ok(_) => {
+                        state.send(HandleTransactionStatus::Success).ok();
+                    }
+                    Err(err) => {
+                        state.send(HandleTransactionStatus::Fail).ok();
+                        log::error!("Failed to update sent transaction: {:?}", err)
                     }
                 }
             }
         }
+    }
 
-        rx.close();
-        while rx.recv().await.is_some() {}
-    });
+    rx.close();
+    while rx.recv().await.is_some() {}
 }
 
 async fn start_listening_token_transaction(
     ton_service: Arc<TonServiceImpl>,
     mut rx: CaughtTokenTransactionRx,
 ) {
-    tokio::spawn(async move {
-        while let Some((transaction, state)) = rx.recv().await {
-            match ton_service.create_token_transaction(transaction).await {
-                Ok(_) => {
-                    state.send(HandleTransactionStatus::Success).ok();
-                }
-                Err(e) => {
-                    state.send(HandleTransactionStatus::Fail).ok();
-                    log::error!("Failed to create token transaction: {:?}", e)
-                }
-            };
-        }
+    while let Some((transaction, state)) = rx.recv().await {
+        match ton_service.create_token_transaction(transaction).await {
+            Ok(_) => {
+                state.send(HandleTransactionStatus::Success).ok();
+            }
+            Err(e) => {
+                state.send(HandleTransactionStatus::Fail).ok();
+                log::error!("Failed to create token transaction: {:?}", e)
+            }
+        };
+    }
 
-        rx.close();
-        while rx.recv().await.is_some() {}
-    });
+    rx.close();
+    while rx.recv().await.is_some() {}
 }

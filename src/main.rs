@@ -9,7 +9,7 @@ use ton_wallet_api::settings::*;
 #[global_allocator]
 static GLOBAL: ton_indexer::alloc::Allocator = ton_indexer::alloc::allocator();
 
-#[tokio::main]
+#[tokio::main(worker_threads = 8)]
 async fn main() -> Result<()> {
     run(argh::from_env()).await
 }
