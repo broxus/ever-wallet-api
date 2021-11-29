@@ -455,6 +455,12 @@ impl TonService for TonServiceImpl {
             .get_address_info(account.clone())
             .await?;
 
+        for transaction_output in input.outputs.iter() {
+            if transaction_output.value.as_bigint_and_exponent().1 != 0 {
+                return Err(ServiceError::WrongInput("Invalid value".to_string()));
+            }
+        }
+
         if input
             .outputs
             .iter()
@@ -770,6 +776,10 @@ impl TonService for TonServiceImpl {
                 owner.address().to_hex_string(),
             )
             .await?;
+
+        if input.value.as_bigint_and_exponent().1 != 0 {
+            return Err(ServiceError::WrongInput("Invalid token value".to_string()));
+        }
 
         if address.balance < input.fee {
             return Err(ServiceError::WrongInput(format!(
