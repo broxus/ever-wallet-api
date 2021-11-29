@@ -21,9 +21,9 @@ mod ton_subscriber;
 pub use self::settings::*;
 
 pub struct TonCore {
-    context: Arc<TonCoreContext>,
-    ton_transaction: Mutex<Option<Arc<TonTransaction>>>,
-    token_transaction: Mutex<Option<Arc<TokenTransaction>>>,
+    pub context: Arc<TonCoreContext>,
+    pub ton_transaction: Mutex<Option<Arc<TonTransaction>>>,
+    pub token_transaction: Mutex<Option<Arc<TokenTransaction>>>,
 }
 
 impl TonCore {
@@ -110,6 +110,12 @@ pub struct TonCoreContext {
     pub messages_queue: Arc<PendingMessagesQueue>,
     pub ton_subscriber: Arc<TonSubscriber>,
     pub ton_engine: Arc<ton_indexer::Engine>,
+}
+
+impl Drop for TonCoreContext {
+    fn drop(&mut self) {
+        self.ton_engine.shutdown();
+    }
 }
 
 impl TonCoreContext {

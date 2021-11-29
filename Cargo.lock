@@ -1748,7 +1748,7 @@ dependencies = [
 [[package]]
 name = "nekoton-utils"
 version = "0.9.0"
-source = "git+https://github.com/broxus/nekoton.git#5780aec36007332b1cfb3d8830dbd080392d2509"
+source = "git+https://github.com/broxus/nekoton.git#28c2cb73fae226836de80dee94be32a4cd3d7e63"
 dependencies = [
  "anyhow",
  "base64",
@@ -2182,6 +2182,17 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ba508cc11742c0dc5c1659771673afbab7a0efab23aa17e854cbab0837ed0b43"
 dependencies = [
  "unicode-xid",
+]
+
+[[package]]
+name = "profl"
+version = "0.1.0"
+source = "git+https://github.com/broxus/profl.git#f47b5de34950cfbae2364500026c647f8ff0dbf4"
+dependencies = [
+ "bincode",
+ "crossbeam-channel",
+ "log",
+ "serde",
 ]
 
 [[package]]
@@ -3218,7 +3229,7 @@ dependencies = [
 [[package]]
 name = "ton-indexer"
 version = "0.1.0"
-source = "git+https://github.com/broxus/ton-indexer.git#ae4fe7b27afc38487f7d9fc334b95d029aa696b7"
+source = "git+https://github.com/broxus/ton-indexer.git#1c4981477b85f0d87effae1ceaa51b99b63d12ca"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -3240,6 +3251,7 @@ dependencies = [
  "num_cpus",
  "parking_lot",
  "pin-project-lite",
+ "profl",
  "rand",
  "rlimit",
  "rocksdb",
@@ -3251,7 +3263,6 @@ dependencies = [
  "tiny-adnl",
  "tokio",
  "ton-indexer-alloc",
- "ton-indexer-profile",
  "ton_api",
  "ton_block",
  "ton_types",
@@ -3260,23 +3271,12 @@ dependencies = [
 [[package]]
 name = "ton-indexer-alloc"
 version = "0.1.0"
-source = "git+https://github.com/broxus/ton-indexer.git#ae4fe7b27afc38487f7d9fc334b95d029aa696b7"
+source = "git+https://github.com/broxus/ton-indexer.git#1c4981477b85f0d87effae1ceaa51b99b63d12ca"
 dependencies = [
  "errno",
  "log",
  "tikv-jemalloc-sys",
  "tikv-jemallocator",
-]
-
-[[package]]
-name = "ton-indexer-profile"
-version = "0.1.0"
-source = "git+https://github.com/broxus/ton-indexer.git#ae4fe7b27afc38487f7d9fc334b95d029aa696b7"
-dependencies = [
- "bincode",
- "crossbeam-channel",
- "log",
- "serde",
 ]
 
 [[package]]

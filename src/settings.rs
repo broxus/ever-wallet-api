@@ -1,22 +1,70 @@
 use std::convert::TryInto;
+use std::net::{IpAddr, Ipv4Addr, SocketAddr};
 use std::path::Path;
 
 use anyhow::{Context, Result};
 use argon2::password_hash::PasswordHasher;
+use http::uri::PathAndQuery;
+use nekoton_utils::TrustMe;
 use serde::{Deserialize, Serialize};
 
 use crate::ton_core::*;
+use crate::utils::*;
 
 #[derive(Serialize, Deserialize)]
 pub struct AppConfig {
-    pub server_addr: String,
+    /// Listen address of service.
+    pub server_addr: SocketAddr,
+
+    /// Postgres database url.
     pub database_url: String,
+
+    /// Postgres connection pools.
     pub db_pool_size: u32,
-    pub ton_core: NodeConfig,
+
+    ///
     #[serde(default = "default_key")]
     pub key: Vec<u8>,
+
+    /// TON node settings
+    #[serde(default)]
+    pub ton_core: NodeConfig,
+
+    /// Prometheus metrics exporter settings.
+    /// Completely disable when not specified
+    #[serde(default)]
+    pub metrics_settings: Option<MetricsConfig>,
+
+    /// log4rs settings.
+    /// See [docs](https://docs.rs/log4rs/1.0.0/log4rs/) for more details
     #[serde(default = "default_logger_settings")]
     pub logger_settings: serde_yaml::Value,
+}
+
+#[derive(Deserialize, Serialize, Clone, Debug)]
+#[serde(default)]
+pub struct MetricsConfig {
+    /// Listen address of metrics. Used by the client to gather prometheus metrics.
+    /// Default: `127.0.0.1:10000`
+    pub listen_address: SocketAddr,
+
+    /// Path to the metrics.
+    /// Default: `/`
+    #[serde(with = "serde_url")]
+    pub metrics_path: PathAndQuery,
+
+    /// Metrics update interval in seconds. Default: 10
+    pub collection_interval_sec: u64,
+}
+
+impl Default for MetricsConfig {
+    fn default() -> Self {
+        Self {
+            listen_address: SocketAddr::new(IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)), 10000),
+            metrics_path: PathAndQuery::from_static("/"),
+            collection_interval_sec: 10,
+        }
+    }
 }
 
 impl ConfigExt for ton_indexer::GlobalConfig {
@@ -46,7 +94,7 @@ fn default_key() -> Vec<u8> {
         let options = options
             .output_len(32) //chacha key size
             .and_then(|x| x.clone().params())
-            .unwrap();
+            .trust_me();
 
         // Argon2 with default params (Argon2id v19)
         let argon2 =
@@ -54,7 +102,7 @@ fn default_key() -> Vec<u8> {
 
         let key = argon2
             .hash_password(secret.as_bytes(), &salt)
-            .unwrap()
+            .trust_me()
             .hash
             .context("No hash")?
             .as_bytes()
@@ -87,5 +135,5 @@ fn default_logger_settings() -> serde_yaml::Value {
           - stdout
         additive: false
     "##;
-    serde_yaml::from_str(DEFAULT_LOG4RS_SETTINGS).unwrap()
+    serde_yaml::from_str(DEFAULT_LOG4RS_SETTINGS).trust_me()
 }

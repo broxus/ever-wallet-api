@@ -1,5 +1,5 @@
 use std::collections::{hash_map, HashMap};
-use std::sync::atomic::{AtomicBool, AtomicI64, AtomicU32, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicU32, Ordering};
 use std::sync::{Arc, Weak};
 
 use anyhow::Result;
@@ -10,7 +10,6 @@ use nekoton::transport::models::ExistingContract;
 use nekoton_utils::TrustMe;
 use parking_lot::{Mutex, RwLock};
 use tiny_adnl::utils::FxHashMap;
-use tiny_adnl::utils::*;
 use tokio::sync::Notify;
 use ton_block::{Deserializable, HashmapAugType};
 use ton_indexer::utils::{BlockIdExtExtension, BlockProofStuff, BlockStuff, ShardStateStuff};
@@ -23,7 +22,6 @@ pub struct TonSubscriber {
     ready: AtomicBool,
     ready_signal: Notify,
     current_utime: AtomicU32,
-    current_time_diff: AtomicI64,
     state_subscriptions: RwLock<HashMap<UInt256, StateSubscription>>,
     token_subscription: RwLock<Option<TokenSubscription>>,
     shard_accounts_cache: RwLock<HashMap<ton_block::ShardIdent, ton_block::ShardAccounts>>,
@@ -37,7 +35,6 @@ impl TonSubscriber {
             ready: AtomicBool::new(false),
             ready_signal: Notify::new(),
             current_utime: AtomicU32::new(0),
-            current_time_diff: AtomicI64::new(now() as i64),
             state_subscriptions: RwLock::new(HashMap::new()),
             token_subscription: RwLock::new(None),
             shard_accounts_cache: RwLock::new(HashMap::new()),
@@ -47,6 +44,14 @@ impl TonSubscriber {
             )),
             messages_queue,
         })
+    }
+
+    pub fn metrics(&self) -> TonSubscriberMetrics {
+        TonSubscriberMetrics {
+            ready: self.ready.load(Ordering::Acquire),
+            current_utime: self.current_utime(),
+            pending_message_count: self.messages_queue.len(),
+        }
     }
 
     pub async fn start(self: &Arc<Self>) -> Result<()> {
@@ -114,8 +119,6 @@ impl TonSubscriber {
     ) -> Result<()> {
         let gen_utime = meta.gen_utime();
         self.current_utime.store(gen_utime, Ordering::Release);
-        self.current_time_diff
-            .store(now() as i64 - gen_utime as i64, Ordering::Release);
 
         if !self.ready.load(Ordering::Acquire) {
             return Ok(());
@@ -268,6 +271,13 @@ impl ton_indexer::Subscriber for TonSubscriber {
 
         Ok(())
     }
+}
+
+#[derive(Debug, Copy, Clone, Eq, PartialEq)]
+pub struct TonSubscriberMetrics {
+    pub ready: bool,
+    pub current_utime: u32,
+    pub pending_message_count: usize,
 }
 
 struct StateSubscription {

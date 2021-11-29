@@ -6,7 +6,7 @@ use rand::Rng;
 use serde::{Deserialize, Serialize};
 
 /// TON node settings
-#[derive(Serialize, Deserialize)]
+#[derive(Clone, Serialize, Deserialize)]
 #[serde(default, deny_unknown_fields)]
 pub struct NodeConfig {
     /// Node public ip. Automatically determines if None
