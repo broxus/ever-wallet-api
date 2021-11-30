@@ -53,6 +53,15 @@ pub fn swagger() -> String {
                     200: responses::AddressBalanceResponse,
                 }
             },
+             ("address" / String / "info"): {
+                GET: {
+                    tags: { addresses },
+                    summary: "Address info",
+                    description: "Get address info.",
+                    parameters: { (header "api-key") },
+                    200: responses::AddressInfoResponse,
+                }
+            },
             ("transactions" / "create"): {
                 POST: {
                     tags: { transactions },

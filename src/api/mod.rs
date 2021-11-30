@@ -94,6 +94,7 @@ mod filters {
                     .or(post_address_create(ctx.clone()))
                     .or(post_address_check(ctx.clone()))
                     .or(get_address_balance(ctx.clone()))
+                    .or(get_address_info(ctx.clone()))
                     .or(post_transactions_create(ctx.clone()))
                     .or(post_transactions(ctx.clone()))
                     .or(get_transactions_mh(ctx.clone()))
@@ -192,6 +193,18 @@ mod filters {
             .and(auth_by_key_get(ctx.auth_service.clone()))
             .and(with_ctx(ctx))
             .and_then(controllers::get_address_balance)
+            .boxed()
+    }
+
+    pub fn get_address_info(ctx: Context) -> BoxedFilter<(impl warp::Reply,)> {
+        warp::path("address")
+            .and(warp::path::param())
+            .and(warp::path("info"))
+            .and(warp::path::end())
+            .and(warp::get())
+            .and(auth_by_key_get(ctx.auth_service.clone()))
+            .and(with_ctx(ctx))
+            .and_then(controllers::get_address_info)
             .boxed()
     }
 

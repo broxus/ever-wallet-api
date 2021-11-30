@@ -58,6 +58,24 @@ pub fn get_address_balance(
     .boxed()
 }
 
+pub fn get_address_info(
+    address: Address,
+    service_id: ServiceId,
+    ctx: Context,
+) -> BoxFuture<'static, Result<impl warp::Reply, warp::Rejection>> {
+    async move {
+        let address = ctx
+            .ton_service
+            .get_address_info(&service_id, address)
+            .await
+            .map(PostAddressInfoDataResponse::new);
+        let res = AddressInfoResponse::from(address);
+
+        Ok(warp::reply::json(&(res)))
+    }
+    .boxed()
+}
+
 pub fn post_transactions_create(
     service_id: ServiceId,
     input: PostTonTransactionSendRequest,

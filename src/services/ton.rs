@@ -29,6 +29,11 @@ pub trait TonService: Send + Sync + 'static {
         service_id: &ServiceId,
         address: Address,
     ) -> Result<(AddressDb, NetworkAddressData), ServiceError>;
+    async fn get_address_info(
+        &self,
+        service_id: &ServiceId,
+        address: Address,
+    ) -> Result<AddressDb, ServiceError>;
     async fn create_send_transaction(
         &self,
         service_id: &ServiceId,
@@ -441,6 +446,23 @@ impl TonService for TonServiceImpl {
             .await?;
         let (network, _) = self.ton_api_client.get_address_info(account).await?;
         Ok((address, network))
+    }
+
+    async fn get_address_info(
+        &self,
+        service_id: &ServiceId,
+        address: Address,
+    ) -> Result<AddressDb, ServiceError> {
+        let account = repack_address(&address.0)?;
+        let address = self
+            .sqlx_client
+            .get_address(
+                *service_id,
+                account.workchain_id(),
+                account.address().to_hex_string(),
+            )
+            .await?;
+        Ok(address)
     }
 
     async fn create_send_transaction(
