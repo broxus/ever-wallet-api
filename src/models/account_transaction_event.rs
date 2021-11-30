@@ -24,6 +24,7 @@ pub struct AccountTransactionEvent {
     pub transaction_direction: TonTransactionDirection,
     pub transaction_status: TonTransactionStatus,
     pub event_status: TonEventStatus,
+    pub multisig_transaction_id: Option<i64>,
     pub created_at: i64,
     pub updated_at: i64,
 }
@@ -51,6 +52,7 @@ impl From<TokenTransactionEventDb> for AccountTransactionEvent {
             transaction_direction: t.transaction_direction,
             transaction_status: t.transaction_status.into(),
             event_status: t.event_status,
+            multisig_transaction_id: None,
             created_at: t.created_at.timestamp_millis(),
             updated_at: t.updated_at.timestamp_millis(),
         }
@@ -96,6 +98,7 @@ impl From<TransactionEventDb> for AccountTransactionEvent {
             transaction_direction: t.transaction_direction,
             transaction_status: t.transaction_status,
             event_status: t.event_status,
+            multisig_transaction_id: t.multisig_transaction_id,
             created_at: t.created_at.timestamp_millis(),
             updated_at: t.updated_at.timestamp_millis(),
         }

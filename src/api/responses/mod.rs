@@ -391,6 +391,7 @@ pub struct AccountTransactionDataResponse {
     pub aborted: bool,
     pub bounce: bool,
     pub error: Option<String>,
+    pub multisig_transaction_id: Option<i64>,
     #[opg("UTC timestamp in milliseconds", integer, format = "int64")]
     pub created_at: i64,
     #[opg("UTC timestamp in milliseconds", integer, format = "int64")]
@@ -482,6 +483,7 @@ impl From<TransactionDb> for AccountTransactionDataResponse {
             created_at: c.created_at.timestamp_millis(),
             updated_at: c.updated_at.timestamp_millis(),
             error: c.error,
+            multisig_transaction_id: c.multisig_transaction_id,
         }
     }
 }

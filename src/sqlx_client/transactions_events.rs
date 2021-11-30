@@ -32,7 +32,7 @@ impl SqlxClient {
                 transaction_direction as "transaction_direction: _",
                 transaction_status as "transaction_status: _",
                 event_status as "event_status: _",
-                created_at, updated_at
+                multisig_transaction_id, created_at, updated_at
             FROM transaction_events
             WHERE service_id = $1 AND message_hash = $2 AND account_workchain_id = $3 AND account_hex = $4"#,
             service_id as ServiceId,
@@ -69,7 +69,7 @@ impl SqlxClient {
                 transaction_direction as "transaction_direction: _",
                 transaction_status as "transaction_status: _",
                 event_status as "event_status: _",
-                created_at, updated_at"#,
+                multisig_transaction_id, created_at, updated_at"#,
             event_status as TonEventStatus,
             message_hash,
             account_workchain_id,
@@ -103,7 +103,7 @@ impl SqlxClient {
                 transaction_direction as "transaction_direction: _",
                 transaction_status as "transaction_status: _",
                 event_status as "event_status: _",
-                created_at, updated_at"#,
+                multisig_transaction_id, created_at, updated_at"#,
             event_status as TonEventStatus,
             service_id as ServiceId,
             id,
@@ -144,7 +144,7 @@ impl SqlxClient {
                 transaction_direction as "transaction_direction: _",
                 transaction_status as "transaction_status: _",
                 event_status as "event_status: _",
-                created_at, updated_at"#,
+                multisig_transaction_id, created_at, updated_at"#,
             old
         );
 
@@ -165,8 +165,9 @@ impl SqlxClient {
                 transaction_direction: x.get(9),
                 transaction_status: x.get(10),
                 event_status: x.get(11),
-                created_at: x.get(12),
-                updated_at: x.get(13),
+                multisig_transaction_id: x.get(12),
+                created_at: x.get(13),
+                updated_at: x.get(14),
             })
             .collect::<Vec<_>>();
         Ok(res)
@@ -192,6 +193,7 @@ impl SqlxClient {
                 transaction_direction as "transaction_direction: _",
                 transaction_status as "transaction_status: _",
                 event_status as "event_status: _",
+                multisig_transaction_id,
                 created_at,
                 updated_at
             FROM transaction_events
@@ -229,6 +231,7 @@ impl SqlxClient {
                 transaction_direction as "transaction_direction: _",
                 transaction_status as "transaction_status: _",
                 event_status as "event_status: _",
+                multisig_transaction_id,
                 created_at,
                 updated_at
                 FROM transaction_events WHERE service_id = $1 {} ORDER BY created_at DESC OFFSET ${} LIMIT ${}"#,
@@ -256,8 +259,9 @@ impl SqlxClient {
                 transaction_direction: x.get(9),
                 transaction_status: x.get(10),
                 event_status: x.get(11),
-                created_at: x.get(12),
-                updated_at: x.get(13),
+                multisig_transaction_id: x.get(12),
+                created_at: x.get(13),
+                updated_at: x.get(14),
             })
             .collect::<Vec<_>>();
         Ok(res)
