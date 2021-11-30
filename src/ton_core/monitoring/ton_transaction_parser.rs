@@ -1,6 +1,6 @@
 use anyhow::Result;
 use bigdecimal::BigDecimal;
-use nekoton::core::models::TransactionError;
+use nekoton::core::models::{MultisigTransaction, TransactionError};
 use num_traits::FromPrimitive;
 use serde::{Deserialize, Serialize};
 use ton_block::CommonMsgInfo;
@@ -47,6 +47,13 @@ pub async fn parse_ton_transaction(
     let fee = BigDecimal::from_u128(compute_fees(&transaction));
     let value = BigDecimal::from_u128(compute_value(&transaction));
     let balance_change = BigDecimal::from_i128(nekoton_utils::compute_balance_change(&transaction));
+    let transaction_id = nekoton::core::parsing::parse_multisig_transaction(&transaction)
+        .map(|transaction| match transaction {
+            MultisigTransaction::Send(_) => None,
+            MultisigTransaction::Confirm(_) => None,
+            MultisigTransaction::Submit(transaction) => Some(transaction.trans_id),
+        })
+        .flatten();
 
     let parsed = match in_msg.header() {
         CommonMsgInfo::IntMsgInfo(header) => {
@@ -75,6 +82,7 @@ pub async fn parse_ton_transaction(
                 error: None,
                 aborted: is_aborted(&transaction),
                 bounce: header.bounce,
+                transaction_id,
             })
         }
         CommonMsgInfo::ExtInMsgInfo(_) => {
@@ -97,6 +105,7 @@ pub async fn parse_ton_transaction(
                     balance_change,
                     status: TonTransactionStatus::Done,
                     error: None,
+                    transaction_id,
                 },
             })
         }

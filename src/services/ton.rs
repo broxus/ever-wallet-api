@@ -456,7 +456,8 @@ impl TonService for TonServiceImpl {
             .await?;
 
         for transaction_output in input.outputs.iter() {
-            if transaction_output.value.as_bigint_and_exponent().1 != 0 {
+            let (_, scale) = transaction_output.value.as_bigint_and_exponent();
+            if scale != 0 {
                 return Err(ServiceError::WrongInput("Invalid value".to_string()));
             }
         }
@@ -777,7 +778,8 @@ impl TonService for TonServiceImpl {
             )
             .await?;
 
-        if input.value.as_bigint_and_exponent().1 != 0 {
+        let (_, scale) = input.value.as_bigint_and_exponent();
+        if scale != 0 {
             return Err(ServiceError::WrongInput("Invalid token value".to_string()));
         }
 
