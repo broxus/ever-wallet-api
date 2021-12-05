@@ -93,6 +93,23 @@ pub fn post_transactions_create(
     .boxed()
 }
 
+pub fn post_transactions_confirm(
+    service_id: ServiceId,
+    input: PostTonTransactionConfirmRequest,
+    ctx: Context,
+) -> BoxFuture<'static, Result<impl warp::Reply, warp::Rejection>> {
+    async move {
+        let transaction = ctx
+            .ton_service
+            .create_confirm_transaction(&service_id, input.into())
+            .await
+            .map(From::from);
+        let res = AccountTransactionResponse::from(transaction);
+        Ok(warp::reply::json(&(res)))
+    }
+    .boxed()
+}
+
 pub fn post_transactions(
     service_id: ServiceId,
     input: PostTonTransactionsRequest,
@@ -280,16 +297,6 @@ pub fn get_tokens_transactions_id(
             .await
             .map(From::from);
         let res = AccountTokenTransactionResponse::from(transaction);
-
-        Ok(warp::reply::json(&(res)))
-    }
-    .boxed()
-}
-
-pub fn get_metrics(ctx: Context) -> BoxFuture<'static, Result<impl warp::Reply, warp::Rejection>> {
-    async move {
-        let metrics = ctx.ton_service.get_metrics().await?;
-        let res = MetricsResponse::from(metrics);
 
         Ok(warp::reply::json(&(res)))
     }

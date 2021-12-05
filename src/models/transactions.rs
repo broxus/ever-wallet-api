@@ -126,3 +126,10 @@ pub struct TransactionsSearch {
     pub limit: i64,
     pub offset: i64,
 }
+
+#[derive(Debug, Deserialize, Serialize, Clone)]
+pub struct TransactionConfirm {
+    pub id: Uuid,
+    pub address: Address,
+    pub transaction_id: u64,
+}

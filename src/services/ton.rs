@@ -39,6 +39,11 @@ pub trait TonService: Send + Sync + 'static {
         service_id: &ServiceId,
         input: TransactionSend,
     ) -> Result<TransactionDb, ServiceError>;
+    async fn create_confirm_transaction(
+        &self,
+        service_id: &ServiceId,
+        input: TransactionConfirm,
+    ) -> Result<TransactionDb, ServiceError>;
     async fn create_receive_transaction(
         &self,
         input: CreateReceiveTransaction,
@@ -100,7 +105,6 @@ pub trait TonService: Send + Sync + 'static {
         service_id: &ServiceId,
         id: &uuid::Uuid,
     ) -> Result<TokenTransactionFromDb, ServiceError>;
-    async fn get_metrics(&self) -> Result<Metrics, ServiceError>;
     async fn search_token_events(
         &self,
         service_id: &ServiceId,
@@ -550,6 +554,71 @@ impl TonService for TonServiceImpl {
         Ok(transaction)
     }
 
+    async fn create_confirm_transaction(
+        &self,
+        service_id: &ServiceId,
+        input: TransactionConfirm,
+    ) -> Result<TransactionDb, ServiceError> {
+        let account = repack_address(&input.address.0)?;
+
+        let address = self
+            .sqlx_client
+            .get_address(
+                *service_id,
+                account.workchain_id(),
+                account.address().to_hex_string(),
+            )
+            .await?;
+
+        if address.account_type != AccountType::SafeMultisig {
+            return Err(ServiceError::WrongInput("Invalid account type".to_string()));
+        }
+
+        let public_key = hex::decode(address.public_key.clone()).unwrap_or_default();
+        let private_key = decrypt_private_key(
+            &address.private_key,
+            self.key.as_slice().try_into().trust_me(),
+            &address.id,
+        )
+        .map_err(|err| {
+            ServiceError::Other(TonServiceError::DecryptPrivateKeyError(err.to_string()).into())
+        })?;
+
+        let (network, _) = self
+            .ton_api_client
+            .get_address_info(account.clone())
+            .await?;
+
+        if network.account_status == AccountStatus::UnInit {
+            self.deploy_wallet(service_id, &address, &public_key, &private_key)
+                .await?;
+        }
+
+        let (payload, signed_message) = self
+            .ton_api_client
+            .prepare_confirm_transaction(input, &public_key, &private_key)
+            .await?;
+
+        let (transaction, event) = self
+            .sqlx_client
+            .create_send_transaction(CreateSendTransaction::new(payload, *service_id))
+            .await?;
+
+        self.send_transaction(
+            transaction.message_hash.clone(),
+            transaction.account_hex.clone(),
+            transaction.account_workchain_id,
+            signed_message,
+            true,
+        )
+        .await
+        .trust_me();
+
+        self.notify(service_id, event.into()).await;
+
+        Ok(transaction)
+    }
+
     async fn create_receive_transaction(
         &self,
         input: CreateReceiveTransaction,
@@ -716,10 +785,6 @@ impl TonService for TonServiceImpl {
         self.sqlx_client
             .get_token_transaction_by_id(*service_id, id)
             .await
-    }
-
-    async fn get_metrics(&self) -> Result<Metrics, ServiceError> {
-        Ok(self.ton_api_client.get_metrics().await?)
     }
 
     async fn search_token_events(

@@ -89,10 +89,6 @@ impl TonCore {
             .await
     }
 
-    pub fn current_utime(&self) -> u32 {
-        self.context.ton_subscriber.current_utime()
-    }
-
     pub fn add_pending_message(
         &self,
         account: UInt256,

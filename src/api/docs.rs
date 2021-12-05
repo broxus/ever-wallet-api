@@ -24,16 +24,6 @@ pub fn swagger() -> String {
             metrics,
         },
         paths: {
-            ("address" / "create"): {
-                POST: {
-                    tags: { addresses },
-                    summary: "Address creation",
-                    description: "Create user address.",
-                    parameters: { (header "api-key") },
-                    body: requests::CreateAddressRequest,
-                    200: responses::AccountAddressResponse,
-                }
-            },
             ("address" / "check"): {
                 POST: {
                     tags: { addresses },
@@ -42,6 +32,16 @@ pub fn swagger() -> String {
                     parameters: { (header "api-key") },
                     body: requests::PostAddressBalanceRequest,
                     200: responses::PostCheckedAddressResponse,
+                }
+            },
+            ("address" / "create"): {
+                POST: {
+                    tags: { addresses },
+                    summary: "Address creation",
+                    description: "Create user address.",
+                    parameters: { (header "api-key") },
+                    body: requests::CreateAddressRequest,
+                    200: responses::AccountAddressResponse,
                 }
             },
              ("address" / String): {
@@ -69,6 +69,33 @@ pub fn swagger() -> String {
                     description: "Send transaction.",
                     parameters: { (header "api-key") },
                     body: requests::PostTonTransactionSendRequest,
+                    200: responses::AccountTransactionResponse,
+                    callbacks: {
+                        transactionSent: {
+                            ("callbackUrl"): {
+                                POST: {
+                                    description: "Event transaction sent. If address are not \
+                                    deployed the event will be sent a twice since in this case \
+                                    will be created two transactions.",
+                                    parameters: {
+                                        (header "timestamp"),
+                                        (header "sign")
+                                    },
+                                    body: AccountTransactionEvent,
+                                    200: None,
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            ("transactions" / "confirm"): {
+                POST: {
+                    tags: { transactions },
+                    summary: "Create confirm transaction",
+                    description: "Confirm transaction.",
+                    parameters: { (header "api-key") },
+                    body: requests::PostTonTransactionConfirmRequest,
                     200: responses::AccountTransactionResponse,
                     callbacks: {
                         transactionSent: {
@@ -236,15 +263,6 @@ pub fn swagger() -> String {
                     parameters: { (header "api-key") },
                     body: requests::PostTonTokenMarkEventsRequest,
                     200: responses::MarkTokenEventsResponse,
-                }
-            },
-            ("metrics"): {
-                GET: {
-                    tags: { metrics  },
-                    summary: "Get metrics",
-                    description: "Get metrics of api health.",
-                    parameters: { (header "api-key") },
-                    200: responses::MetricsResponse,
                 }
             },
         }
