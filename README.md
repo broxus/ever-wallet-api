@@ -124,6 +124,15 @@ ton_core:
   # NOTE: Will be generated if it was not there.
   # Default: "./adnl-keys.json"
   keys_path: "/var/ton-wallet-api/adnl-keys.json"
+metrics_settings:
+  # Listen address of metrics. Used by the client to gather prometheus metrics.
+  # Default: "127.0.0.1:10000"
+  listen_address: "127.0.0.1:10000"
+  # URL path to the metrics. Default: "/"
+  # Example: `curl http://127.0.0.1:10000/`
+  metrics_path: "/"
+  # Metrics update interval in seconds. Default: 10
+  collection_interval_sec: 10
 # log4rs settings.
 # See https://docs.rs/log4rs/1.0.0/log4rs/ for more details
 logger_settings:
