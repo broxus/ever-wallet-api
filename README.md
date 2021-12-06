@@ -127,3 +127,4 @@ logger_settings:
       appenders:
         - stdout
       additive: false
+
