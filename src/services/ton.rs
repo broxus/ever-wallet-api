@@ -1,5 +1,6 @@
 use std::convert::TryInto;
 use std::str::FromStr;
+use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Arc;
 
 use async_trait::async_trait;
@@ -134,30 +135,39 @@ pub trait TonService: Send + Sync + 'static {
 #[derive(Clone)]
 pub struct TonServiceImpl {
     sqlx_client: SqlxClient,
-    owners_cache: OwnersCache,
+    request_count: Arc<RequestCount>,
     ton_api_client: Arc<dyn TonClient>,
     callback_client: Arc<dyn CallbackClient>,
-    key: Vec<u8>,
+    key: Arc<Vec<u8>>,
 }
 
 impl TonServiceImpl {
     pub fn new(
         sqlx_client: SqlxClient,
-        owners_cache: OwnersCache,
         ton_api_client: Arc<dyn TonClient>,
         callback_client: Arc<dyn CallbackClient>,
         key: Vec<u8>,
     ) -> Self {
+        let request_count = Arc::new(RequestCount::default());
+        let key = Arc::new(key);
         Self {
             sqlx_client,
-            owners_cache,
+            request_count,
             ton_api_client,
             callback_client,
             key,
         }
     }
 
-    pub async fn start(&self) -> Result<(), ServiceError> {
+    pub fn metrics(&self) -> ClientServiceMetrics {
+        ClientServiceMetrics {
+            address_count: self.request_count.address.load(Ordering::Acquire),
+            transaction_count: self.request_count.transaction.load(Ordering::Acquire),
+            token_transaction_count: self.request_count.token_transaction.load(Ordering::Acquire),
+        }
+    }
+
+    pub async fn start(self: &Arc<Self>) -> Result<(), ServiceError> {
         // Load unprocessed sent messages
 
         let transactions: Vec<TransactionDb> = self
@@ -178,13 +188,21 @@ impl TonServiceImpl {
                 .ton_api_client
                 .add_pending_message(account, message_hash, expire_at)?;
 
-            let ton_service = self.clone();
+            let ton_service = Arc::downgrade(self);
             tokio::spawn(async move {
                 match rx.await {
                     Ok(MessageStatus::Delivered) => {
                         log::info!("Successfully sent message `{}`", transaction.message_hash)
                     }
                     Ok(MessageStatus::Expired) => {
+                        let ton_service = match ton_service.upgrade() {
+                            Some(ton_service) => ton_service,
+                            None => {
+                                log::error!("TonServiceImpl is already dropped");
+                                return;
+                            }
+                        };
+
                         if let Err(err) = ton_service
                             .upsert_sent_transaction(
                                 transaction.message_hash.clone(),
@@ -404,6 +422,8 @@ impl TonService for TonServiceImpl {
         service_id: &ServiceId,
         input: CreateAddress,
     ) -> Result<AddressDb, ServiceError> {
+        self.request_count.address.fetch_add(1, Ordering::Relaxed);
+
         let id = uuid::Uuid::new_v4();
         let payload = self.ton_api_client.create_address(input).await?;
 
@@ -474,6 +494,10 @@ impl TonService for TonServiceImpl {
         service_id: &ServiceId,
         input: TransactionSend,
     ) -> Result<TransactionDb, ServiceError> {
+        self.request_count
+            .transaction
+            .fetch_add(1, Ordering::Relaxed);
+
         let account = repack_address(&input.from_address.0)?;
 
         let (network, current_state) = self
@@ -855,6 +879,10 @@ impl TonService for TonServiceImpl {
         service_id: &ServiceId,
         input: &TokenTransactionSend,
     ) -> Result<TransactionDb, ServiceError> {
+        self.request_count
+            .token_transaction
+            .fetch_add(1, Ordering::Relaxed);
+
         let owner = repack_address(&input.from_address.0)?;
         let address = self
             .sqlx_client
@@ -990,6 +1018,20 @@ impl TonService for TonServiceImpl {
 
         Ok(transaction)
     }
+}
+
+#[derive(Default)]
+struct RequestCount {
+    address: Arc<AtomicU64>,
+    transaction: Arc<AtomicU64>,
+    token_transaction: Arc<AtomicU64>,
+}
+
+#[derive(Debug, Copy, Clone, Eq, PartialEq)]
+pub struct ClientServiceMetrics {
+    pub address_count: u64,
+    pub transaction_count: u64,
+    pub token_transaction_count: u64,
 }
 
 #[derive(thiserror::Error, Debug)]

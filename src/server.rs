@@ -61,6 +61,7 @@ impl Engine {
                     // Update next metrics buffer
                     (Some(engine), Some(handle)) => {
                         let mut buffer = handle.buffers().acquire_buffer().await;
+                        buffer.write(LabeledTonServiceMetrics(&engine.context));
                         buffer.write(LabeledTonSubscriberMetrics(&engine.context));
 
                         drop(buffer);
@@ -109,7 +110,7 @@ impl EngineContext {
             config.ton_core.clone(),
             global_config,
             sqlx_client.clone(),
-            owners_cache.clone(),
+            owners_cache,
             caught_ton_transaction_tx,
             caught_token_transaction_tx,
         )
@@ -119,7 +120,6 @@ impl EngineContext {
 
         let ton_service = Arc::new(TonServiceImpl::new(
             sqlx_client.clone(),
-            owners_cache.clone(),
             ton_client.clone(),
             callback_client.clone(),
             config.key.clone(),
@@ -241,6 +241,25 @@ impl EngineContext {
     }
 }
 
+struct LabeledTonServiceMetrics<'a>(&'a EngineContext);
+
+impl std::fmt::Display for LabeledTonServiceMetrics<'_> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let metrics = self.0.ton_service.metrics();
+
+        f.begin_metric("ton_service_create_address_total_requests")
+            .value(metrics.address_count)?;
+
+        f.begin_metric("ton_service_create_transaction_total_requests")
+            .value(metrics.transaction_count)?;
+
+        f.begin_metric("ton_service_create_token_transaction_total_requests")
+            .value(metrics.token_transaction_count)?;
+
+        Ok(())
+    }
+}
+
 struct LabeledTonSubscriberMetrics<'a>(&'a EngineContext);
 
 impl std::fmt::Display for LabeledTonSubscriberMetrics<'_> {
@@ -251,7 +270,6 @@ impl std::fmt::Display for LabeledTonSubscriberMetrics<'_> {
         let indexer_metrics = self.0.ton_core.context.ton_engine.metrics();
 
         f.begin_metric("ton_subscriber_ready")
-            .label(LABEL_COMPONENT, TON_CORE_COMPONENT)
             .value(metrics.ready as u8)?;
 
         if metrics.current_utime > 0 {
@@ -266,36 +284,27 @@ impl std::fmt::Display for LabeledTonSubscriberMetrics<'_> {
                 .load(Ordering::Acquire);
 
             f.begin_metric("ton_subscriber_current_utime")
-                .label(LABEL_COMPONENT, TON_CORE_COMPONENT)
                 .value(metrics.current_utime)?;
 
             f.begin_metric("ton_subscriber_time_diff")
-                .label(LABEL_COMPONENT, TON_CORE_COMPONENT)
                 .value(mc_time_diff)?;
 
             f.begin_metric("ton_subscriber_shard_client_time_diff")
-                .label(LABEL_COMPONENT, TON_CORE_COMPONENT)
                 .value(shard_client_time_diff)?;
 
             f.begin_metric("ton_subscriber_mc_block_seqno")
-                .label(LABEL_COMPONENT, TON_CORE_COMPONENT)
                 .value(last_mc_block_seqno)?;
 
             f.begin_metric("ton_subscriber_shard_client_mc_block_seqno")
-                .label(LABEL_COMPONENT, TON_CORE_COMPONENT)
                 .value(last_shard_client_mc_block_seqno)?;
         }
 
         f.begin_metric("ton_subscriber_pending_message_count")
-            .label(LABEL_COMPONENT, TON_CORE_COMPONENT)
             .value(metrics.pending_message_count)?;
 
         Ok(())
     }
 }
-
-const LABEL_COMPONENT: &str = "component";
-const TON_CORE_COMPONENT: &str = "ton_core";
 
 pub type ShutdownRequestsRx = mpsc::UnboundedReceiver<()>;
 pub type ShutdownRequestsTx = mpsc::UnboundedSender<()>;
