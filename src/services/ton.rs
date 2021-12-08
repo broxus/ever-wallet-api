@@ -126,7 +126,7 @@ pub trait TonService: Send + Sync + 'static {
         service_id: &ServiceId,
         input: &TokenTransactionSend,
     ) -> Result<TransactionDb, ServiceError>;
-    async fn create_token_transaction(
+    async fn create_receive_token_transaction(
         &self,
         input: CreateTokenTransaction,
     ) -> Result<TokenTransactionFromDb, ServiceError>;
@@ -161,9 +161,17 @@ impl TonServiceImpl {
 
     pub fn metrics(&self) -> ClientServiceMetrics {
         ClientServiceMetrics {
-            address_count: self.request_count.address.load(Ordering::Acquire),
-            transaction_count: self.request_count.transaction.load(Ordering::Acquire),
-            token_transaction_count: self.request_count.token_transaction.load(Ordering::Acquire),
+            create_address_count: self.request_count.create_address.load(Ordering::Acquire),
+            send_transaction_count: self.request_count.send_transaction.load(Ordering::Acquire),
+            recv_transaction_count: self.request_count.recv_transaction.load(Ordering::Acquire),
+            send_token_transaction_count: self
+                .request_count
+                .send_token_transaction
+                .load(Ordering::Acquire),
+            recv_token_transaction_count: self
+                .request_count
+                .recv_token_transaction
+                .load(Ordering::Acquire),
         }
     }
 
@@ -422,7 +430,9 @@ impl TonService for TonServiceImpl {
         service_id: &ServiceId,
         input: CreateAddress,
     ) -> Result<AddressDb, ServiceError> {
-        self.request_count.address.fetch_add(1, Ordering::Relaxed);
+        self.request_count
+            .create_address
+            .fetch_add(1, Ordering::Relaxed);
 
         let id = uuid::Uuid::new_v4();
         let payload = self.ton_api_client.create_address(input).await?;
@@ -495,7 +505,7 @@ impl TonService for TonServiceImpl {
         input: TransactionSend,
     ) -> Result<TransactionDb, ServiceError> {
         self.request_count
-            .transaction
+            .send_transaction
             .fetch_add(1, Ordering::Relaxed);
 
         let account = repack_address(&input.from_address.0)?;
@@ -647,6 +657,10 @@ impl TonService for TonServiceImpl {
         &self,
         input: CreateReceiveTransaction,
     ) -> Result<TransactionDb, ServiceError> {
+        self.request_count
+            .recv_transaction
+            .fetch_add(1, Ordering::Relaxed);
+
         let address = self
             .sqlx_client
             .get_address_by_workchain_hex(input.account_workchain_id, input.account_hex.clone())
@@ -880,7 +894,7 @@ impl TonService for TonServiceImpl {
         input: &TokenTransactionSend,
     ) -> Result<TransactionDb, ServiceError> {
         self.request_count
-            .token_transaction
+            .send_token_transaction
             .fetch_add(1, Ordering::Relaxed);
 
         let owner = repack_address(&input.from_address.0)?;
@@ -1000,10 +1014,14 @@ impl TonService for TonServiceImpl {
         Ok(transaction)
     }
 
-    async fn create_token_transaction(
+    async fn create_receive_token_transaction(
         &self,
         input: CreateTokenTransaction,
     ) -> Result<TokenTransactionFromDb, ServiceError> {
+        self.request_count
+            .recv_token_transaction
+            .fetch_add(1, Ordering::Relaxed);
+
         let address = self
             .sqlx_client
             .get_address_by_workchain_hex(input.account_workchain_id, input.account_hex.clone())
@@ -1022,16 +1040,20 @@ impl TonService for TonServiceImpl {
 
 #[derive(Default)]
 struct RequestCount {
-    address: Arc<AtomicU64>,
-    transaction: Arc<AtomicU64>,
-    token_transaction: Arc<AtomicU64>,
+    create_address: AtomicU64,
+    send_transaction: AtomicU64,
+    recv_transaction: AtomicU64,
+    send_token_transaction: AtomicU64,
+    recv_token_transaction: AtomicU64,
 }
 
 #[derive(Debug, Copy, Clone, Eq, PartialEq)]
 pub struct ClientServiceMetrics {
-    pub address_count: u64,
-    pub transaction_count: u64,
-    pub token_transaction_count: u64,
+    pub create_address_count: u64,
+    pub send_transaction_count: u64,
+    pub recv_transaction_count: u64,
+    pub send_token_transaction_count: u64,
+    pub recv_token_transaction_count: u64,
 }
 
 #[derive(thiserror::Error, Debug)]

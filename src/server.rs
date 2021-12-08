@@ -222,7 +222,7 @@ impl EngineContext {
 
                 match engine_context
                     .ton_service
-                    .create_token_transaction(transaction)
+                    .create_receive_token_transaction(transaction)
                     .await
                 {
                     Ok(_) => {
@@ -248,13 +248,19 @@ impl std::fmt::Display for LabeledTonServiceMetrics<'_> {
         let metrics = self.0.ton_service.metrics();
 
         f.begin_metric("ton_service_create_address_total_requests")
-            .value(metrics.address_count)?;
+            .value(metrics.create_address_count)?;
 
-        f.begin_metric("ton_service_create_transaction_total_requests")
-            .value(metrics.transaction_count)?;
+        f.begin_metric("ton_service_send_transaction_total_requests")
+            .value(metrics.send_transaction_count)?;
 
-        f.begin_metric("ton_service_create_token_transaction_total_requests")
-            .value(metrics.token_transaction_count)?;
+        f.begin_metric("ton_service_recv_transaction_total_requests")
+            .value(metrics.recv_transaction_count)?;
+
+        f.begin_metric("ton_service_send_token_transaction_total_requests")
+            .value(metrics.send_token_transaction_count)?;
+
+        f.begin_metric("ton_service_recv_token_transaction_total_requests")
+            .value(metrics.recv_token_transaction_count)?;
 
         Ok(())
     }
