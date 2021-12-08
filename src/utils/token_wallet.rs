@@ -127,17 +127,12 @@ pub fn get_token_wallet_details(
 
 fn select_token_contract(version: TokenWalletVersion) -> Result<&'static ton_abi::Contract> {
     Ok(match version {
-        TokenWalletVersion::Tip3v1 => return Err(TokenWalletError::UnsupportedVersion.into()),
-        TokenWalletVersion::Tip3v2 => nekoton_contracts::abi::ton_token_wallet_v2(),
-        TokenWalletVersion::Tip3v3 => nekoton_contracts::abi::ton_token_wallet_v3(),
         TokenWalletVersion::Tip3v4 => nekoton_contracts::abi::ton_token_wallet_v4(),
     })
 }
 
 #[derive(thiserror::Error, Debug)]
 enum TokenWalletError {
-    #[error("Unsupported version")]
-    UnsupportedVersion,
     #[error("Account `{0}` not exist")]
     AccountNotExist(String),
 }

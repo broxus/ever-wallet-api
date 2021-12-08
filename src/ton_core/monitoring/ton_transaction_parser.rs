@@ -116,15 +116,12 @@ pub async fn parse_ton_transaction(
 }
 
 fn get_sender_address(transaction: &ton_block::Transaction) -> Result<Option<MsgAddressInt>> {
-    let in_msg = match &transaction.in_msg {
-        Some(message) => message
-            .read_struct()
-            .map(nekoton::core::models::Message::from)
-            .map_err(|_| TransactionError::InvalidStructure)?,
-        None => return Err(TransactionError::Unsupported.into()),
-    };
-
-    Ok(in_msg.src)
+    let in_msg = transaction
+        .in_msg
+        .as_ref()
+        .ok_or(TransactionError::InvalidStructure)?
+        .read_struct()?;
+    Ok(in_msg.src())
 }
 
 fn get_messages(transaction: &ton_block::Transaction) -> Result<Vec<Message>> {
