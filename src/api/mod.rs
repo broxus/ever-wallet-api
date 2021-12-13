@@ -110,7 +110,7 @@ mod filters {
                     .or(get_tokens_transactions_mh(ctx.clone()))
                     .or(get_tokens_transactions_id(ctx.clone()))
                     .or(post_tokens_events(ctx.clone()))
-                    .or(post_tokens_events_mark(ctx.clone())),
+                    .or(post_tokens_events_mark(ctx)),
             )
             .boxed()
     }

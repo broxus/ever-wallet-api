@@ -32,6 +32,10 @@ impl PendingMessagesQueue {
         self.entry_count.load(Ordering::Acquire)
     }
 
+    pub fn is_empty(&self) -> bool {
+        self.entry_count.load(Ordering::Acquire) == 0
+    }
+
     pub fn add_message(
         &self,
         account: UInt256,
