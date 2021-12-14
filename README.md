@@ -30,6 +30,8 @@ NOTE: scripts are prepared and tested on **Ubuntu 20.04**. You may need to modif
    ./scripts/setup.sh -t native --database-url ${DATABASE_URL}
    ```
 
+   > DATABASE_URL - Postgres connection url (example: postgresql://postgres:postgres@127.0.0.1/ton_wallet_api)
+
    > At this stage, a systemd service `ton-wallet-api` is created. Configs and keys will be in `/etc/ton-wallet-api`
    > and TON node DB will be in `/var/db/ton-wallet-api`.
 
@@ -60,6 +62,14 @@ NOTE: scripts are prepared and tested on **Ubuntu 20.04**. You may need to modif
    ```bash
      ./scripts/api_service.sh -t native --database-url ${DATABASE_URL} --id ${SERVICE_ID} --name ${SERVICE_NAME} --key ${SERVICE_KEY} --secret ${SERVICE_SECRET}
    ```
+
+   > DATABASE_URL - Postgres connection url (example: postgresql://postgres:postgres@127.0.0.1/ton_wallet_api) \
+   > SERVICE_ID - Service id (UUID4) (example: 1fa337bd-2947-4809-9a7a-f04b4f9b738a) \
+   > SERVICE_NAME - Service name (example: Test) \
+   > SERVICE_KEY - Public key (example: apiKey) \
+   > SERVICE_SECRET - Secret key (example: apiSecret)
+
+   **We recommend to use [password generator](https://passwordsgenerator.net) for creating SERVICE_KEY and SERVICE_SECRET!**
 
 4. ##### Enable and start ton-wallet-api service
    ```bash
@@ -99,6 +109,10 @@ NOTE: scripts are prepared and tested on **Ubuntu 20.04**. You may need to modif
    ```bash
      ./scripts/root_token.sh -t native --database-url ${DATABASE_URL} --name ${TOKEN_NAME} --address ${TOKEN_ADDRESS}
    ```
+
+   > DATABASE_URL - Postgres connection url (example: postgresql://postgres:postgres@127.0.0.1/ton_wallet_api) \
+   > TOKEN_NAME - Token name (example: WTON) \
+   > TOKEN_ADDRESS - Token address (example: 0:0ee39330eddb680ce731cd6a443c71d9069db06d149a9bec9569d1eb8d04eb37)
 
 ### Callbacks
 API can send callbacks to services using it. One can set callback url in `api_service_callback` table for any service.
