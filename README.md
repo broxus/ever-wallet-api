@@ -12,81 +12,95 @@ The wallet http api for telegram open network client.
 
 
 ### Runtime requirements
-- CPU: 8 cores, 2 GHz
-- RAM: 16 GB
-- Storage: 200 GB fast SSD
+- CPU: 4 cores, 2 GHz
+- RAM: 8 GB
+- Storage: 100 GB fast SSD
 - Network: 100 MBit/s
 - Postgres: 11 or higher
 
+### How to run
 
-### Native build
+To simplify the build and create some semblance of standardization in this repository
+there is a set of scripts for configuring the ton-wallet-api.
 
-#### Requirements
-- Rust 1.54+
-- Clang 11
+NOTE: scripts are prepared and tested on **Ubuntu 20.04**. You may need to modify them a little for other distros.
 
+1. ##### Setup ton-wallet-api service
+   ```bash
+   ./scripts/setup.sh -t native --database-url ${DATABASE_URL}
+   ```
 
-#### Postgresql migrations
+   > At this stage, a systemd service `ton-wallet-api` is created. Configs and keys will be in `/etc/ton-wallet-api`
+   > and TON node DB will be in `/var/db/ton-wallet-api`.
 
-To fill database with default data one must run database migrations.
-To do so sqlx-cli is needed. It can be installed via cargo:
+   **Do not start this service yet!**
 
-```bash
-cargo install sqlx-cli
-```
+2. ##### Prepare config
+   Either add the environment variables to the `[Service]` section of unit file.
+   It is located at `/etc/systemd/system/ton-wallet-api.service`.
 
-Migrations can be applied after that by this:
+   ```unit file (systemd)
+   [Service]
+   ...
+   Environment=DB_HOST=db_host
+   Environment=DB_USER=db_user
+   Environment=DB_PASSWORD=db_password
+   Environment=DB_NAME=ton_wallet_api
+   Environment=API_SECRET=secret
+   Environment=SALT=salt
+   ...
+   ```
 
-```bash
-cargo sqlx migrate run
-```
+   Or simply replace the `${..}` parameters in the config. It is located at `/etc/ton-wallet-api/config.yaml`.
 
-Beside default scheme creation, the whitelist of token roots is also added to the database data.
-API works only with tokens in `token_whitelist` table. It can be modified via command shown below.
+   > API_SECRET and SALT env vars needed to encrypt/decrypt all addresses private keys.
+   > API_SECRET has nothing to do with api service. Sorry for confused name.
 
-#### How to run
-```bash
-# Set 'salt' and 'secret' env vars needed to encrypt/decrypt all addresses private keys
-export SALT=${SALT}
-export API_SECRET=${API_SECRET}
+3. ##### Enable and start ton-wallet-api service
+   ```bash
+   systemctl enable ton-wallet-api
+   systemctl start ton-wallet-api
 
-# Download network global config
-wget https://raw.githubusercontent.com/tonlabs/main.ton.dev/master/configs/main.ton.dev/ton-global.config.json
+   # Optionally check if it is running normally. It will take some time to start.
+   # ton-wallet-api is fully operational when it prints `listening on ${your_listen_address}`
+   journalctl -fu relay
+   ```
 
-# Run
-RUSTFLAGS='-C target-cpu=native' cargo run \
-  --release -- \
-  --config config.yaml server --global-config ton-global.config.json
-```
+   > ton-wallet-api has a built-in Prometheus metrics exporter which is configured in the `metrics_settings` section of the config.
+   > By default, metrics are available at `http://127.0.0.1:10000/`
+   >
+   > <details><summary><b>Response example:</b></summary>
+   > <p>
+   >
+   > ```
+   > ton_service_create_address_total_requests 0
+   > ton_service_send_transaction_total_requests 0
+   > ton_service_recv_transaction_total_requests 0
+   > ton_service_send_token_transaction_total_requests 0
+   > ton_service_recv_token_transaction_total_requests 0
+   > ton_subscriber_ready 1
+   > ton_subscriber_current_utime 1639490380
+   > ton_subscriber_time_diff 4
+   > ton_subscriber_shard_client_time_diff 7
+   > ton_subscriber_mc_block_seqno 13179326
+   > ton_subscriber_shard_client_mc_block_seqno 13179326
+   > ton_subscriber_pending_message_count 0
+   > ```
+   >
+   > </p>
+   > </details>
 
-When node syncs and server starts you will see next messages:
+4. ##### Create api service
+   ```bash
+     ./scripts/api_service.sh -t native --database-url ${DATABASE_URL} --id ${SERVICE_ID} --name ${SERVICE_NAME} --key ${SERVICE_KEY} --secret ${SERVICE_SECRET}
+   ```
 
-```log
-2021-09-23 16:19:19 UTC - INFO ton_wallet_api_lib::ton_core::ton_subscriber = TON subscriber is ready
-2021-09-23 16:19:19 UTC - INFO warp::server = Server::run; addr=127.0.0.1:8080
-2021-09-23 16:19:19 UTC - INFO warp::server = listening on http://127.0.0.1:8080
-```
+5. ##### Add root token to whitelist
+   ```bash
+     ./scripts/root_token.sh -t native --database-url ${DATABASE_URL} --name ${TOKEN_NAME} --address ${TOKEN_ADDRESS}
+   ```
 
-
-### Tips and tricks
-Before running service you should create <b>api service</b> and <b>api service key</b>.
-
-#### Create api service and api service key
-```bash
-DATABASE_URL=${DATABASE_URL} RUSTFLAGS='-C target-cpu=native' cargo run \
-  --release -- api_service \
-  --id ${SERVICE_ID} --name ${SERVICE_NAME} --key ${KEY} --secret ${SECRET}
-```
-
-#### Add root token to whitelist
-```bash
-# WTON as example
-DATABASE_URL=${DATABASE_URL} RUSTFLAGS='-C target-cpu=native' cargo run \
-  --release -- root_token \
-  --name WTON --address 0:0ee39330eddb680ce731cd6a443c71d9069db06d149a9bec9569d1eb8d04eb37
-```
-
-#### Callbacks
+### Callbacks
 API can send callbacks to services using it. One can set callback url in `api_service_callback` table for any service.
 `service_id` and `callback` columns must be set. After receiving or sending new transactions or token transactions 
 API will call web hook with POST method on `callback` url. Body will contain `AccountTransactionEvent` from swagger. 
@@ -97,15 +111,14 @@ When server starts locally the swagger schema can be accessible by http://localh
 
 
 ### HMAC Authentication
-[pre-request-script.js](pre-request-script.js) is javascript for using with Postman's pre-request script feature. It generates HTTP request headers for HMAC authentication.
-Copy the contents of [pre-request-script.js](pre-request-script.js) into the "Pre-request Script" tab in Postman to send request.
+[pre-request-script.js](scripts/pre-request-script.js) is javascript for using with Postman's pre-request script feature. It generates HTTP request headers for HMAC authentication.
+Copy the contents of [pre-request-script.js](scripts/pre-request-script.js) into the "Pre-request Script" tab in Postman to send request.
 
 
 ### Example config
 
-`config.yaml`
-
-> NOTE: all parameters can be overwritten from environment
+> NOTE: The syntax `${VAR}` can also be used everywhere in config. It will be
+> replaced by the value of the environment variable `VAR`.
 
 ```yaml
 ---
@@ -161,3 +174,4 @@ logger_settings:
       appenders:
         - stdout
       additive: false
+```

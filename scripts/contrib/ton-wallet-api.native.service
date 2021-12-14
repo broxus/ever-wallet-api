@@ -1,0 +1,13 @@
+[Unit]
+Description=ton-wallet-api
+After=network.target
+StartLimitIntervalSec=0
+
+[Service]
+Type=simple
+Restart=no
+WorkingDirectory=/etc/ton-wallet-api
+ExecStart=/usr/local/bin/ton-wallet-api --config /etc/ton-wallet-api/config.yaml server --global-config /etc/ton-wallet-api/ton-global.config.json
+
+[Install]
+WantedBy=multi-user.target
