@@ -56,7 +56,12 @@ NOTE: scripts are prepared and tested on **Ubuntu 20.04**. You may need to modif
    > API_SECRET and SALT env vars needed to encrypt/decrypt all addresses private keys.
    > API_SECRET has nothing to do with api service. Sorry for confused name.
 
-3. ##### Enable and start ton-wallet-api service
+3. ##### Create api service
+   ```bash
+     ./scripts/api_service.sh -t native --database-url ${DATABASE_URL} --id ${SERVICE_ID} --name ${SERVICE_NAME} --key ${SERVICE_KEY} --secret ${SERVICE_SECRET}
+   ```
+
+4. ##### Enable and start ton-wallet-api service
    ```bash
    systemctl enable ton-wallet-api
    systemctl start ton-wallet-api
@@ -90,12 +95,7 @@ NOTE: scripts are prepared and tested on **Ubuntu 20.04**. You may need to modif
    > </p>
    > </details>
 
-4. ##### Create api service
-   ```bash
-     ./scripts/api_service.sh -t native --database-url ${DATABASE_URL} --id ${SERVICE_ID} --name ${SERVICE_NAME} --key ${SERVICE_KEY} --secret ${SERVICE_SECRET}
-   ```
-
-5. ##### Add root token to whitelist
+5. ##### Add more root tokens to whitelist
    ```bash
      ./scripts/root_token.sh -t native --database-url ${DATABASE_URL} --name ${TOKEN_NAME} --address ${TOKEN_ADDRESS}
    ```
