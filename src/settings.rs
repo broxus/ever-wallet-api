@@ -113,7 +113,10 @@ fn default_key() -> Vec<u8> {
 
     match key() {
         Ok(key) => key,
-        Err(err) => panic!("Failed to get key to encrypt/decrypt public key: {:?}", err),
+        Err(err) => panic!(
+            "Failed to get key to encrypt/decrypt private key: {:?}",
+            err
+        ),
     }
 }
 

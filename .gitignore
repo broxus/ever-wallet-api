@@ -9,3 +9,5 @@ secret.toml
 
 /packer/gcp/.gcp_account.json
 /packer/gcp/variables.json
+
+*.pem
