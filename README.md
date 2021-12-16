@@ -134,8 +134,8 @@ NOTE: scripts are prepared and tested on **Ubuntu 20.04**. You may need to modif
    --root-addr {root_token_address} --amount {amount}
    ```
 
-   API_KEY - Public key of created api service;
-   API_SECRET - Secret key of created api service;
+   API_KEY - Public key of created api service \
+   API_SECRET - Secret key of created api service \
    HOST - Address where ton-wallet-api is running (example: 127.0.0.1:3000)
 
    **Amount must be specified in nano Ton's (1 TON = 1_000_000_000)**
