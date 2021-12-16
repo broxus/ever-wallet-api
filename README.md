@@ -1,10 +1,5 @@
 <p align="center">
     <h3 align="center">Ton Wallet API</h3>
-    <p align="center">
-        <a href="/LICENSE">
-            <img alt="GitHub" src="https://img.shields.io/github/license/broxus/ton-wallet-api" />
-        </a>
-    </p>
 </p>
 
 ### Overview
@@ -104,7 +99,8 @@ NOTE: scripts are prepared and tested on **Ubuntu 20.04**. You may need to modif
    > </p>
    > </details>
 
-5. ##### Add more root tokens to whitelist
+### Tips and tricks
+#### Add more root tokens to whitelist
    ```bash
      ./scripts/root_token.sh -t native --database-url ${DATABASE_URL} --name ${TOKEN_NAME} --address ${TOKEN_ADDRESS}
    ```
@@ -112,6 +108,37 @@ NOTE: scripts are prepared and tested on **Ubuntu 20.04**. You may need to modif
    DATABASE_URL - Postgres connection url (example: postgresql://postgres:postgres@127.0.0.1/ton_wallet_api) \
    TOKEN_NAME - Token name (example: WTON) \
    TOKEN_ADDRESS - Token address (example: 0:0ee39330eddb680ce731cd6a443c71d9069db06d149a9bec9569d1eb8d04eb37)
+
+#### Update service
+   ```bash
+     ./scripts/update.sh -t native --database-url ${DATABASE_URL}
+   ```
+
+   DATABASE_URL - Postgres connection url (example: postgresql://postgres:postgres@127.0.0.1/ton_wallet_api)
+
+#### Wallet methods
+   ```bash
+   # Create account
+   API_KEY=${API_KEY} SECRET=${API_SECRET} HOST=${HOST} \
+   ./scripts/wallet.sh -m create_account
+   
+   # Create transaction
+   API_KEY=${API_KEY} SECRET=${API_SECRET} HOST=${HOST} \
+   ./scripts/wallet.sh -m create_transaction \
+   --src-addr {sender} --dst-addr {recipient} --amount {amount}
+   
+   # Create token transaction
+   API_KEY=${API_KEY} SECRET=${API_SECRET} HOST=${HOST} \
+   ./scripts/wallet.sh -m create_token_transaction \
+   --src-addr {sender} --dst-addr {recipient} \
+   --root-addr {root_token_address} --amount {amount}
+   ```
+
+   API_KEY - Public key of created api service;
+   API_SECRET - Secret key of created api service;
+   HOST - Address where ton-wallet-api is running (example: 127.0.0.1:3000)
+
+   **Amount must be specified in nano Ton's (1 TON = 1_000_000_000)**
 
 ### Callbacks
 API can send callbacks to services using it. One can set callback url in `api_service_callback` table for any service.
@@ -123,9 +150,9 @@ API will call web hook with POST method on `callback` url. Body will contain `Ac
 When server starts locally the swagger schema can be accessible by http://localhost:8080/ton/v3/swagger.yaml.
 
 
-### HMAC Authentication
+### Postman
 [pre-request-script.js](scripts/pre-request-script.js) is javascript for using with Postman's pre-request script feature. It generates HTTP request headers for HMAC authentication.
-Copy the contents of [pre-request-script.js](scripts/pre-request-script.js) into the "Pre-request Script" tab in Postman to send request.
+Copy the contents of [pre-request-script.js](scripts/pre-request-script.js) into the "Pre-request Script" tab in Postman to send signed request.
 
 
 ### Example config
@@ -178,7 +205,7 @@ logger_settings:
         - stdout
       additive: false
     warp:
-      level: info
+      level: error
       appenders:
         - stdout
       additive: false
