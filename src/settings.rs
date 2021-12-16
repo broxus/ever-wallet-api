@@ -87,7 +87,7 @@ pub trait ConfigExt: Sized {
 
 fn default_key() -> Vec<u8> {
     fn key() -> Result<Vec<u8>> {
-        let secret = std::env::var("API_SECRET")?;
+        let secret = std::env::var("SECRET")?;
         let salt = std::env::var("SALT")?;
 
         let mut options = argon2::ParamsBuilder::default();

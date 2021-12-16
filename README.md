@@ -48,15 +48,14 @@ NOTE: scripts are prepared and tested on **Ubuntu 20.04**. You may need to modif
    Environment=DB_USER=db_user
    Environment=DB_PASSWORD=db_password
    Environment=DB_NAME=ton_wallet_api
-   Environment=API_SECRET=secret
+   Environment=SECRET=secret
    Environment=SALT=salt
    ...
    ```
 
    Or simply replace the `${..}` parameters in the config. It is located at `/etc/ton-wallet-api/config.yaml`.
 
-   > API_SECRET and SALT env vars needed to encrypt/decrypt all addresses private keys.
-   > API_SECRET has nothing to do with api service. Sorry for confused name.
+   > SECRET and SALT env vars needed to encrypt/decrypt all addresses private keys.
 
 3. ##### Create api service
    ```bash
