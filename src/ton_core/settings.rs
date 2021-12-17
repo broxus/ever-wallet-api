@@ -1,7 +1,7 @@
 use std::net::{Ipv4Addr, SocketAddrV4};
 use std::path::PathBuf;
 
-use anyhow::Result;
+use anyhow::{Context, Result};
 use rand::Rng;
 use serde::{Deserialize, Serialize};
 
@@ -47,14 +47,9 @@ impl NodeConfig {
 
         log::info!("Using public ip: {}", ip_address);
 
-        let adnl_keys = match read_adnl_keys(self.keys_path.clone()) {
-            Ok(keys) => keys,
-            Err(err) => {
-                log::warn!("Generate a new NodeKeys config for a reason: {}", err);
-                generate_adnl_keys(self.keys_path.clone()).await?;
-                read_adnl_keys(self.keys_path.clone())?
-            }
-        };
+        // Generate temp keys
+        let adnl_keys = ton_indexer::NodeKeys::load(self.keys_path, false)
+            .context("Failed to load temp keys")?;
 
         // Prepare DB folder
         std::fs::create_dir_all(&self.db_path)?;
@@ -106,25 +101,6 @@ impl Default for NodeConfig {
             blocks_gc_enabled: true,
         }
     }
-}
-
-async fn generate_adnl_keys<T>(path: T) -> Result<()>
-where
-    T: AsRef<std::path::Path>,
-{
-    use std::io::Write;
-
-    let mut file = std::fs::File::create(path)?;
-    let config = ton_indexer::NodeKeys::generate();
-    file.write_all(serde_yaml::to_string(&config)?.as_bytes())?;
-    Ok(())
-}
-
-fn read_adnl_keys(path: PathBuf) -> Result<ton_indexer::NodeKeys> {
-    let file = std::fs::File::open(path)?;
-    let reader = std::io::BufReader::new(file);
-    let config = serde_yaml::from_reader(reader)?;
-    Ok(config)
 }
 
 #[derive(thiserror::Error, Debug)]
