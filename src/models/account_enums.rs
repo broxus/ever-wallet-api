@@ -114,14 +114,6 @@ pub enum AccountAddressType {
 
 #[derive(Debug, Deserialize, Serialize, Clone, opg::OpgModel)]
 #[opg("TransactionSendOutputType")]
-pub enum TransactionSendOutputType {
-    Normal,
-    AllBalance,
-    AllBalanceDeleteNetworkAccount,
-}
-
-#[derive(Debug, Deserialize, Serialize, Clone, opg::OpgModel)]
-#[opg("TransactionSendOutputType")]
 pub enum TransactionsSearchOrdering {
     CreatedAtAsc,
     CreatedAtDesc,
@@ -131,12 +123,33 @@ pub enum TransactionsSearchOrdering {
     TransactionTimestampDesc,
 }
 
-impl TransactionSendOutputType {
-    pub fn value(&self) -> u8 {
-        match *self {
+#[derive(Debug, Deserialize, Serialize, Clone, opg::OpgModel)]
+#[opg("TransactionSendOutputType")]
+pub enum TransactionSendOutputType {
+    Normal,
+    AllBalance,
+    AllBalanceDeleteNetworkAccount,
+}
+
+impl TryFrom<u8> for TransactionSendOutputType {
+    type Error = TransactionSendOutputTypeError;
+
+    fn try_from(value: u8) -> Result<Self, Self::Error> {
+        match value {
+            3 => Ok(TransactionSendOutputType::Normal),
+            131 => Ok(TransactionSendOutputType::AllBalance),
+            160 => Ok(TransactionSendOutputType::AllBalanceDeleteNetworkAccount),
+            _ => Err(TransactionSendOutputTypeError::UnsupportedMessageFlags),
+        }
+    }
+}
+
+impl From<TransactionSendOutputType> for u8 {
+    fn from(value: TransactionSendOutputType) -> u8 {
+        match value {
             TransactionSendOutputType::Normal => 3,
-            TransactionSendOutputType::AllBalance => 128,
-            TransactionSendOutputType::AllBalanceDeleteNetworkAccount => 160,
+            TransactionSendOutputType::AllBalance => 128 + 3,
+            TransactionSendOutputType::AllBalanceDeleteNetworkAccount => 128 + 32,
         }
     }
 }
@@ -145,4 +158,10 @@ impl Default for TransactionSendOutputType {
     fn default() -> Self {
         TransactionSendOutputType::Normal
     }
+}
+
+#[derive(thiserror::Error, Debug, Copy, Clone)]
+pub enum TransactionSendOutputTypeError {
+    #[error("Unsupported message flags set")]
+    UnsupportedMessageFlags,
 }

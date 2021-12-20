@@ -1,6 +1,8 @@
+use std::sync::Arc;
+
 use anyhow::{Context, Result};
 use argh::FromArgs;
-use futures::prelude::*;
+use tokio::sync::mpsc;
 
 use ton_wallet_api::commands::*;
 use ton_wallet_api::server::*;
@@ -58,14 +60,21 @@ struct CmdServer {
 
 impl CmdServer {
     async fn execute(self, config: AppConfig) -> Result<()> {
+        let ton_wallet_api = Arc::new(TonWalletApi {
+            engine: Default::default(),
+        });
+
         let global_config = ton_indexer::GlobalConfig::from_file(&self.global_config)
             .context("Failed to open global config")?;
 
         init_logger(&config.logger_settings).context("Failed to init logger")?;
 
-        server_run(config, global_config).await?;
+        log::info!("Initializing ton-wallet-api...");
+        let mut shutdown_requests_rx = ton_wallet_api.init(config, global_config).await?;
+        log::info!("Initialized ton-wallet-api");
 
-        future::pending().await
+        shutdown_requests_rx.recv().await;
+        Ok(())
     }
 }
 
@@ -108,6 +117,29 @@ struct CmdApiService {
 impl CmdApiService {
     async fn execute(self) -> Result<()> {
         create_api_service(self.id, self.name, self.key, self.secret).await
+    }
+}
+
+struct TonWalletApi {
+    engine: tokio::sync::Mutex<Option<Arc<Engine>>>,
+}
+
+impl TonWalletApi {
+    async fn init(
+        &self,
+        config: AppConfig,
+        global_config: ton_indexer::GlobalConfig,
+    ) -> Result<ShutdownRequestsRx> {
+        let (shutdown_requests_tx, shutdown_requests_rx) = mpsc::unbounded_channel();
+
+        let engine = Engine::new(config, global_config, shutdown_requests_tx)
+            .await
+            .context("Failed to create engine")?;
+        *self.engine.lock().await = Some(engine.clone());
+
+        engine.start().await.context("Failed to start engine")?;
+
+        Ok(shutdown_requests_rx)
     }
 }
 

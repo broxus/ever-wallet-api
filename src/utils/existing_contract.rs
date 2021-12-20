@@ -47,8 +47,8 @@ impl ExistingContractExt for ExistingContract {
             tokens,
             result_code,
         } = function.run_local(
+            &nekoton_utils::SimpleClock,
             self.account.clone(),
-            self.timings,
             &self.last_transaction_id,
             input,
         )?;

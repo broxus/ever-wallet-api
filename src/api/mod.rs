@@ -27,7 +27,13 @@ pub async fn http_service(
     let api = filters::server(ctx).recover(customize_error);
     let cors = warp::cors()
         .allow_any_origin()
-        .allow_headers(vec!["content-type", "authorization", "api-key"])
+        .allow_headers(vec![
+            "content-type",
+            "api-key",
+            "x-real-ip",
+            "timestamp",
+            "sign",
+        ])
         .allow_methods(vec!["GET", "POST", "DELETE", "OPTIONS", "PUT"]);
     let log = warp::log("warp");
     let routes = api.with(log).with(cors);
@@ -85,10 +91,12 @@ mod filters {
             .and(warp::path("v3"))
             .and(
                 swagger()
-                    .or(post_address_create(ctx.clone()))
                     .or(post_address_check(ctx.clone()))
+                    .or(post_address_create(ctx.clone()))
                     .or(get_address_balance(ctx.clone()))
+                    .or(get_address_info(ctx.clone()))
                     .or(post_transactions_create(ctx.clone()))
+                    .or(post_transactions_confirm(ctx.clone()))
                     .or(post_transactions(ctx.clone()))
                     .or(get_transactions_mh(ctx.clone()))
                     .or(get_transactions_h(ctx.clone()))
@@ -102,8 +110,7 @@ mod filters {
                     .or(get_tokens_transactions_mh(ctx.clone()))
                     .or(get_tokens_transactions_id(ctx.clone()))
                     .or(post_tokens_events(ctx.clone()))
-                    .or(post_tokens_events_mark(ctx.clone()))
-                    .or(get_metrics(ctx)),
+                    .or(post_tokens_events_mark(ctx)),
             )
             .boxed()
     }
@@ -115,6 +122,16 @@ mod filters {
             .and(auth_by_key(ctx.auth_service.clone()).untuple_one())
             .and(with_ctx(ctx))
             .and_then(controllers::post_transactions_create)
+            .boxed()
+    }
+
+    pub fn post_transactions_confirm(ctx: Context) -> BoxedFilter<(impl warp::Reply,)> {
+        warp::path!("transactions" / "confirm")
+            .and(warp::path::end())
+            .and(warp::post())
+            .and(auth_by_key(ctx.auth_service.clone()).untuple_one())
+            .and(with_ctx(ctx))
+            .and_then(controllers::post_transactions_confirm)
             .boxed()
     }
 
@@ -186,6 +203,18 @@ mod filters {
             .and(auth_by_key_get(ctx.auth_service.clone()))
             .and(with_ctx(ctx))
             .and_then(controllers::get_address_balance)
+            .boxed()
+    }
+
+    pub fn get_address_info(ctx: Context) -> BoxedFilter<(impl warp::Reply,)> {
+        warp::path("address")
+            .and(warp::path::param())
+            .and(warp::path("info"))
+            .and(warp::path::end())
+            .and(warp::get())
+            .and(auth_by_key_get(ctx.auth_service.clone()))
+            .and(with_ctx(ctx))
+            .and_then(controllers::get_address_info)
             .boxed()
     }
 
@@ -271,15 +300,6 @@ mod filters {
             .and(auth_by_key_get(ctx.auth_service.clone()))
             .and(with_ctx(ctx))
             .and_then(controllers::get_tokens_transactions_id)
-            .boxed()
-    }
-
-    pub fn get_metrics(ctx: Context) -> BoxedFilter<(impl warp::Reply,)> {
-        warp::path("metrics")
-            .and(warp::path::end())
-            .and(warp::get())
-            .and(with_ctx(ctx))
-            .and_then(controllers::get_metrics)
             .boxed()
     }
 

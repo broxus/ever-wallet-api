@@ -1,5 +1,6 @@
 use std::convert::TryInto;
 use std::str::FromStr;
+use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Arc;
 
 use async_trait::async_trait;
@@ -29,10 +30,20 @@ pub trait TonService: Send + Sync + 'static {
         service_id: &ServiceId,
         address: Address,
     ) -> Result<(AddressDb, NetworkAddressData), ServiceError>;
+    async fn get_address_info(
+        &self,
+        service_id: &ServiceId,
+        address: Address,
+    ) -> Result<AddressDb, ServiceError>;
     async fn create_send_transaction(
         &self,
         service_id: &ServiceId,
         input: TransactionSend,
+    ) -> Result<TransactionDb, ServiceError>;
+    async fn create_confirm_transaction(
+        &self,
+        service_id: &ServiceId,
+        input: TransactionConfirm,
     ) -> Result<TransactionDb, ServiceError>;
     async fn create_receive_transaction(
         &self,
@@ -95,7 +106,6 @@ pub trait TonService: Send + Sync + 'static {
         service_id: &ServiceId,
         id: &uuid::Uuid,
     ) -> Result<TokenTransactionFromDb, ServiceError>;
-    async fn get_metrics(&self) -> Result<Metrics, ServiceError>;
     async fn search_token_events(
         &self,
         service_id: &ServiceId,
@@ -116,7 +126,7 @@ pub trait TonService: Send + Sync + 'static {
         service_id: &ServiceId,
         input: &TokenTransactionSend,
     ) -> Result<TransactionDb, ServiceError>;
-    async fn create_token_transaction(
+    async fn create_receive_token_transaction(
         &self,
         input: CreateTokenTransaction,
     ) -> Result<TokenTransactionFromDb, ServiceError>;
@@ -125,30 +135,47 @@ pub trait TonService: Send + Sync + 'static {
 #[derive(Clone)]
 pub struct TonServiceImpl {
     sqlx_client: SqlxClient,
-    owners_cache: OwnersCache,
+    request_count: Arc<RequestCount>,
     ton_api_client: Arc<dyn TonClient>,
     callback_client: Arc<dyn CallbackClient>,
-    key: Vec<u8>,
+    key: Arc<Vec<u8>>,
 }
 
 impl TonServiceImpl {
     pub fn new(
         sqlx_client: SqlxClient,
-        owners_cache: OwnersCache,
         ton_api_client: Arc<dyn TonClient>,
         callback_client: Arc<dyn CallbackClient>,
         key: Vec<u8>,
     ) -> Self {
+        let request_count = Arc::new(RequestCount::default());
+        let key = Arc::new(key);
         Self {
             sqlx_client,
-            owners_cache,
+            request_count,
             ton_api_client,
             callback_client,
             key,
         }
     }
 
-    pub async fn start(&self) -> Result<(), ServiceError> {
+    pub fn metrics(&self) -> ClientServiceMetrics {
+        ClientServiceMetrics {
+            create_address_count: self.request_count.create_address.load(Ordering::Acquire),
+            send_transaction_count: self.request_count.send_transaction.load(Ordering::Acquire),
+            recv_transaction_count: self.request_count.recv_transaction.load(Ordering::Acquire),
+            send_token_transaction_count: self
+                .request_count
+                .send_token_transaction
+                .load(Ordering::Acquire),
+            recv_token_transaction_count: self
+                .request_count
+                .recv_token_transaction
+                .load(Ordering::Acquire),
+        }
+    }
+
+    pub async fn start(self: &Arc<Self>) -> Result<(), ServiceError> {
         // Load unprocessed sent messages
 
         let transactions: Vec<TransactionDb> = self
@@ -169,13 +196,21 @@ impl TonServiceImpl {
                 .ton_api_client
                 .add_pending_message(account, message_hash, expire_at)?;
 
-            let ton_service = self.clone();
+            let ton_service = Arc::downgrade(self);
             tokio::spawn(async move {
                 match rx.await {
                     Ok(MessageStatus::Delivered) => {
                         log::info!("Successfully sent message `{}`", transaction.message_hash)
                     }
                     Ok(MessageStatus::Expired) => {
+                        let ton_service = match ton_service.upgrade() {
+                            Some(ton_service) => ton_service,
+                            None => {
+                                log::error!("TonServiceImpl is already dropped");
+                                return;
+                            }
+                        };
+
                         if let Err(err) = ton_service
                             .upsert_sent_transaction(
                                 transaction.message_hash.clone(),
@@ -395,6 +430,10 @@ impl TonService for TonServiceImpl {
         service_id: &ServiceId,
         input: CreateAddress,
     ) -> Result<AddressDb, ServiceError> {
+        self.request_count
+            .create_address
+            .fetch_add(1, Ordering::Relaxed);
+
         let id = uuid::Uuid::new_v4();
         let payload = self.ton_api_client.create_address(input).await?;
 
@@ -443,17 +482,45 @@ impl TonService for TonServiceImpl {
         Ok((address, network))
     }
 
+    async fn get_address_info(
+        &self,
+        service_id: &ServiceId,
+        address: Address,
+    ) -> Result<AddressDb, ServiceError> {
+        let account = repack_address(&address.0)?;
+        let address = self
+            .sqlx_client
+            .get_address(
+                *service_id,
+                account.workchain_id(),
+                account.address().to_hex_string(),
+            )
+            .await?;
+        Ok(address)
+    }
+
     async fn create_send_transaction(
         &self,
         service_id: &ServiceId,
         input: TransactionSend,
     ) -> Result<TransactionDb, ServiceError> {
+        self.request_count
+            .send_transaction
+            .fetch_add(1, Ordering::Relaxed);
+
         let account = repack_address(&input.from_address.0)?;
 
         let (network, current_state) = self
             .ton_api_client
             .get_address_info(account.clone())
             .await?;
+
+        for transaction_output in input.outputs.iter() {
+            let (_, scale) = transaction_output.value.as_bigint_and_exponent();
+            if scale != 0 {
+                return Err(ServiceError::WrongInput("Invalid value".to_string()));
+            }
+        }
 
         if input
             .outputs
@@ -501,12 +568,70 @@ impl TonService for TonServiceImpl {
             )
             .await?;
 
-        log::info!(
-            "Prepare: now - {}; current - {}; expire_at - {}",
-            chrono::Utc::now().timestamp(),
-            self.ton_api_client.get_metrics().await?.gen_utime,
-            signed_message.expire_at
-        );
+        let (transaction, event) = self
+            .sqlx_client
+            .create_send_transaction(CreateSendTransaction::new(payload, *service_id))
+            .await?;
+
+        self.send_transaction(
+            transaction.message_hash.clone(),
+            transaction.account_hex.clone(),
+            transaction.account_workchain_id,
+            signed_message,
+            true,
+        )
+        .await
+        .trust_me();
+
+        self.notify(service_id, event.into()).await;
+
+        Ok(transaction)
+    }
+
+    async fn create_confirm_transaction(
+        &self,
+        service_id: &ServiceId,
+        input: TransactionConfirm,
+    ) -> Result<TransactionDb, ServiceError> {
+        let account = repack_address(&input.address.0)?;
+
+        let address = self
+            .sqlx_client
+            .get_address(
+                *service_id,
+                account.workchain_id(),
+                account.address().to_hex_string(),
+            )
+            .await?;
+
+        if address.account_type != AccountType::SafeMultisig {
+            return Err(ServiceError::WrongInput("Invalid account type".to_string()));
+        }
+
+        let public_key = hex::decode(address.public_key.clone()).unwrap_or_default();
+        let private_key = decrypt_private_key(
+            &address.private_key,
+            self.key.as_slice().try_into().trust_me(),
+            &address.id,
+        )
+        .map_err(|err| {
+            ServiceError::Other(TonServiceError::DecryptPrivateKeyError(err.to_string()).into())
+        })?;
+
+        let (network, _) = self
+            .ton_api_client
+            .get_address_info(account.clone())
+            .await?;
+
+        if network.account_status == AccountStatus::UnInit {
+            self.deploy_wallet(service_id, &address, &public_key, &private_key)
+                .await?;
+        }
+
+        let (payload, signed_message) = self
+            .ton_api_client
+            .prepare_confirm_transaction(input, &public_key, &private_key)
+            .await?;
 
         let (transaction, event) = self
             .sqlx_client
@@ -532,6 +657,10 @@ impl TonService for TonServiceImpl {
         &self,
         input: CreateReceiveTransaction,
     ) -> Result<TransactionDb, ServiceError> {
+        self.request_count
+            .recv_transaction
+            .fetch_add(1, Ordering::Relaxed);
+
         let address = self
             .sqlx_client
             .get_address_by_workchain_hex(input.account_workchain_id, input.account_hex.clone())
@@ -696,10 +825,6 @@ impl TonService for TonServiceImpl {
             .await
     }
 
-    async fn get_metrics(&self) -> Result<Metrics, ServiceError> {
-        Ok(self.ton_api_client.get_metrics().await?)
-    }
-
     async fn search_token_events(
         &self,
         service_id: &ServiceId,
@@ -768,6 +893,10 @@ impl TonService for TonServiceImpl {
         service_id: &ServiceId,
         input: &TokenTransactionSend,
     ) -> Result<TransactionDb, ServiceError> {
+        self.request_count
+            .send_token_transaction
+            .fetch_add(1, Ordering::Relaxed);
+
         let owner = repack_address(&input.from_address.0)?;
         let address = self
             .sqlx_client
@@ -777,6 +906,11 @@ impl TonService for TonServiceImpl {
                 owner.address().to_hex_string(),
             )
             .await?;
+
+        let (_, scale) = input.value.as_bigint_and_exponent();
+        if scale != 0 {
+            return Err(ServiceError::WrongInput("Invalid token value".to_string()));
+        }
 
         if address.balance < input.fee {
             return Err(ServiceError::WrongInput(format!(
@@ -880,10 +1014,14 @@ impl TonService for TonServiceImpl {
         Ok(transaction)
     }
 
-    async fn create_token_transaction(
+    async fn create_receive_token_transaction(
         &self,
         input: CreateTokenTransaction,
     ) -> Result<TokenTransactionFromDb, ServiceError> {
+        self.request_count
+            .recv_token_transaction
+            .fetch_add(1, Ordering::Relaxed);
+
         let address = self
             .sqlx_client
             .get_address_by_workchain_hex(input.account_workchain_id, input.account_hex.clone())
@@ -898,6 +1036,24 @@ impl TonService for TonServiceImpl {
 
         Ok(transaction)
     }
+}
+
+#[derive(Default)]
+struct RequestCount {
+    create_address: AtomicU64,
+    send_transaction: AtomicU64,
+    recv_transaction: AtomicU64,
+    send_token_transaction: AtomicU64,
+    recv_token_transaction: AtomicU64,
+}
+
+#[derive(Debug, Copy, Clone, Eq, PartialEq)]
+pub struct ClientServiceMetrics {
+    pub create_address_count: u64,
+    pub send_transaction_count: u64,
+    pub recv_transaction_count: u64,
+    pub send_token_transaction_count: u64,
+    pub recv_token_transaction_count: u64,
 }
 
 #[derive(thiserror::Error, Debug)]

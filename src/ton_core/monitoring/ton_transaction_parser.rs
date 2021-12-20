@@ -1,6 +1,6 @@
 use anyhow::Result;
 use bigdecimal::BigDecimal;
-use nekoton::core::models::TransactionError;
+use nekoton::core::models::{MultisigTransaction, TransactionError};
 use num_traits::FromPrimitive;
 use serde::{Deserialize, Serialize};
 use ton_block::CommonMsgInfo;
@@ -44,10 +44,16 @@ pub async fn parse_ton_transaction(
     let transaction_timestamp = block_utime;
     let messages = Some(serde_json::to_value(get_messages(&transaction)?)?);
     let messages_hash = Some(serde_json::to_value(get_messages_hash(&transaction)?)?);
-    let fee = BigDecimal::from_u64(compute_fees(&transaction));
+    let fee = BigDecimal::from_u128(compute_fees(&transaction));
     let value = BigDecimal::from_u128(compute_value(&transaction));
-    let balance_change =
-        BigDecimal::from_i64(nekoton::core::utils::compute_balance_change(&transaction));
+    let balance_change = BigDecimal::from_i128(nekoton_utils::compute_balance_change(&transaction));
+    let multisig_transaction_id = nekoton::core::parsing::parse_multisig_transaction(&transaction)
+        .map(|transaction| match transaction {
+            MultisigTransaction::Send(_) => None,
+            MultisigTransaction::Confirm(transaction) => Some(transaction.transaction_id as i64),
+            MultisigTransaction::Submit(transaction) => Some(transaction.trans_id as i64),
+        })
+        .flatten();
 
     let parsed = match in_msg.header() {
         CommonMsgInfo::IntMsgInfo(header) => {
@@ -76,6 +82,7 @@ pub async fn parse_ton_transaction(
                 error: None,
                 aborted: is_aborted(&transaction),
                 bounce: header.bounce,
+                multisig_transaction_id,
             })
         }
         CommonMsgInfo::ExtInMsgInfo(_) => {
@@ -98,6 +105,7 @@ pub async fn parse_ton_transaction(
                     balance_change,
                     status: TonTransactionStatus::Done,
                     error: None,
+                    multisig_transaction_id,
                 },
             })
         }
@@ -108,15 +116,12 @@ pub async fn parse_ton_transaction(
 }
 
 fn get_sender_address(transaction: &ton_block::Transaction) -> Result<Option<MsgAddressInt>> {
-    let in_msg = match &transaction.in_msg {
-        Some(message) => message
-            .read_struct()
-            .map(nekoton::core::models::Message::from)
-            .map_err(|_| TransactionError::InvalidStructure)?,
-        None => return Err(TransactionError::Unsupported.into()),
-    };
-
-    Ok(in_msg.src)
+    let in_msg = transaction
+        .in_msg
+        .as_ref()
+        .ok_or(TransactionError::InvalidStructure)?
+        .read_struct()?;
+    Ok(in_msg.src())
 }
 
 fn get_messages(transaction: &ton_block::Transaction) -> Result<Vec<Message>> {
@@ -199,12 +204,12 @@ fn compute_value(transaction: &ton_block::Transaction) -> u128 {
     value
 }
 
-fn compute_fees(transaction: &ton_block::Transaction) -> u64 {
+fn compute_fees(transaction: &ton_block::Transaction) -> u128 {
     let mut fees = 0;
     if let Ok(ton_block::TransactionDescr::Ordinary(description)) =
         transaction.description.read_struct()
     {
-        fees = nekoton::core::utils::compute_total_transaction_fees(transaction, &description)
+        fees = nekoton_utils::compute_total_transaction_fees(transaction, &description)
     }
     fees
 }

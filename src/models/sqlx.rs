@@ -75,6 +75,7 @@ pub struct TransactionDb {
     pub error: Option<String>,
     pub aborted: bool,
     pub bounce: bool,
+    pub multisig_transaction_id: Option<i64>,
     pub created_at: NaiveDateTime,
     pub updated_at: NaiveDateTime,
 }
@@ -95,6 +96,7 @@ pub struct TransactionEventDb {
     pub event_status: TonEventStatus,
     pub created_at: NaiveDateTime,
     pub updated_at: NaiveDateTime,
+    pub multisig_transaction_id: Option<i64>,
 }
 
 #[derive(Clone, Debug, serde::Serialize, serde::Deserialize, Eq, PartialEq)]

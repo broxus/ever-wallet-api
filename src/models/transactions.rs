@@ -50,6 +50,7 @@ pub struct UpdateSendTransaction {
     pub balance_change: Option<BigDecimal>,
     pub status: TonTransactionStatus,
     pub error: Option<String>,
+    pub multisig_transaction_id: Option<i64>,
 }
 
 impl UpdateSendTransaction {
@@ -69,6 +70,7 @@ impl UpdateSendTransaction {
             balance_change: None,
             status: TonTransactionStatus::Error,
             error: Some(error),
+            multisig_transaction_id: None,
         }
     }
 }
@@ -107,6 +109,7 @@ pub struct CreateReceiveTransaction {
     pub error: Option<String>,
     pub aborted: bool,
     pub bounce: bool,
+    pub multisig_transaction_id: Option<i64>,
 }
 
 #[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
@@ -122,4 +125,11 @@ pub struct TransactionsSearch {
     pub ordering: Option<TransactionsSearchOrdering>,
     pub limit: i64,
     pub offset: i64,
+}
+
+#[derive(Debug, Deserialize, Serialize, Clone)]
+pub struct TransactionConfirm {
+    pub id: Uuid,
+    pub address: Address,
+    pub transaction_id: u64,
 }

@@ -391,6 +391,7 @@ pub struct AccountTransactionDataResponse {
     pub aborted: bool,
     pub bounce: bool,
     pub error: Option<String>,
+    pub multisig_transaction_id: Option<i64>,
     #[opg("UTC timestamp in milliseconds", integer, format = "int64")]
     pub created_at: i64,
     #[opg("UTC timestamp in milliseconds", integer, format = "int64")]
@@ -482,6 +483,7 @@ impl From<TransactionDb> for AccountTransactionDataResponse {
             created_at: c.created_at.timestamp_millis(),
             updated_at: c.updated_at.timestamp_millis(),
             error: c.error,
+            multisig_transaction_id: c.multisig_transaction_id,
         }
     }
 }
@@ -659,6 +661,32 @@ impl From<Result<PostAddressBalanceDataResponse, ServiceError>> for AddressBalan
 
 #[derive(Debug, Deserialize, Serialize, Clone, opg::OpgModel)]
 #[serde(rename_all = "camelCase")]
+#[opg("AddressInfoResponse")]
+pub struct AddressInfoResponse {
+    pub status: TonStatus,
+    pub data: Option<PostAddressInfoDataResponse>,
+    pub error_message: Option<String>,
+}
+
+impl From<Result<PostAddressInfoDataResponse, ServiceError>> for AddressInfoResponse {
+    fn from(r: Result<PostAddressInfoDataResponse, ServiceError>) -> Self {
+        match r {
+            Ok(data) => Self {
+                status: TonStatus::Ok,
+                data: Some(data),
+                error_message: None,
+            },
+            Err(e) => Self {
+                status: TonStatus::Error,
+                data: None,
+                error_message: Some(format!("{:?}", e)),
+            },
+        }
+    }
+}
+
+#[derive(Debug, Deserialize, Serialize, Clone, opg::OpgModel)]
+#[serde(rename_all = "camelCase")]
 #[opg("PostAddressBalanceDataResponse")]
 pub struct PostAddressBalanceDataResponse {
     pub id: Uuid,
@@ -697,6 +725,49 @@ impl PostAddressBalanceDataResponse {
             last_transaction_hash: b.last_transaction_hash,
             last_transaction_lt: b.last_transaction_lt,
             sync_u_time: b.sync_u_time,
+            created_at: a.created_at.timestamp_millis(),
+            updated_at: a.updated_at.timestamp_millis(),
+        }
+    }
+}
+
+#[derive(Debug, Deserialize, Serialize, Clone, opg::OpgModel)]
+#[serde(rename_all = "camelCase")]
+#[opg("PostAddressInfoDataResponse")]
+pub struct PostAddressInfoDataResponse {
+    pub id: Uuid,
+    pub address: AddressResponse,
+    pub account_type: AccountType,
+    #[opg("balance", string)]
+    pub balance: BigDecimal,
+    pub custodians: Option<i32>,
+    pub confirmations: Option<i32>,
+    pub custodians_public_keys: Option<Vec<String>>,
+    #[opg("UTC timestamp in milliseconds", integer, format = "int64")]
+    pub created_at: i64,
+    #[opg("UTC timestamp in milliseconds", integer, format = "int64")]
+    pub updated_at: i64,
+}
+
+impl PostAddressInfoDataResponse {
+    pub fn new(a: AddressDb) -> Self {
+        let account = MsgAddressInt::from_str(&format!("{}:{}", a.workchain_id, a.hex)).unwrap();
+        let base64url = Address(pack_std_smc_addr(true, &account, true).unwrap());
+
+        Self {
+            id: a.id,
+            address: AddressResponse {
+                workchain_id: a.workchain_id,
+                hex: Address(a.hex),
+                base64url,
+            },
+            account_type: a.account_type,
+            custodians: a.custodians,
+            confirmations: a.confirmations,
+            custodians_public_keys: a
+                .custodians_public_keys
+                .and_then(|k| serde_json::from_value(k).unwrap_or_default()),
+            balance: a.balance,
             created_at: a.created_at.timestamp_millis(),
             updated_at: a.updated_at.timestamp_millis(),
         }

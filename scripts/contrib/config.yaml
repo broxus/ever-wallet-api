@@ -1,0 +1,58 @@
+---
+# Listen address of service
+server_addr: "0.0.0.0:8080"
+# Database url
+database_url: "postgresql://${DB_USER}:${DB_PASSWORD}@${DB_HOST}/${DB_NAME}"
+# Database connections
+db_pool_size: 5
+ton_core:
+  # Root directory for ton-wallet-api DB. Default: "./db"
+  db_path: "/var/db/ton-wallet-api"
+  # UDP port, used for ADNL node. Default: 30303
+  adnl_port: 30000
+  # Path to temporary ADNL keys.
+  # NOTE: Will be generated if it was not there.
+  # Default: "./adnl-keys.json"
+  keys_path: "/etc/ton-wallet-api/adnl-keys.json"
+metrics_settings:
+  # Listen address of metrics. Used by the client to gather prometheus metrics.
+  # Default: "127.0.0.1:10000"
+  listen_address: "0.0.0.0:10000"
+  # URL path to the metrics. Default: "/"
+  # Example: `curl http://127.0.0.1:10000/metrics`
+  metrics_path: "/metrics"
+  # Metrics update interval in seconds. Default: 10
+  collection_interval_sec: 10
+# log4rs settings.
+# See https://docs.rs/log4rs/1.0.0/log4rs/ for more details
+logger_settings:
+  appenders:
+    stdout:
+      kind: console
+      encoder:
+        pattern: "{h({l})} {M} = {m} {n}"
+  root:
+    level: error
+    appenders:
+      - stdout
+  loggers:
+    ton_wallet_api:
+      level: info
+      appenders:
+        - stdout
+      additive: false
+    warp:
+      level: error
+      appenders:
+        - stdout
+      additive: false
+    ton_indexer:
+      level: error
+      appenders:
+        - stdout
+      additive: false
+    tiny_adnl:
+      level: error
+      appenders:
+        - stdout
+      additive: false

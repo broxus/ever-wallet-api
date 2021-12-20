@@ -15,6 +15,7 @@ pub struct CreateSendTransactionEvent {
     pub transaction_status: TonTransactionStatus,
     pub event_status: TonEventStatus,
     pub balance_change: Option<BigDecimal>,
+    pub multisig_transaction_id: Option<i64>,
 }
 
 impl CreateSendTransactionEvent {
@@ -29,6 +30,7 @@ impl CreateSendTransactionEvent {
             transaction_direction: payload.direction,
             transaction_status: payload.status,
             balance_change: payload.balance_change,
+            multisig_transaction_id: payload.multisig_transaction_id,
             event_status: TonEventStatus::New,
         }
     }
@@ -38,6 +40,7 @@ impl CreateSendTransactionEvent {
 pub struct UpdateSendTransactionEvent {
     pub balance_change: Option<BigDecimal>,
     pub transaction_status: TonTransactionStatus,
+    pub multisig_transaction_id: Option<i64>,
 }
 
 impl UpdateSendTransactionEvent {
@@ -45,6 +48,7 @@ impl UpdateSendTransactionEvent {
         Self {
             transaction_status: payload.status,
             balance_change: payload.balance_change,
+            multisig_transaction_id: payload.multisig_transaction_id,
         }
     }
 }

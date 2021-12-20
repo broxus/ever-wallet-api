@@ -67,9 +67,10 @@ pub fn get_token_wallet_address(
     owner: &MsgAddressInt,
 ) -> Result<MsgAddressInt> {
     let root_contract_state = RootTokenContractState(root_contract);
-    let RootTokenContractDetails { version, .. } = root_contract_state.guess_details()?;
+    let RootTokenContractDetails { version, .. } =
+        root_contract_state.guess_details(&nekoton_utils::SimpleClock)?;
 
-    root_contract_state.get_wallet_address(version, owner, None)
+    root_contract_state.get_wallet_address(&nekoton_utils::SimpleClock, version, owner, None)
 }
 
 pub fn get_token_wallet_account(
@@ -77,9 +78,15 @@ pub fn get_token_wallet_account(
     owner: &MsgAddressInt,
 ) -> Result<UInt256> {
     let root_contract_state = RootTokenContractState(root_contract);
-    let RootTokenContractDetails { version, .. } = root_contract_state.guess_details()?;
+    let RootTokenContractDetails { version, .. } =
+        root_contract_state.guess_details(&nekoton_utils::SimpleClock)?;
 
-    let token_wallet_address = root_contract_state.get_wallet_address(version, owner, None)?;
+    let token_wallet_address = root_contract_state.get_wallet_address(
+        &nekoton_utils::SimpleClock,
+        version,
+        owner,
+        None,
+    )?;
     let token_wallet_account =
         UInt256::from_be_bytes(&token_wallet_address.address().get_bytestring(0));
 
@@ -91,8 +98,13 @@ pub fn get_token_wallet_basic_info(
 ) -> Result<(TokenWalletVersion, BigDecimal)> {
     let token_wallet_state = TokenWalletContractState(token_contract);
 
-    let version = token_wallet_state.get_version()?;
-    let balance = BigDecimal::new(token_wallet_state.get_balance(version)?.into(), 0);
+    let version = token_wallet_state.get_version(&nekoton_utils::SimpleClock)?;
+    let balance = BigDecimal::new(
+        token_wallet_state
+            .get_balance(&nekoton_utils::SimpleClock, version)?
+            .into(),
+        0,
+    );
 
     Ok((version, balance))
 }
@@ -108,24 +120,19 @@ pub fn get_token_wallet_details(
 
     let state = nekoton::core::token_wallet::TokenWalletContractState(&state);
     let hash = *state.get_code_hash()?.as_slice();
-    let version = state.get_version()?;
-    let details = state.get_details(version)?;
+    let version = state.get_version(&nekoton_utils::SimpleClock)?;
+    let details = state.get_details(&nekoton_utils::SimpleClock, version)?;
     Ok((details, hash))
 }
 
 fn select_token_contract(version: TokenWalletVersion) -> Result<&'static ton_abi::Contract> {
     Ok(match version {
-        TokenWalletVersion::Tip3v1 => return Err(TokenWalletError::UnsupportedVersion.into()),
-        TokenWalletVersion::Tip3v2 => nekoton_contracts::abi::ton_token_wallet_v2(),
-        TokenWalletVersion::Tip3v3 => nekoton_contracts::abi::ton_token_wallet_v3(),
         TokenWalletVersion::Tip3v4 => nekoton_contracts::abi::ton_token_wallet_v4(),
     })
 }
 
 #[derive(thiserror::Error, Debug)]
 enum TokenWalletError {
-    #[error("Unsupported version")]
-    UnsupportedVersion,
     #[error("Account `{0}` not exist")]
     AccountNotExist(String),
 }

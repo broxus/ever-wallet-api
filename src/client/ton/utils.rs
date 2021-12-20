@@ -20,7 +20,7 @@ pub fn parse_last_transaction(
 pub fn transform_account_state(account_state: &AccountState) -> AccountStatus {
     match account_state {
         AccountState::AccountUninit => AccountStatus::UnInit,
-        AccountState::AccountActive(_) => AccountStatus::Active,
-        AccountState::AccountFrozen(_) => AccountStatus::Frozen,
+        AccountState::AccountActive { .. } => AccountStatus::Active,
+        AccountState::AccountFrozen { .. } => AccountStatus::Frozen,
     }
 }

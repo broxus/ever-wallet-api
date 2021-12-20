@@ -21,9 +21,9 @@ mod ton_subscriber;
 pub use self::settings::*;
 
 pub struct TonCore {
-    context: Arc<TonCoreContext>,
-    ton_transaction: Mutex<Option<Arc<TonTransaction>>>,
-    token_transaction: Mutex<Option<Arc<TokenTransaction>>>,
+    pub context: Arc<TonCoreContext>,
+    pub ton_transaction: Mutex<Option<Arc<TonTransaction>>>,
+    pub token_transaction: Mutex<Option<Arc<TokenTransaction>>>,
 }
 
 impl TonCore {
@@ -89,10 +89,6 @@ impl TonCore {
             .await
     }
 
-    pub fn current_utime(&self) -> u32 {
-        self.context.ton_subscriber.current_utime()
-    }
-
     pub fn add_pending_message(
         &self,
         account: UInt256,
@@ -110,6 +106,12 @@ pub struct TonCoreContext {
     pub messages_queue: Arc<PendingMessagesQueue>,
     pub ton_subscriber: Arc<TonSubscriber>,
     pub ton_engine: Arc<ton_indexer::Engine>,
+}
+
+impl Drop for TonCoreContext {
+    fn drop(&mut self) {
+        self.ton_engine.shutdown();
+    }
 }
 
 impl TonCoreContext {
@@ -175,13 +177,6 @@ impl TonCoreContext {
         let rx = self
             .messages_queue
             .add_message(*account, cells.repr_hash(), expire_at)?;
-
-        log::info!(
-            "Broadcast: now - {}; current - {}; expire_at - {}",
-            chrono::Utc::now().timestamp(),
-            self.ton_subscriber.current_utime(),
-            expire_at
-        );
 
         self.ton_engine
             .broadcast_external_message(&to, &serialized)

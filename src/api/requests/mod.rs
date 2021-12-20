@@ -59,6 +59,25 @@ impl From<PostTonTransactionSendRequest> for TransactionSend {
 
 #[derive(Debug, Deserialize, Serialize, Clone, opg::OpgModel)]
 #[serde(rename_all = "camelCase")]
+#[opg("PostTonTransactionConfirmRequest")]
+pub struct PostTonTransactionConfirmRequest {
+    pub id: Option<Uuid>,
+    pub address: Address,
+    pub transaction_id: u64,
+}
+
+impl From<PostTonTransactionConfirmRequest> for TransactionConfirm {
+    fn from(c: PostTonTransactionConfirmRequest) -> Self {
+        TransactionConfirm {
+            id: c.id.unwrap_or_else(Uuid::new_v4),
+            address: c.address,
+            transaction_id: c.transaction_id,
+        }
+    }
+}
+
+#[derive(Debug, Deserialize, Serialize, Clone, opg::OpgModel)]
+#[serde(rename_all = "camelCase")]
 #[opg("PostTonTransactionsRequest")]
 pub struct PostTonTransactionsRequest {
     pub id: Option<Uuid>,
