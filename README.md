@@ -48,8 +48,6 @@ NOTE: scripts are prepared and tested on **Ubuntu 20.04**. You may need to modif
    ...
    ```
 
-   Or simply replace the `${..}` parameters in the config. It is located at `/etc/ton-wallet-api/config.yaml`.
-
    > SECRET and SALT env vars needed to encrypt/decrypt all addresses private keys.
 
 3. ##### Create api service
@@ -72,7 +70,7 @@ NOTE: scripts are prepared and tested on **Ubuntu 20.04**. You may need to modif
 
    # Optionally check if it is running normally. It will take some time to start.
    # ton-wallet-api is fully operational when it prints `listening on ${your_listen_address}`
-   journalctl -fu relay
+   journalctl -fu ton-wallet-api
    ```
 
    > ton-wallet-api has a built-in Prometheus metrics exporter which is configured in the `metrics_settings` section of the config.
@@ -171,7 +169,7 @@ db_pool_size: 5
 ton_core:
   # UDP port, used for ADNL node. Default: 30303
   adnl_port: 30303
-  # Root directory for relay DB. Default: "./db"
+  # Root directory for ton-wallet-api DB. Default: "./db"
   db_path: "/var/ton-wallet-api/db"
   # Path to ADNL keys.
   # NOTE: Will be generated if it was not there.
