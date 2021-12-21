@@ -130,6 +130,7 @@ pub trait TonService: Send + Sync + 'static {
         &self,
         input: CreateTokenTransaction,
     ) -> Result<TokenTransactionFromDb, ServiceError>;
+    async fn get_metrics(&self) -> Result<Metrics, ServiceError>;
 }
 
 #[derive(Clone)]
@@ -1035,6 +1036,10 @@ impl TonService for TonServiceImpl {
         self.notify_token(&address.service_id, event.into()).await;
 
         Ok(transaction)
+    }
+
+    async fn get_metrics(&self) -> Result<Metrics, ServiceError> {
+        Ok(self.ton_api_client.get_metrics().await?)
     }
 }
 

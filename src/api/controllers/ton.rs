@@ -388,3 +388,13 @@ pub fn post_tokens_transactions_create(
     }
     .boxed()
 }
+
+pub fn get_metrics(ctx: Context) -> BoxFuture<'static, Result<impl warp::Reply, warp::Rejection>> {
+    async move {
+        let metrics = ctx.ton_service.get_metrics().await?;
+        let res = MetricsResponse::from(metrics);
+
+        Ok(warp::reply::json(&(res)))
+    }
+    .boxed()
+}

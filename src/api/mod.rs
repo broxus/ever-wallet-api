@@ -110,7 +110,8 @@ mod filters {
                     .or(get_tokens_transactions_mh(ctx.clone()))
                     .or(get_tokens_transactions_id(ctx.clone()))
                     .or(post_tokens_events(ctx.clone()))
-                    .or(post_tokens_events_mark(ctx)),
+                    .or(post_tokens_events_mark(ctx.clone()))
+                    .or(get_metrics(ctx)),
             )
             .boxed()
     }
@@ -330,6 +331,15 @@ mod filters {
             .and(auth_by_key(ctx.auth_service.clone()).untuple_one())
             .and(with_ctx(ctx))
             .and_then(controllers::post_tokens_events_mark)
+            .boxed()
+    }
+
+    pub fn get_metrics(ctx: Context) -> BoxedFilter<(impl warp::Reply,)> {
+        warp::path("metrics")
+            .and(warp::path::end())
+            .and(warp::get())
+            .and(with_ctx(ctx))
+            .and_then(controllers::get_metrics)
             .boxed()
     }
 
