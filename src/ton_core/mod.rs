@@ -98,6 +98,10 @@ impl TonCore {
         self.context
             .add_pending_message(account, message_hash, expire_at)
     }
+
+    pub fn current_utime(&self) -> u32 {
+        self.context.ton_subscriber.current_utime()
+    }
 }
 
 pub struct TonCoreContext {

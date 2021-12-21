@@ -90,6 +90,7 @@ pub trait TonClient: Send + Sync {
         message_hash: UInt256,
         expire_at: u32,
     ) -> Result<oneshot::Receiver<MessageStatus>>;
+    async fn get_metrics(&self) -> Result<Metrics>;
 }
 
 #[derive(Clone)]
@@ -676,6 +677,10 @@ impl TonClient for TonClientImpl {
     ) -> Result<oneshot::Receiver<MessageStatus>> {
         self.ton_core
             .add_pending_message(account, message_hash, expire_at)
+    }
+    async fn get_metrics(&self) -> Result<Metrics> {
+        let gen_utime = self.ton_core.current_utime();
+        Ok(Metrics { gen_utime })
     }
 }
 

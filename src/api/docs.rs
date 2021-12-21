@@ -265,6 +265,15 @@ pub fn swagger() -> String {
                     200: responses::MarkTokenEventsResponse,
                 }
             },
+            ("metrics"): {
+                GET: {
+                    tags: { metrics  },
+                    summary: "Get metrics",
+                    description: "Get metrics of api health.",
+                    parameters: { (header "api-key") },
+                    200: responses::MetricsResponse,
+                }
+            },
         }
     };
 
