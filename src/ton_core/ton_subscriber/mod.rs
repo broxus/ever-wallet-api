@@ -181,8 +181,9 @@ impl TonSubscriber {
 
         let mut states = FuturesUnordered::new();
 
+        let state_subscriptions = self.state_subscriptions.read();
+
         account_blocks.iterate_with_keys(|account, account_block| {
-            let state_subscriptions = self.state_subscriptions.read();
             match state_subscriptions.get(&account) {
                 Some(subscription) => {
                     match subscription.handle_block(
