@@ -8,7 +8,7 @@ use futures::StreamExt;
 use nekoton::core::models::TokenWalletVersion;
 use nekoton::transport::models::ExistingContract;
 use nekoton_utils::TrustMe;
-use parking_lot::{Mutex, RwLock};
+use parking_lot::{Mutex, RwLock, RwLockReadGuard};
 use tiny_adnl::utils::FxHashMap;
 
 use tokio::sync::Notify;
@@ -179,13 +179,11 @@ impl TonSubscriber {
         }
         drop(shards_accounts);
 
-        let states = FuturesUnordered::new();
-
-        let subscriptions = self.state_subscriptions.read();
-        let token_subscription = self.token_subscription.read();
+        let mut states = FuturesUnordered::new();
 
         account_blocks.iterate_with_keys(|account, account_block| {
-            match subscriptions.get(&account) {
+            let state_subscriptions = self.state_subscriptions.read();
+            match state_subscriptions.get(&account) {
                 Some(subscription) => {
                     match subscription.handle_block(
                         &self.messages_queue,
@@ -196,9 +194,7 @@ impl TonSubscriber {
                         block_hash,
                     ) {
                         Ok(rx_states) => {
-                            for state in rx_states {
-                                states.push(state);
-                            }
+                            states.extend(rx_states);
                         }
                         Err(e) => {
                             log::error!("Failed to handle block: {:?}", e);
@@ -206,9 +202,10 @@ impl TonSubscriber {
                     };
                 }
                 None => {
+                    let token_subscription = self.token_subscription.read();
                     if token_subscription.is_some() {
                         match token_subscription.as_ref().trust_me().handle_block(
-                            &self.state_subscriptions,
+                            &state_subscriptions,
                             &shard_accounts,
                             &block_info,
                             &account_block,
@@ -216,9 +213,7 @@ impl TonSubscriber {
                             block_hash,
                         ) {
                             Ok(rx_states) => {
-                                for state in rx_states {
-                                    states.push(state);
-                                }
+                                states.extend(rx_states);
                             }
                             Err(e) => {
                                 log::error!("Failed to handle block: {:?}", e);
@@ -396,7 +391,7 @@ struct TokenSubscription {
 impl TokenSubscription {
     fn handle_block(
         &self,
-        state_subscriptions: &RwLock<FxHashMap<UInt256, StateSubscription>>,
+        state_subscriptions: &RwLockReadGuard<FxHashMap<UInt256, StateSubscription>>,
         shard_accounts: &ton_block::ShardAccounts,
         block_info: &ton_block::BlockInfo,
         account_block: &ton_block::AccountBlock,
@@ -447,7 +442,7 @@ impl TokenSubscription {
                 let owner =
                     UInt256::from_be_bytes(&token_wallet.owner_address.address().get_bytestring(0));
 
-                if state_subscriptions.read().get(&owner).is_some() {
+                if state_subscriptions.get(&owner).is_some() {
                     let in_msg = match transaction
                         .in_msg
                         .as_ref()

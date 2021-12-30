@@ -130,7 +130,7 @@ impl TonCoreContext {
             .await
             .context("Failed to build node config")?;
 
-        let messages_queue = PendingMessagesQueue::new(1000);
+        let messages_queue = PendingMessagesQueue::new(512);
 
         let ton_subscriber = TonSubscriber::new(messages_queue.clone());
         let ton_engine = ton_indexer::Engine::new(

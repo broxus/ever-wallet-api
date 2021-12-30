@@ -7,19 +7,19 @@ publish = false
 license-file = "LICENSE"
 
 [dependencies]
-anyhow = "1.0.38"
+anyhow = "1.0"
 argh = "0.1"
 argon2 = "0.3.1"
 async-trait = "0.1"
-base64 = "*"
+base64 = "0.13"
 bigdecimal = { version = "0.2.0", features = ["serde"] }
 block-modes = "*"
-chacha20poly1305 = "0.9.0"
-chrono = { version = "*", features = ["serde"] }
+chacha20poly1305 = "0.9"
+chrono = "0.4.19"
 config = { version = "0.11", default-features = false, features = ["yaml"] }
 derive_more = "*"
-futures = { version = "0.3" }
-hex = "*"
+futures = "0.3"
+hex = "0.4"
 hmac = "0.11.0"
 http = "0.2"
 hyper = { version = "0.14" }
@@ -32,7 +32,7 @@ lru = "0.6.5"
 num-bigint = "0.3.2"
 num-traits = "0.2.14"
 opg = { version = "0.0", features = ["uuid"] }
-parking_lot = { version = "0.11.1", default_features = false }
+parking_lot = "0.11"
 pin-project = "0.4"
 public-ip = "0.2"
 rand = "0.8"
@@ -43,12 +43,12 @@ sentry = { version = "0.23.0", features = ["log", "debug-logs"] }
 sentry-panic = { version = "0.23.0" }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
-serde_yaml = "0.8.17"
+serde_yaml = "0.8"
 sha2 = "0.9"
 sqlx = { version = "0.5", features = ["runtime-tokio-native-tls", "postgres", "uuid", "bigdecimal", "offline", "chrono", "json"] }
-thiserror = "1.0.26"
-tokio = { version = "1", features = ["full"] }
-url = { version = "2.2.0", features = ["serde"] }
+thiserror = "1.0"
+tokio = { version = "1.6", features = ["sync", "fs", "rt-multi-thread", "macros", "signal", "parking_lot"] }
+url = { version = "2.2.2", features = ["serde"] }
 urlencoding = "2.1.0"
 uuid = { version = "0.8", features = ["v4", "serde"] }
 warp = { version = "0.3" }
