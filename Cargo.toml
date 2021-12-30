@@ -32,7 +32,7 @@ lru = "0.6.5"
 num-bigint = "0.3.2"
 num-traits = "0.2.14"
 opg = { version = "0.0", features = ["uuid"] }
-parking_lot = "0.11"
+parking_lot = { version = "0.11.1", default_features = false }
 pin-project = "0.4"
 public-ip = "0.2"
 rand = "0.8"
@@ -47,7 +47,7 @@ serde_yaml = "0.8.17"
 sha2 = "0.9"
 sqlx = { version = "0.5", features = ["runtime-tokio-native-tls", "postgres", "uuid", "bigdecimal", "offline", "chrono", "json"] }
 thiserror = "1.0.26"
-tokio = { version = "1.6", features = ["sync", "fs", "rt-multi-thread", "macros", "signal", "parking_lot"] }
+tokio = { version = "1", features = ["full"] }
 url = { version = "2.2.0", features = ["serde"] }
 urlencoding = "2.1.0"
 uuid = { version = "0.8", features = ["v4", "serde"] }
