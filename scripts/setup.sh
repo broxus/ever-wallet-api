@@ -103,7 +103,7 @@ else
   sudo cp -n "$SCRIPT_DIR/contrib/config.yaml" "$config_path"
 fi
 sudo wget -O /etc/ton-wallet-api/ton-global.config.json \
-  https://raw.githubusercontent.com/tonlabs/main.ton.dev/master/configs/main.ton.dev/ton-global.config.json
+  https://raw.githubusercontent.com/tonlabs/main.ton.dev/master/configs/ton-global.config.json
 
 echo 'INFO: restarting timesyncd'
 sudo systemctl restart systemd-timesyncd.service
