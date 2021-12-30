@@ -1759,7 +1759,7 @@ dependencies = [
 [[package]]
 name = "nekoton-utils"
 version = "0.9.0"
-source = "git+https://github.com/broxus/nekoton.git#d7897f9350f4306a0bdc2119c242ca6c3dcc1823"
+source = "git+https://github.com/broxus/nekoton.git#1c54cc64a2b4b266a9ba8b677fbf7542bc13bd2a"
 dependencies = [
  "anyhow",
  "base64",
@@ -3015,7 +3015,7 @@ dependencies = [
 [[package]]
 name = "tiny-adnl"
 version = "0.1.0"
-source = "git+https://github.com/broxus/tiny-adnl#00da331b9e4980011be5a413bdb89ba57abdee43"
+source = "git+https://github.com/broxus/tiny-adnl#9f133aac97e36a84bb5a781cb6e6c6358f928640"
 dependencies = [
  "aes",
  "anyhow",
@@ -3180,7 +3180,7 @@ dependencies = [
 [[package]]
 name = "ton-indexer"
 version = "0.1.0"
-source = "git+https://github.com/broxus/ton-indexer.git#1aebf6400c13c77cb3ea2ddcd89632f37d2cb472"
+source = "git+https://github.com/broxus/ton-indexer.git#9b71a159d232da3c03baa03651a9910e3d86b1b1"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -3223,7 +3223,7 @@ dependencies = [
 [[package]]
 name = "ton-indexer-alloc"
 version = "0.1.0"
-source = "git+https://github.com/broxus/ton-indexer.git#1aebf6400c13c77cb3ea2ddcd89632f37d2cb472"
+source = "git+https://github.com/broxus/ton-indexer.git#9b71a159d232da3c03baa03651a9910e3d86b1b1"
 dependencies = [
  "errno",
  "log",
@@ -3391,7 +3391,7 @@ dependencies = [
 [[package]]
 name = "ton_types"
 version = "1.10.2"
-source = "git+https://github.com/broxus/ton-labs-types#002e2eaffa29f5f7c3a829bfd70e8e7a90e4efde"
+source = "git+https://github.com/broxus/ton-labs-types#30fa2aa9abbb85e5fd781fe7248af670f3caba6c"
 dependencies = [
  "anyhow",
  "base64",
