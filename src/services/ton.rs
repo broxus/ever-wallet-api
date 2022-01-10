@@ -36,12 +36,12 @@ pub trait TonService: Send + Sync + 'static {
         address: Address,
     ) -> Result<AddressDb, ServiceError>;
     async fn create_send_transaction(
-        &self,
+        self: Arc<Self>,
         service_id: &ServiceId,
         input: TransactionSend,
     ) -> Result<TransactionDb, ServiceError>;
     async fn create_confirm_transaction(
-        &self,
+        self: Arc<Self>,
         service_id: &ServiceId,
         input: TransactionConfirm,
     ) -> Result<TransactionDb, ServiceError>;
@@ -122,7 +122,7 @@ pub trait TonService: Send + Sync + 'static {
         address: &Address,
     ) -> Result<Vec<(TokenBalanceFromDb, NetworkTokenAddressData)>, ServiceError>;
     async fn create_send_token_transaction(
-        &self,
+        self: Arc<Self>,
         service_id: &ServiceId,
         input: &TokenTransactionSend,
     ) -> Result<TransactionDb, ServiceError>;
@@ -242,127 +242,70 @@ impl TonServiceImpl {
         Ok(())
     }
 
-    async fn notify_token(&self, service_id: &ServiceId, payload: AccountTransactionEvent) {
-        if let Ok(url) = self.sqlx_client.get_callback(*service_id).await {
-            let secret = self
-                .sqlx_client
-                .get_key_by_service_id(service_id)
-                .await
-                .map(|k| k.secret)
-                .unwrap_or_default();
-            let event_status = match self
-                .callback_client
-                .send(url.clone(), payload.clone(), secret)
-                .await
-            {
-                Err(e) => {
-                    log::error!(
-                        "Error on callback sending to {} with payload: {:#?}- {}",
-                        url,
-                        payload,
-                        e
-                    );
-                    TonEventStatus::Error
-                }
-                Ok(_) => TonEventStatus::Notified,
-            };
-            if let Err(e) = self
-                .sqlx_client
-                .update_event_status_of_token_transaction_event(
-                    payload.message_hash.clone(),
-                    payload.account.workchain_id,
-                    payload.account.hex.0.clone(),
-                    event_status,
-                )
-                .await
-            {
-                log::error!("Error on update event status of token transaction event sending with payload: {:#?} , event status: {:#?} - {}", payload, event_status, e);
-            }
-        }
-    }
-
-    async fn notify(&self, service_id: &ServiceId, payload: AccountTransactionEvent) {
-        if let Ok(url) = self.sqlx_client.get_callback(*service_id).await {
-            let secret = self
-                .sqlx_client
-                .get_key_by_service_id(service_id)
-                .await
-                .map(|k| k.secret)
-                .unwrap_or_default();
-            let event_status = match self
-                .callback_client
-                .send(url.clone(), payload.clone(), secret)
-                .await
-            {
-                Err(e) => {
-                    log::error!(
-                        "Error on callback sending to {} with payload: {:#?} - {}",
-                        url,
-                        payload,
-                        e
-                    );
-                    TonEventStatus::Error
-                }
-                Ok(_) => TonEventStatus::Notified,
-            };
-            if let Err(e) = self
-                .sqlx_client
-                .update_event_status_of_transaction_event(
-                    payload.message_hash.clone(),
-                    payload.account.workchain_id,
-                    payload.account.hex.0.clone(),
-                    event_status,
-                )
-                .await
-            {
-                log::error!("Error on update event status of transaction event sending with payload: {:#?} , event status: {:#?} - {}", payload, event_status, e);
-            }
-        }
-    }
-
-    async fn send_transaction(
+    async fn notify(
         &self,
-        message_hash: String,
-        account_hex: String,
-        account_workchain_id: i32,
-        signed_message: SignedMessage,
-        non_blocking: bool,
-    ) -> Result<(), ServiceError> {
-        if non_blocking {
-            let ton_service = self.clone();
-            tokio::spawn(async move {
-                if let Err(err) = ton_service
-                    .send_transaction_helper(
-                        message_hash.clone(),
-                        account_hex.clone(),
-                        account_workchain_id,
-                        signed_message,
-                    )
-                    .await
-                {
+        service_id: &ServiceId,
+        payload: AccountTransactionEvent,
+        notify_type: NotifyType,
+    ) {
+        if let Ok(url) = self.sqlx_client.get_callback(*service_id).await {
+            let secret = self
+                .sqlx_client
+                .get_key_by_service_id(service_id)
+                .await
+                .map(|k| k.secret)
+                .unwrap_or_default();
+            let event_status = match self
+                .callback_client
+                .send(url.clone(), payload.clone(), secret)
+                .await
+            {
+                Err(e) => {
                     log::error!(
-                        "Failed to send transaction - {:?} (message_hash - {}, account {}:{})",
-                        err,
-                        message_hash,
-                        account_hex,
-                        account_workchain_id,
+                        "Error on callback sending to {} with payload: {:#?} - {:?}",
+                        url,
+                        payload,
+                        e
                     );
-                };
-            });
-            Ok(())
-        } else {
-            self.send_transaction_helper(
-                message_hash,
-                account_hex,
-                account_workchain_id,
-                signed_message,
-            )
-            .await
+                    TonEventStatus::Error
+                }
+                Ok(_) => TonEventStatus::Notified,
+            };
+            match notify_type {
+                NotifyType::Transaction => {
+                    if let Err(e) = self
+                        .sqlx_client
+                        .update_event_status_of_transaction_event(
+                            payload.message_hash.clone(),
+                            payload.account.workchain_id,
+                            payload.account.hex.0.clone(),
+                            event_status,
+                        )
+                        .await
+                    {
+                        log::error!("Error on update event status of transaction event sending with payload: {:#?} , event status: {:#?} - {:?}", payload, event_status, e);
+                    }
+                }
+                NotifyType::TokenTransaction => {
+                    if let Err(e) = self
+                        .sqlx_client
+                        .update_event_status_of_token_transaction_event(
+                            payload.message_hash.clone(),
+                            payload.account.workchain_id,
+                            payload.account.hex.0.clone(),
+                            event_status,
+                        )
+                        .await
+                    {
+                        log::error!("Error on update event status of token transaction event sending with payload: {:#?} , event status: {:#?} - {:?}", payload, event_status, e);
+                    }
+                }
+            }
         }
     }
 
     async fn send_transaction_helper(
-        &self,
+        self: &Arc<Self>,
         message_hash: String,
         account_hex: String,
         account_workchain_id: i32,
@@ -390,8 +333,41 @@ impl TonServiceImpl {
         Ok(())
     }
 
+    async fn send_transaction(
+        self: &Arc<Self>,
+        message_hash: String,
+        account_hex: String,
+        account_workchain_id: i32,
+        signed_message: SignedMessage,
+        non_blocking: bool,
+    ) -> Result<(), ServiceError> {
+        let res = if non_blocking {
+            let this = self.clone();
+            self.spawn_background_task("Send transaction", async move {
+                this.send_transaction_helper(
+                    message_hash.clone(),
+                    account_hex.clone(),
+                    account_workchain_id,
+                    signed_message,
+                )
+                .await
+            });
+            Ok(())
+        } else {
+            self.send_transaction_helper(
+                message_hash,
+                account_hex,
+                account_workchain_id,
+                signed_message,
+            )
+            .await
+        };
+
+        res
+    }
+
     async fn deploy_wallet(
-        &self,
+        self: &Arc<Self>,
         service_id: &ServiceId,
         address: &AddressDb,
         public_key: &[u8],
@@ -417,10 +393,23 @@ impl TonServiceImpl {
             )
             .await?;
 
-            self.notify(service_id, event.into()).await;
+            self.notify(service_id, event.into(), NotifyType::Transaction)
+                .await;
         }
 
         Ok(())
+    }
+
+    /// Waits future in background. In case of error does nothing but logging
+    fn spawn_background_task<F>(self: &Arc<Self>, name: &'static str, fut: F)
+    where
+        F: Future<Output = Result<(), ServiceError>> + Send + 'static,
+    {
+        tokio::spawn(async move {
+            if let Err(e) = fut.await {
+                log::error!("Failed to {}: {:?}", name, e);
+            }
+        });
     }
 }
 
@@ -501,7 +490,7 @@ impl TonService for TonServiceImpl {
     }
 
     async fn create_send_transaction(
-        &self,
+        self: Arc<Self>,
         service_id: &ServiceId,
         input: TransactionSend,
     ) -> Result<TransactionDb, ServiceError> {
@@ -584,13 +573,14 @@ impl TonService for TonServiceImpl {
         .await
         .trust_me();
 
-        self.notify(service_id, event.into()).await;
+        self.notify(service_id, event.into(), NotifyType::Transaction)
+            .await;
 
         Ok(transaction)
     }
 
     async fn create_confirm_transaction(
-        &self,
+        self: Arc<Self>,
         service_id: &ServiceId,
         input: TransactionConfirm,
     ) -> Result<TransactionDb, ServiceError> {
@@ -649,7 +639,8 @@ impl TonService for TonServiceImpl {
         .await
         .trust_me();
 
-        self.notify(service_id, event.into()).await;
+        self.notify(service_id, event.into(), NotifyType::Transaction)
+            .await;
 
         Ok(transaction)
     }
@@ -672,7 +663,8 @@ impl TonService for TonServiceImpl {
             .create_receive_transaction(input, address.service_id)
             .await?;
 
-        self.notify(&address.service_id, event.into()).await;
+        self.notify(&address.service_id, event.into(), NotifyType::Transaction)
+            .await;
 
         Ok(transaction)
     }
@@ -715,7 +707,8 @@ impl TonService for TonServiceImpl {
                 .await?
         };
 
-        self.notify(&address.service_id, event.into()).await;
+        self.notify(&address.service_id, event.into(), NotifyType::Transaction)
+            .await;
 
         Ok(transaction)
     }
@@ -890,7 +883,7 @@ impl TonService for TonServiceImpl {
     }
 
     async fn create_send_token_transaction(
-        &self,
+        self: Arc<Self>,
         service_id: &ServiceId,
         input: &TokenTransactionSend,
     ) -> Result<TransactionDb, ServiceError> {
@@ -1010,7 +1003,8 @@ impl TonService for TonServiceImpl {
         .await
         .trust_me();
 
-        self.notify(service_id, event.into()).await;
+        self.notify(service_id, event.into(), NotifyType::Transaction)
+            .await;
 
         Ok(transaction)
     }
@@ -1033,7 +1027,12 @@ impl TonService for TonServiceImpl {
             .create_token_transaction(input, address.service_id)
             .await?;
 
-        self.notify_token(&address.service_id, event.into()).await;
+        self.notify(
+            &address.service_id,
+            event.into(),
+            NotifyType::TokenTransaction,
+        )
+        .await;
 
         Ok(transaction)
     }
@@ -1041,6 +1040,11 @@ impl TonService for TonServiceImpl {
     async fn get_metrics(&self) -> Result<Metrics, ServiceError> {
         Ok(self.ton_api_client.get_metrics().await?)
     }
+}
+
+enum NotifyType {
+    Transaction,
+    TokenTransaction,
 }
 
 #[derive(Default)]

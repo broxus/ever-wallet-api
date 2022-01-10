@@ -98,8 +98,11 @@ impl TonSubscriber {
         T: TransactionsSubscription + 'static,
     {
         let mut token_subscription = self.token_subscription.write();
+
+        let weak = Arc::downgrade(subscription) as Weak<dyn TransactionsSubscription>;
+
         let _ = token_subscription.insert(TokenSubscription {
-            transaction_subscription: subscription.clone(),
+            transaction_subscription: weak.clone(),
         });
     }
 
@@ -386,7 +389,7 @@ impl StateSubscription {
 }
 
 struct TokenSubscription {
-    transaction_subscription: Arc<dyn TransactionsSubscription>,
+    transaction_subscription: Weak<dyn TransactionsSubscription>,
 }
 
 impl TokenSubscription {
@@ -465,20 +468,24 @@ impl TokenSubscription {
                         token_transaction: &Some(parsed),
                     };
 
-                    let (tx, rx) = oneshot::channel();
-                    match self.transaction_subscription.handle_transaction(ctx, tx) {
-                        Ok(_) => {
-                            states.push(rx);
-                        }
-                        Err(e) => {
-                            log::error!(
-                                "Failed to handle token transaction {} for account {}: {:?}",
-                                hash.to_hex_string(),
-                                account.to_hex_string(),
-                                e
-                            );
-                        }
-                    };
+                    if let Some(transaction_subscription) = self.transaction_subscription.upgrade()
+                    {
+                        let (tx, rx) = oneshot::channel();
+
+                        match transaction_subscription.handle_transaction(ctx, tx) {
+                            Ok(_) => {
+                                states.push(rx);
+                            }
+                            Err(e) => {
+                                log::error!(
+                                    "Failed to handle token transaction {} for account {}: {:?}",
+                                    hash.to_hex_string(),
+                                    account.to_hex_string(),
+                                    e
+                                );
+                            }
+                        };
+                    }
                 }
             }
         }
