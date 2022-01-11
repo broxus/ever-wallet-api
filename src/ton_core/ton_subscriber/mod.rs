@@ -180,12 +180,17 @@ impl TonSubscriber {
                 _ => {}
             }
         }
+
+        log::info!("Shards accounts: {}", shards_accounts.len());
+
         drop(shards_accounts);
 
         let mut states = FuturesUnordered::new();
 
         let state_subscriptions = self.state_subscriptions.read();
         let token_subscription = self.token_subscription.read();
+
+        log::info!("State subscriptions: {}", state_subscriptions.len());
 
         account_blocks.iterate_with_keys(|account, account_block| {
             match state_subscriptions.get(&account) {
