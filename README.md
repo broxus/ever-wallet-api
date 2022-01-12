@@ -3,7 +3,7 @@
 </p>
 
 ### Overview
-The wallet http api for telegram open network client.
+The wallet api for TON client.
 
 
 ### Runtime requirements

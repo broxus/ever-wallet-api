@@ -7,7 +7,6 @@ use futures::stream::FuturesUnordered;
 use futures::StreamExt;
 use nekoton::core::models::TokenWalletVersion;
 use nekoton::transport::models::ExistingContract;
-use nekoton_utils::TrustMe;
 use parking_lot::{Mutex, RwLock, RwLockReadGuard};
 use tiny_adnl::utils::FxHashMap;
 
@@ -180,17 +179,12 @@ impl TonSubscriber {
                 _ => {}
             }
         }
-
-        log::info!("Shards accounts: {}", shards_accounts.len());
-
         drop(shards_accounts);
 
         let mut states = FuturesUnordered::new();
 
         let state_subscriptions = self.state_subscriptions.read();
         let token_subscription = self.token_subscription.read();
-
-        log::info!("State subscriptions: {}", state_subscriptions.len());
 
         account_blocks.iterate_with_keys(|account, account_block| {
             match state_subscriptions.get(&account) {
@@ -204,7 +198,9 @@ impl TonSubscriber {
                         block_hash,
                     ) {
                         Ok(rx_states) => {
-                            states.extend(rx_states);
+                            if !rx_states.is_empty() {
+                                states.extend(rx_states);
+                            }
                         }
                         Err(e) => {
                             log::error!("Failed to handle block: {:?}", e);
@@ -212,8 +208,8 @@ impl TonSubscriber {
                     };
                 }
                 None => {
-                    if token_subscription.is_some() {
-                        match token_subscription.as_ref().trust_me().handle_block(
+                    if let Some(token_subscription) = token_subscription.as_ref() {
+                        match token_subscription.handle_block(
                             &state_subscriptions,
                             &shard_accounts,
                             &block_info,
@@ -222,7 +218,9 @@ impl TonSubscriber {
                             block_hash,
                         ) {
                             Ok(rx_states) => {
-                                states.extend(rx_states);
+                                if !rx_states.is_empty() {
+                                    states.extend(rx_states);
+                                }
                             }
                             Err(e) => {
                                 log::error!("Failed to handle block: {:?}", e);

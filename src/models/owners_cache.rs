@@ -58,8 +58,6 @@ impl OwnersCache {
         if let Err(e) = self.db.new_token_owner(&owner).await {
             log::error!("Failed inserting owner info: {}", e)
         }
-
-        log::info!("Owners cache: {}", self.cache.lock().len());
     }
 }
 
