@@ -20,7 +20,7 @@ async fn run(app: App) -> Result<()> {
     match app.command {
         Subcommand::Server(run) => {
             let mut config = config::Config::new();
-            config.merge(read_config(app.config).context("Failed to read config")?)?;
+            config.merge(read_config(&run.config).context("Failed to read config")?)?;
             config.merge(config::Environment::new())?;
 
             run.execute(config.try_into()?).await
@@ -35,10 +35,6 @@ async fn run(app: App) -> Result<()> {
 struct App {
     #[argh(subcommand)]
     command: Subcommand,
-
-    /// path to config file ('config.yaml' by default)
-    #[argh(option, short = 'c', default = "String::from(\"config.yaml\")")]
-    config: String,
 }
 
 #[derive(Debug, PartialEq, FromArgs)]
@@ -53,6 +49,10 @@ enum Subcommand {
 /// Starts relay node
 #[argh(subcommand, name = "server")]
 struct CmdServer {
+    /// path to config file ('config.yaml' by default)
+    #[argh(option, short = 'c', default = "String::from(\"config.yaml\")")]
+    config: String,
+
     /// path to global config file
     #[argh(option, short = 'g')]
     global_config: String,
