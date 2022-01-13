@@ -5,7 +5,7 @@ db_pool_size: 5
 ton_core:
   adnl_port: 30310
   db_path: "/var/ton/ton-wallet-api/data"
-  keys_path: "/var/ton/ton-wallet-api/data/adnl-keys.json"
+  keys_path: "/var/ton/ton-wallet-api/adnl-keys.json"
 metrics_settings:
   listen_address: "0.0.0.0:10000"
   metrics_path: "/"
