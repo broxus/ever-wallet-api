@@ -1052,7 +1052,7 @@ checksum = "9b919933a397b79c37e33b77bb2aa3dc8eb6e165ad809e58ff75bc7db2e34574"
 [[package]]
 name = "global-config"
 version = "0.1.0"
-source = "git+https://github.com/broxus/ton-indexer.git#f32102ee2f78b043d53c06b73ef67ec445601b2f"
+source = "git+https://github.com/broxus/ton-indexer.git#9d19a958b36f97a5fe37478bac2cc268c0832a68"
 dependencies = [
  "anyhow",
  "base64",
@@ -1683,7 +1683,7 @@ dependencies = [
 [[package]]
 name = "nekoton"
 version = "0.9.0"
-source = "git+https://github.com/broxus/nekoton.git#975b38b92f5c0d63e3fb3fd0d829d0b9f4895cf6"
+source = "git+https://github.com/broxus/nekoton.git#b7d7b524a7a3cdf3cb20f6157b26c862bc6d2ec9"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -1726,7 +1726,7 @@ dependencies = [
 [[package]]
 name = "nekoton-abi"
 version = "0.9.0"
-source = "git+https://github.com/broxus/nekoton.git#975b38b92f5c0d63e3fb3fd0d829d0b9f4895cf6"
+source = "git+https://github.com/broxus/nekoton.git#b7d7b524a7a3cdf3cb20f6157b26c862bc6d2ec9"
 dependencies = [
  "anyhow",
  "base64",
@@ -1752,7 +1752,7 @@ dependencies = [
 [[package]]
 name = "nekoton-contracts"
 version = "0.9.0"
-source = "git+https://github.com/broxus/nekoton.git#975b38b92f5c0d63e3fb3fd0d829d0b9f4895cf6"
+source = "git+https://github.com/broxus/nekoton.git#b7d7b524a7a3cdf3cb20f6157b26c862bc6d2ec9"
 dependencies = [
  "once_cell",
  "ton_abi",
@@ -1762,7 +1762,7 @@ dependencies = [
 [[package]]
 name = "nekoton-derive"
 version = "0.9.0"
-source = "git+https://github.com/broxus/nekoton.git#975b38b92f5c0d63e3fb3fd0d829d0b9f4895cf6"
+source = "git+https://github.com/broxus/nekoton.git#b7d7b524a7a3cdf3cb20f6157b26c862bc6d2ec9"
 dependencies = [
  "either",
  "proc-macro2",
@@ -1773,7 +1773,7 @@ dependencies = [
 [[package]]
 name = "nekoton-utils"
 version = "0.9.0"
-source = "git+https://github.com/broxus/nekoton.git#975b38b92f5c0d63e3fb3fd0d829d0b9f4895cf6"
+source = "git+https://github.com/broxus/nekoton.git#b7d7b524a7a3cdf3cb20f6157b26c862bc6d2ec9"
 dependencies = [
  "anyhow",
  "base64",
@@ -2064,6 +2064,12 @@ dependencies = [
  "rand_core",
  "subtle",
 ]
+
+[[package]]
+name = "paste"
+version = "1.0.6"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0744126afe1a6dd7f394cb50a716dbe086cb06e255e53d8d0185d82828358fb5"
 
 [[package]]
 name = "pbkdf2"
@@ -2976,6 +2982,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "tikv-jemalloc-ctl"
+version = "0.4.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "eb833c46ecbf8b6daeccb347cefcabf9c1beb5c9b0f853e1cec45632d9963e69"
+dependencies = [
+ "libc",
+ "paste",
+ "tikv-jemalloc-sys",
+]
+
+[[package]]
 name = "tikv-jemalloc-sys"
 version = "0.4.2+5.2.1-patched.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3010,7 +3027,7 @@ dependencies = [
 [[package]]
 name = "tiny-adnl"
 version = "0.1.0"
-source = "git+https://github.com/broxus/tiny-adnl#9f133aac97e36a84bb5a781cb6e6c6358f928640"
+source = "git+https://github.com/broxus/tiny-adnl#b0a22eb2b7398545a3a965373610a1c6606d051b"
 dependencies = [
  "aes",
  "anyhow",
@@ -3172,7 +3189,7 @@ dependencies = [
 [[package]]
 name = "ton-indexer"
 version = "0.1.0"
-source = "git+https://github.com/broxus/ton-indexer.git#f32102ee2f78b043d53c06b73ef67ec445601b2f"
+source = "git+https://github.com/broxus/ton-indexer.git#9d19a958b36f97a5fe37478bac2cc268c0832a68"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -3215,10 +3232,11 @@ dependencies = [
 [[package]]
 name = "ton-indexer-alloc"
 version = "0.1.0"
-source = "git+https://github.com/broxus/ton-indexer.git#f32102ee2f78b043d53c06b73ef67ec445601b2f"
+source = "git+https://github.com/broxus/ton-indexer.git#9d19a958b36f97a5fe37478bac2cc268c0832a68"
 dependencies = [
  "errno",
  "log",
+ "tikv-jemalloc-ctl",
  "tikv-jemalloc-sys",
  "tikv-jemallocator",
 ]
@@ -3311,7 +3329,7 @@ dependencies = [
 [[package]]
 name = "ton_api"
 version = "0.0.1"
-source = "git+https://github.com/broxus/ton-labs-tl.git#0698a6580b88710c431c30002c7b31783d7c3670"
+source = "git+https://github.com/broxus/ton-labs-tl.git#9adcd3c177524876a65dae04556aca34d4bd6426"
 dependencies = [
  "anyhow",
  "byteorder",
@@ -3370,7 +3388,7 @@ dependencies = [
 [[package]]
 name = "ton_tl_codegen"
 version = "0.0.1"
-source = "git+https://github.com/broxus/ton-labs-tl.git#0698a6580b88710c431c30002c7b31783d7c3670"
+source = "git+https://github.com/broxus/ton-labs-tl.git#9adcd3c177524876a65dae04556aca34d4bd6426"
 dependencies = [
  "anyhow",
  "crc 1.8.1",
