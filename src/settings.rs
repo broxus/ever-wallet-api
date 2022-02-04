@@ -22,7 +22,8 @@ pub struct AppConfig {
     /// Postgres connection pools.
     pub db_pool_size: u32,
 
-    ///
+    /// Key to encrypt/decrypt
+    /// accounts private key in db
     #[serde(default = "default_key")]
     pub key: Vec<u8>,
 

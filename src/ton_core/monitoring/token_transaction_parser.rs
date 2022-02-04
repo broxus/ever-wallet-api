@@ -265,11 +265,13 @@ async fn get_token_wallet_info(
 ) -> Result<OwnerInfo> {
     let res = match parse_ctx.owners_cache.get(contract_address).await {
         None => {
-            let (wallet, hash) = get_token_wallet_details(contract_address, shard_accounts)?;
+            let (wallet, version, hash) =
+                get_token_wallet_details(contract_address, shard_accounts)?;
             let info = OwnerInfo {
                 owner_address: wallet.owner_address,
                 root_address: wallet.root_address,
                 code_hash: hash.to_vec(),
+                version,
             };
 
             let _check_root_address = parse_ctx

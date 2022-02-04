@@ -1,7 +1,4 @@
 use nekoton_abi::LastTransactionId;
-use ton_block::AccountState;
-
-use crate::models::*;
 
 pub fn parse_last_transaction(
     last_transaction: &LastTransactionId,
@@ -15,12 +12,4 @@ pub fn parse_last_transaction(
     };
 
     (last_transaction_hash, last_transaction_lt)
-}
-
-pub fn transform_account_state(account_state: &AccountState) -> AccountStatus {
-    match account_state {
-        AccountState::AccountUninit => AccountStatus::UnInit,
-        AccountState::AccountActive { .. } => AccountStatus::Active,
-        AccountState::AccountFrozen { .. } => AccountStatus::Frozen,
-    }
 }

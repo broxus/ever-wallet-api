@@ -158,6 +158,7 @@ pub struct TokenOwnerFromDb {
     pub root_address: String,
     pub code_hash: Vec<u8>,
     pub created_at: NaiveDateTime,
+    pub version: TokenWalletVersionDb,
 }
 
 #[derive(Clone, Debug, serde::Serialize, serde::Deserialize, Eq, PartialEq)]

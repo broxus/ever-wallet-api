@@ -432,11 +432,18 @@ impl TokenSubscription {
                 _ => continue,
             };
 
-            let parsed_token_transaction = nekoton::core::parsing::parse_token_transaction(
+            let parsed_token_transaction = match nekoton::core::parsing::parse_token_transaction(
                 &transaction,
                 &transaction_info,
-                TokenWalletVersion::Tip3v4,
-            );
+                TokenWalletVersion::Tip3,
+            ) {
+                Some(parsed_token_transaction) => Some(parsed_token_transaction),
+                None => nekoton::core::parsing::parse_token_transaction(
+                    &transaction,
+                    &transaction_info,
+                    TokenWalletVersion::OldTip3v4,
+                ),
+            };
 
             if let Some(parsed) = parsed_token_transaction {
                 let address = MsgAddressInt::with_standart(
@@ -445,7 +452,7 @@ impl TokenSubscription {
                     ton_types::AccountId::from(account),
                 )?;
 
-                let (token_wallet, _) = get_token_wallet_details(&address, shard_accounts)?;
+                let (token_wallet, _, _) = get_token_wallet_details(&address, shard_accounts)?;
                 let owner =
                     UInt256::from_be_bytes(&token_wallet.owner_address.address().get_bytestring(0));
 

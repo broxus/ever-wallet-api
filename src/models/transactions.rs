@@ -12,6 +12,55 @@ pub struct TransactionSend {
     pub bounce: Option<bool>,
 }
 
+#[derive(Clone, Debug, serde::Serialize, serde::Deserialize, Eq, PartialEq)]
+pub struct CreateReceiveTransaction {
+    pub id: Uuid,
+    pub message_hash: String,
+    pub transaction_hash: Option<String>,
+    pub transaction_lt: Option<BigDecimal>,
+    pub transaction_timeout: Option<i64>,
+    pub transaction_scan_lt: Option<i64>,
+    pub transaction_timestamp: u32,
+    pub sender_workchain_id: Option<i32>,
+    pub sender_hex: Option<String>,
+    pub account_workchain_id: i32,
+    pub account_hex: String,
+    pub messages: Option<serde_json::Value>,
+    pub messages_hash: Option<serde_json::Value>,
+    pub data: Option<serde_json::Value>,
+    pub original_value: Option<BigDecimal>,
+    pub original_outputs: Option<serde_json::Value>,
+    pub value: Option<BigDecimal>,
+    pub fee: Option<BigDecimal>,
+    pub balance_change: Option<BigDecimal>,
+    pub direction: TonTransactionDirection,
+    pub status: TonTransactionStatus,
+    pub error: Option<String>,
+    pub aborted: bool,
+    pub bounce: bool,
+    pub multisig_transaction_id: Option<i64>,
+}
+
+#[derive(Debug, Deserialize, Serialize, Clone)]
+pub struct TransactionConfirm {
+    pub id: Uuid,
+    pub address: Address,
+    pub transaction_id: u64,
+}
+
+/*#[derive(Debug, Deserialize, Serialize, Clone)]
+pub struct TokenTransactionSend {
+    pub id: uuid::Uuid,
+    pub owner: MsgAddressInt,
+    pub token_wallet: MsgAddressInt,
+    pub version: TokenWalletVersion,
+    pub destination: TransferRecipient,
+    pub send_gas_to: MsgAddressInt,
+    pub tokens: BigDecimal,
+    pub notify_receiver: bool,
+    pub attached_amount: u64,
+}*/
+
 #[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct TransactionSendOutput {
     pub recipient_address: Address,
@@ -32,6 +81,24 @@ pub struct CreateSendTransaction {
     pub status: TonTransactionStatus,
     pub aborted: bool,
     pub bounce: bool,
+}
+
+impl CreateSendTransaction {
+    pub fn new(s: SentTransaction, service_id: ServiceId) -> Self {
+        Self {
+            id: s.id,
+            service_id,
+            message_hash: s.message_hash,
+            account_workchain_id: s.account_workchain_id,
+            account_hex: s.account_hex,
+            original_value: s.original_value,
+            original_outputs: s.original_outputs,
+            direction: TonTransactionDirection::Send,
+            status: TonTransactionStatus::New,
+            aborted: s.aborted,
+            bounce: s.bounce,
+        }
+    }
 }
 
 #[derive(Clone, Debug, serde::Serialize, serde::Deserialize, Eq, PartialEq)]
@@ -83,35 +150,6 @@ pub struct UpdateSentTransaction {
     pub input: UpdateSendTransaction,
 }
 
-#[derive(Clone, Debug, serde::Serialize, serde::Deserialize, Eq, PartialEq)]
-pub struct CreateReceiveTransaction {
-    pub id: Uuid,
-    pub message_hash: String,
-    pub transaction_hash: Option<String>,
-    pub transaction_lt: Option<BigDecimal>,
-    pub transaction_timeout: Option<i64>,
-    pub transaction_scan_lt: Option<i64>,
-    pub transaction_timestamp: u32,
-    pub sender_workchain_id: Option<i32>,
-    pub sender_hex: Option<String>,
-    pub account_workchain_id: i32,
-    pub account_hex: String,
-    pub messages: Option<serde_json::Value>,
-    pub messages_hash: Option<serde_json::Value>,
-    pub data: Option<serde_json::Value>,
-    pub original_value: Option<BigDecimal>,
-    pub original_outputs: Option<serde_json::Value>,
-    pub value: Option<BigDecimal>,
-    pub fee: Option<BigDecimal>,
-    pub balance_change: Option<BigDecimal>,
-    pub direction: TonTransactionDirection,
-    pub status: TonTransactionStatus,
-    pub error: Option<String>,
-    pub aborted: bool,
-    pub bounce: bool,
-    pub multisig_transaction_id: Option<i64>,
-}
-
 #[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
 pub struct TransactionsSearch {
     pub id: Option<Uuid>,
@@ -127,9 +165,14 @@ pub struct TransactionsSearch {
     pub offset: i64,
 }
 
-#[derive(Debug, Deserialize, Serialize, Clone)]
-pub struct TransactionConfirm {
+#[derive(Clone, Debug, serde::Serialize, serde::Deserialize, Eq, PartialEq)]
+pub struct SentTransaction {
     pub id: Uuid,
-    pub address: Address,
-    pub transaction_id: u64,
+    pub message_hash: String,
+    pub account_workchain_id: i32,
+    pub account_hex: String,
+    pub original_value: Option<BigDecimal>,
+    pub original_outputs: Option<serde_json::Value>,
+    pub aborted: bool,
+    pub bounce: bool,
 }

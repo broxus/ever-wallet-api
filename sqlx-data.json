@@ -714,54 +714,6 @@
       ]
     }
   },
-  "07f3c48962bba0b104bab7c9491243292d8a91b5b6383ad2ac43515eca86f864": {
-    "query": "SELECT address, owner_account_workchain_id, owner_account_hex, root_address, code_hash, created_at\n            FROM token_owners ",
-    "describe": {
-      "columns": [
-        {
-          "ordinal": 0,
-          "name": "address",
-          "type_info": "Varchar"
-        },
-        {
-          "ordinal": 1,
-          "name": "owner_account_workchain_id",
-          "type_info": "Int4"
-        },
-        {
-          "ordinal": 2,
-          "name": "owner_account_hex",
-          "type_info": "Varchar"
-        },
-        {
-          "ordinal": 3,
-          "name": "root_address",
-          "type_info": "Varchar"
-        },
-        {
-          "ordinal": 4,
-          "name": "code_hash",
-          "type_info": "Bytea"
-        },
-        {
-          "ordinal": 5,
-          "name": "created_at",
-          "type_info": "Timestamp"
-        }
-      ],
-      "parameters": {
-        "Left": []
-      },
-      "nullable": [
-        false,
-        false,
-        false,
-        false,
-        false,
-        false
-      ]
-    }
-  },
   "091fd0c15e1a898226e63188b8f16353b7965c7f26068299d9254057191fe3f6": {
     "query": "INSERT INTO api_service\n                (id, name)\n                VALUES ($1, $2)\n                RETURNING\n                id as \"id: _\", name, created_at",
     "describe": {
@@ -870,56 +822,6 @@
       },
       "nullable": [
         false,
-        false,
-        false,
-        false,
-        false,
-        false,
-        false
-      ]
-    }
-  },
-  "11bab8c019a8880cd011a05ca4c2de99fe383cf44b2c91cd7c17fffa9b728c23": {
-    "query": "SELECT address, owner_account_workchain_id, owner_account_hex, root_address, code_hash, created_at\n            FROM token_owners\n            WHERE address = $1",
-    "describe": {
-      "columns": [
-        {
-          "ordinal": 0,
-          "name": "address",
-          "type_info": "Varchar"
-        },
-        {
-          "ordinal": 1,
-          "name": "owner_account_workchain_id",
-          "type_info": "Int4"
-        },
-        {
-          "ordinal": 2,
-          "name": "owner_account_hex",
-          "type_info": "Varchar"
-        },
-        {
-          "ordinal": 3,
-          "name": "root_address",
-          "type_info": "Varchar"
-        },
-        {
-          "ordinal": 4,
-          "name": "code_hash",
-          "type_info": "Bytea"
-        },
-        {
-          "ordinal": 5,
-          "name": "created_at",
-          "type_info": "Timestamp"
-        }
-      ],
-      "parameters": {
-        "Left": [
-          "Text"
-        ]
-      },
-      "nullable": [
         false,
         false,
         false,
@@ -1070,6 +972,33 @@
         false,
         false
       ]
+    }
+  },
+  "1a40bb0bbfb663962fee164dd62d2fec1bfd6be6f60ba95d44426cc6c1ec3480": {
+    "query": "INSERT INTO token_owners (address, owner_account_workchain_id, owner_account_hex, root_address, code_hash, version)\n            VALUES ($1, $2, $3, $4, $5, $6::twa_token_wallet_version)\n            ON CONFLICT DO NOTHING",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": [
+          "Varchar",
+          "Int4",
+          "Varchar",
+          "Varchar",
+          "Bytea",
+          {
+            "Custom": {
+              "name": "twa_token_wallet_version",
+              "kind": {
+                "Enum": [
+                  "OldTip3v4",
+                  "Tip3"
+                ]
+              }
+            }
+          }
+        ]
+      },
+      "nullable": []
     }
   },
   "20466082ed454f972beb4fe446245f7bb02990e10dee2441d8e23c56cc9fdce3": {
@@ -1275,22 +1204,6 @@
         false,
         false
       ]
-    }
-  },
-  "271f5fcb3fc356619aca727bb852514d54f152a79ebed65ab6571425a506ee9e": {
-    "query": "INSERT INTO token_owners (address, owner_account_workchain_id, owner_account_hex, root_address, code_hash)\n            VALUES ($1, $2, $3, $4, $5)\n            ON CONFLICT DO NOTHING",
-    "describe": {
-      "columns": [],
-      "parameters": {
-        "Left": [
-          "Varchar",
-          "Int4",
-          "Varchar",
-          "Varchar",
-          "Bytea"
-        ]
-      },
-      "nullable": []
     }
   },
   "27ec1b71965fd4cd802b893defca3254e33a45be5263e7bd0b169f138c1db27d": {
@@ -3305,6 +3218,70 @@
       ]
     }
   },
+  "74d26929cd254f8ca6a66a60de4dca95ea6b355bdb3e04e03444f6f014555e67": {
+    "query": "SELECT address, owner_account_workchain_id, owner_account_hex, root_address, code_hash, created_at, version as \"version: _\"\n            FROM token_owners ",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "address",
+          "type_info": "Varchar"
+        },
+        {
+          "ordinal": 1,
+          "name": "owner_account_workchain_id",
+          "type_info": "Int4"
+        },
+        {
+          "ordinal": 2,
+          "name": "owner_account_hex",
+          "type_info": "Varchar"
+        },
+        {
+          "ordinal": 3,
+          "name": "root_address",
+          "type_info": "Varchar"
+        },
+        {
+          "ordinal": 4,
+          "name": "code_hash",
+          "type_info": "Bytea"
+        },
+        {
+          "ordinal": 5,
+          "name": "created_at",
+          "type_info": "Timestamp"
+        },
+        {
+          "ordinal": 6,
+          "name": "version: _",
+          "type_info": {
+            "Custom": {
+              "name": "twa_token_wallet_version",
+              "kind": {
+                "Enum": [
+                  "OldTip3v4",
+                  "Tip3"
+                ]
+              }
+            }
+          }
+        }
+      ],
+      "parameters": {
+        "Left": []
+      },
+      "nullable": [
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false
+      ]
+    }
+  },
   "8e514a22c32ded56adca4d8486c8a844279036388af6b0bfb754fdb6651fdf3e": {
     "query": "\n            SELECT id,\n                service_id as \"service_id: _\",\n                transaction_id,\n                message_hash,\n                account_workchain_id,\n                account_hex,\n                sender_workchain_id,\n                sender_hex,\n                balance_change,\n                transaction_direction as \"transaction_direction: _\",\n                transaction_status as \"transaction_status: _\",\n                event_status as \"event_status: _\",\n                multisig_transaction_id,\n                created_at,\n                updated_at\n            FROM transaction_events\n            WHERE service_id = $1 AND id = $2",
     "describe": {
@@ -3780,6 +3757,72 @@
         true,
         true,
         true,
+        false,
+        false,
+        false
+      ]
+    }
+  },
+  "98b635d34705dfa730dd754f788a7e65651477cba1d39668db2027fe34778115": {
+    "query": "SELECT address, owner_account_workchain_id, owner_account_hex, root_address, code_hash, created_at, version as \"version: _\"\n            FROM token_owners\n            WHERE address = $1",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "address",
+          "type_info": "Varchar"
+        },
+        {
+          "ordinal": 1,
+          "name": "owner_account_workchain_id",
+          "type_info": "Int4"
+        },
+        {
+          "ordinal": 2,
+          "name": "owner_account_hex",
+          "type_info": "Varchar"
+        },
+        {
+          "ordinal": 3,
+          "name": "root_address",
+          "type_info": "Varchar"
+        },
+        {
+          "ordinal": 4,
+          "name": "code_hash",
+          "type_info": "Bytea"
+        },
+        {
+          "ordinal": 5,
+          "name": "created_at",
+          "type_info": "Timestamp"
+        },
+        {
+          "ordinal": 6,
+          "name": "version: _",
+          "type_info": {
+            "Custom": {
+              "name": "twa_token_wallet_version",
+              "kind": {
+                "Enum": [
+                  "OldTip3v4",
+                  "Tip3"
+                ]
+              }
+            }
+          }
+        }
+      ],
+      "parameters": {
+        "Left": [
+          "Text"
+        ]
+      },
+      "nullable": [
+        false,
+        false,
+        false,
+        false,
         false,
         false,
         false
@@ -5798,8 +5841,8 @@
       ]
     }
   },
-  "f54b4106e3a7963830e86e3f1aa0db268a8863de8006a7872d49696d47d1bf60": {
-    "query": "SELECT address, owner_account_workchain_id, owner_account_hex, root_address, code_hash, created_at\n            FROM token_owners\n            WHERE owner_account_workchain_id = $1 AND owner_account_hex = $2 AND root_address = $3",
+  "f5eb1778f8d89e57ae3320cd1595de9825a42d9642374494b2795d080897b2ef": {
+    "query": "SELECT address, owner_account_workchain_id, owner_account_hex, root_address, code_hash, created_at, version as \"version: _\"\n            FROM token_owners\n            WHERE owner_account_workchain_id = $1 AND owner_account_hex = $2 AND root_address = $3",
     "describe": {
       "columns": [
         {
@@ -5831,6 +5874,21 @@
           "ordinal": 5,
           "name": "created_at",
           "type_info": "Timestamp"
+        },
+        {
+          "ordinal": 6,
+          "name": "version: _",
+          "type_info": {
+            "Custom": {
+              "name": "twa_token_wallet_version",
+              "kind": {
+                "Enum": [
+                  "OldTip3v4",
+                  "Tip3"
+                ]
+              }
+            }
+          }
         }
       ],
       "parameters": {
@@ -5841,6 +5899,7 @@
         ]
       },
       "nullable": [
+        false,
         false,
         false,
         false,

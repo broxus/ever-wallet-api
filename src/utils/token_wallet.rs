@@ -1,11 +1,14 @@
 use anyhow::Result;
 use bigdecimal::BigDecimal;
-use nekoton::core::models::*;
-use nekoton::core::token_wallet::*;
-use nekoton::core::*;
-use nekoton::transport::models::*;
-use nekoton_abi::*;
-use nekoton_utils::*;
+use nekoton::core::models::{
+    RootTokenContractDetails, TokenWalletDetails, TokenWalletVersion, TransferRecipient,
+};
+use nekoton::core::token_wallet::{RootTokenContractState, TokenWalletContractState};
+use nekoton::core::InternalMessage;
+use nekoton::transport::models::ExistingContract;
+use nekoton_abi::{BigUint128, BigUint256, MessageBuilder};
+use nekoton_contracts::{old_tip3, tip3_1};
+use nekoton_utils::SimpleClock;
 use num_bigint::BigUint;
 use ton_block::MsgAddressInt;
 use ton_types::UInt256;
@@ -25,33 +28,52 @@ pub fn prepare_token_transfer(
     attached_amount: u64,
     payload: ton_types::Cell,
 ) -> Result<InternalMessage> {
-    let contract = select_token_contract(version)?;
-
-    let (function, input) = match destination {
-        TransferRecipient::TokenWallet(token_wallet) => {
-            MessageBuilder::new(contract, "transfer")
-                .trust_me()
-                .arg(token_wallet) // to
-                .arg(BigUint128(tokens)) // tokens
+    let (function, input) = match version {
+        TokenWalletVersion::OldTip3v4 => {
+            use old_tip3::token_wallet_contract;
+            match destination {
+                TransferRecipient::TokenWallet(token_wallet) => {
+                    MessageBuilder::new(token_wallet_contract::transfer())
+                        .arg(token_wallet) // to
+                        .arg(BigUint128(tokens)) // tokens
+                }
+                TransferRecipient::OwnerWallet(owner_wallet) => {
+                    MessageBuilder::new(token_wallet_contract::transfer_to_recipient())
+                        .arg(BigUint256(Default::default())) // recipient_public_key
+                        .arg(owner_wallet) // recipient_address
+                        .arg(BigUint128(tokens)) // tokens
+                        .arg(BigUint128(INITIAL_BALANCE.into())) // deploy_grams
+                }
+            }
+            .arg(BigUint128(Default::default())) // grams / transfer_grams
+            .arg(&send_gas_to) // send_gas_to
+            .arg(notify_receiver) // notify_receiver
+            .arg(payload) // payload
+            .build()
         }
-        TransferRecipient::OwnerWallet(owner_wallet) => {
-            MessageBuilder::new(contract, "transferToRecipient")
-                .trust_me()
-                .arg(BigUint256(Default::default())) // recipient_public_key
-                .arg(owner_wallet) // recipient_address
-                .arg(BigUint128(tokens)) // tokens
-                .arg(BigUint128(INITIAL_BALANCE.into())) // deploy_grams
+        TokenWalletVersion::Tip3 => {
+            use tip3_1::token_wallet_contract;
+            match destination {
+                TransferRecipient::TokenWallet(token_wallet) => {
+                    MessageBuilder::new(token_wallet_contract::transfer_to_wallet())
+                        .arg(BigUint128(tokens)) // amount
+                        .arg(token_wallet) // recipient token wallet
+                }
+                TransferRecipient::OwnerWallet(owner_wallet) => {
+                    MessageBuilder::new(token_wallet_contract::transfer())
+                        .arg(BigUint128(tokens)) // amount
+                        .arg(owner_wallet) // recipient
+                        .arg(BigUint128(INITIAL_BALANCE.into())) // deployWalletValue
+                }
+            }
+            .arg(&send_gas_to) // remainingGasTo
+            .arg(notify_receiver) // notify
+            .arg(payload) // payload
+            .build()
         }
-    }
-    .arg(BigUint128(Default::default())) // grams / transfer_grams
-    .arg(&send_gas_to) // send_gas_to
-    .arg(notify_receiver) // notify_receiver
-    .arg(payload) // payload
-    .build();
+    };
 
-    let body = function
-        .encode_input(&Default::default(), &input, true, None)?
-        .into();
+    let body = function.encode_internal_input(&input)?.into();
 
     Ok(InternalMessage {
         source: Some(owner),
@@ -68,9 +90,9 @@ pub fn get_token_wallet_address(
 ) -> Result<MsgAddressInt> {
     let root_contract_state = RootTokenContractState(root_contract);
     let RootTokenContractDetails { version, .. } =
-        root_contract_state.guess_details(&nekoton_utils::SimpleClock)?;
+        root_contract_state.guess_details(&SimpleClock)?;
 
-    root_contract_state.get_wallet_address(&nekoton_utils::SimpleClock, version, owner, None)
+    root_contract_state.get_wallet_address(&SimpleClock, version, owner)
 }
 
 pub fn get_token_wallet_account(
@@ -79,14 +101,10 @@ pub fn get_token_wallet_account(
 ) -> Result<UInt256> {
     let root_contract_state = RootTokenContractState(root_contract);
     let RootTokenContractDetails { version, .. } =
-        root_contract_state.guess_details(&nekoton_utils::SimpleClock)?;
+        root_contract_state.guess_details(&SimpleClock)?;
 
-    let token_wallet_address = root_contract_state.get_wallet_address(
-        &nekoton_utils::SimpleClock,
-        version,
-        owner,
-        None,
-    )?;
+    let token_wallet_address =
+        root_contract_state.get_wallet_address(&SimpleClock, version, owner)?;
     let token_wallet_account =
         UInt256::from_be_bytes(&token_wallet_address.address().get_bytestring(0));
 
@@ -98,10 +116,10 @@ pub fn get_token_wallet_basic_info(
 ) -> Result<(TokenWalletVersion, BigDecimal)> {
     let token_wallet_state = TokenWalletContractState(token_contract);
 
-    let version = token_wallet_state.get_version(&nekoton_utils::SimpleClock)?;
+    let version = token_wallet_state.get_version(&SimpleClock)?;
     let balance = BigDecimal::new(
         token_wallet_state
-            .get_balance(&nekoton_utils::SimpleClock, version)?
+            .get_balance(&SimpleClock, version)?
             .into(),
         0,
     );
@@ -112,7 +130,7 @@ pub fn get_token_wallet_basic_info(
 pub fn get_token_wallet_details(
     address: &MsgAddressInt,
     shard_accounts: &ton_block::ShardAccounts,
-) -> Result<(TokenWalletDetails, [u8; 32])> {
+) -> Result<(TokenWalletDetails, TokenWalletVersion, [u8; 32])> {
     let account = UInt256::from_be_bytes(&address.address().get_bytestring(0));
     let state = shard_accounts
         .find_account(&account)?
@@ -120,15 +138,9 @@ pub fn get_token_wallet_details(
 
     let state = nekoton::core::token_wallet::TokenWalletContractState(&state);
     let hash = *state.get_code_hash()?.as_slice();
-    let version = state.get_version(&nekoton_utils::SimpleClock)?;
-    let details = state.get_details(&nekoton_utils::SimpleClock, version)?;
-    Ok((details, hash))
-}
-
-fn select_token_contract(version: TokenWalletVersion) -> Result<&'static ton_abi::Contract> {
-    Ok(match version {
-        TokenWalletVersion::Tip3v4 => nekoton_contracts::abi::ton_token_wallet_v4(),
-    })
+    let version = state.get_version(&SimpleClock)?;
+    let details = state.get_details(&SimpleClock, version)?;
+    Ok((details, version, hash))
 }
 
 #[derive(thiserror::Error, Debug)]

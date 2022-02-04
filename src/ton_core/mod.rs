@@ -223,6 +223,6 @@ enum TonCoreError {
     ExternalTonMessageExpected,
     #[error("Account `{0}` not exist")]
     AccountNotExist(String),
-    #[error("Root token `{0}` is not included in the whitelist")]
+    #[error("Root token `{0}` not included in the whitelist")]
     InvalidRootToken(String),
 }

@@ -46,12 +46,7 @@ impl ExistingContractExt for ExistingContract {
         let ExecutionOutput {
             tokens,
             result_code,
-        } = function.run_local(
-            &nekoton_utils::SimpleClock,
-            self.account.clone(),
-            &self.last_transaction_id,
-            input,
-        )?;
+        } = function.run_local(&nekoton_utils::SimpleClock, self.account.clone(), input)?;
 
         tokens.ok_or_else(|| ExistingContractError::NonZeroResultCode(result_code).into())
     }

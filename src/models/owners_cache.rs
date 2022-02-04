@@ -2,6 +2,7 @@ use std::str::FromStr;
 use std::sync::Arc;
 
 use lru::LruCache;
+use nekoton::core::models::TokenWalletVersion;
 use nekoton_utils::TrustMe;
 use parking_lot::Mutex;
 use ton_block::MsgAddressInt;
@@ -38,6 +39,7 @@ impl OwnersCache {
                     .trust_me(),
                     root_address: nekoton_utils::repack_address(&got.root_address).trust_me(),
                     code_hash: got.code_hash,
+                    version: got.version.into(),
                 }
             }
         };
@@ -54,6 +56,7 @@ impl OwnersCache {
             root_address: value.root_address.to_string(),
             code_hash: value.code_hash,
             created_at: chrono::Utc::now().naive_utc(), //doesn't matter
+            version: value.version.into(),
         };
         if let Err(e) = self.db.new_token_owner(&owner).await {
             log::error!("Failed inserting owner info: {}", e)
@@ -66,6 +69,7 @@ pub struct OwnerInfo {
     pub owner_address: MsgAddressInt,
     pub root_address: MsgAddressInt,
     pub code_hash: Vec<u8>,
+    pub version: TokenWalletVersion,
 }
 
 impl OwnersCache {
@@ -84,6 +88,7 @@ impl OwnersCache {
                     .trust_me(),
                     root_address: nekoton_utils::repack_address(&x.root_address).trust_me(),
                     code_hash: x.code_hash,
+                    version: x.version.into(),
                 },
             );
         });

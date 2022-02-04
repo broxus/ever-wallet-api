@@ -4,19 +4,6 @@ use uuid::Uuid;
 
 use crate::models::*;
 
-#[derive(Debug, Deserialize, Serialize, Clone)]
-pub struct TokenTransactionSend {
-    pub id: Uuid,
-    pub from_address: Address,
-    pub root_address: String,
-    pub recipient_address: Address,
-    pub value: BigDecimal,
-    pub notify_receiver: bool,
-    pub send_gas_to: Option<Address>,
-    pub fee: BigDecimal,
-    pub bounce: Option<bool>,
-}
-
 #[derive(Clone, Debug, serde::Serialize, serde::Deserialize, Eq, PartialEq)]
 pub struct CreateTokenTransaction {
     pub id: Uuid,
@@ -36,4 +23,17 @@ pub struct CreateTokenTransaction {
     pub block_time: i32,
     pub direction: TonTransactionDirection,
     pub status: TonTokenTransactionStatus,
+}
+
+#[derive(Debug, Deserialize, Serialize, Clone)]
+pub struct TokenTransactionSend {
+    pub id: Uuid,
+    pub from_address: Address,
+    pub root_address: String,
+    pub recipient_address: Address,
+    pub value: BigDecimal,
+    pub notify_receiver: bool,
+    pub send_gas_to: Option<Address>,
+    pub fee: BigDecimal,
+    pub bounce: Option<bool>,
 }

@@ -1,8 +1,9 @@
 use std::str::FromStr;
 
+use nekoton::core::models::TokenWalletVersion;
 use nekoton_utils::pack_std_smc_addr;
 use serde::{Deserialize, Serialize};
-use ton_block::MsgAddressInt;
+use ton_block::{AccountState, MsgAddressInt};
 
 use crate::models::{Address, AddressDb};
 
@@ -28,6 +29,42 @@ pub enum AccountStatus {
     Active,
     UnInit,
     Frozen,
+}
+
+impl From<AccountState> for AccountStatus {
+    fn from(state: AccountState) -> Self {
+        match state {
+            AccountState::AccountUninit => AccountStatus::UnInit,
+            AccountState::AccountActive { .. } => AccountStatus::Active,
+            AccountState::AccountFrozen { .. } => AccountStatus::Frozen,
+        }
+    }
+}
+
+#[derive(Debug, Deserialize, Serialize, Clone, opg::OpgModel, Eq, PartialEq, sqlx::Type, Copy)]
+#[opg("TokenWalletVersion")]
+#[sqlx(type_name = "twa_token_wallet_version", rename_all = "PascalCase")]
+pub enum TokenWalletVersionDb {
+    OldTip3v4,
+    Tip3,
+}
+
+impl From<TokenWalletVersion> for TokenWalletVersionDb {
+    fn from(version: TokenWalletVersion) -> Self {
+        match version {
+            TokenWalletVersion::OldTip3v4 => TokenWalletVersionDb::OldTip3v4,
+            TokenWalletVersion::Tip3 => TokenWalletVersionDb::Tip3,
+        }
+    }
+}
+
+impl From<TokenWalletVersionDb> for TokenWalletVersion {
+    fn from(version: TokenWalletVersionDb) -> Self {
+        match version {
+            TokenWalletVersionDb::OldTip3v4 => TokenWalletVersion::OldTip3v4,
+            TokenWalletVersionDb::Tip3 => TokenWalletVersion::Tip3,
+        }
+    }
 }
 
 #[derive(Debug, Deserialize, Serialize, Clone, opg::OpgModel)]
