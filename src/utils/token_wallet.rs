@@ -20,10 +20,10 @@ const INITIAL_BALANCE: u64 = 100_000_000; // 0.1 TON
 pub fn prepare_token_transfer(
     owner: MsgAddressInt,
     token_wallet: MsgAddressInt,
-    destination: TransferRecipient,
-    send_gas_to: MsgAddressInt,
     version: TokenWalletVersion,
+    destination: TransferRecipient,
     tokens: BigUint,
+    send_gas_to: MsgAddressInt,
     notify_receiver: bool,
     attached_amount: u64,
     payload: ton_types::Cell,

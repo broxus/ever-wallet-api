@@ -15,7 +15,6 @@ use ton_block::{GetRepresentationHash, MsgAddressInt};
 use ton_types::UInt256;
 
 use crate::models::*;
-use crate::prelude::*;
 use crate::sqlx_client::*;
 use crate::ton_core::*;
 use crate::utils::*;
@@ -471,9 +470,7 @@ impl TonClient for TonClientImpl {
         };
 
         let (version, network_balance) = get_token_wallet_basic_info(&token_contract)?;
-        let sync_u_time = token_contract
-            .timings
-            .current_utime(&nekoton_utils::SimpleClock) as i64;
+        let sync_u_time = token_contract.timings.current_utime(&SimpleClock) as i64;
 
         let (last_transaction_hash, last_transaction_lt) =
             parse_last_transaction(&token_contract.last_transaction_id);
@@ -528,15 +525,15 @@ impl TonClient for TonClientImpl {
         )
         .ok_or(TonClientError::ParseBigUint)?;
 
-        let attached_amount = input.fee.to_u64().unwrap_or(TOKEN_FEE);
+        let attached_amount = input.fee.to_u64().ok_or(TonClientError::ParseBigDecimal)?;
 
         let internal_message = prepare_token_transfer(
             owner.clone(),
             token_wallet,
-            destination,
-            send_gas_to,
             version,
+            destination,
             tokens,
+            send_gas_to,
             input.notify_receiver,
             attached_amount,
             Default::default(),
@@ -548,7 +545,7 @@ impl TonClient for TonClientImpl {
         let destination = internal_message.destination;
         let amount = internal_message.amount;
         let body = Some(internal_message.body);
-        let clock = nekoton_utils::SimpleClock;
+
         let expiration = Expiration::Timeout(DEFAULT_EXPIRATION_TIMEOUT);
 
         let public_key = PublicKey::from_bytes(public_key).unwrap_or_default();
@@ -568,7 +565,7 @@ impl TonClient for TonClientImpl {
                 };
 
                 nekoton::core::ton_wallet::highload_wallet_v2::prepare_transfer(
-                    &clock,
+                    &SimpleClock,
                     &public_key,
                     &current_state,
                     vec![gift],
@@ -580,7 +577,7 @@ impl TonClient for TonClientImpl {
                 let current_state = self.ton_core.get_contract_state(&account)?.account;
 
                 nekoton::core::ton_wallet::wallet_v3::prepare_transfer(
-                    &clock,
+                    &SimpleClock,
                     &public_key,
                     &current_state,
                     destination,
@@ -598,7 +595,7 @@ impl TonClient for TonClientImpl {
                 };
 
                 nekoton::core::ton_wallet::multisig::prepare_transfer(
-                    &clock,
+                    &SimpleClock,
                     &public_key,
                     has_multiple_owners,
                     owner.clone(),
@@ -635,7 +632,7 @@ impl TonClient for TonClientImpl {
             original_value: None,
             original_outputs: None,
             aborted: false,
-            bounce: false,
+            bounce,
         };
 
         return Ok((sent_transaction, signed_message));
