@@ -389,6 +389,23 @@ pub fn post_tokens_transactions_create(
     .boxed()
 }
 
+pub fn post_tokens_transactions_burn(
+    service_id: ServiceId,
+    input: PostTonTokenTransactionBurnRequest,
+    ctx: Context,
+) -> BoxFuture<'static, Result<impl warp::Reply, warp::Rejection>> {
+    async move {
+        let transaction = ctx
+            .ton_service
+            .create_burn_token_transaction(&service_id, &input.into())
+            .await
+            .map(From::from);
+        let res = AccountTransactionResponse::from(transaction);
+        Ok(warp::reply::json(&(res)))
+    }
+    .boxed()
+}
+
 pub fn get_metrics(ctx: Context) -> BoxFuture<'static, Result<impl warp::Reply, warp::Rejection>> {
     async move {
         let metrics = ctx.ton_service.get_metrics().await?;

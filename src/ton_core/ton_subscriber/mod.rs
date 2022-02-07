@@ -446,13 +446,11 @@ impl TokenSubscription {
             };
 
             if let Some(parsed) = parsed_token_transaction {
-                let address = MsgAddressInt::with_standart(
-                    None,
-                    ton_block::BASE_WORKCHAIN_ID as i8,
-                    ton_types::AccountId::from(account),
-                )?;
+                let token_contract = shard_accounts
+                    .find_account(&account)?
+                    .ok_or_else(|| TonCoreError::AccountNotExist(account.to_string()))?;
+                let (token_wallet, _, _) = get_token_wallet_details(&token_contract)?;
 
-                let (token_wallet, _, _) = get_token_wallet_details(&address, shard_accounts)?;
                 let owner =
                     UInt256::from_be_bytes(&token_wallet.owner_address.address().get_bytestring(0));
 

@@ -227,6 +227,33 @@ pub fn swagger() -> String {
                     }
                 }
             },
+            ("tokens" / "transactions" / "burn"): {
+                POST: {
+                    tags: { transactions, tokens },
+                    summary: "Burn token transaction",
+                    description: "Burn token transaction.",
+                    parameters: { (header "api-key") },
+                    body: requests::PostTonTokenTransactionBurnRequest,
+                    200: responses::AccountTokenTransactionResponse,
+                    callbacks: {
+                        tokenTransactionSent: {
+                            ("callbackUrl"): {
+                                POST: {
+                                    description: "Event token transaction sent. If address are not \
+                                    deployed the event will be sent a twice since in this case \
+                                    will be created two transactions.",
+                                    parameters: {
+                                        (header "timestamp"),
+                                        (header "sign")
+                                    },
+                                    body: AccountTransactionEvent,
+                                    200: None,
+                                }
+                            }
+                        }
+                    }
+                }
+            },
             ("tokens" / "transactions" / "mh" / String): {
                 GET: {
                     tags: { transactions, tokens  },

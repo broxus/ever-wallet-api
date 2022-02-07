@@ -123,7 +123,6 @@ pub struct PostTonTokenTransactionSendRequest {
     #[opg("value", string)]
     pub value: BigDecimal,
     pub notify_receiver: Option<bool>,
-    pub bounce: Option<bool>,
     #[opg("fee", string, optional)]
     pub fee: Option<BigDecimal>,
 }
@@ -137,8 +136,38 @@ impl From<PostTonTokenTransactionSendRequest> for TokenTransactionSend {
             recipient_address: c.recipient_address,
             send_gas_to: c.send_gas_to,
             value: c.value,
-            bounce: c.bounce,
             notify_receiver: c.notify_receiver.unwrap_or(false),
+            fee: c
+                .fee
+                .unwrap_or_else(|| BigDecimal::from_u64(TOKEN_FEE).trust_me()),
+        }
+    }
+}
+
+#[derive(Debug, Deserialize, Serialize, Clone, opg::OpgModel)]
+#[serde(rename_all = "camelCase")]
+#[opg("PostTonTokenTransactionBurnRequest")]
+pub struct PostTonTokenTransactionBurnRequest {
+    pub id: Option<Uuid>,
+    pub from_address: Address,
+    pub root_address: String,
+    pub send_gas_to: Option<Address>,
+    pub callback_to: Address,
+    #[opg("value", string)]
+    pub value: BigDecimal,
+    #[opg("fee", string, optional)]
+    pub fee: Option<BigDecimal>,
+}
+
+impl From<PostTonTokenTransactionBurnRequest> for TokenTransactionBurn {
+    fn from(c: PostTonTokenTransactionBurnRequest) -> Self {
+        TokenTransactionBurn {
+            id: c.id.unwrap_or_else(Uuid::new_v4),
+            from_address: c.from_address,
+            root_address: c.root_address,
+            send_gas_to: c.send_gas_to,
+            callback_to: c.callback_to,
+            value: c.value,
             fee: c
                 .fee
                 .unwrap_or_else(|| BigDecimal::from_u64(TOKEN_FEE).trust_me()),

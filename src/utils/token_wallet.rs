@@ -13,8 +13,6 @@ use num_bigint::BigUint;
 use ton_block::MsgAddressInt;
 use ton_types::UInt256;
 
-use crate::utils::*;
-
 const INITIAL_BALANCE: u64 = 100_000_000; // 0.1 TON
 
 pub fn prepare_token_transfer(
@@ -84,6 +82,78 @@ pub fn prepare_token_transfer(
     })
 }
 
+pub fn prepare_token_burn(
+    owner: MsgAddressInt,
+    token_wallet: MsgAddressInt,
+    version: TokenWalletVersion,
+    tokens: BigUint,
+    send_gas_to: MsgAddressInt,
+    callback_to: MsgAddressInt,
+    attached_amount: u64,
+    payload: ton_types::Cell,
+) -> Result<InternalMessage> {
+    let (function, input) = match version {
+        TokenWalletVersion::OldTip3v4 => return Err(TokenWalletError::BurnNotSupported.into()),
+        TokenWalletVersion::Tip3 => {
+            use tip3_1::token_wallet_contract;
+            MessageBuilder::new(token_wallet_contract::burnable::burn())
+                .arg(BigUint128(tokens)) // amount
+                .arg(&send_gas_to) // remainingGasTo
+                .arg(&callback_to) // callbackTo
+                .arg(payload) // payload
+                .build()
+        }
+    };
+
+    let body = function.encode_internal_input(&input)?.into();
+
+    Ok(InternalMessage {
+        source: Some(owner),
+        destination: token_wallet,
+        amount: attached_amount,
+        bounce: true,
+        body,
+    })
+}
+
+pub fn prepare_token_mint(
+    owner: MsgAddressInt,
+    token_wallet: MsgAddressInt,
+    version: TokenWalletVersion,
+    tokens: BigUint,
+    recipient: MsgAddressInt,
+    deploy_wallet_value: BigUint,
+    send_gas_to: MsgAddressInt,
+    notify: bool,
+    payload: ton_types::Cell,
+    attached_amount: u64,
+) -> Result<InternalMessage> {
+    let (function, input) = match version {
+        TokenWalletVersion::OldTip3v4 => return Err(TokenWalletError::MintNotSupported.into()),
+        TokenWalletVersion::Tip3 => {
+            use tip3_1::root_token_contract;
+            MessageBuilder::new(root_token_contract::mint())
+                .arg(BigUint128(tokens)) // amount
+                .arg(recipient) // recipient
+                .arg(BigUint128(deploy_wallet_value)) // deployWalletValue
+                .arg(&send_gas_to) // remainingGasTo
+                .arg(notify) // notify
+                .arg(payload) // payload
+                .build()
+        }
+    };
+
+    let body = function.encode_internal_input(&input)?.into();
+
+    Ok(InternalMessage {
+        source: Some(owner),
+        destination: token_wallet,
+        amount: attached_amount,
+        bounce: true,
+        body,
+    })
+}
+
 pub fn get_token_wallet_address(
     root_contract: &ExistingContract,
     owner: &MsgAddressInt,
@@ -128,23 +198,21 @@ pub fn get_token_wallet_basic_info(
 }
 
 pub fn get_token_wallet_details(
-    address: &MsgAddressInt,
-    shard_accounts: &ton_block::ShardAccounts,
+    token_contract: &ExistingContract,
 ) -> Result<(TokenWalletDetails, TokenWalletVersion, [u8; 32])> {
-    let account = UInt256::from_be_bytes(&address.address().get_bytestring(0));
-    let state = shard_accounts
-        .find_account(&account)?
-        .ok_or_else(|| TokenWalletError::AccountNotExist(account.to_hex_string()))?;
+    let contract_state = nekoton::core::token_wallet::TokenWalletContractState(&token_contract);
 
-    let state = nekoton::core::token_wallet::TokenWalletContractState(&state);
-    let hash = *state.get_code_hash()?.as_slice();
-    let version = state.get_version(&SimpleClock)?;
-    let details = state.get_details(&SimpleClock, version)?;
+    let hash = *contract_state.get_code_hash()?.as_slice();
+    let version = contract_state.get_version(&SimpleClock)?;
+    let details = contract_state.get_details(&SimpleClock, version)?;
+
     Ok((details, version, hash))
 }
 
 #[derive(thiserror::Error, Debug)]
 enum TokenWalletError {
-    #[error("Account `{0}` not exist")]
-    AccountNotExist(String),
+    #[error("Burn not supported by OldTip3v4 tokens")]
+    BurnNotSupported,
+    #[error("Mint not supported by OldTip3v4 tokens")]
+    MintNotSupported,
 }

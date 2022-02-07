@@ -126,6 +126,11 @@ pub trait TonService: Send + Sync + 'static {
         service_id: &ServiceId,
         input: &TokenTransactionSend,
     ) -> Result<TransactionDb, ServiceError>;
+    async fn create_burn_token_transaction(
+        self: Arc<Self>,
+        service_id: &ServiceId,
+        input: &TokenTransactionBurn,
+    ) -> Result<TransactionDb, ServiceError>;
     async fn create_receive_token_transaction(
         &self,
         input: CreateTokenTransaction,
@@ -955,6 +960,107 @@ impl TonService for TonServiceImpl {
         let (payload, signed_message) = self
             .ton_api_client
             .prepare_token_transaction(
+                input,
+                &public_key,
+                &private_key,
+                &address_db.account_type,
+                &address_db.custodians,
+            )
+            .await?;
+
+        let (transaction, event) = self
+            .sqlx_client
+            .create_send_transaction(CreateSendTransaction::new(payload, *service_id))
+            .await?;
+
+        self.send_transaction(
+            transaction.message_hash.clone(),
+            transaction.account_hex.clone(),
+            transaction.account_workchain_id,
+            signed_message,
+            true,
+        )
+        .await
+        .trust_me();
+
+        self.notify(service_id, event.into(), NotifyType::Transaction)
+            .await?;
+
+        Ok(transaction)
+    }
+
+    async fn create_burn_token_transaction(
+        self: Arc<Self>,
+        service_id: &ServiceId,
+        input: &TokenTransactionBurn,
+    ) -> Result<TransactionDb, ServiceError> {
+        self.request_count
+            .send_token_transaction
+            .fetch_add(1, Ordering::Relaxed);
+
+        let owner = repack_address(&input.from_address.0)?;
+        let address_db = self
+            .sqlx_client
+            .get_address(
+                *service_id,
+                owner.workchain_id(),
+                owner.address().to_hex_string(),
+            )
+            .await?;
+
+        let (_, scale) = input.value.as_bigint_and_exponent();
+        if scale != 0 {
+            return Err(ServiceError::WrongInput("Invalid token value".to_string()));
+        }
+
+        if address_db.balance < input.fee {
+            return Err(ServiceError::WrongInput(format!(
+                "Address balance is not enough to pay fee for token transfer. Balance: {}. Fee: {}",
+                address_db.balance, input.fee
+            )));
+        }
+
+        let token_balance = self
+            .sqlx_client
+            .get_token_balance(
+                *service_id,
+                owner.workchain_id(),
+                owner.address().to_hex_string(),
+                input.root_address.clone(),
+            )
+            .await
+            .map_err(|_| {
+                ServiceError::WrongInput("Token wallet is not deployed yet".to_string())
+            })?;
+
+        if token_balance.balance < input.value {
+            return Err(ServiceError::WrongInput(format!(
+                "Token balance is not enough to make request; Balance: {}. Sent amount: {}",
+                token_balance.balance, input.value
+            )));
+        }
+
+        let public_key = hex::decode(address_db.public_key.clone())
+            .map_err(|err| ServiceError::Other(err.into()))?;
+        let private_key = decrypt_private_key(
+            &address_db.private_key,
+            self.key.as_slice().try_into().trust_me(),
+            &address_db.id,
+        )
+        .map_err(|err| {
+            ServiceError::Other(TonServiceError::DecryptPrivateKeyError(err.to_string()).into())
+        })?;
+
+        let owner_network = self.ton_api_client.get_address_info(&owner).await?;
+
+        if owner_network.account_status == AccountStatus::UnInit {
+            self.deploy_wallet(service_id, &address_db, &public_key, &private_key)
+                .await?;
+        }
+
+        let (payload, signed_message) = self
+            .ton_api_client
+            .prepare_token_burn(
                 input,
                 &public_key,
                 &private_key,

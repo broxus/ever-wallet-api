@@ -35,5 +35,15 @@ pub struct TokenTransactionSend {
     pub notify_receiver: bool,
     pub send_gas_to: Option<Address>,
     pub fee: BigDecimal,
-    pub bounce: Option<bool>,
+}
+
+#[derive(Debug, Deserialize, Serialize, Clone)]
+pub struct TokenTransactionBurn {
+    pub id: Uuid,
+    pub from_address: Address,
+    pub root_address: String,
+    pub value: BigDecimal,
+    pub send_gas_to: Option<Address>,
+    pub callback_to: Address,
+    pub fee: BigDecimal,
 }
