@@ -239,9 +239,32 @@ pub fn swagger() -> String {
                         tokenTransactionSent: {
                             ("callbackUrl"): {
                                 POST: {
-                                    description: "Event token transaction sent. If address are not \
-                                    deployed the event will be sent a twice since in this case \
-                                    will be created two transactions.",
+                                    description: "Event token transaction burn.",
+                                    parameters: {
+                                        (header "timestamp"),
+                                        (header "sign")
+                                    },
+                                    body: AccountTransactionEvent,
+                                    200: None,
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            ("tokens" / "transactions" / "mint"): {
+                POST: {
+                    tags: { transactions, tokens },
+                    summary: "Mint token transaction",
+                    description: "Mint token transaction.",
+                    parameters: { (header "api-key") },
+                    body: requests::PostTonTokenTransactionMintRequest,
+                    200: responses::AccountTokenTransactionResponse,
+                    callbacks: {
+                        tokenTransactionSent: {
+                            ("callbackUrl"): {
+                                POST: {
+                                    description: "Event token transaction mint.",
                                     parameters: {
                                         (header "timestamp"),
                                         (header "sign")

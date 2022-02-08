@@ -118,15 +118,15 @@ pub fn prepare_token_burn(
 
 pub fn prepare_token_mint(
     owner: MsgAddressInt,
-    token_wallet: MsgAddressInt,
+    root_token: MsgAddressInt,
     version: TokenWalletVersion,
     tokens: BigUint,
     recipient: MsgAddressInt,
     deploy_wallet_value: BigUint,
     send_gas_to: MsgAddressInt,
     notify: bool,
-    payload: ton_types::Cell,
     attached_amount: u64,
+    payload: ton_types::Cell,
 ) -> Result<InternalMessage> {
     let (function, input) = match version {
         TokenWalletVersion::OldTip3v4 => return Err(TokenWalletError::MintNotSupported.into()),
@@ -147,7 +147,7 @@ pub fn prepare_token_mint(
 
     Ok(InternalMessage {
         source: Some(owner),
-        destination: token_wallet,
+        destination: root_token,
         amount: attached_amount,
         bounce: true,
         body,
@@ -200,13 +200,21 @@ pub fn get_token_wallet_basic_info(
 pub fn get_token_wallet_details(
     token_contract: &ExistingContract,
 ) -> Result<(TokenWalletDetails, TokenWalletVersion, [u8; 32])> {
-    let contract_state = nekoton::core::token_wallet::TokenWalletContractState(&token_contract);
+    let contract_state = nekoton::core::token_wallet::TokenWalletContractState(token_contract);
 
     let hash = *contract_state.get_code_hash()?.as_slice();
     let version = contract_state.get_version(&SimpleClock)?;
     let details = contract_state.get_details(&SimpleClock, version)?;
 
     Ok((details, version, hash))
+}
+
+pub fn get_root_token_version(root_contract: &ExistingContract) -> Result<TokenWalletVersion> {
+    let root_contract_state = RootTokenContractState(root_contract);
+    let RootTokenContractDetails { version, .. } =
+        root_contract_state.guess_details(&SimpleClock)?;
+
+    Ok(version)
 }
 
 #[derive(thiserror::Error, Debug)]

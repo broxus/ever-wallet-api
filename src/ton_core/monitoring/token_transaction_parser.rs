@@ -331,5 +331,5 @@ fn calc_token_wallet_address(
         .find_account(&root_account)?
         .ok_or_else(|| TonCoreError::AccountNotExist(root_account.to_hex_string()))?;
 
-    get_token_wallet_address(&root_contract, &owner_address)
+    get_token_wallet_address(&root_contract, owner_address)
 }

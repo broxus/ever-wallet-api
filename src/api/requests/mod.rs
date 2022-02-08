@@ -117,7 +117,7 @@ impl From<PostTonTransactionsRequest> for TransactionsSearch {
 pub struct PostTonTokenTransactionSendRequest {
     pub id: Option<Uuid>,
     pub from_address: Address,
-    pub root_address: String,
+    pub root_address: Address,
     pub recipient_address: Address,
     pub send_gas_to: Option<Address>,
     #[opg("value", string)]
@@ -150,7 +150,7 @@ impl From<PostTonTokenTransactionSendRequest> for TokenTransactionSend {
 pub struct PostTonTokenTransactionBurnRequest {
     pub id: Option<Uuid>,
     pub from_address: Address,
-    pub root_address: String,
+    pub root_address: Address,
     pub send_gas_to: Option<Address>,
     pub callback_to: Address,
     #[opg("value", string)]
@@ -168,6 +168,42 @@ impl From<PostTonTokenTransactionBurnRequest> for TokenTransactionBurn {
             send_gas_to: c.send_gas_to,
             callback_to: c.callback_to,
             value: c.value,
+            fee: c
+                .fee
+                .unwrap_or_else(|| BigDecimal::from_u64(TOKEN_FEE).trust_me()),
+        }
+    }
+}
+
+#[derive(Debug, Deserialize, Serialize, Clone, opg::OpgModel)]
+#[serde(rename_all = "camelCase")]
+#[opg("PostTonTokenTransactionMintRequest")]
+pub struct PostTonTokenTransactionMintRequest {
+    pub id: Option<Uuid>,
+    pub from_address: Address,
+    pub root_address: Address,
+    #[opg("value", string)]
+    pub value: BigDecimal,
+    pub recipient_address: Address,
+    #[opg("value", string)]
+    pub deploy_wallet_value: BigDecimal,
+    pub send_gas_to: Option<Address>,
+    pub notify: Option<bool>,
+    #[opg("fee", string, optional)]
+    pub fee: Option<BigDecimal>,
+}
+
+impl From<PostTonTokenTransactionMintRequest> for TokenTransactionMint {
+    fn from(c: PostTonTokenTransactionMintRequest) -> Self {
+        TokenTransactionMint {
+            id: c.id.unwrap_or_else(Uuid::new_v4),
+            from_address: c.from_address,
+            root_address: c.root_address,
+            value: c.value,
+            recipient_address: c.recipient_address,
+            deploy_wallet_value: c.deploy_wallet_value,
+            send_gas_to: c.send_gas_to,
+            notify: c.notify.unwrap_or(false),
             fee: c
                 .fee
                 .unwrap_or_else(|| BigDecimal::from_u64(TOKEN_FEE).trust_me()),

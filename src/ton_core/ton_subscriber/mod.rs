@@ -447,7 +447,7 @@ impl TokenSubscription {
 
             if let Some(parsed) = parsed_token_transaction {
                 let token_contract = shard_accounts
-                    .find_account(&account)?
+                    .find_account(account)?
                     .ok_or_else(|| TonCoreError::AccountNotExist(account.to_string()))?;
                 let (token_wallet, _, _) = get_token_wallet_details(&token_contract)?;
 

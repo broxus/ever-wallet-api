@@ -29,7 +29,7 @@ pub struct CreateTokenTransaction {
 pub struct TokenTransactionSend {
     pub id: Uuid,
     pub from_address: Address,
-    pub root_address: String,
+    pub root_address: Address,
     pub recipient_address: Address,
     pub value: BigDecimal,
     pub notify_receiver: bool,
@@ -41,9 +41,22 @@ pub struct TokenTransactionSend {
 pub struct TokenTransactionBurn {
     pub id: Uuid,
     pub from_address: Address,
-    pub root_address: String,
+    pub root_address: Address,
     pub value: BigDecimal,
     pub send_gas_to: Option<Address>,
     pub callback_to: Address,
+    pub fee: BigDecimal,
+}
+
+#[derive(Debug, Deserialize, Serialize, Clone)]
+pub struct TokenTransactionMint {
+    pub id: Uuid,
+    pub from_address: Address,
+    pub root_address: Address,
+    pub value: BigDecimal,
+    pub recipient_address: Address,
+    pub deploy_wallet_value: BigDecimal,
+    pub send_gas_to: Option<Address>,
+    pub notify: bool,
     pub fee: BigDecimal,
 }

@@ -131,6 +131,11 @@ pub trait TonService: Send + Sync + 'static {
         service_id: &ServiceId,
         input: &TokenTransactionBurn,
     ) -> Result<TransactionDb, ServiceError>;
+    async fn create_mint_token_transaction(
+        self: Arc<Self>,
+        service_id: &ServiceId,
+        input: &TokenTransactionMint,
+    ) -> Result<TransactionDb, ServiceError>;
     async fn create_receive_token_transaction(
         &self,
         input: CreateTokenTransaction,
@@ -897,6 +902,11 @@ impl TonService for TonServiceImpl {
             .send_token_transaction
             .fetch_add(1, Ordering::Relaxed);
 
+        let (_, scale) = input.value.as_bigint_and_exponent();
+        if scale != 0 {
+            return Err(ServiceError::WrongInput("Invalid token value".to_string()));
+        }
+
         let owner = repack_address(&input.from_address.0)?;
         let address_db = self
             .sqlx_client
@@ -906,11 +916,6 @@ impl TonService for TonServiceImpl {
                 owner.address().to_hex_string(),
             )
             .await?;
-
-        let (_, scale) = input.value.as_bigint_and_exponent();
-        if scale != 0 {
-            return Err(ServiceError::WrongInput("Invalid token value".to_string()));
-        }
 
         if address_db.balance < input.fee {
             return Err(ServiceError::WrongInput(format!(
@@ -925,7 +930,7 @@ impl TonService for TonServiceImpl {
                 *service_id,
                 owner.workchain_id(),
                 owner.address().to_hex_string(),
-                input.root_address.clone(),
+                input.root_address.0.clone(),
             )
             .await
             .map_err(|_| {
@@ -998,6 +1003,11 @@ impl TonService for TonServiceImpl {
             .send_token_transaction
             .fetch_add(1, Ordering::Relaxed);
 
+        let (_, scale) = input.value.as_bigint_and_exponent();
+        if scale != 0 {
+            return Err(ServiceError::WrongInput("Invalid token value".to_string()));
+        }
+
         let owner = repack_address(&input.from_address.0)?;
         let address_db = self
             .sqlx_client
@@ -1007,11 +1017,6 @@ impl TonService for TonServiceImpl {
                 owner.address().to_hex_string(),
             )
             .await?;
-
-        let (_, scale) = input.value.as_bigint_and_exponent();
-        if scale != 0 {
-            return Err(ServiceError::WrongInput("Invalid token value".to_string()));
-        }
 
         if address_db.balance < input.fee {
             return Err(ServiceError::WrongInput(format!(
@@ -1026,7 +1031,7 @@ impl TonService for TonServiceImpl {
                 *service_id,
                 owner.workchain_id(),
                 owner.address().to_hex_string(),
-                input.root_address.clone(),
+                input.root_address.0.clone(),
             )
             .await
             .map_err(|_| {
@@ -1061,6 +1066,87 @@ impl TonService for TonServiceImpl {
         let (payload, signed_message) = self
             .ton_api_client
             .prepare_token_burn(
+                input,
+                &public_key,
+                &private_key,
+                &address_db.account_type,
+                &address_db.custodians,
+            )
+            .await?;
+
+        let (transaction, event) = self
+            .sqlx_client
+            .create_send_transaction(CreateSendTransaction::new(payload, *service_id))
+            .await?;
+
+        self.send_transaction(
+            transaction.message_hash.clone(),
+            transaction.account_hex.clone(),
+            transaction.account_workchain_id,
+            signed_message,
+            true,
+        )
+        .await
+        .trust_me();
+
+        self.notify(service_id, event.into(), NotifyType::Transaction)
+            .await?;
+
+        Ok(transaction)
+    }
+
+    async fn create_mint_token_transaction(
+        self: Arc<Self>,
+        service_id: &ServiceId,
+        input: &TokenTransactionMint,
+    ) -> Result<TransactionDb, ServiceError> {
+        self.request_count
+            .send_token_transaction
+            .fetch_add(1, Ordering::Relaxed);
+
+        let (_, scale) = input.value.as_bigint_and_exponent();
+        if scale != 0 {
+            return Err(ServiceError::WrongInput("Invalid token value".to_string()));
+        }
+
+        let (_, scale) = input.deploy_wallet_value.as_bigint_and_exponent();
+        if scale != 0 {
+            return Err(ServiceError::WrongInput(
+                "Invalid deploy wallet value".to_string(),
+            ));
+        }
+
+        let owner = repack_address(&input.from_address.0)?;
+        let address_db = self
+            .sqlx_client
+            .get_address(
+                *service_id,
+                owner.workchain_id(),
+                owner.address().to_hex_string(),
+            )
+            .await?;
+
+        if address_db.balance < input.fee {
+            return Err(ServiceError::WrongInput(format!(
+                "Address balance is not enough to pay fee for token transfer. Balance: {}. Fee: {}",
+                address_db.balance, input.fee
+            )));
+        }
+
+        let public_key = hex::decode(address_db.public_key.clone())
+            .map_err(|err| ServiceError::Other(err.into()))?;
+        let private_key = decrypt_private_key(
+            &address_db.private_key,
+            self.key.as_slice().try_into().trust_me(),
+            &address_db.id,
+        )
+        .map_err(|err| {
+            ServiceError::Other(TonServiceError::DecryptPrivateKeyError(err.to_string()).into())
+        })?;
+
+        let (payload, signed_message) = self
+            .ton_api_client
+            .prepare_token_mint(
                 input,
                 &public_key,
                 &private_key,
