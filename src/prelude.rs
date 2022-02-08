@@ -93,4 +93,5 @@ impl<'a> From<&'a ServiceError> for http::Response<hyper::Body> {
 impl warp::reject::Reject for ServiceError {}
 
 pub const TOKEN_FEE: u64 = 500_000_000; // 0.5 TON
+pub const DEPLOY_TOKEN_VALUE: u64 = 200_000_000; // 0.2 TON
 pub const MAX_LIMIT_SEARCH: i64 = 100i64;

@@ -119,6 +119,7 @@ pub struct PostTonTokenTransactionSendRequest {
     pub from_address: Address,
     pub root_address: Address,
     pub recipient_address: Address,
+    #[opg("sendGasTo", string, optional)]
     pub send_gas_to: Option<Address>,
     #[opg("value", string)]
     pub value: BigDecimal,
@@ -151,6 +152,7 @@ pub struct PostTonTokenTransactionBurnRequest {
     pub id: Option<Uuid>,
     pub from_address: Address,
     pub root_address: Address,
+    #[opg("sendGasTo", string, optional)]
     pub send_gas_to: Option<Address>,
     pub callback_to: Address,
     #[opg("value", string)]
@@ -185,8 +187,9 @@ pub struct PostTonTokenTransactionMintRequest {
     #[opg("value", string)]
     pub value: BigDecimal,
     pub recipient_address: Address,
-    #[opg("value", string)]
-    pub deploy_wallet_value: BigDecimal,
+    #[opg("deployWalletValue", string, optional)]
+    pub deploy_wallet_value: Option<BigDecimal>,
+    #[opg("sendGasTo", string, optional)]
     pub send_gas_to: Option<Address>,
     pub notify: Option<bool>,
     #[opg("fee", string, optional)]
@@ -201,9 +204,11 @@ impl From<PostTonTokenTransactionMintRequest> for TokenTransactionMint {
             root_address: c.root_address,
             value: c.value,
             recipient_address: c.recipient_address,
-            deploy_wallet_value: c.deploy_wallet_value,
             send_gas_to: c.send_gas_to,
             notify: c.notify.unwrap_or(false),
+            deploy_wallet_value: c
+                .deploy_wallet_value
+                .unwrap_or_else(|| BigDecimal::from_u64(DEPLOY_TOKEN_VALUE).trust_me()),
             fee: c
                 .fee
                 .unwrap_or_else(|| BigDecimal::from_u64(TOKEN_FEE).trust_me()),
