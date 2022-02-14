@@ -225,6 +225,4 @@ enum TonCoreError {
     AccountNotExist(String),
     #[error("Root token `{0}` not included in the whitelist")]
     InvalidRootToken(String),
-    #[error("Invalid token address: expected `{0}`, got `{1}`")]
-    InvalidToken(String, String),
 }

@@ -60,17 +60,6 @@ async fn internal_transfer_send(
     let owner_info =
         get_token_wallet_info(&address, &token_transaction_ctx.shard_accounts, &parse_ctx).await?;
 
-    /*let address_from_root = calc_token_wallet_address(
-        &owner_info.root_address,
-        &owner_info.owner_address,
-        &token_transaction_ctx.shard_accounts,
-    )?;
-    if address != address_from_root {
-        return Err(
-            TonCoreError::InvalidToken(address.to_string(), address_from_root.to_string()).into(),
-        );
-    }*/
-
     let mut message_hash = Default::default();
     let _ = token_transaction_ctx
         .transaction
@@ -133,17 +122,6 @@ async fn internal_transfer_receive(
     let owner_info =
         get_token_wallet_info(&address, &token_transaction_ctx.shard_accounts, &parse_ctx).await?;
 
-    /*let address_from_root = calc_token_wallet_address(
-        &owner_info.root_address,
-        &owner_info.owner_address,
-        &token_transaction_ctx.shard_accounts,
-    )?;
-    if address != address_from_root {
-        return Err(
-            TonCoreError::InvalidToken(address.to_string(), address_from_root.to_string()).into(),
-        );
-    }*/
-
     let message_hash = token_transaction_ctx
         .transaction
         .in_msg
@@ -188,17 +166,6 @@ async fn internal_transfer_bounced(
     let owner_info =
         get_token_wallet_info(&address, &token_transaction_ctx.shard_accounts, &parse_ctx).await?;
 
-    /*let address_from_root = calc_token_wallet_address(
-        &owner_info.root_address,
-        &owner_info.owner_address,
-        &token_transaction_ctx.shard_accounts,
-    )?;
-    if address != address_from_root {
-        return Err(
-            TonCoreError::InvalidToken(address.to_string(), address_from_root.to_string()).into(),
-        );
-    }*/
-
     let message_hash = token_transaction_ctx
         .transaction
         .in_msg
@@ -242,17 +209,6 @@ async fn internal_transfer_mint(
 
     let owner_info =
         get_token_wallet_info(&address, &token_transaction_ctx.shard_accounts, &parse_ctx).await?;
-
-    /*let address_from_root = calc_token_wallet_address(
-        &owner_info.root_address,
-        &owner_info.owner_address,
-        &token_transaction_ctx.shard_accounts,
-    )?;
-    if address != address_from_root {
-        return Err(
-            TonCoreError::InvalidToken(address.to_string(), address_from_root.to_string()).into(),
-        );
-    }*/
 
     let message_hash = token_transaction_ctx
         .transaction
@@ -319,17 +275,4 @@ async fn get_token_wallet_info(
         Some(a) => a,
     };
     Ok(res)
-}
-
-fn calc_token_wallet_address(
-    root_address: &MsgAddressInt,
-    owner_address: &MsgAddressInt,
-    shard_accounts: &ton_block::ShardAccounts,
-) -> Result<MsgAddressInt> {
-    let root_account = UInt256::from_be_bytes(&root_address.address().get_bytestring(0));
-    let root_contract = shard_accounts
-        .find_account(&root_account)?
-        .ok_or_else(|| TonCoreError::AccountNotExist(root_account.to_hex_string()))?;
-
-    get_token_wallet_address(&root_contract, owner_address)
 }
