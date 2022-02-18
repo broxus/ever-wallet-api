@@ -93,7 +93,16 @@ pub fn prepare_token_burn(
     payload: ton_types::Cell,
 ) -> Result<InternalMessage> {
     let (function, input) = match version {
-        TokenWalletVersion::OldTip3v4 => return Err(TokenWalletError::BurnNotSupported.into()),
+        TokenWalletVersion::OldTip3v4 => {
+            use old_tip3::token_wallet_contract;
+            MessageBuilder::new(token_wallet_contract::burn_by_owner())
+                .arg(BigUint128(tokens)) // amount
+                .arg(0) // grams
+                .arg(&send_gas_to) // remainingGasTo
+                .arg(callback_to) // callback_address
+                .arg(payload) // payload
+                .build()
+        }
         TokenWalletVersion::Tip3 => {
             use tip3_1::token_wallet_contract;
             MessageBuilder::new(token_wallet_contract::burnable::burn())
@@ -219,8 +228,6 @@ pub fn get_root_token_version(root_contract: &ExistingContract) -> Result<TokenW
 
 #[derive(thiserror::Error, Debug)]
 enum TokenWalletError {
-    #[error("Burn not supported by OldTip3v4 tokens")]
-    BurnNotSupported,
     #[error("Mint not supported by OldTip3v4 tokens")]
     MintNotSupported,
 }

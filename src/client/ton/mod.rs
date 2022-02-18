@@ -637,7 +637,7 @@ impl TonClient for TonClientImpl {
         account_type: &AccountType,
         custodians: &Option<i32>,
     ) -> Result<(SentTransaction, SignedMessage)> {
-        let owner = repack_address(&input.from_address.0)?;
+        let owner = repack_address(&input.owner_address.0)?;
         let root_token = repack_address(&input.root_address.0)?;
         let recipient = repack_address(&input.recipient_address.0)?;
 

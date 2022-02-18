@@ -51,7 +51,7 @@ pub struct TokenTransactionBurn {
 #[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct TokenTransactionMint {
     pub id: Uuid,
-    pub from_address: Address,
+    pub owner_address: Address,
     pub root_address: Address,
     pub value: BigDecimal,
     pub recipient_address: Address,

@@ -182,7 +182,7 @@ impl From<PostTonTokenTransactionBurnRequest> for TokenTransactionBurn {
 #[opg("PostTonTokenTransactionMintRequest")]
 pub struct PostTonTokenTransactionMintRequest {
     pub id: Option<Uuid>,
-    pub from_address: Address,
+    pub owner_address: Address,
     pub root_address: Address,
     #[opg("value", string)]
     pub value: BigDecimal,
@@ -200,7 +200,7 @@ impl From<PostTonTokenTransactionMintRequest> for TokenTransactionMint {
     fn from(c: PostTonTokenTransactionMintRequest) -> Self {
         TokenTransactionMint {
             id: c.id.unwrap_or_else(Uuid::new_v4),
-            from_address: c.from_address,
+            owner_address: c.owner_address,
             root_address: c.root_address,
             value: c.value,
             recipient_address: c.recipient_address,

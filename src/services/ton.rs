@@ -1116,7 +1116,7 @@ impl TonService for TonServiceImpl {
             ));
         }
 
-        let owner = repack_address(&input.from_address.0)?;
+        let owner = repack_address(&input.owner_address.0)?;
         let address_db = self
             .sqlx_client
             .get_address(

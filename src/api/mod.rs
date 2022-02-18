@@ -109,6 +109,7 @@ mod filters {
                     .or(post_tokens_transactions_create(ctx.clone()))
                     .or(post_tokens_transactions_burn(ctx.clone()))
                     .or(post_tokens_transactions_mint(ctx.clone()))
+                    .or(post_tokens_transactions_upgrade(ctx.clone()))
                     .or(get_tokens_transactions_mh(ctx.clone()))
                     .or(get_tokens_transactions_id(ctx.clone()))
                     .or(post_tokens_events(ctx.clone()))
@@ -333,6 +334,16 @@ mod filters {
             .and(auth_by_key(ctx.auth_service.clone()).untuple_one())
             .and(with_ctx(ctx))
             .and_then(controllers::post_tokens_transactions_mint)
+            .boxed()
+    }
+
+    pub fn post_tokens_transactions_upgrade(ctx: Context) -> BoxedFilter<(impl warp::Reply,)> {
+        warp::path!("tokens" / "transactions" / "upgrade")
+            .and(warp::path::end())
+            .and(warp::post())
+            .and(auth_by_key(ctx.auth_service.clone()).untuple_one())
+            .and(with_ctx(ctx))
+            .and_then(controllers::post_tokens_transactions_burn)
             .boxed()
     }
 

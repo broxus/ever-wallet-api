@@ -277,6 +277,31 @@ pub fn swagger() -> String {
                     }
                 }
             },
+            ("tokens" / "transactions" / "upgrade"): {
+                POST: {
+                    tags: { transactions, tokens },
+                    summary: "Upgrade token transaction",
+                    description: "Upgrade token transaction.",
+                    parameters: { (header "api-key") },
+                    body: requests::PostTonTokenTransactionBurnRequest,
+                    200: responses::AccountTokenTransactionResponse,
+                    callbacks: {
+                        tokenTransactionSent: {
+                            ("callbackUrl"): {
+                                POST: {
+                                    description: "Event token transaction upgrade.",
+                                    parameters: {
+                                        (header "timestamp"),
+                                        (header "sign")
+                                    },
+                                    body: AccountTransactionEvent,
+                                    200: None,
+                                }
+                            }
+                        }
+                    }
+                }
+            },
             ("tokens" / "transactions" / "mh" / String): {
                 GET: {
                     tags: { transactions, tokens  },
