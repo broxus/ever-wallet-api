@@ -1044,7 +1044,7 @@ checksum = "9b919933a397b79c37e33b77bb2aa3dc8eb6e165ad809e58ff75bc7db2e34574"
 [[package]]
 name = "global-config"
 version = "0.1.0"
-source = "git+https://github.com/broxus/ton-indexer.git#aa668e7169da8a71c0a3e9b1e40c3c721d2e9a10"
+source = "git+https://github.com/broxus/ton-indexer.git#af20eaa78a4a9c88ce3ccdafa1d237e66b266322"
 dependencies = [
  "anyhow",
  "base64",
@@ -1423,6 +1423,7 @@ dependencies = [
  "libc",
  "libz-sys",
  "tikv-jemalloc-sys",
+ "zstd-sys",
 ]
 
 [[package]]
@@ -3252,7 +3253,7 @@ dependencies = [
 [[package]]
 name = "ton-indexer"
 version = "0.1.0"
-source = "git+https://github.com/broxus/ton-indexer.git#aa668e7169da8a71c0a3e9b1e40c3c721d2e9a10"
+source = "git+https://github.com/broxus/ton-indexer.git#af20eaa78a4a9c88ce3ccdafa1d237e66b266322"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -3296,8 +3297,9 @@ dependencies = [
 [[package]]
 name = "ton-indexer-alloc"
 version = "0.1.0"
-source = "git+https://github.com/broxus/ton-indexer.git#aa668e7169da8a71c0a3e9b1e40c3c721d2e9a10"
+source = "git+https://github.com/broxus/ton-indexer.git#af20eaa78a4a9c88ce3ccdafa1d237e66b266322"
 dependencies = [
+ "anyhow",
  "errno",
  "log",
  "tikv-jemalloc-ctl",
@@ -4032,4 +4034,14 @@ dependencies = [
  "quote",
  "syn",
  "synstructure",
+]
+
+[[package]]
+name = "zstd-sys"
+version = "1.6.3+zstd.1.5.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "fc49afa5c8d634e75761feda8c592051e7eeb4683ba827211eb0d731d3402ea8"
+dependencies = [
+ "cc",
+ "libc",
 ]
