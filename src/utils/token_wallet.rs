@@ -97,7 +97,7 @@ pub fn prepare_token_burn(
             use old_tip3::token_wallet_contract;
             MessageBuilder::new(token_wallet_contract::burn_by_owner())
                 .arg(BigUint128(tokens)) // amount
-                .arg(0) // grams
+                .arg(0u128) // grams
                 .arg(send_gas_to) // remainingGasTo
                 .arg(callback_to) // callback_address
                 .arg(payload) // payload
