@@ -23,6 +23,7 @@ pub async fn add_root_token(token_name: String, token_address: String) -> Result
         .create_root_token(TokenWhitelistFromDb {
             name: token_name,
             address: token_address,
+            version: TokenWalletVersionDb::Tip3,
         })
         .await?;
 

@@ -747,32 +747,6 @@
       ]
     }
   },
-  "0ee82d883e2594dc5be04cc4c7f2b5eb78230d255629ceb09262cd2dc9d16238": {
-    "query": "SELECT name, address\n                FROM token_whitelist\n                WHERE address = $1",
-    "describe": {
-      "columns": [
-        {
-          "ordinal": 0,
-          "name": "name",
-          "type_info": "Varchar"
-        },
-        {
-          "ordinal": 1,
-          "name": "address",
-          "type_info": "Varchar"
-        }
-      ],
-      "parameters": {
-        "Left": [
-          "Text"
-        ]
-      },
-      "nullable": [
-        false,
-        false
-      ]
-    }
-  },
   "10eee935829d032c8430fc5df7f83b54205f9533f9e17f06a3a08cb4d6e02c4d": {
     "query": "SELECT service_id as \"service_id: _\", account_workchain_id, account_hex, balance, root_address, created_at, updated_at\n                FROM token_balances\n                WHERE service_id = $1 AND account_workchain_id = $2 AND account_hex = $3 ",
     "describe": {
@@ -1799,6 +1773,60 @@
         false,
         false,
         true,
+        false,
+        false
+      ]
+    }
+  },
+  "3ed5a8c725e537965ebc5c9eb31781918c432b48c652f6ec297557957b321b2a": {
+    "query": "INSERT INTO token_whitelist\n                (name, address, version)\n                VALUES ($1, $2, $3::twa_token_wallet_version)\n                RETURNING\n                name, address, version as \"version: _\" ",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "name",
+          "type_info": "Varchar"
+        },
+        {
+          "ordinal": 1,
+          "name": "address",
+          "type_info": "Varchar"
+        },
+        {
+          "ordinal": 2,
+          "name": "version: _",
+          "type_info": {
+            "Custom": {
+              "name": "twa_token_wallet_version",
+              "kind": {
+                "Enum": [
+                  "OldTip3v4",
+                  "Tip3"
+                ]
+              }
+            }
+          }
+        }
+      ],
+      "parameters": {
+        "Left": [
+          "Varchar",
+          "Varchar",
+          {
+            "Custom": {
+              "name": "twa_token_wallet_version",
+              "kind": {
+                "Enum": [
+                  "OldTip3v4",
+                  "Tip3"
+                ]
+              }
+            }
+          }
+        ]
+      },
+      "nullable": [
+        false,
         false,
         false
       ]
@@ -3282,6 +3310,48 @@
       ]
     }
   },
+  "7a408d09748e749b5c02f0eab8fb3f4155c18be80d475d072422a02160ba71a7": {
+    "query": "SELECT name, address, version as \"version: _\"\n                FROM token_whitelist\n                WHERE address = $1",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "name",
+          "type_info": "Varchar"
+        },
+        {
+          "ordinal": 1,
+          "name": "address",
+          "type_info": "Varchar"
+        },
+        {
+          "ordinal": 2,
+          "name": "version: _",
+          "type_info": {
+            "Custom": {
+              "name": "twa_token_wallet_version",
+              "kind": {
+                "Enum": [
+                  "OldTip3v4",
+                  "Tip3"
+                ]
+              }
+            }
+          }
+        }
+      ],
+      "parameters": {
+        "Left": [
+          "Text"
+        ]
+      },
+      "nullable": [
+        false,
+        false,
+        false
+      ]
+    }
+  },
   "8e514a22c32ded56adca4d8486c8a844279036388af6b0bfb754fdb6651fdf3e": {
     "query": "\n            SELECT id,\n                service_id as \"service_id: _\",\n                transaction_id,\n                message_hash,\n                account_workchain_id,\n                account_hex,\n                sender_workchain_id,\n                sender_hex,\n                balance_change,\n                transaction_direction as \"transaction_direction: _\",\n                transaction_status as \"transaction_status: _\",\n                event_status as \"event_status: _\",\n                multisig_transaction_id,\n                created_at,\n                updated_at\n            FROM transaction_events\n            WHERE service_id = $1 AND id = $2",
     "describe": {
@@ -4170,30 +4240,6 @@
       ]
     }
   },
-  "b4be96581ae89d07ac26b78babf24f461777797d21e574cfebd747761dd3b5d7": {
-    "query": "SELECT name, address FROM token_whitelist",
-    "describe": {
-      "columns": [
-        {
-          "ordinal": 0,
-          "name": "name",
-          "type_info": "Varchar"
-        },
-        {
-          "ordinal": 1,
-          "name": "address",
-          "type_info": "Varchar"
-        }
-      ],
-      "parameters": {
-        "Left": []
-      },
-      "nullable": [
-        false,
-        false
-      ]
-    }
-  },
   "b6e0976bf2960fb60ed91fe0cded10324cc45c67d8e5d28950dfafa7e98880da": {
     "query": "INSERT INTO address\n                (id, service_id, workchain_id, hex, base64url, public_key, private_key, account_type, custodians, confirmations, custodians_public_keys)\n                VALUES ($1, $2, $3, $4, $5, $6, $7, $8::twa_account_type, $9, $10, $11)\n                RETURNING\n                id, service_id as \"service_id: _\", workchain_id, hex, base64url, public_key, private_key, account_type as \"account_type: _\", custodians, confirmations, custodians_public_keys, balance, created_at, updated_at\n",
     "describe": {
@@ -4426,33 +4472,6 @@
         true,
         true,
         false,
-        false,
-        false
-      ]
-    }
-  },
-  "c26b647591b4e3e4a48bde35b7dbfae4452ec68d2823efdc11280e64b75e92a5": {
-    "query": "INSERT INTO token_whitelist\n                (name, address)\n                VALUES ($1, $2)\n                RETURNING\n                name, address",
-    "describe": {
-      "columns": [
-        {
-          "ordinal": 0,
-          "name": "name",
-          "type_info": "Varchar"
-        },
-        {
-          "ordinal": 1,
-          "name": "address",
-          "type_info": "Varchar"
-        }
-      ],
-      "parameters": {
-        "Left": [
-          "Varchar",
-          "Varchar"
-        ]
-      },
-      "nullable": [
         false,
         false
       ]
