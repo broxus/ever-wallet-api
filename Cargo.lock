@@ -1688,7 +1688,7 @@ dependencies = [
 [[package]]
 name = "nekoton"
 version = "0.10.0"
-source = "git+https://github.com/broxus/nekoton.git#e317a161bdae8ed64e6048b3db59cf8ca2974f8d"
+source = "git+https://github.com/broxus/nekoton.git#f2b19e6a40d02a2feae5ce862f82de25a56247bf"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -1731,7 +1731,7 @@ dependencies = [
 [[package]]
 name = "nekoton-abi"
 version = "0.10.0"
-source = "git+https://github.com/broxus/nekoton.git#e317a161bdae8ed64e6048b3db59cf8ca2974f8d"
+source = "git+https://github.com/broxus/nekoton.git#f2b19e6a40d02a2feae5ce862f82de25a56247bf"
 dependencies = [
  "anyhow",
  "base64",
@@ -1757,7 +1757,7 @@ dependencies = [
 [[package]]
 name = "nekoton-contracts"
 version = "0.10.0"
-source = "git+https://github.com/broxus/nekoton.git#e317a161bdae8ed64e6048b3db59cf8ca2974f8d"
+source = "git+https://github.com/broxus/nekoton.git#f2b19e6a40d02a2feae5ce862f82de25a56247bf"
 dependencies = [
  "anyhow",
  "nekoton-abi",
@@ -1772,7 +1772,7 @@ dependencies = [
 [[package]]
 name = "nekoton-derive"
 version = "0.10.0"
-source = "git+https://github.com/broxus/nekoton.git#e317a161bdae8ed64e6048b3db59cf8ca2974f8d"
+source = "git+https://github.com/broxus/nekoton.git#f2b19e6a40d02a2feae5ce862f82de25a56247bf"
 dependencies = [
  "either",
  "proc-macro2",
@@ -1783,7 +1783,7 @@ dependencies = [
 [[package]]
 name = "nekoton-utils"
 version = "0.10.0"
-source = "git+https://github.com/broxus/nekoton.git#e317a161bdae8ed64e6048b3db59cf8ca2974f8d"
+source = "git+https://github.com/broxus/nekoton.git#f2b19e6a40d02a2feae5ce862f82de25a56247bf"
 dependencies = [
  "anyhow",
  "base64",
@@ -3413,7 +3413,7 @@ dependencies = [
 [[package]]
 name = "ton_block"
 version = "1.7.14"
-source = "git+https://github.com/broxus/ton-labs-block#61a782dafbcd07cad491abeaf005a834f92d3d10"
+source = "git+https://github.com/broxus/ton-labs-block#6167b7d9028f360ce60acbd9676ef23b53defee3"
 dependencies = [
  "anyhow",
  "base64",
@@ -3426,6 +3426,7 @@ dependencies = [
  "num",
  "num-traits",
  "rand",
+ "rustc-hash",
  "sha2",
  "smallvec",
  "thiserror",
@@ -3463,7 +3464,7 @@ dependencies = [
 [[package]]
 name = "ton_types"
 version = "1.10.2"
-source = "git+https://github.com/broxus/ton-labs-types#b9d706bd0dc59f3fbf6357abda20e021324d71fc"
+source = "git+https://github.com/broxus/ton-labs-types#80d196f04a26b398ebe93f7dd83ed8b6b953f0df"
 dependencies = [
  "anyhow",
  "base64",
@@ -3476,6 +3477,7 @@ dependencies = [
  "num-derive",
  "num-traits",
  "rand",
+ "rustc-hash",
  "sha2",
  "smallvec",
  "thiserror",

@@ -44,7 +44,7 @@ pub fn prepare_token_transfer(
                 }
             }
             .arg(BigUint128(Default::default())) // grams / transfer_grams
-            .arg(&send_gas_to) // send_gas_to
+            .arg(send_gas_to) // send_gas_to
             .arg(notify_receiver) // notify_receiver
             .arg(payload) // payload
             .build()
@@ -64,7 +64,7 @@ pub fn prepare_token_transfer(
                         .arg(BigUint128(INITIAL_BALANCE.into())) // deployWalletValue
                 }
             }
-            .arg(&send_gas_to) // remainingGasTo
+            .arg(send_gas_to) // remainingGasTo
             .arg(notify_receiver) // notify
             .arg(payload) // payload
             .build()
@@ -98,7 +98,7 @@ pub fn prepare_token_burn(
             MessageBuilder::new(token_wallet_contract::burn_by_owner())
                 .arg(BigUint128(tokens)) // amount
                 .arg(0) // grams
-                .arg(&send_gas_to) // remainingGasTo
+                .arg(send_gas_to) // remainingGasTo
                 .arg(callback_to) // callback_address
                 .arg(payload) // payload
                 .build()
@@ -107,8 +107,8 @@ pub fn prepare_token_burn(
             use tip3_1::token_wallet_contract;
             MessageBuilder::new(token_wallet_contract::burnable::burn())
                 .arg(BigUint128(tokens)) // amount
-                .arg(&send_gas_to) // remainingGasTo
-                .arg(&callback_to) // callbackTo
+                .arg(send_gas_to) // remainingGasTo
+                .arg(callback_to) // callbackTo
                 .arg(payload) // payload
                 .build()
         }
@@ -145,7 +145,7 @@ pub fn prepare_token_mint(
                 .arg(BigUint128(tokens)) // amount
                 .arg(recipient) // recipient
                 .arg(BigUint128(deploy_wallet_value)) // deployWalletValue
-                .arg(&send_gas_to) // remainingGasTo
+                .arg(send_gas_to) // remainingGasTo
                 .arg(notify) // notify
                 .arg(payload) // payload
                 .build()
