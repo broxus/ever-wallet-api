@@ -264,7 +264,7 @@ async fn get_token_wallet_info(
                 .sqlx_client
                 .get_root_token(&info.root_address.to_string())
                 .await
-                .map_err(|_| TonCoreError::InvalidRootToken(info.root_address.to_string()));
+                .map_err(|_| TonCoreError::InvalidRootToken(info.root_address.to_string()))?;
 
             parse_ctx
                 .owners_cache
