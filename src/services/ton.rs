@@ -531,6 +531,9 @@ impl TonService for TonServiceImpl {
             .map(|o| o.value.clone())
             .sum::<BigDecimal>()
             >= network.network_balance
+            && input.outputs.iter().all(|o| {
+                o.output_type.is_none() || o.output_type == Some(TransactionSendOutputType::Normal)
+            })
         {
             return Err(ServiceError::WrongInput("Insufficient balance".to_string()));
         }

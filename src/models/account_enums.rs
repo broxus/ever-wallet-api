@@ -160,7 +160,7 @@ pub enum TransactionsSearchOrdering {
     TransactionTimestampDesc,
 }
 
-#[derive(Debug, Deserialize, Serialize, Clone, opg::OpgModel)]
+#[derive(Debug, Deserialize, Serialize, Clone, PartialEq, opg::OpgModel)]
 #[opg("TransactionSendOutputType")]
 pub enum TransactionSendOutputType {
     Normal,
@@ -174,7 +174,7 @@ impl TryFrom<u8> for TransactionSendOutputType {
     fn try_from(value: u8) -> Result<Self, Self::Error> {
         match value {
             3 => Ok(TransactionSendOutputType::Normal),
-            131 => Ok(TransactionSendOutputType::AllBalance),
+            128 => Ok(TransactionSendOutputType::AllBalance),
             160 => Ok(TransactionSendOutputType::AllBalanceDeleteNetworkAccount),
             _ => Err(TransactionSendOutputTypeError::UnsupportedMessageFlags),
         }
@@ -185,7 +185,7 @@ impl From<TransactionSendOutputType> for u8 {
     fn from(value: TransactionSendOutputType) -> u8 {
         match value {
             TransactionSendOutputType::Normal => 3,
-            TransactionSendOutputType::AllBalance => 128 + 3,
+            TransactionSendOutputType::AllBalance => 128,
             TransactionSendOutputType::AllBalanceDeleteNetworkAccount => 128 + 32,
         }
     }
