@@ -48,12 +48,11 @@ pub async fn parse_ton_transaction(
     let value = BigDecimal::from_u128(compute_value(&transaction));
     let balance_change = BigDecimal::from_i128(nekoton_utils::compute_balance_change(&transaction));
     let multisig_transaction_id = nekoton::core::parsing::parse_multisig_transaction(&transaction)
-        .map(|transaction| match transaction {
+        .and_then(|transaction| match transaction {
             MultisigTransaction::Send(_) => None,
             MultisigTransaction::Confirm(transaction) => Some(transaction.transaction_id as i64),
             MultisigTransaction::Submit(transaction) => Some(transaction.trans_id as i64),
-        })
-        .flatten();
+        });
 
     let parsed = match in_msg.header() {
         CommonMsgInfo::IntMsgInfo(header) => {
