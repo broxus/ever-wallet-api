@@ -16,7 +16,7 @@ bigdecimal = { version = "0.2.0", features = ["serde"] }
 block-modes = "*"
 chacha20poly1305 = "0.9"
 chrono = "0.4.19"
-config = { version = "0.11", default-features = false, features = ["yaml"] }
+config = { version = "0.12", default-features = false, features = ["yaml"] }
 derive_more = "*"
 futures = "0.3"
 hex = "0.4"
@@ -29,14 +29,14 @@ lazy_static = "1.4.0"
 log = { version = "0.4", features = ["std", "serde"] }
 log4rs = "1.0"
 lru = "0.6.5"
-num-bigint = "0.3.2"
-num-traits = "0.2.14"
+num-bigint = "0.3"
+num-traits = "0.2"
 opg = { version = "0.0", features = ["uuid"] }
-parking_lot = "0.11"
+parking_lot = "0.12.0"
 pin-project = "0.4"
 public-ip = "0.2"
 rand = "0.8"
-regex = "1.5.4"
+regex = "1.5"
 reqwest = { version = "0.11", features = ["json"] }
 r2d2 = "0.8.9"
 sentry = { version = "0.23.0", features = ["log", "debug-logs"] }
@@ -47,7 +47,7 @@ serde_yaml = "0.8"
 sha2 = "0.9"
 sqlx = { version = "0.5", features = ["runtime-tokio-native-tls", "postgres", "uuid", "bigdecimal", "offline", "chrono", "json"] }
 thiserror = "1.0"
-tokio = { version = "1.6", features = ["sync", "fs", "rt-multi-thread", "macros", "parking_lot"] }
+tokio = { version = "1.16.1", features = ["sync", "fs", "rt-multi-thread", "macros", "signal", "parking_lot"] }
 url = { version = "2.2.2", features = ["serde"] }
 urlencoding = "2.1.0"
 uuid = { version = "0.8", features = ["v4", "serde"] }

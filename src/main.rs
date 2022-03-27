@@ -2,6 +2,7 @@ use std::sync::Arc;
 
 use anyhow::{Context, Result};
 use argh::FromArgs;
+use serde::Deserialize;
 use tokio::sync::mpsc;
 
 use ton_wallet_api::commands::*;
@@ -19,11 +20,8 @@ async fn main() -> Result<()> {
 async fn run(app: App) -> Result<()> {
     match app.command {
         Subcommand::Server(run) => {
-            let mut config = config::Config::new();
-            config.merge(read_config(&run.config).context("Failed to read config")?)?;
-            config.merge(config::Environment::new())?;
-
-            run.execute(config.try_into()?).await
+            let config: AppConfig = read_config(&run.config)?;
+            run.execute(config).await
         }
         Subcommand::RootToken(run) => run.execute().await,
         Subcommand::ApiService(run) => run.execute().await,
@@ -143,9 +141,10 @@ impl TonWalletApi {
     }
 }
 
-fn read_config<P>(path: P) -> Result<config::File<config::FileSourceString>>
+fn read_config<P, T>(path: P) -> Result<T>
 where
     P: AsRef<std::path::Path>,
+    for<'de> T: Deserialize<'de>,
 {
     let data = std::fs::read_to_string(path)?;
     let re = regex::Regex::new(r"\$\{([a-zA-Z_][0-9a-zA-Z_]*)\}").unwrap();
@@ -159,10 +158,15 @@ where
         }
     });
 
-    Ok(config::File::from_str(
-        result.as_ref(),
-        config::FileFormat::Yaml,
-    ))
+    config::Config::builder()
+        .add_source(config::File::from_str(
+            result.as_ref(),
+            config::FileFormat::Yaml,
+        ))
+        .build()
+        .context("Failed to load config")?
+        .try_deserialize()
+        .context("Failed to parse config")
 }
 
 fn init_logger(config: &serde_yaml::Value) -> Result<()> {
