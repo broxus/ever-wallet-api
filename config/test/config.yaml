@@ -1,6 +1,6 @@
 ---
 server_addr: "0.0.0.0:8080"
-database_url: "postgresql://postgres:postgres@localhost:5432/ton_wallet_api_rs"
+database_url: "postgresql://${DB_USER}:${DB_PASSWORD}@${DB_HOST}/${DB_NAME}"
 db_pool_size: 5
 ton_core:
   adnl_port: 30310
