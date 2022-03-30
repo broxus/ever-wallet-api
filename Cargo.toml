@@ -48,6 +48,7 @@ sha2 = "0.9"
 sqlx = { version = "0.5", features = ["runtime-tokio-native-tls", "postgres", "uuid", "bigdecimal", "offline", "chrono", "json"] }
 thiserror = "1.0"
 tokio = { version = "1.16.1", features = ["sync", "fs", "rt-multi-thread", "macros", "signal", "parking_lot"] }
+tokio-util = "0.7.1"
 url = { version = "2.2.2", features = ["serde"] }
 urlencoding = "2.1.0"
 uuid = { version = "0.8", features = ["v4", "serde"] }

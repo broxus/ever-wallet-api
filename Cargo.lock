@@ -1056,7 +1056,7 @@ dependencies = [
  "indexmap",
  "slab",
  "tokio",
- "tokio-util",
+ "tokio-util 0.6.9",
  "tracing",
 ]
 
@@ -3205,6 +3205,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "tokio-util"
+version = "0.7.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0edfdeb067411dba2044da6d1cb2df793dd35add7888d73c16e3381ded401764"
+dependencies = [
+ "bytes",
+ "futures-core",
+ "futures-sink",
+ "pin-project-lite",
+ "tokio",
+]
+
+[[package]]
 name = "ton-indexer"
 version = "0.1.0"
 source = "git+https://github.com/broxus/ton-indexer.git#8f7790342c20439e32e28baf492e9aaa23b49f50"
@@ -3313,6 +3326,7 @@ dependencies = [
  "thiserror",
  "tiny-adnl",
  "tokio",
+ "tokio-util 0.7.1",
  "ton-indexer",
  "ton_abi",
  "ton_block",
@@ -3767,7 +3781,7 @@ dependencies = [
  "tokio",
  "tokio-stream",
  "tokio-tungstenite",
- "tokio-util",
+ "tokio-util 0.6.9",
  "tower-service",
  "tracing",
 ]
