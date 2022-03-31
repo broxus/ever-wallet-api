@@ -535,13 +535,8 @@ impl TonClient for TonClientImpl {
 
         let version = token_owner_db.version.into();
 
-        let tokens = BigUint::from_u64(
-            input
-                .value
-                .to_u64()
-                .ok_or(TonClientError::ParseBigDecimal)?,
-        )
-        .ok_or(TonClientError::ParseBigUint)?;
+        let (value, _) = input.value.clone().as_bigint_and_exponent();
+        let tokens = value.to_biguint().ok_or(TonClientError::ParseBigUint)?;
 
         let attached_amount = input.fee.to_u64().ok_or(TonClientError::ParseBigDecimal)?;
 
@@ -597,13 +592,8 @@ impl TonClient for TonClientImpl {
 
         let version = token_owner_db.version.into();
 
-        let tokens = BigUint::from_u64(
-            input
-                .value
-                .to_u64()
-                .ok_or(TonClientError::ParseBigDecimal)?,
-        )
-        .ok_or(TonClientError::ParseBigUint)?;
+        let (value, _) = input.value.clone().as_bigint_and_exponent();
+        let tokens = value.to_biguint().ok_or(TonClientError::ParseBigUint)?;
 
         let attached_amount = input.fee.to_u64().ok_or(TonClientError::ParseBigDecimal)?;
 
@@ -646,13 +636,8 @@ impl TonClient for TonClientImpl {
 
         let version = get_root_token_version(&root_contract)?;
 
-        let tokens = BigUint::from_u64(
-            input
-                .value
-                .to_u64()
-                .ok_or(TonClientError::ParseBigDecimal)?,
-        )
-        .ok_or(TonClientError::ParseBigUint)?;
+        let (value, _) = input.value.clone().as_bigint_and_exponent();
+        let tokens = value.to_biguint().ok_or(TonClientError::ParseBigUint)?;
 
         let deploy_wallet_value = BigUint::from_u64(
             input
