@@ -14,7 +14,7 @@ async-trait = "0.1"
 base64 = "0.13"
 bigdecimal = { version = "0.2.0", features = ["serde"] }
 block-modes = "*"
-chacha20poly1305 = "0.9"
+chacha20poly1305 = "0.10.0-pre"
 chrono = "0.4.19"
 config = { version = "0.12", default-features = false, features = ["yaml"] }
 derive_more = "*"
