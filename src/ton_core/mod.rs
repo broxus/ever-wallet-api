@@ -225,4 +225,6 @@ enum TonCoreError {
     AccountNotExist(String),
     #[error("Root token `{0}` not included in the whitelist")]
     InvalidRootToken(String),
+    #[error("Shard state is empty")]
+    ShardStateEmpty,
 }

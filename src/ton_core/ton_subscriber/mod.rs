@@ -12,8 +12,8 @@ use tiny_adnl::utils::FxHashMap;
 
 use tokio::sync::Notify;
 use ton_block::{Deserializable, HashmapAugType};
-use ton_indexer::utils::{BlockIdExtExtension, BlockProofStuff, BlockStuff, ShardStateStuff};
-use ton_indexer::{BriefBlockMeta, EngineStatus};
+use ton_indexer::utils::BlockIdExtExtension;
+use ton_indexer::{BriefBlockMeta, EngineStatus, ProcessBlockContext};
 use ton_types::{HashmapType, UInt256};
 
 use crate::ton_core::*;
@@ -257,18 +257,15 @@ impl ton_indexer::Subscriber for TonSubscriber {
         }
     }
 
-    async fn process_block(
-        &self,
-        meta: BriefBlockMeta,
-        block: &BlockStuff,
-        _block_proof: Option<&BlockProofStuff>,
-        shard_state: &ShardStateStuff,
-    ) -> Result<()> {
-        if block.id().is_masterchain() {
-            self.handle_masterchain_block(meta, block.block())?;
+    async fn process_block(&self, ctx: ProcessBlockContext<'_>) -> Result<()> {
+        if ctx.block_stuff().id().is_masterchain() {
+            self.handle_masterchain_block(ctx.meta(), ctx.block())?;
         } else {
-            let mut states =
-                self.handle_shard_block(block.block(), shard_state.state(), &block.id().root_hash)?;
+            let mut states = self.handle_shard_block(
+                ctx.block(),
+                ctx.shard_state().ok_or(TonCoreError::ShardStateEmpty)?,
+                &ctx.block_stuff().id().root_hash,
+            )?;
             while let Some(status) = states.next().await {
                 if let Err(err) = status {
                     log::error!("Failed to receive transaction status: {}", err);

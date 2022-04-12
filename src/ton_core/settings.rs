@@ -26,13 +26,15 @@ pub struct NodeConfig {
     pub max_db_memory_usage: usize,
 
     /// Archives map queue. Default: 16
-    pub parallel_archive_downloads: u32,
+    pub parallel_archive_downloads: usize,
 
     /// Whether old shard states will be removed every 10 minutes
     pub states_gc_enabled: bool,
 
     /// Whether old blocks will be removed on each new key block
     pub blocks_gc_enabled: bool,
+
+    pub start_from: Option<u32>,
 
     pub adnl_options: tiny_adnl::AdnlNodeOptions,
     pub rldp_options: tiny_adnl::RldpNodeOptions,
@@ -78,10 +80,13 @@ impl NodeConfig {
                     ..Default::default()
                 }),
             shard_state_cache_options: None,
-            archives_enabled: false,
-            old_blocks_policy: Default::default(),
             max_db_memory_usage: self.max_db_memory_usage,
-            parallel_archive_downloads: self.parallel_archive_downloads,
+            archive_options: Some(Default::default()),
+            sync_options: ton_indexer::SyncOptions {
+                parallel_archive_downloads: self.parallel_archive_downloads,
+                ..Default::default()
+            },
+
             adnl_options: Default::default(),
             rldp_options: tiny_adnl::RldpNodeOptions {
                 force_compression: true,
@@ -109,6 +114,7 @@ impl Default for NodeConfig {
             parallel_archive_downloads: 16,
             states_gc_enabled: true,
             blocks_gc_enabled: true,
+            start_from: Default::default(),
             adnl_options: Default::default(),
             rldp_options: Default::default(),
             dht_options: Default::default(),
