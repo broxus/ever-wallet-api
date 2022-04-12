@@ -1030,7 +1030,7 @@ checksum = "9b919933a397b79c37e33b77bb2aa3dc8eb6e165ad809e58ff75bc7db2e34574"
 [[package]]
 name = "global-config"
 version = "0.1.0"
-source = "git+https://github.com/broxus/ton-indexer.git#2a38e7254489c894f3de7cdfe37bb8d410a51c2d"
+source = "git+https://github.com/broxus/ton-indexer.git#860794a95bb6207bc99d98c2cff396d89c6b4968"
 dependencies = [
  "anyhow",
  "base64",
@@ -3233,7 +3233,7 @@ dependencies = [
 [[package]]
 name = "ton-indexer"
 version = "0.1.0"
-source = "git+https://github.com/broxus/ton-indexer.git#2a38e7254489c894f3de7cdfe37bb8d410a51c2d"
+source = "git+https://github.com/broxus/ton-indexer.git#860794a95bb6207bc99d98c2cff396d89c6b4968"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -3278,7 +3278,7 @@ dependencies = [
 [[package]]
 name = "ton-indexer-alloc"
 version = "0.1.0"
-source = "git+https://github.com/broxus/ton-indexer.git#2a38e7254489c894f3de7cdfe37bb8d410a51c2d"
+source = "git+https://github.com/broxus/ton-indexer.git#860794a95bb6207bc99d98c2cff396d89c6b4968"
 dependencies = [
  "anyhow",
  "errno",

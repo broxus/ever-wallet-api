@@ -34,8 +34,6 @@ pub struct NodeConfig {
     /// Whether old blocks will be removed on each new key block
     pub blocks_gc_enabled: bool,
 
-    pub start_from: Option<u32>,
-
     pub adnl_options: tiny_adnl::AdnlNodeOptions,
     pub rldp_options: tiny_adnl::RldpNodeOptions,
     pub dht_options: tiny_adnl::DhtNodeOptions,
@@ -114,7 +112,6 @@ impl Default for NodeConfig {
             parallel_archive_downloads: 16,
             states_gc_enabled: true,
             blocks_gc_enabled: true,
-            start_from: Default::default(),
             adnl_options: Default::default(),
             rldp_options: Default::default(),
             dht_options: Default::default(),
