@@ -260,10 +260,10 @@ impl ton_indexer::Subscriber for TonSubscriber {
     async fn process_block(&self, ctx: ProcessBlockContext<'_>) -> Result<()> {
         if ctx.block_stuff().id().is_masterchain() {
             self.handle_masterchain_block(ctx.meta(), ctx.block())?;
-        } else {
+        } else if let Some(shard_state) = ctx.shard_state() {
             let mut states = self.handle_shard_block(
                 ctx.block(),
-                ctx.shard_state().ok_or(TonCoreError::ShardStateEmpty)?,
+                shard_state,
                 &ctx.block_stuff().id().root_hash,
             )?;
             while let Some(status) = states.next().await {
