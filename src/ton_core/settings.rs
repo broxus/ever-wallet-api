@@ -84,7 +84,6 @@ impl NodeConfig {
                 parallel_archive_downloads: self.parallel_archive_downloads,
                 ..Default::default()
             },
-
             adnl_options: Default::default(),
             rldp_options: tiny_adnl::RldpNodeOptions {
                 force_compression: true,
