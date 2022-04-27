@@ -34,7 +34,7 @@ while [[ $# -gt 0 ]]; do
           exit 1
         fi
       ;;
-      --db-url)
+      --database-url)
         database_url="$2"
         shift # past argument
         if [ "$#" -gt 0 ]; then shift;

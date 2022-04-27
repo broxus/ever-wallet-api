@@ -33,7 +33,7 @@ while [[ $# -gt 0 ]]; do
           exit 1
         fi
       ;;
-      --db-url)
+      --database-url)
         database_url="$2"
         shift # past argument
         if [ "$#" -gt 0 ]; then shift;
@@ -67,11 +67,11 @@ if [[ "$setup_type" == "native" ]]; then
   echo 'INFO: Running native installation'
 
   echo 'INFO: installing and updating dependencies'
-  sudo apt update && sudo apt upgrade
-  sudo apt install build-essential llvm clang
+  sudo apt update
+  sudo apt install build-essential llvm clang curl libssl-dev pkg-config
 
   echo 'INFO: installing Rust'
-  url --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
+  curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
   source "$HOME/.cargo/env"
 
   echo 'INFO: installing sqlx-cli'
@@ -102,7 +102,7 @@ if [[ -f "$config_path" ]]; then
 else
   sudo cp -n "$SCRIPT_DIR/contrib/config.yaml" "$config_path"
 fi
-sudo wget -O /etc/ton-wallet-api/ton-global.config.json \
+sudo curl -so /etc/ton-wallet-api/ton-global.config.json \
   https://raw.githubusercontent.com/tonlabs/main.ton.dev/master/configs/ton-global.config.json
 
 echo 'INFO: restarting timesyncd'
