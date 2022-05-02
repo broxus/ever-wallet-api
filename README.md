@@ -48,7 +48,14 @@ NOTE: scripts are prepared and tested on **Ubuntu 20.04**. You may need to modif
    ...
    ```
 
-   > SECRET and SALT env vars needed to encrypt/decrypt all addresses private keys.
+   > SECRET - any string to encrypt/decrypt all addresses private keys.
+
+   > SALT - 16 bytes recommended in base64 for secret hashing.
+
+   ###### How to get SALT
+   ```bash
+   cat /dev/random | head -c 16 | base64
+   ```
 
 3. ##### Create api service
    ```bash
