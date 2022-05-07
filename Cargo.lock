@@ -388,15 +388,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "clear_on_drop"
-version = "0.2.5"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "38508a63f4979f0048febc9966fadbd48e5dab31fd0ec6a3f151bbf4a74f7423"
-dependencies = [
- "cc",
-]
-
-[[package]]
 name = "config"
 version = "0.12.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -587,13 +578,13 @@ dependencies = [
 
 [[package]]
 name = "dashmap"
-version = "5.2.0"
+version = "5.3.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4c8858831f7781322e539ea39e72449c46b059638250c14344fec8d0aa6e539c"
+checksum = "391b56fbd302e585b7a9494fb70e40949567b1cf9003a8e4a6041a1687c26573"
 dependencies = [
  "cfg-if",
- "num_cpus",
- "parking_lot 0.12.0",
+ "hashbrown 0.12.1",
+ "lock_api",
  "serde",
 ]
 
@@ -840,6 +831,19 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "77f3309417938f28bf8228fcff79a4a37103981e3e186d2ccd19c74b38f4eb71"
 
 [[package]]
+name = "everscale-crypto"
+version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c3a3f250f3e8ca3683859cfbbd90d674992b0ee65a76f5a5e40f8e860eaf0130"
+dependencies = [
+ "curve25519-dalek-ng",
+ "generic-array",
+ "hex",
+ "rand",
+ "sha2 0.9.9",
+]
+
+[[package]]
 name = "extfmt"
 version = "0.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1036,7 +1040,7 @@ checksum = "9b919933a397b79c37e33b77bb2aa3dc8eb6e165ad809e58ff75bc7db2e34574"
 [[package]]
 name = "global-config"
 version = "0.1.0"
-source = "git+https://github.com/broxus/ton-indexer.git#80768521fe2758c9f57304921aae0feeb99f9024"
+source = "git+https://github.com/broxus/ton-indexer.git#def7792fb9ae63668ad8d9091242a1dede94988d"
 dependencies = [
  "anyhow",
  "base64",
@@ -1079,6 +1083,12 @@ checksum = "ab5ef0d4909ef3724cc8cce6ccc8572c5c817592e9285f5464f8e86f8bd3726e"
 dependencies = [
  "ahash",
 ]
+
+[[package]]
+name = "hashbrown"
+version = "0.12.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "db0d4cf898abf0081f964436dc980e96670a0f36863e4b83aaacdb65c9d7ccc3"
 
 [[package]]
 name = "hashlink"
@@ -1412,8 +1422,8 @@ dependencies = [
 
 [[package]]
 name = "librocksdb-sys"
-version = "0.7.0+7.0.4"
-source = "git+https://github.com/Rexagon/rust-rocksdb.git#a3ae512a5e28cba2b720d9e87e14b4bf4d7fe61f"
+version = "0.7.0+7.1.2"
+source = "git+https://github.com/Rexagon/rust-rocksdb.git#813e7debc65ad37580404684412dba2f7390ae12"
 dependencies = [
  "bindgen",
  "bzip2-sys",
@@ -1497,14 +1507,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "lockfree"
-version = "0.5.1"
-source = "git+https://github.com/tonlabs/lockfree.git#bfcb66587dc4ffed9e8e9248995ad2fe8dc3669e"
-dependencies = [
- "owned-alloc",
-]
-
-[[package]]
 name = "log"
 version = "0.4.16"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1558,7 +1560,7 @@ dependencies = [
 [[package]]
 name = "lru_time_cache"
 version = "0.11.11"
-source = "git+https://github.com/Rexagon/lru_time_cache.git#cff1fd8b2c9eaae771e1a77d31fa3b40c8d7dd33"
+source = "git+https://github.com/Rexagon/lru_time_cache.git#43ce01deb20a971fd88fbab0abd9c3eef6339455"
 
 [[package]]
 name = "match_cfg"
@@ -2029,12 +2031,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "owned-alloc"
-version = "0.2.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "30fceb411f9a12ff9222c5f824026be368ff15dc2f13468d850c7d3f502205d6"
-
-[[package]]
 name = "parking_lot"
 version = "0.11.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2429,7 +2425,7 @@ dependencies = [
 [[package]]
 name = "rocksdb"
 version = "0.18.0"
-source = "git+https://github.com/Rexagon/rust-rocksdb.git#a3ae512a5e28cba2b720d9e87e14b4bf4d7fe61f"
+source = "git+https://github.com/Rexagon/rust-rocksdb.git#813e7debc65ad37580404684412dba2f7390ae12"
 dependencies = [
  "libc",
  "librocksdb-sys",
@@ -3080,7 +3076,7 @@ dependencies = [
 [[package]]
 name = "tiny-adnl"
 version = "0.1.0"
-source = "git+https://github.com/broxus/tiny-adnl#9995414f0cbeb9eb60e3084ddda2cc23a08c380b"
+source = "git+https://github.com/broxus/tiny-adnl#df8902fa447ec6f9be6f23539ae3aba68230fcb9"
 dependencies = [
  "aes",
  "anyhow",
@@ -3090,12 +3086,12 @@ dependencies = [
  "ctr",
  "curve25519-dalek-ng",
  "dashmap",
- "ed25519-dalek",
+ "either",
+ "everscale-crypto",
  "futures-util",
  "generic-array",
  "hex",
  "libc",
- "log",
  "parking_lot 0.12.0",
  "rand",
  "raptorq",
@@ -3108,7 +3104,7 @@ dependencies = [
  "tokio-io-timeout",
  "tokio-util 0.7.1",
  "ton_api",
- "ton_types",
+ "tracing",
  "x25519-dalek-ng",
  "zstd",
 ]
@@ -3263,7 +3259,7 @@ dependencies = [
 [[package]]
 name = "ton-indexer"
 version = "0.1.0"
-source = "git+https://github.com/broxus/ton-indexer.git#80768521fe2758c9f57304921aae0feeb99f9024"
+source = "git+https://github.com/broxus/ton-indexer.git#def7792fb9ae63668ad8d9091242a1dede94988d"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -3308,7 +3304,7 @@ dependencies = [
 [[package]]
 name = "ton-indexer-alloc"
 version = "0.1.0"
-source = "git+https://github.com/broxus/ton-indexer.git#80768521fe2758c9f57304921aae0feeb99f9024"
+source = "git+https://github.com/broxus/ton-indexer.git#def7792fb9ae63668ad8d9091242a1dede94988d"
 dependencies = [
  "anyhow",
  "errno",
@@ -3406,7 +3402,7 @@ dependencies = [
 [[package]]
 name = "ton_api"
 version = "0.0.1"
-source = "git+https://github.com/broxus/ton-labs-tl.git#c8c5454c0c48f33e0c374b2de0d29d2762d9b7d4"
+source = "git+https://github.com/broxus/ton-labs-tl.git#6159717ed0a32e3e9d463203417fa021bb604819"
 dependencies = [
  "anyhow",
  "byteorder",
@@ -3426,11 +3422,10 @@ dependencies = [
 [[package]]
 name = "ton_block"
 version = "1.7.14"
-source = "git+https://github.com/broxus/ton-labs-block#8c7ded4347c162a21505d26937eba4d6a2f748c2"
+source = "git+https://github.com/broxus/ton-labs-block#433e410f87b18b2c75b070b560b08f3bc1ea4d7e"
 dependencies = [
  "anyhow",
  "base64",
- "clear_on_drop",
  "crc",
  "ed25519",
  "ed25519-dalek",
@@ -3464,7 +3459,7 @@ dependencies = [
 [[package]]
 name = "ton_tl_codegen"
 version = "0.0.1"
-source = "git+https://github.com/broxus/ton-labs-tl.git#c8c5454c0c48f33e0c374b2de0d29d2762d9b7d4"
+source = "git+https://github.com/broxus/ton-labs-tl.git#6159717ed0a32e3e9d463203417fa021bb604819"
 dependencies = [
  "anyhow",
  "crc",
@@ -3477,14 +3472,14 @@ dependencies = [
 [[package]]
 name = "ton_types"
 version = "1.10.2"
-source = "git+https://github.com/broxus/ton-labs-types#59c59eb1a462fd030fb9816f18cd1287fdf9d718"
+source = "git+https://github.com/broxus/ton-labs-types#8be05de9c0f9f8c716d548493e52689da164e0a4"
 dependencies = [
  "anyhow",
  "base64",
  "countme",
  "crc",
+ "dashmap",
  "hex",
- "lockfree",
  "log",
  "num",
  "num-derive",
