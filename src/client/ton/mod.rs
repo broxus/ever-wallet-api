@@ -7,16 +7,19 @@ use ed25519_dalek::{Keypair, PublicKey, SecretKey, Signer};
 use nekoton::core::models::Expiration;
 use nekoton::core::ton_wallet::{MultisigType, TransferAction};
 use nekoton::core::InternalMessage;
-use nekoton::crypto::SignedMessage;
+use nekoton::crypto::{SignedMessage, UnsignedMessage};
+use nekoton_abi::MessageBuilder;
 use nekoton_utils::{repack_address, SimpleClock, TrustMe};
 use num_bigint::BigUint;
 use num_traits::FromPrimitive;
 use tokio::sync::oneshot;
+use ton_abi::Function;
 use ton_block::{GetRepresentationHash, MsgAddressInt};
 use ton_types::UInt256;
 use uuid::Uuid;
 
 use crate::models::*;
+use crate::prelude::ServiceError;
 use crate::sqlx_client::*;
 use crate::ton_core::*;
 use crate::utils::*;
@@ -94,6 +97,29 @@ pub trait TonClient: Send + Sync {
         expire_at: u32,
     ) -> Result<oneshot::Receiver<MessageStatus>>;
     async fn get_metrics(&self) -> Result<Metrics>;
+
+    async fn run_local(
+        &self,
+        contract_address: UInt256,
+        function: Function,
+        tokes: &[ton_abi::Token],
+    ) -> Result<Option<nekoton_abi::ExecutionOutput>>;
+
+    async fn prepare_generic_message(
+        &self,
+        sender_addr: &str,
+        public_key: &[u8],
+        target_addr: &str,
+        execution_flag: u8,
+        value: BigDecimal,
+        bounce: bool,
+        account_type: &AccountType,
+        custodians: &Option<i32>,
+        function: Option<Function>,
+        params: Option<Vec<ton_abi::Token>>,
+    ) -> Result<Box<dyn UnsignedMessage>>;
+
+    fn add_ton_account_subscription(&self, account: UInt256) -> ();
 }
 
 #[derive(Clone)]
@@ -140,7 +166,7 @@ impl TonClientImpl {
 #[async_trait]
 impl TonClient for TonClientImpl {
     async fn create_address(&self, payload: CreateAddress) -> Result<CreatedAddress> {
-        let generated_key = nekoton::crypto::generate_key(nekoton::crypto::MnemonicType::Labs(0))?;
+        let generated_key = nekoton::crypto::generate_key(nekoton::crypto::MnemonicType::Labs(0));
 
         let Keypair { public, secret } = nekoton::crypto::derive_from_phrase(
             &generated_key.words.join(" "),
@@ -699,6 +725,112 @@ impl TonClient for TonClientImpl {
     async fn get_metrics(&self) -> Result<Metrics> {
         let gen_utime = self.ton_core.current_utime();
         Ok(Metrics { gen_utime })
+    }
+
+    async fn run_local(
+        &self,
+        contract_address: UInt256,
+        function: ton_abi::Function,
+        input: &[ton_abi::Token],
+    ) -> Result<Option<nekoton_abi::ExecutionOutput>> {
+        use nekoton_abi::FunctionExt;
+
+        let state = match self.ton_core.get_contract_state(&contract_address) {
+            Ok(a) => a,
+            Err(e) => {
+                log::error!("Failed to get contract state: {e:?}");
+                return Ok(None);
+            }
+        };
+
+        function
+            .clone()
+            .run_local(&SimpleClock, state.account, input)
+            .map(Some)
+    }
+
+    async fn prepare_generic_message(
+        &self,
+        sender_addr: &str,
+        public_key: &[u8],
+        target_addr: &str,
+        execution_flag: u8,
+        value: BigDecimal,
+        bounce: bool,
+        account_type: &AccountType,
+        custodians: &Option<i32>,
+        function: Option<Function>,
+        params: Option<Vec<ton_abi::Token>>,
+    ) -> Result<Box<dyn UnsignedMessage>> {
+        let address = nekoton_utils::repack_address(&sender_addr)?;
+        let public_key = PublicKey::from_bytes(public_key)?;
+
+        let expiration = Expiration::Timeout(DEFAULT_EXPIRATION_TIMEOUT);
+
+        let function_data = function.and_then(|x| {
+            let tokens = params.unwrap_or(Vec::new());
+            let (func, _) = MessageBuilder::new(&x).build();
+            func.encode_input(&Default::default(), &tokens, true, None)
+                .ok()
+        });
+
+        let destination = nekoton_utils::repack_address(target_addr)?;
+        let amount = value.to_u64().ok_or(TonClientError::ParseBigDecimal)?;
+        let transfer_action = match account_type {
+            AccountType::Wallet => {
+                let account = UInt256::from_be_bytes(&address.address().get_bytestring(0));
+                let current_state = self.ton_core.get_contract_state(&account)?.account;
+
+                nekoton::core::ton_wallet::wallet_v3::prepare_transfer(
+                    &SimpleClock,
+                    &public_key,
+                    &current_state,
+                    destination,
+                    amount,
+                    execution_flag.into(),
+                    bounce,
+                    function_data.map(|x| x.into()),
+                    expiration,
+                )?
+            }
+            AccountType::SafeMultisig => {
+                let has_multiple_owners = match custodians {
+                    Some(custodians) => *custodians > 1,
+                    None => return Err(TonClientError::CustodiansNotFound.into()),
+                };
+
+                nekoton::core::ton_wallet::multisig::prepare_transfer(
+                    &SimpleClock,
+                    &public_key,
+                    has_multiple_owners,
+                    address.clone(),
+                    destination,
+                    amount,
+                    execution_flag.into(),
+                    bounce,
+                    function_data.map(|x| x.into()),
+                    expiration,
+                )?
+            }
+            AccountType::HighloadWallet => {
+                return Err(ServiceError::WrongInput(
+                    "Highload wallet is not supported".to_string(),
+                )
+                .into())
+            }
+        };
+
+        let unsigned_message = match transfer_action {
+            TransferAction::Sign(unsigned_message) => unsigned_message,
+            TransferAction::DeployFirst => {
+                return Err(TonClientError::AccountNotDeployed(target_addr.to_string()).into())
+            }
+        };
+        Ok(unsigned_message)
+    }
+
+    fn add_ton_account_subscription(&self, account: UInt256) -> () {
+        self.ton_core.add_ton_account_subscription([account])
     }
 }
 

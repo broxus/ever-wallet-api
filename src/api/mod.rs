@@ -12,16 +12,18 @@ use warp::Filter;
 use self::controllers::*;
 use crate::api::utils::{bad_request, BadRequestError};
 use crate::prelude::ServiceError;
-use crate::services::{AuthService, TonService};
+use crate::services::{AuthService, StorageHandler, TonService};
 
 pub async fn http_service(
     server_http_addr: SocketAddr,
     ton_service: Arc<dyn TonService>,
     auth_service: Arc<dyn AuthService>,
+    memory_storage: Arc<StorageHandler>,
 ) {
     let ctx = Context {
         ton_service,
         auth_service,
+        memory_storage,
     };
 
     let api = filters::server(ctx).recover(customize_error);
@@ -65,6 +67,9 @@ mod filters {
 
     use super::controllers::{self, Context};
     use crate::api::docs;
+    use crate::api::requests::{
+        EncodeParamRequest, ExecuteContractRequest, PrepareMessageRequest, SignedMessageRequest,
+    };
     use crate::api::utils::BadRequestError;
     use crate::models::*;
     use crate::services::AuthService;
@@ -114,7 +119,11 @@ mod filters {
                     .or(get_tokens_transactions_id(ctx.clone()))
                     .or(post_tokens_events(ctx.clone()))
                     .or(post_tokens_events_mark(ctx.clone()))
-                    .or(get_metrics(ctx)),
+                    .or(get_metrics(ctx.clone()))
+                    .or(read_contract(ctx.clone()))
+                    .or(prepare_message(ctx.clone()))
+                    .or(send_signed_message(ctx.clone()))
+                    .or(encode_tvm_cell(ctx)),
             )
             .boxed()
     }
@@ -376,6 +385,46 @@ mod filters {
             .boxed()
     }
 
+    pub fn read_contract(ctx: Context) -> BoxedFilter<(impl warp::Reply,)> {
+        warp::path("read-contract")
+            .and(warp::path::end())
+            .and(warp::post())
+            .and(simple_json_body::<ExecuteContractRequest>())
+            .and(with_ctx(ctx))
+            .and_then(controllers::read_contract)
+            .boxed()
+    }
+
+    pub fn prepare_message(ctx: Context) -> BoxedFilter<(impl warp::Reply,)> {
+        warp::path("prepare-message")
+            .and(warp::path::end())
+            .and(warp::post())
+            .and(simple_json_body::<PrepareMessageRequest>())
+            .and(with_ctx(ctx))
+            .and_then(controllers::prepare_generic_message)
+            .boxed()
+    }
+
+    pub fn send_signed_message(ctx: Context) -> BoxedFilter<(impl warp::Reply,)> {
+        warp::path("send-signed-message")
+            .and(warp::path::end())
+            .and(warp::post())
+            .and(simple_json_body::<SignedMessageRequest>())
+            .and(with_ctx(ctx))
+            .and_then(controllers::send_signed_message)
+            .boxed()
+    }
+
+    pub fn encode_tvm_cell(ctx: Context) -> BoxedFilter<(impl warp::Reply,)> {
+        warp::path("encode-into-cell")
+            .and(warp::path::end())
+            .and(warp::post())
+            .and(simple_json_body::<EncodeParamRequest>())
+            .and(with_ctx(ctx))
+            .and_then(controllers::encode_tvm_cell)
+            .boxed()
+    }
+
     pub fn swagger() -> BoxedFilter<(impl warp::Reply,)> {
         let docs = docs::swagger();
         warp::path!("swagger.yaml")
@@ -403,6 +452,13 @@ mod filters {
 
             Ok::<_, Rejection>((body_s, res))
         })
+    }
+
+    fn simple_json_body<T>() -> impl Filter<Extract = (T,), Error = warp::Rejection> + Clone
+    where
+        for<'a> T: serde::Deserialize<'a> + Send,
+    {
+        warp::filters::body::json::<T>()
     }
 
     #[allow(dead_code)]

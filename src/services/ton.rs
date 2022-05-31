@@ -5,10 +5,14 @@ use std::sync::Arc;
 
 use async_trait::async_trait;
 use bigdecimal::BigDecimal;
-use nekoton::crypto::SignedMessage;
+use nekoton::crypto::{SignedMessage, UnsignedMessage};
+use nekoton_abi::ExecutionOutput;
 use nekoton_utils::{repack_address, unpack_std_smc_addr, TrustMe};
-use ton_block::MsgAddressInt;
-use ton_types::UInt256;
+use serde_json::Value;
+use ton_abi::contract::ABI_VERSION_2_2;
+use ton_abi::{Param, Token, TokenValue};
+use ton_block::{GetRepresentationHash, MsgAddressInt, Serializable};
+use ton_types::{BuilderData, UInt256};
 use uuid::Uuid;
 
 use crate::client::*;
@@ -141,6 +145,37 @@ pub trait TonService: Send + Sync + 'static {
         input: CreateTokenTransaction,
     ) -> Result<TokenTransactionFromDb, ServiceError>;
     async fn get_metrics(&self) -> Result<Metrics, ServiceError>;
+
+    async fn execute_contract_function(
+        &self,
+        account_addr: &str,
+        function_name: &str,
+        inputs: Vec<InputParam>,
+        outputs: Vec<Param>,
+        headers: Vec<Param>,
+    ) -> Result<Value, ServiceError>;
+
+    async fn prepare_generic_message(
+        &self,
+        sender_addr: &str,
+        public_key: &[u8],
+        target_addr: &str,
+        execution_flag: u8,
+        value: BigDecimal,
+        bounce: bool,
+        account_type: &AccountType,
+        custodians: &Option<i32>,
+        function_details: Option<FunctionDetails>,
+    ) -> Result<Box<dyn UnsignedMessage>, ServiceError>;
+
+    fn encode_tvm_cell(&self, data: Vec<InputParam>) -> Result<String, ServiceError>;
+
+    async fn send_signed_message(
+        self: Arc<Self>,
+        sender_addr: String,
+        hash: String,
+        msg: SignedMessage,
+    ) -> Result<String, ServiceError>;
 }
 
 #[derive(Clone)]
@@ -323,6 +358,7 @@ impl TonServiceImpl {
         account_hex: String,
         account_workchain_id: i32,
         signed_message: SignedMessage,
+        with_db_update: bool,
     ) -> Result<(), ServiceError> {
         let account = UInt256::from_be_bytes(
             &hex::decode(&account_hex).map_err(|err| ServiceError::Other(err.into()))?,
@@ -336,13 +372,17 @@ impl TonServiceImpl {
         match status {
             MessageStatus::Delivered => log::info!("Successfully sent message `{}`", message_hash),
             MessageStatus::Expired => {
-                self.upsert_sent_transaction(
-                    message_hash,
-                    account_workchain_id,
-                    account_hex,
-                    UpdateSendTransaction::error("Expired".to_string()),
-                )
-                .await?;
+                if with_db_update {
+                    self.upsert_sent_transaction(
+                        message_hash,
+                        account_workchain_id,
+                        account_hex,
+                        UpdateSendTransaction::error("Expired".to_string()),
+                    )
+                    .await?;
+                } else {
+                    ()
+                }
             }
         };
 
@@ -356,6 +396,7 @@ impl TonServiceImpl {
         account_workchain_id: i32,
         signed_message: SignedMessage,
         non_blocking: bool,
+        handle_status: bool,
     ) -> Result<(), ServiceError> {
         let res = if non_blocking {
             let this = self.clone();
@@ -365,6 +406,7 @@ impl TonServiceImpl {
                     account_hex.clone(),
                     account_workchain_id,
                     signed_message,
+                    handle_status,
                 )
                 .await
             });
@@ -375,6 +417,7 @@ impl TonServiceImpl {
                 account_hex,
                 account_workchain_id,
                 signed_message,
+                handle_status,
             )
             .await
         };
@@ -406,6 +449,7 @@ impl TonServiceImpl {
                 transaction.account_workchain_id,
                 signed_message,
                 false,
+                true,
             )
             .await?;
 
@@ -585,6 +629,7 @@ impl TonService for TonServiceImpl {
             transaction.account_workchain_id,
             signed_message,
             true,
+            true,
         )
         .await
         .trust_me();
@@ -648,6 +693,7 @@ impl TonService for TonServiceImpl {
             transaction.account_hex.clone(),
             transaction.account_workchain_id,
             signed_message,
+            true,
             true,
         )
         .await
@@ -987,6 +1033,7 @@ impl TonService for TonServiceImpl {
             transaction.account_workchain_id,
             signed_message,
             true,
+            true,
         )
         .await
         .trust_me();
@@ -1088,6 +1135,7 @@ impl TonService for TonServiceImpl {
             transaction.account_workchain_id,
             signed_message,
             true,
+            true,
         )
         .await
         .trust_me();
@@ -1169,6 +1217,7 @@ impl TonService for TonServiceImpl {
             transaction.account_workchain_id,
             signed_message,
             true,
+            true,
         )
         .await
         .trust_me();
@@ -1210,6 +1259,176 @@ impl TonService for TonServiceImpl {
     async fn get_metrics(&self) -> Result<Metrics, ServiceError> {
         Ok(self.ton_api_client.get_metrics().await?)
     }
+
+    async fn execute_contract_function(
+        &self,
+        account_addr: &str,
+        function_name: &str,
+        inputs: Vec<InputParam>,
+        outputs: Vec<Param>,
+        headers: Vec<Param>,
+    ) -> Result<Value, ServiceError> {
+        let account_addr = UInt256::from_str(account_addr)?;
+
+        let input_params: Vec<Param> = inputs.iter().map(|x| x.param.clone()).collect();
+
+        let function = nekoton_abi::FunctionBuilder::new(function_name)
+            .abi_version(ton_abi::contract::ABI_VERSION_2_2)
+            .headers(headers)
+            .inputs(input_params)
+            .outputs(outputs)
+            .build();
+
+        let result: Vec<ton_abi::Token> = match parse_abi_tokens(inputs) {
+            Ok(tokens) => {
+                let output: ExecutionOutput = match self
+                    .ton_api_client
+                    .run_local(account_addr, function, tokens.as_slice())
+                    .await
+                {
+                    Ok(Some(output)) => output,
+                    Ok(None) => {
+                        return Err(ServiceError::Other(anyhow::Error::msg(
+                            "Failed to get execution output",
+                        )))
+                    }
+                    Err(err) => return Err(ServiceError::Other(err)),
+                };
+
+                match output.tokens {
+                    Some(tokens) => {
+                        if tokens.is_empty() {
+                            log::warn!("No response tokens in execution output")
+                        }
+                        tokens
+                    }
+                    None => {
+                        return Err(ServiceError::Other(anyhow::Error::msg(
+                            "Failed to get execution output. No response tokens",
+                        )))
+                    }
+                }
+            }
+            Err(e) => return Err(ServiceError::Other(anyhow::Error::from(e))),
+        };
+
+        nekoton_abi::make_abi_tokens(result.as_slice()).map_err(|e| ServiceError::Other(e))
+    }
+
+    async fn prepare_generic_message(
+        &self,
+        sender_addr: &str,
+        public_key: &[u8],
+        target_addr: &str,
+        execution_flag: u8,
+        value: BigDecimal,
+        bounce: bool,
+        account_type: &AccountType,
+        custodians: &Option<i32>,
+        function_details: Option<FunctionDetails>,
+    ) -> Result<Box<dyn UnsignedMessage>, ServiceError> {
+        let (function, values) = match function_details {
+            Some(details) => {
+                let function = nekoton_abi::FunctionBuilder::new(&details.function_name)
+                    .abi_version(ton_abi::contract::ABI_VERSION_2_2)
+                    .headers(details.headers)
+                    .inputs(
+                        details
+                            .input_params
+                            .clone()
+                            .into_iter()
+                            .map(|x| x.param)
+                            .collect::<Vec<Param>>(),
+                    )
+                    .outputs(details.output_params)
+                    .build();
+
+                let tokens = parse_abi_tokens(details.input_params)?;
+
+                (Some(function), Some(tokens))
+            }
+            None => (None, None),
+        };
+
+        let result = self
+            .ton_api_client
+            .prepare_generic_message(
+                sender_addr,
+                public_key,
+                target_addr,
+                execution_flag,
+                value,
+                bounce,
+                account_type,
+                custodians,
+                function,
+                values,
+            )
+            .await?;
+        Ok(result)
+    }
+
+    fn encode_tvm_cell(&self, data: Vec<InputParam>) -> Result<String, ServiceError> {
+        let mut tokens: Vec<Token> = Vec::new();
+        for d in data {
+            let token_value =
+                ton_abi::token::Tokenizer::tokenize_parameter(&d.param.kind, &d.value)?;
+            let token = Token::new(&d.param.name, token_value);
+            tokens.push(token);
+        }
+        let initial = if tokens.is_empty() {
+            BuilderData::default()
+        } else {
+            TokenValue::pack_values_into_chain(
+                tokens.as_slice(),
+                Default::default(),
+                &ABI_VERSION_2_2,
+            )?
+        };
+        let cell = initial.into_cell()?;
+        Ok(base64::encode(cell.write_to_bytes().unwrap()))
+    }
+
+    async fn send_signed_message(
+        self: Arc<Self>,
+        sender_addr: String,
+        hash: String,
+        msg: SignedMessage,
+    ) -> Result<String, ServiceError> {
+        let addr = MsgAddressInt::from_str(&sender_addr)
+            .map_err(|_| ServiceError::WrongInput("Bad sender addr".to_string()))?;
+        self.ton_api_client
+            .add_ton_account_subscription(addr.hash()?);
+
+        self.send_transaction(
+            hash,
+            addr.address().to_hex_string(),
+            addr.workchain_id(),
+            msg.clone(),
+            true,
+            false,
+        )
+        .await?;
+
+        let hash = msg
+            .message
+            .hash()
+            .map(|x| x.to_hex_string())
+            .map_err(|e| ServiceError::Other(e))?;
+        Ok(hash)
+    }
+}
+
+fn parse_abi_tokens(params: Vec<InputParam>) -> Result<Vec<ton_abi::Token>, ServiceError> {
+    let mut tokens = Vec::<ton_abi::Token>::new();
+    for i in params {
+        match nekoton_abi::parse_abi_token(&i.param, i.value) {
+            Ok(token) => tokens.push(token),
+            Err(e) => return Err(ServiceError::Other(anyhow::Error::from(e))),
+        }
+    }
+
+    Ok(tokens)
 }
 
 enum NotifyType {

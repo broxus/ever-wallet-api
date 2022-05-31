@@ -10,4 +10,5 @@ mod ton;
 pub struct Context {
     pub ton_service: Arc<dyn TonService>,
     pub auth_service: Arc<dyn AuthService>,
+    pub memory_storage: Arc<StorageHandler>,
 }
