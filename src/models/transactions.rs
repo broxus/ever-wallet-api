@@ -1,5 +1,6 @@
 use bigdecimal::BigDecimal;
 use serde::{Deserialize, Serialize};
+use ton_abi::Param;
 use uuid::Uuid;
 
 use crate::models::*;
@@ -175,4 +176,18 @@ pub struct SentTransaction {
     pub original_outputs: Option<serde_json::Value>,
     pub aborted: bool,
     pub bounce: bool,
+}
+
+#[derive(Clone, Deserialize, Debug)]
+pub struct InputParam {
+    pub param: Param,
+    pub value: serde_json::Value,
+}
+
+#[derive(Clone, Debug, Deserialize)]
+pub struct FunctionDetails {
+    pub function_name: String,
+    pub input_params: Vec<InputParam>,
+    pub output_params: Vec<Param>,
+    pub headers: Vec<Param>,
 }

@@ -773,3 +773,21 @@ impl PostAddressInfoDataResponse {
         }
     }
 }
+
+#[derive(Debug, Serialize, Clone, opg::OpgModel)]
+#[serde(rename_all = "camelCase")]
+pub struct UnsignedMessageHashResponse {
+    pub unsigned_message_hash: String,
+}
+
+#[derive(Debug, Serialize, Clone, opg::OpgModel)]
+#[serde(rename_all = "camelCase")]
+pub struct SignedMessageHashResponse {
+    pub signed_message_hash: String,
+}
+
+#[derive(Debug, Serialize, Clone, opg::OpgModel)]
+#[serde(rename_all = "camelCase")]
+pub struct EncodedCellResponse {
+    pub base64_cell: String,
+}

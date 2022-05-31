@@ -45,6 +45,7 @@ impl Engine {
             self.context.config.server_addr,
             self.context.ton_service.clone(),
             self.context.auth_service.clone(),
+            self.context.memory_storage.clone(),
         ));
 
         // Done
@@ -83,6 +84,7 @@ pub struct EngineContext {
     pub ton_client: Arc<TonClientImpl>,
     pub ton_service: Arc<TonServiceImpl>,
     pub auth_service: Arc<AuthServiceImpl>,
+    pub memory_storage: Arc<StorageHandler>,
     pub config: AppConfig,
 }
 
@@ -127,12 +129,15 @@ impl EngineContext {
 
         let auth_service = Arc::new(AuthServiceImpl::new(sqlx_client.clone()));
 
+        let memory_storage = Arc::new(StorageHandler::new());
+
         let engine_context = Arc::new(Self {
             shutdown_requests_tx,
             ton_core,
             ton_client,
             ton_service,
             auth_service,
+            memory_storage,
             config,
         });
 

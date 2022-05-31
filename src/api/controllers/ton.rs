@@ -1,10 +1,10 @@
-use futures::future::BoxFuture;
-use futures::FutureExt;
-
 use super::Context;
 use crate::api::requests::*;
 use crate::api::responses::*;
 use crate::models::*;
+use crate::prelude::ServiceError;
+use futures::future::BoxFuture;
+use futures::FutureExt;
 
 pub fn post_address_create(
     service_id: ServiceId,
@@ -429,6 +429,128 @@ pub fn get_metrics(ctx: Context) -> BoxFuture<'static, Result<impl warp::Reply, 
         let res = MetricsResponse::from(metrics);
 
         Ok(warp::reply::json(&(res)))
+    }
+    .boxed()
+}
+
+pub fn read_contract(
+    rq: ExecuteContractRequest,
+    ctx: Context,
+) -> BoxFuture<'static, Result<impl warp::Reply, warp::Rejection>> {
+    async move {
+        let tokens = ctx
+            .ton_service
+            .execute_contract_function(
+                &rq.target_account_addr,
+                &rq.function_details.function_name,
+                rq.function_details
+                    .input_params
+                    .into_iter()
+                    .map(|x| InputParam::from(x))
+                    .collect::<Vec<InputParam>>(),
+                rq.function_details.output_params,
+                rq.function_details.headers,
+            )
+            .await?;
+
+        Ok(warp::reply::json(&(tokens)))
+    }
+    .boxed()
+}
+
+pub fn encode_tvm_cell(
+    rq: EncodeParamRequest,
+    ctx: Context,
+) -> BoxFuture<'static, Result<impl warp::Reply, warp::Rejection>> {
+    async move {
+        let cell = ctx
+            .ton_service
+            .encode_tvm_cell(
+                rq.input_params
+                    .into_iter()
+                    .map(|x| InputParam::from(x))
+                    .collect::<Vec<InputParam>>(),
+            )
+            .map(|cell| EncodedCellResponse { base64_cell: cell })?;
+
+        Ok(warp::reply::json(&cell))
+    }
+    .boxed()
+}
+
+pub fn prepare_generic_message(
+    rq: PrepareMessageRequest,
+    ctx: Context,
+) -> BoxFuture<'static, Result<impl warp::Reply, warp::Rejection>> {
+    async move {
+        let unsigned_message = ctx
+            .ton_service
+            .prepare_generic_message(
+                &rq.sender_addr,
+                hex::decode(&rq.public_key)
+                    .map_err(|_| ServiceError::WrongInput("Bad public key".to_string()))?
+                    .as_slice(),
+                &rq.target_account_addr,
+                rq.execution_flag,
+                rq.value,
+                rq.bounce,
+                &rq.account_type,
+                &rq.custodians,
+                rq.function_details.map(|d| FunctionDetails {
+                    function_name: d.function_name,
+                    input_params: d
+                        .input_params
+                        .into_iter()
+                        .map(|x| InputParam::from(x))
+                        .collect::<Vec<InputParam>>(),
+                    output_params: d.output_params,
+                    headers: d.headers,
+                }),
+            )
+            .await?;
+
+        ctx.memory_storage.add_message(unsigned_message.clone());
+
+        Ok(warp::reply::json(
+            &(UnsignedMessageHashResponse {
+                unsigned_message_hash: hex::encode(unsigned_message.hash()),
+            }),
+        ))
+    }
+    .boxed()
+}
+
+pub fn send_signed_message(
+    rq: SignedMessageRequest,
+    ctx: Context,
+) -> BoxFuture<'static, Result<impl warp::Reply, warp::Rejection>> {
+    async move {
+        let result = match ctx.memory_storage.get_message(&rq.hash) {
+            Some(message) => {
+                let signature: [u8; 64] = hex::decode(rq.signature)
+                    .map_err(|_| ServiceError::WrongInput("Bad signature format".to_string()))?
+                    .try_into()
+                    .map_err(|_| ServiceError::WrongInput("Bad signature format".to_string()))?;
+
+                let signed_message = message
+                    .sign(&signature)
+                    .map_err(|_| ServiceError::WrongInput("Bad signature format".to_string()))?;
+
+                let hash = ctx
+                    .ton_service
+                    .send_signed_message(rq.sender_addr, rq.hash, signed_message)
+                    .await?;
+
+                Ok(SignedMessageHashResponse {
+                    signed_message_hash: hash,
+                })
+            }
+            None => Err(ServiceError::WrongInput(
+                "Message unknown or expired".to_string(),
+            )),
+        }?;
+
+        Ok(warp::reply::json(&result))
     }
     .boxed()
 }
