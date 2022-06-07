@@ -380,8 +380,6 @@ impl TonServiceImpl {
                         UpdateSendTransaction::error("Expired".to_string()),
                     )
                     .await?;
-                } else {
-                    ()
                 }
             }
         };
@@ -1312,7 +1310,7 @@ impl TonService for TonServiceImpl {
             Err(e) => return Err(ServiceError::Other(anyhow::Error::from(e))),
         };
 
-        nekoton_abi::make_abi_tokens(result.as_slice()).map_err(|e| ServiceError::Other(e))
+        nekoton_abi::make_abi_tokens(result.as_slice()).map_err(ServiceError::Other)
     }
 
     async fn prepare_generic_message(
@@ -1414,7 +1412,7 @@ impl TonService for TonServiceImpl {
             .message
             .hash()
             .map(|x| x.to_hex_string())
-            .map_err(|e| ServiceError::Other(e))?;
+            .map_err(ServiceError::Other)?;
         Ok(hash)
     }
 }

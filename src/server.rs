@@ -129,7 +129,7 @@ impl EngineContext {
 
         let auth_service = Arc::new(AuthServiceImpl::new(sqlx_client.clone()));
 
-        let memory_storage = Arc::new(StorageHandler::new());
+        let memory_storage = Arc::new(StorageHandler::default());
 
         let engine_context = Arc::new(Self {
             shutdown_requests_tx,

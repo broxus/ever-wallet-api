@@ -446,7 +446,7 @@ pub fn read_contract(
                 rq.function_details
                     .input_params
                     .into_iter()
-                    .map(|x| InputParam::from(x))
+                    .map(InputParam::from)
                     .collect::<Vec<InputParam>>(),
                 rq.function_details.output_params,
                 rq.function_details.headers,
@@ -468,7 +468,7 @@ pub fn encode_tvm_cell(
             .encode_tvm_cell(
                 rq.input_params
                     .into_iter()
-                    .map(|x| InputParam::from(x))
+                    .map(InputParam::from)
                     .collect::<Vec<InputParam>>(),
             )
             .map(|cell| EncodedCellResponse { base64_cell: cell })?;
@@ -501,7 +501,7 @@ pub fn prepare_generic_message(
                     input_params: d
                         .input_params
                         .into_iter()
-                        .map(|x| InputParam::from(x))
+                        .map(InputParam::from)
                         .collect::<Vec<InputParam>>(),
                     output_params: d.output_params,
                     headers: d.headers,

@@ -1,21 +1,14 @@
 use nekoton::crypto::UnsignedMessage;
 use nekoton_utils::TrustMe;
-use std::hash::BuildHasherDefault;
 use std::time::SystemTime;
 use tiny_adnl::utils::FxDashMap;
 
+#[derive(Default)]
 pub struct StorageHandler {
     message_collection: FxDashMap<String, Box<dyn UnsignedMessage>>,
 }
 
 impl StorageHandler {
-    pub fn new() -> Self {
-        let collection = FxDashMap::with_hasher(BuildHasherDefault::default());
-        Self {
-            message_collection: collection,
-        }
-    }
-
     pub fn add_message(&self, message: Box<dyn UnsignedMessage>) -> String {
         let key = hex::encode(message.hash());
         self.message_collection.insert(key.clone(), message);

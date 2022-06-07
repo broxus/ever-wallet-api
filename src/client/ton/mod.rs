@@ -119,7 +119,7 @@ pub trait TonClient: Send + Sync {
         params: Option<Vec<ton_abi::Token>>,
     ) -> Result<Box<dyn UnsignedMessage>>;
 
-    fn add_ton_account_subscription(&self, account: UInt256) -> ();
+    fn add_ton_account_subscription(&self, account: UInt256);
 }
 
 #[derive(Clone)]
@@ -744,7 +744,6 @@ impl TonClient for TonClientImpl {
         };
 
         function
-            .clone()
             .run_local(&SimpleClock, state.account, input)
             .map(Some)
     }
@@ -762,13 +761,13 @@ impl TonClient for TonClientImpl {
         function: Option<Function>,
         params: Option<Vec<ton_abi::Token>>,
     ) -> Result<Box<dyn UnsignedMessage>> {
-        let address = nekoton_utils::repack_address(&sender_addr)?;
+        let address = nekoton_utils::repack_address(sender_addr)?;
         let public_key = PublicKey::from_bytes(public_key)?;
 
         let expiration = Expiration::Timeout(DEFAULT_EXPIRATION_TIMEOUT);
 
         let function_data = function.and_then(|x| {
-            let tokens = params.unwrap_or(Vec::new());
+            let tokens = params.unwrap_or_default();
             let (func, _) = MessageBuilder::new(&x).build();
             func.encode_input(&Default::default(), &tokens, true, None)
                 .ok()
@@ -787,7 +786,7 @@ impl TonClient for TonClientImpl {
                     &current_state,
                     destination,
                     amount,
-                    execution_flag.into(),
+                    execution_flag,
                     bounce,
                     function_data.map(|x| x.into()),
                     expiration,
@@ -803,10 +802,10 @@ impl TonClient for TonClientImpl {
                     &SimpleClock,
                     &public_key,
                     has_multiple_owners,
-                    address.clone(),
+                    address,
                     destination,
                     amount,
-                    execution_flag.into(),
+                    execution_flag,
                     bounce,
                     function_data.map(|x| x.into()),
                     expiration,
@@ -829,7 +828,7 @@ impl TonClient for TonClientImpl {
         Ok(unsigned_message)
     }
 
-    fn add_ton_account_subscription(&self, account: UInt256) -> () {
+    fn add_ton_account_subscription(&self, account: UInt256) {
         self.ton_core.add_ton_account_subscription([account])
     }
 }
