@@ -22,6 +22,7 @@ pub fn swagger() -> String {
             tokens,
             events,
             metrics,
+            misc
         },
         paths: {
             ("address" / "check"): {
@@ -347,6 +348,42 @@ pub fn swagger() -> String {
                     description: "Get metrics of api health.",
                     parameters: { (header "api-key") },
                     200: responses::MetricsResponse,
+                }
+            },
+            ("read-contract"): {
+                POST: {
+                    tags: { misc  },
+                    summary: "Read contract data",
+                    description: "Execute function of generic contract",
+                    body: requests::ExecuteContractRequest,
+                    200: responses::ReadContractResponse,
+                }
+            },
+            ("encode-into-cell"): {
+                POST: {
+                    tags: { misc  },
+                    summary: "Encode tvm cell",
+                    description: "Create cell from custom tokens and get base64 cell representation",
+                    body: requests::EncodeParamRequest,
+                    200: responses::EncodedCellResponse,
+                }
+            },
+            ("prepare-message"): {
+                POST: {
+                    tags: { misc  },
+                    summary: "Prepare message from params",
+                    description: "Prepare unsigned message from specified tokens",
+                    body: requests::PrepareMessageRequest,
+                    200: responses::UnsignedMessageHashResponse,
+                }
+            },
+            ("send-signed-message"): {
+                POST: {
+                    tags: { misc  },
+                    summary: "Send signed message",
+                    description: "Seng signed message",
+                    body: requests::SignedMessageRequest,
+                    200: responses::SignedMessageHashResponse,
                 }
             },
         }
