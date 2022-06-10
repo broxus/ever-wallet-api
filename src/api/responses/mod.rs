@@ -776,6 +776,13 @@ impl PostAddressInfoDataResponse {
 
 #[derive(Debug, Serialize, Clone, opg::OpgModel)]
 #[serde(rename_all = "camelCase")]
+pub struct ReadContractResponse {
+    #[opg(string, format = "any")]
+    pub object: serde_json::Value,
+}
+
+#[derive(Debug, Serialize, Clone, opg::OpgModel)]
+#[serde(rename_all = "camelCase")]
 pub struct UnsignedMessageHashResponse {
     pub unsigned_message_hash: String,
 }

@@ -451,7 +451,8 @@ pub fn read_contract(
                 rq.function_details.output_params,
                 rq.function_details.headers,
             )
-            .await?;
+            .await
+            .map(|value| ReadContractResponse { object: value })?;
 
         Ok(warp::reply::json(&(tokens)))
     }
