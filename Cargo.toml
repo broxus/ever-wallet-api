@@ -39,6 +39,7 @@ rand = "0.8"
 regex = "1.5"
 reqwest = { version = "0.11", features = ["json"] }
 r2d2 = "0.8.9"
+rustc-hash = "1.1.0"
 sentry = { version = "0.23.0", features = ["log", "debug-logs"] }
 sentry-panic = { version = "0.23.0" }
 serde = { version = "1.0", features = ["derive"] }
@@ -55,7 +56,8 @@ uuid = { version = "0.8", features = ["v4", "serde"] }
 warp = { version = "0.3" }
 
 ed25519-dalek = { git = "https://github.com/broxus/ed25519-dalek.git" }
-tiny-adnl = { git = "https://github.com/broxus/tiny-adnl" }
+
+everscale-network = "0.3.2"
 
 # TON specific dependencies
 ton_block = { git = "https://github.com/broxus/ton-labs-block" }

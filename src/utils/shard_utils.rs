@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use anyhow::{Context, Result};
 use nekoton::transport::models::ExistingContract;
-use tiny_adnl::utils::*;
+use rustc_hash::FxHashMap;
 use ton_block::HashmapAugType;
 use ton_types::UInt256;
 

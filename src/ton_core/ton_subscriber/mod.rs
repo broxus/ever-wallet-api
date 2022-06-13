@@ -8,7 +8,7 @@ use futures::StreamExt;
 use nekoton::core::models::TokenWalletVersion;
 use nekoton::transport::models::ExistingContract;
 use parking_lot::{Mutex, RwLock, RwLockReadGuard};
-use tiny_adnl::utils::FxHashMap;
+use rustc_hash::FxHashMap;
 
 use tokio::sync::Notify;
 use ton_block::{Deserializable, HashmapAugType};

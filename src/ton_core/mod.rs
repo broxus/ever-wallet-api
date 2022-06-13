@@ -169,9 +169,7 @@ impl TonCoreContext {
         expire_at: u32,
     ) -> Result<MessageStatus> {
         let to = match message.header() {
-            ton_block::CommonMsgInfo::ExtInMsgInfo(header) => {
-                ton_block::AccountIdPrefixFull::prefix(&header.dst)?
-            }
+            ton_block::CommonMsgInfo::ExtInMsgInfo(header) => header.dst.workchain_id(),
             _ => return Err(TonCoreError::ExternalTonMessageExpected.into()),
         };
 
@@ -183,8 +181,7 @@ impl TonCoreContext {
             .add_message(*account, cells.repr_hash(), expire_at)?;
 
         self.ton_engine
-            .broadcast_external_message(&to, &serialized)
-            .await?;
+            .broadcast_external_message(to, &serialized)?;
 
         let status = rx.await?;
         Ok(status)
