@@ -76,6 +76,8 @@ async fn internal_transfer_send(
         .map(|message| message.hash().to_hex_string())
         .unwrap_or_default();
 
+    log::info!("Out ton message hash: {}", out_ton_message_hash);
+
     let owner_message_hash = match parse_ctx
         .sqlx_client
         .get_transaction_by_out_msg(out_ton_message_hash)
@@ -84,6 +86,8 @@ async fn internal_transfer_send(
         Ok(transaction) => Some(transaction.message_hash),
         Err(_) => None,
     };
+
+    log::info!("Owner message hash: {:?}", owner_message_hash);
 
     let transaction = CreateTokenTransaction {
         id: Uuid::new_v4(),
