@@ -785,6 +785,8 @@ impl TonService for TonServiceImpl {
         account_hex: String,
         messages_hash: Option<serde_json::Value>,
     ) -> Result<(), ServiceError> {
+        log::info!("Owner message hash: {}", owner_message_hash);
+
         if let Some(messages_hash) = messages_hash {
             let messages_hash: Vec<String> = serde_json::from_value(messages_hash.clone())?;
 
@@ -799,6 +801,11 @@ impl TonService for TonServiceImpl {
                     .get_token_transaction_by_mh(address.service_id, &in_message_hash)
                     .await
                 {
+                    log::info!(
+                        "Token transaction found for in_message_hash: {}",
+                        in_message_hash
+                    );
+
                     if let Ok((_, event)) = self
                         .sqlx_client
                         .update_token_transaction(
@@ -807,6 +814,11 @@ impl TonService for TonServiceImpl {
                         )
                         .await
                     {
+                        log::info!(
+                            "Send token transaction notify for : {}",
+                            event.token_transaction_id
+                        );
+
                         let _ = self
                             .notify(
                                 &address.service_id,
