@@ -800,6 +800,16 @@ impl TonService for TonServiceImpl {
             log::info!("Address: {}:{}", address.workchain_id, address.hex);
 
             for in_message_hash in messages_hash {
+                log::info!("Service id: {}", address.service_id);
+                log::info!("In message hash: {}", in_message_hash);
+
+                log::info!(
+                    "{:?}",
+                    self.sqlx_client
+                        .get_token_transaction_by_mh(address.service_id, &in_message_hash)
+                        .await
+                );
+
                 if let Ok(token_transaction) = self
                     .sqlx_client
                     .get_token_transaction_by_mh(address.service_id, &in_message_hash)
