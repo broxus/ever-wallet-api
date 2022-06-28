@@ -185,26 +185,13 @@ impl EngineContext {
                         }
                     }
                     CaughtTonTransaction::UpdateSent(transaction) => {
-                        if let Err(err) = engine_context
-                            .ton_service
-                            .update_token_transaction(
-                                transaction.message_hash.clone(),
-                                transaction.account_workchain_id,
-                                transaction.account_hex.clone(),
-                                transaction.input.messages_hash.clone(),
-                            )
-                            .await
-                        {
-                            log::error!("Failed to update token transaction: {:?}", err)
-                        }
-
                         match engine_context
                             .ton_service
                             .upsert_sent_transaction(
-                                transaction.message_hash,
+                                transaction.message_hash.clone(),
                                 transaction.account_workchain_id,
-                                transaction.account_hex,
-                                transaction.input,
+                                transaction.account_hex.clone(),
+                                transaction.input.clone(),
                             )
                             .await
                         {
@@ -215,6 +202,19 @@ impl EngineContext {
                                 state.send(HandleTransactionStatus::Fail).ok();
                                 log::error!("Failed to update sent transaction: {:?}", err)
                             }
+                        }
+
+                        if let Err(err) = engine_context
+                            .ton_service
+                            .update_token_transaction(
+                                transaction.message_hash,
+                                transaction.account_workchain_id,
+                                transaction.account_hex,
+                                transaction.input.messages_hash,
+                            )
+                            .await
+                        {
+                            log::error!("Failed to update token transaction: {:?}", err)
                         }
                     }
                 }

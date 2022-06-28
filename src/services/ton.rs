@@ -803,37 +803,27 @@ impl TonService for TonServiceImpl {
                 log::info!("Service id: {}", address.service_id);
                 log::info!("In message hash: {}", in_message_hash);
 
-                if let Ok(token_transaction) = self
+                if let Some(event) = self
                     .sqlx_client
-                    .get_token_transaction_by_mh(address.service_id, &in_message_hash)
-                    .await
+                    .update_token_transaction(
+                        address.service_id,
+                        &in_message_hash,
+                        Some(owner_message_hash.clone()),
+                    )
+                    .await?
                 {
                     log::info!(
-                        "Token transaction found for in_message_hash: {}",
-                        in_message_hash
+                        "Send token transaction notify for : {}",
+                        event.token_transaction_id
                     );
 
-                    if let Ok((_, event)) = self
-                        .sqlx_client
-                        .update_token_transaction(
-                            token_transaction.id,
-                            Some(owner_message_hash.clone()),
+                    let _ = self
+                        .notify(
+                            &address.service_id,
+                            event.into(),
+                            NotifyType::TokenTransaction,
                         )
-                        .await
-                    {
-                        log::info!(
-                            "Send token transaction notify for : {}",
-                            event.token_transaction_id
-                        );
-
-                        let _ = self
-                            .notify(
-                                &address.service_id,
-                                event.into(),
-                                NotifyType::TokenTransaction,
-                            )
-                            .await;
-                    }
+                        .await;
                 }
             }
         }

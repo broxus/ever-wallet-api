@@ -170,12 +170,26 @@ impl SqlxClient {
 
     pub async fn update_token_transaction(
         &self,
-        id: uuid::Uuid,
+        service_id: ServiceId,
+        in_message_hash: &str,
         owner_message_hash: Option<String>,
-    ) -> Result<(TokenTransactionFromDb, TokenTransactionEventDb), ServiceError> {
+    ) -> Result<Option<TokenTransactionEventDb>, ServiceError> {
         let mut tx = self.pool.begin().await.map_err(ServiceError::from)?;
 
-        let transaction = sqlx::query_as!(
+        let mut res = None;
+
+        if let Ok(token_transaction) = sqlx::query_as!(TokenTransactionFromDb,
+                r#"
+            SELECT id, service_id as "service_id: _", transaction_hash, transaction_timestamp, message_hash, owner_message_hash, account_workchain_id, account_hex,
+            value, root_address, payload, error, block_hash, block_time, direction as "direction: _", status as "status: _", in_message_hash, created_at, updated_at
+            FROM token_transactions
+            WHERE service_id = $1 AND (message_hash = $2 OR owner_message_hash = $2 OR in_message_hash = $2)"#,
+                service_id as ServiceId,
+                in_message_hash,
+            )
+            .fetch_one(&self.pool)
+            .await {
+            let _ = sqlx::query_as!(
             TokenTransactionFromDb,
             r#"
             UPDATE token_transactions SET owner_message_hash = $2
@@ -184,14 +198,14 @@ impl SqlxClient {
                 owner_message_hash, account_workchain_id, account_hex, value, root_address, payload, error,
                 block_hash, block_time, direction as "direction: _", status as "status: _", in_message_hash,
                 created_at, updated_at"#,
-                id,
+                token_transaction.id,
                 owner_message_hash
             )
-            .fetch_one(&mut tx)
-            .await
-            .map_err(ServiceError::from)?;
+                .fetch_one(&mut tx)
+                .await
+                .map_err(ServiceError::from)?;
 
-        let event = sqlx::query_as!(
+            let event = sqlx::query_as!(
             TokenTransactionEventDb,
             r#"
             UPDATE token_transaction_events SET owner_message_hash = $2
@@ -209,16 +223,20 @@ impl SqlxClient {
                 transaction_status as "transaction_status: _",
                 event_status as "event_status: _",
                 created_at, updated_at"#,
-            transaction.id,
+            token_transaction.id,
             owner_message_hash
         )
-        .fetch_one(&mut tx)
-        .await
-        .map_err(ServiceError::from)?;
+                .fetch_one(&mut tx)
+                .await
+                .map_err(ServiceError::from)?;
+
+            res = Some(event);
+
+        }
 
         tx.commit().await.map_err(ServiceError::from)?;
 
-        Ok((transaction, event))
+        Ok(res)
     }
 }
 
