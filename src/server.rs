@@ -185,6 +185,8 @@ impl EngineContext {
                         }
                     }
                     CaughtTonTransaction::UpdateSent(transaction) => {
+                        log::info!("Update ton transaction");
+
                         match engine_context
                             .ton_service
                             .upsert_sent_transaction(
@@ -203,6 +205,8 @@ impl EngineContext {
                                 log::error!("Failed to update sent transaction: {:?}", err)
                             }
                         }
+
+                        log::info!("Update token transaction");
 
                         if let Err(err) = engine_context
                             .ton_service
@@ -237,6 +241,8 @@ impl EngineContext {
                         return;
                     }
                 };
+
+                log::info!("Create token transaction");
 
                 match engine_context
                     .ton_service
