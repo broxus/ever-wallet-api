@@ -12,6 +12,8 @@ pub enum ServiceError {
     WrongInput(String),
     #[error(transparent)]
     Other(#[from] anyhow::Error),
+    #[error(transparent)]
+    SerdeJson(#[from] serde_json::Error),
 }
 
 impl From<sqlx::Error> for ServiceError {
@@ -47,7 +49,7 @@ impl<'a> From<&'a ServiceError> for http::Response<hyper::Body> {
                     .into(),
                 )
                 .expect("failed to build errors response"),
-            ServiceError::Other(_) => http::Response::builder()
+            ServiceError::Other(_) | ServiceError::SerdeJson(_) => http::Response::builder()
                 .status(StatusCode::INTERNAL_SERVER_ERROR)
                 .header("Content-Type", "application/json")
                 .body(

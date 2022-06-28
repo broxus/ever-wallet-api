@@ -462,7 +462,7 @@ impl SqlxClient {
 
     pub async fn get_transaction_by_out_msg(
         &self,
-        message_hash: String,
+        message_hash: &str,
     ) -> Result<TransactionDb, ServiceError> {
         let j_value = serde_json::json!(message_hash);
         sqlx::query_as!(TransactionDb,

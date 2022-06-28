@@ -18,10 +18,14 @@ impl SqlxClient {
         let transaction = sqlx::query_as!(TokenTransactionFromDb,
                 r#"
             INSERT INTO token_transactions
-            (id, service_id, transaction_hash, transaction_timestamp, message_hash, owner_message_hash, account_workchain_id, account_hex, value, root_address, payload, error, block_hash, block_time, direction, status)
-            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)
-            RETURNING id, service_id as "service_id: _", transaction_hash, transaction_timestamp, message_hash, owner_message_hash, account_workchain_id, account_hex,
-            value, root_address, payload, error, block_hash, block_time, direction as "direction: _", status as "status: _", created_at, updated_at"#,
+            (id, service_id, transaction_hash, transaction_timestamp, message_hash, owner_message_hash,
+            account_workchain_id, account_hex, value, root_address, payload, error, block_hash, block_time,
+            direction, status, in_message_hash)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)
+            RETURNING id, service_id as "service_id: _", transaction_hash, transaction_timestamp, message_hash,
+                owner_message_hash, account_workchain_id, account_hex, value, root_address, payload, error,
+                block_hash, block_time, direction as "direction: _", status as "status: _", in_message_hash,
+                created_at, updated_at"#,
                 payload.id,
                 service_id as ServiceId,
                 payload.transaction_hash,
@@ -38,6 +42,7 @@ impl SqlxClient {
                 payload.block_time,
                 payload.direction as TonTransactionDirection,
                 payload.status as TonTokenTransactionStatus,
+                payload.in_message_hash,
             )
             .fetch_one(&mut tx)
             .await
@@ -48,7 +53,8 @@ impl SqlxClient {
         let event = sqlx::query_as!(TokenTransactionEventDb,
                 r#"
             INSERT INTO token_transaction_events
-            (id, service_id, token_transaction_id, message_hash, account_workchain_id, account_hex, owner_message_hash, value, root_address, transaction_direction, transaction_status, event_status)
+            (id, service_id, token_transaction_id, message_hash, account_workchain_id, account_hex,
+            owner_message_hash,value, root_address, transaction_direction, transaction_status, event_status)
             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
             RETURNING id,
                 service_id as "service_id: _",
@@ -93,9 +99,9 @@ impl SqlxClient {
         sqlx::query_as!(TokenTransactionFromDb,
                 r#"
             SELECT id, service_id as "service_id: _", transaction_hash, transaction_timestamp, message_hash, owner_message_hash, account_workchain_id, account_hex,
-            value, root_address, payload, error, block_hash, block_time, direction as "direction: _", status as "status: _", created_at, updated_at
+            value, root_address, payload, error, block_hash, block_time, direction as "direction: _", status as "status: _", in_message_hash, created_at, updated_at
             FROM token_transactions
-            WHERE service_id = $1 AND (message_hash = $2 OR owner_message_hash = $2)"#,
+            WHERE service_id = $1 AND (message_hash = $2 OR owner_message_hash = $2 OR in_message_hash = $2)"#,
                 service_id as ServiceId,
                 message_hash,
             )
@@ -112,7 +118,7 @@ impl SqlxClient {
         sqlx::query_as!(TokenTransactionFromDb,
                 r#"
             SELECT id, service_id as "service_id: _", transaction_hash, transaction_timestamp, message_hash, owner_message_hash, account_workchain_id, account_hex,
-            value, root_address, payload, error, block_hash, block_time, direction as "direction: _", status as "status: _", created_at, updated_at
+            value, root_address, payload, error, block_hash, block_time, direction as "direction: _", status as "status: _", in_message_hash, created_at, updated_at
             FROM token_transactions
             WHERE service_id = $1 AND id = $2"#,
                 service_id as ServiceId,
@@ -132,7 +138,7 @@ impl SqlxClient {
         sqlx::query_as!(TokenTransactionFromDb,
                 r#"
             SELECT id, service_id as "service_id: _", transaction_hash, transaction_timestamp, message_hash, owner_message_hash, account_workchain_id, account_hex,
-            value, root_address, payload, error, block_hash, block_time, direction as "direction: _", status as "status: _", created_at, updated_at
+            value, root_address, payload, error, block_hash, block_time, direction as "direction: _", status as "status: _", in_message_hash, created_at, updated_at
             FROM token_transactions
             WHERE service_id = $1 AND transaction_hash = $2"#,
                 service_id as ServiceId,
@@ -141,6 +147,59 @@ impl SqlxClient {
             .fetch_one(&self.pool)
             .await
             .map_err(From::from)
+    }
+
+    pub async fn update_token_transaction(
+        &self,
+        id: uuid::Uuid,
+        owner_message_hash: Option<String>,
+    ) -> Result<(TokenTransactionFromDb, TokenTransactionEventDb), ServiceError> {
+        let mut tx = self.pool.begin().await.map_err(ServiceError::from)?;
+
+        let transaction = sqlx::query_as!(
+            TokenTransactionFromDb,
+            r#"
+            UPDATE token_transactions SET owner_message_hash = $2
+            WHERE id = $1
+            RETURNING id, service_id as "service_id: _", transaction_hash, transaction_timestamp, message_hash,
+                owner_message_hash, account_workchain_id, account_hex, value, root_address, payload, error,
+                block_hash, block_time, direction as "direction: _", status as "status: _", in_message_hash,
+                created_at, updated_at"#,
+                id,
+                owner_message_hash
+            )
+            .fetch_one(&mut tx)
+            .await
+            .map_err(ServiceError::from)?;
+
+        let event = sqlx::query_as!(
+            TokenTransactionEventDb,
+            r#"
+            UPDATE token_transaction_events SET owner_message_hash = $2
+            WHERE token_transaction_id = $1
+            RETURNING id,
+                service_id as "service_id: _",
+                token_transaction_id,
+                message_hash,
+                account_workchain_id,
+                account_hex,
+                owner_message_hash,
+                value,
+                root_address,
+                transaction_direction as "transaction_direction: _",
+                transaction_status as "transaction_status: _",
+                event_status as "event_status: _",
+                created_at, updated_at"#,
+            transaction.id,
+            owner_message_hash
+        )
+        .fetch_one(&mut tx)
+        .await
+        .map_err(ServiceError::from)?;
+
+        tx.commit().await.map_err(ServiceError::from)?;
+
+        Ok((transaction, event))
     }
 }
 

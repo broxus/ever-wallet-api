@@ -69,25 +69,21 @@ async fn internal_transfer_send(
             Ok(false)
         });
 
-    let out_ton_message_hash = token_transaction_ctx
+    let in_message_hash = token_transaction_ctx
         .transaction
         .in_msg
         .clone()
         .map(|message| message.hash().to_hex_string())
         .unwrap_or_default();
 
-    log::info!("Out ton message hash: {}", out_ton_message_hash);
-
     let owner_message_hash = match parse_ctx
         .sqlx_client
-        .get_transaction_by_out_msg(out_ton_message_hash)
+        .get_transaction_by_out_msg(&in_message_hash)
         .await
     {
         Ok(transaction) => Some(transaction.message_hash),
         Err(_) => None,
     };
-
-    log::info!("Owner message hash: {:?}", owner_message_hash);
 
     let transaction = CreateTokenTransaction {
         id: Uuid::new_v4(),
@@ -107,6 +103,7 @@ async fn internal_transfer_send(
         direction: TonTransactionDirection::Send,
         status: TonTokenTransactionStatus::Done,
         error: None,
+        in_message_hash: Some(in_message_hash),
     };
 
     Ok(transaction)
@@ -151,6 +148,7 @@ async fn internal_transfer_receive(
         block_time: token_transaction_ctx.block_utime as i32,
         direction: TonTransactionDirection::Receive,
         status: TonTokenTransactionStatus::Done,
+        in_message_hash: None,
     };
 
     Ok(transaction)
@@ -195,6 +193,7 @@ async fn internal_transfer_bounced(
         direction: TonTransactionDirection::Send,
         status: TonTokenTransactionStatus::Done,
         error: None,
+        in_message_hash: None,
     };
 
     Ok(transaction)
@@ -239,6 +238,7 @@ async fn internal_transfer_mint(
         block_time: token_transaction_ctx.block_utime as i32,
         direction: TonTransactionDirection::Receive,
         status: TonTokenTransactionStatus::Done,
+        in_message_hash: None,
     };
 
     Ok(transaction)

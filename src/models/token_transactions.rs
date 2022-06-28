@@ -23,6 +23,7 @@ pub struct CreateTokenTransaction {
     pub block_time: i32,
     pub direction: TonTransactionDirection,
     pub status: TonTokenTransactionStatus,
+    pub in_message_hash: Option<String>,
 }
 
 #[derive(Debug, Deserialize, Serialize, Clone)]

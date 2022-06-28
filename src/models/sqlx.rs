@@ -128,6 +128,7 @@ pub struct TokenTransactionFromDb {
     pub block_time: Option<i32>,
     pub direction: TonTransactionDirection,
     pub status: TonTokenTransactionStatus,
+    pub in_message_hash: Option<String>,
     pub created_at: NaiveDateTime,
     pub updated_at: NaiveDateTime,
 }

@@ -60,6 +60,13 @@ pub trait TonService: Send + Sync + 'static {
         account_hex: String,
         input: UpdateSendTransaction,
     ) -> Result<TransactionDb, ServiceError>;
+    async fn update_token_transaction(
+        &self,
+        message_hash: String,
+        account_workchain_id: i32,
+        account_hex: String,
+        messages_hash: Option<serde_json::Value>,
+    ) -> Result<(), ServiceError>;
     async fn get_transaction_by_mh(
         &self,
         service_id: &ServiceId,
@@ -771,6 +778,50 @@ impl TonService for TonServiceImpl {
         Ok(transaction)
     }
 
+    async fn update_token_transaction(
+        &self,
+        owner_message_hash: String,
+        account_workchain_id: i32,
+        account_hex: String,
+        messages_hash: Option<serde_json::Value>,
+    ) -> Result<(), ServiceError> {
+        if let Some(messages_hash) = messages_hash {
+            let messages_hash: Vec<String> = serde_json::from_value(messages_hash.clone())?;
+
+            let address = self
+                .sqlx_client
+                .get_address_by_workchain_hex(account_workchain_id, account_hex.clone())
+                .await?;
+
+            for in_message_hash in messages_hash {
+                if let Ok(token_transaction) = self
+                    .sqlx_client
+                    .get_token_transaction_by_mh(address.service_id, &in_message_hash)
+                    .await
+                {
+                    if let Ok((_, event)) = self
+                        .sqlx_client
+                        .update_token_transaction(
+                            token_transaction.id,
+                            Some(owner_message_hash.clone()),
+                        )
+                        .await
+                    {
+                        let _ = self
+                            .notify(
+                                &address.service_id,
+                                event.into(),
+                                NotifyType::TokenTransaction,
+                            )
+                            .await;
+                    }
+                }
+            }
+        }
+
+        Ok(())
+    }
+
     async fn get_transaction_by_mh(
         &self,
         service_id: &ServiceId,
@@ -1244,12 +1295,14 @@ impl TonService for TonServiceImpl {
             .create_token_transaction(input, address.service_id)
             .await?;
 
-        self.notify(
-            &address.service_id,
-            event.into(),
-            NotifyType::TokenTransaction,
-        )
-        .await?;
+        if transaction.owner_message_hash.is_some() {
+            self.notify(
+                &address.service_id,
+                event.into(),
+                NotifyType::TokenTransaction,
+            )
+            .await?;
+        }
 
         Ok(transaction)
     }
