@@ -204,4 +204,54 @@ impl SqlxClient {
 }
 
 #[cfg(test)]
-mod test {}
+async fn prepare_test(level_filter: log::LevelFilter) -> SqlxClient {
+    use env_logger::Builder;
+    use sqlx::PgPool;
+    use std::io::Write;
+    use std::str::FromStr;
+
+    Builder::new()
+        .format(|buf, record| {
+            writeln!(
+                buf,
+                "{} {}/{} {} [{}] - {}",
+                sqlx::types::chrono::Local::now().format("%Y-%m-%dT%H:%M:%S"),
+                record.module_path().unwrap_or_default(),
+                record.file().unwrap_or_default(),
+                record.line().unwrap_or_default(),
+                record.level(),
+                record.args(),
+            )
+        })
+        .filter(None, level_filter)
+        .init();
+
+    let pg_pool =
+        PgPool::connect("postgresql://postgres:postgres@localhost:5432/ton_wallet_api_rs")
+            .await
+            .unwrap();
+
+    let sqlx_client = SqlxClient::new(pg_pool);
+
+    sqlx_client
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+    use log::LevelFilter;
+    use std::str::FromStr;
+
+    #[tokio::test]
+    async fn test() {
+        let sqlx_client = prepare_test(LevelFilter::Trace).await;
+
+        let service_id =
+            ServiceId::new(uuid::Uuid::from_str("5b30733f-e1cc-44e2-91f3-0ab7128e4534").unwrap());
+        let message_hash = "8ec136e3833c1c2f490807668495209240c1a2ff1e22de253abada40a0ab81a7";
+        let res = sqlx_client
+            .get_token_transaction_by_mh(service_id, message_hash)
+            .await
+            .unwrap();
+    }
+}

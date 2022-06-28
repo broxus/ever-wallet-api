@@ -803,13 +803,6 @@ impl TonService for TonServiceImpl {
                 log::info!("Service id: {}", address.service_id);
                 log::info!("In message hash: {}", in_message_hash);
 
-                log::info!(
-                    "{:?}",
-                    self.sqlx_client
-                        .get_token_transaction_by_mh(address.service_id, &in_message_hash)
-                        .await
-                );
-
                 if let Ok(token_transaction) = self
                     .sqlx_client
                     .get_token_transaction_by_mh(address.service_id, &in_message_hash)
@@ -1305,7 +1298,7 @@ impl TonService for TonServiceImpl {
 
     async fn create_receive_token_transaction(
         &self,
-        input: CreateTokenTransaction,
+        mut input: CreateTokenTransaction,
     ) -> Result<TokenTransactionFromDb, ServiceError> {
         self.request_count
             .recv_token_transaction
@@ -1315,6 +1308,16 @@ impl TonService for TonServiceImpl {
             .sqlx_client
             .get_address_by_workchain_hex(input.account_workchain_id, input.account_hex.clone())
             .await?;
+
+        if let Some(in_message_hash) = &input.in_message_hash {
+            if let Ok(transaction) = self
+                .sqlx_client
+                .get_transaction_by_out_msg(in_message_hash)
+                .await
+            {
+                input.owner_message_hash = Some(transaction.message_hash);
+            };
+        }
 
         let (transaction, event) = self
             .sqlx_client

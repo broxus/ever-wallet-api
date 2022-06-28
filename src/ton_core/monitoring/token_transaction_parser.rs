@@ -76,21 +76,12 @@ async fn internal_transfer_send(
         .map(|message| message.hash().to_hex_string())
         .unwrap_or_default();
 
-    let owner_message_hash = match parse_ctx
-        .sqlx_client
-        .get_transaction_by_out_msg(&in_message_hash)
-        .await
-    {
-        Ok(transaction) => Some(transaction.message_hash),
-        Err(_) => None,
-    };
-
     let transaction = CreateTokenTransaction {
         id: Uuid::new_v4(),
         transaction_hash: Some(token_transaction_ctx.transaction_hash.to_hex_string()),
         transaction_timestamp: token_transaction_ctx.block_utime,
         message_hash,
-        owner_message_hash,
+        owner_message_hash: None,
         account_workchain_id: owner_info.owner_address.workchain_id(),
         account_hex: owner_info.owner_address.address().to_hex_string(),
         sender_workchain_id: None,
