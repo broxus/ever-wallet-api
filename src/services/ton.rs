@@ -790,10 +790,14 @@ impl TonService for TonServiceImpl {
         if let Some(messages_hash) = messages_hash {
             let messages_hash: Vec<String> = serde_json::from_value(messages_hash.clone())?;
 
+            log::info!("Messages: {:?}", messages_hash);
+
             let address = self
                 .sqlx_client
                 .get_address_by_workchain_hex(account_workchain_id, account_hex.clone())
                 .await?;
+
+            log::info!("Address: {}:{}", address.workchain_id, address.hex);
 
             for in_message_hash in messages_hash {
                 if let Ok(token_transaction) = self
