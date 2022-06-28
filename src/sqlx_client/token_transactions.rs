@@ -8,10 +8,29 @@ use crate::sqlx_client::*;
 impl SqlxClient {
     pub async fn create_token_transaction(
         &self,
-        payload: CreateTokenTransaction,
+        mut payload: CreateTokenTransaction,
         service_id: ServiceId,
     ) -> Result<(TokenTransactionFromDb, TokenTransactionEventDb), ServiceError> {
         let mut tx = self.pool.begin().await.map_err(ServiceError::from)?;
+
+        if let Some(in_message_hash) = &payload.in_message_hash {
+            let j_value = serde_json::json!(in_message_hash);
+            if let Ok(transaction) =  sqlx::query_as!(TransactionDb,
+                r#"
+            SELECT id, service_id as "service_id: _", message_hash, transaction_hash, transaction_lt, transaction_timeout,
+                transaction_scan_lt, transaction_timestamp, sender_workchain_id, sender_hex, account_workchain_id, account_hex, messages, messages_hash, data,
+                original_value, original_outputs, value, fee, balance_change, direction as "direction: _", status as "status: _",
+                error, aborted, bounce, multisig_transaction_id, created_at, updated_at
+            FROM transactions
+            WHERE messages_hash @> $1::jsonb"#,
+                j_value,
+            )
+                .fetch_one(&mut tx)
+                .await {
+                payload.owner_message_hash = Some(transaction.message_hash);
+            }
+        }
+
         let transaction_timestamp =
             NaiveDateTime::from_timestamp(payload.transaction_timestamp as i64, 0);
 
