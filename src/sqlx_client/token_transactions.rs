@@ -189,17 +189,20 @@ impl SqlxClient {
             )
             .fetch_one(&self.pool)
             .await {
+            let updated_at = Utc::now().naive_utc();
+
             let _ = sqlx::query_as!(
             TokenTransactionFromDb,
             r#"
-            UPDATE token_transactions SET owner_message_hash = $2
+            UPDATE token_transactions SET (owner_message_hash, updated_at) = ($2, $3)
             WHERE id = $1
             RETURNING id, service_id as "service_id: _", transaction_hash, transaction_timestamp, message_hash,
                 owner_message_hash, account_workchain_id, account_hex, value, root_address, payload, error,
                 block_hash, block_time, direction as "direction: _", status as "status: _", in_message_hash,
                 created_at, updated_at"#,
                 token_transaction.id,
-                owner_message_hash
+                owner_message_hash,
+                updated_at
             )
                 .fetch_one(&mut tx)
                 .await
@@ -208,7 +211,7 @@ impl SqlxClient {
             let event = sqlx::query_as!(
             TokenTransactionEventDb,
             r#"
-            UPDATE token_transaction_events SET owner_message_hash = $2
+            UPDATE token_transaction_events SET (owner_message_hash, updated_at) = ($2, $3)
             WHERE token_transaction_id = $1
             RETURNING id,
                 service_id as "service_id: _",
@@ -223,8 +226,9 @@ impl SqlxClient {
                 transaction_status as "transaction_status: _",
                 event_status as "event_status: _",
                 created_at, updated_at"#,
-            token_transaction.id,
-            owner_message_hash
+                token_transaction.id,
+                owner_message_hash,
+                updated_at
         )
                 .fetch_one(&mut tx)
                 .await
