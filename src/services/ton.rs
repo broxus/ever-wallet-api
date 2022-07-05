@@ -1301,7 +1301,7 @@ impl TonService for TonServiceImpl {
             .create_token_transaction(input, address.service_id)
             .await?;
 
-        if transaction.owner_message_hash.is_some() {
+        if transaction.direction == TonTransactionDirection::Receive || transaction.owner_message_hash.is_some() {
             self.notify(
                 &address.service_id,
                 event.into(),
