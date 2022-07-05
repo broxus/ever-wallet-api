@@ -301,60 +301,71 @@ impl TonServiceImpl {
         payload: AccountTransactionEvent,
         notify_type: NotifyType,
     ) -> Result<(), ServiceError> {
-        if let Ok(url) = self.sqlx_client.get_callback(*service_id).await {
-            let secret = self
-                .sqlx_client
-                .get_key_by_service_id(service_id)
-                .await
-                .map(|k| k.secret)
-                .map_err(|err| ServiceError::Other(err.into()))?;
-            let event_status = match self
-                .callback_client
-                .send(url.clone(), payload.clone(), secret)
-                .await
-            {
-                Err(e) => {
-                    log::error!(
-                        "Error on callback sending to {} with payload: {:#?} - {:?}",
-                        url,
-                        payload,
-                        e
-                    );
-                    TonEventStatus::Error
-                }
-                Ok(_) => TonEventStatus::Notified,
-            };
-            match notify_type {
-                NotifyType::Transaction => {
-                    if let Err(e) = self
-                        .sqlx_client
-                        .update_event_status_of_transaction_event(
-                            payload.message_hash.clone(),
-                            payload.account.workchain_id,
-                            payload.account.hex.0.clone(),
-                            event_status,
-                        )
+        tokio::spawn({
+            let service_id = *service_id;
+            let sqlx_client = Arc::new(self.sqlx_client.clone());
+            let callback_client = self.callback_client.clone();
+
+            async move {
+                if let Ok(url) = sqlx_client.get_callback(service_id).await {
+                    let secret = match sqlx_client
+                        .get_key_by_service_id(&service_id)
+                        .await
+                        .map(|k| k.secret)
+                    {
+                        Ok(secret) => secret,
+                        Err(err) => {
+                            log::error!("Failed sending notify: {:?}", err);
+                            return;
+                        }
+                    };
+
+                    let event_status = match callback_client
+                        .send(url.clone(), payload.clone(), secret)
                         .await
                     {
-                        log::error!("Error on update event status of transaction event sending with payload: {:#?} , event status: {:#?} - {:?}", payload, event_status, e);
-                    }
-                }
-                NotifyType::TokenTransaction => {
-                    if let Err(e) = self
-                        .sqlx_client
-                        .update_event_status_of_token_transaction_event(
-                            payload.message_hash.clone(),
-                            payload.account.workchain_id,
-                            payload.account.hex.0.clone(),
-                            event_status,
-                        )
-                        .await
-                    {
-                        log::error!("Error on update event status of token transaction event sending with payload: {:#?} , event status: {:#?} - {:?}", payload, event_status, e);
+                        Err(e) => {
+                            log::error!(
+                                "Error on callback sending to {} with payload: {:#?} - {:?}",
+                                url,
+                                payload,
+                                e
+                            );
+                            TonEventStatus::Error
+                        }
+                        Ok(_) => TonEventStatus::Notified,
+                    };
+                    match notify_type {
+                        NotifyType::Transaction => {
+                            if let Err(e) = sqlx_client
+                                .update_event_status_of_transaction_event(
+                                    payload.message_hash.clone(),
+                                    payload.account.workchain_id,
+                                    payload.account.hex.0.clone(),
+                                    event_status,
+                                )
+                                .await
+                            {
+                                log::error!("Error on update event status of transaction event sending with payload: {:#?} , event status: {:#?} - {:?}", payload, event_status, e);
+                            }
+                        }
+                        NotifyType::TokenTransaction => {
+                            if let Err(e) = sqlx_client
+                                .update_event_status_of_token_transaction_event(
+                                    payload.message_hash.clone(),
+                                    payload.account.workchain_id,
+                                    payload.account.hex.0.clone(),
+                                    event_status,
+                                )
+                                .await
+                            {
+                                log::error!("Error on update event status of token transaction event sending with payload: {:#?} , event status: {:#?} - {:?}", payload, event_status, e);
+                            }
+                        }
                     }
                 }
             }
-        }
+        });
 
         Ok(())
     }
