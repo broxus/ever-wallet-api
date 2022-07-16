@@ -18,6 +18,8 @@ async fn main() -> Result<()> {
 }
 
 async fn run(app: App) -> Result<()> {
+    std::panic::set_hook(Box::new(handle_panic));
+
     match app.command {
         Subcommand::Server(run) => {
             let config: AppConfig = read_config(&run.config)?;
@@ -174,3 +176,9 @@ fn init_logger(config: &serde_yaml::Value) -> Result<()> {
     log4rs::config::init_raw_config(config)?;
     Ok(())
 }
+
+fn handle_panic(panic_info: &std::panic::PanicInfo<'_>) {
+    log::error!("{:?}", panic_info);
+    std::process::exit(1);
+}
+
