@@ -5,6 +5,7 @@ use anyhow::{Context, Result};
 use everscale_network::{adnl, dht, overlay, rldp};
 use rand::Rng;
 use serde::{Deserialize, Serialize};
+use ton_indexer::OldBlocksPolicy;
 
 /// TON node settings
 #[derive(Clone, Serialize, Deserialize)]
@@ -28,6 +29,9 @@ pub struct NodeConfig {
 
     /// Archives map queue. Default: 16
     pub parallel_archive_downloads: usize,
+
+    /// Sync from specific key block
+    pub start_from: Option<u32>,
 
     /// Whether old shard states will be removed every 10 minutes
     pub states_gc_enabled: bool,
@@ -58,6 +62,11 @@ impl NodeConfig {
         let adnl_keys = ton_indexer::NodeKeys::load(self.keys_path, false)
             .context("Failed to load temp keys")?;
 
+        let old_blocks_policy = match self.start_from {
+            None => OldBlocksPolicy::Ignore,
+            Some(a) => OldBlocksPolicy::Sync { from_seqno: a },
+        };
+
         // Prepare DB folder
         std::fs::create_dir_all(&self.db_path)?;
 
@@ -82,6 +91,7 @@ impl NodeConfig {
             max_db_memory_usage: self.max_db_memory_usage,
             archive_options: Some(Default::default()),
             sync_options: ton_indexer::SyncOptions {
+                old_blocks_policy,
                 parallel_archive_downloads: self.parallel_archive_downloads,
                 ..Default::default()
             },
@@ -111,6 +121,7 @@ impl Default for NodeConfig {
             parallel_archive_downloads: 16,
             states_gc_enabled: true,
             blocks_gc_enabled: true,
+            start_from: None,
             adnl_options: Default::default(),
             rldp_options: Default::default(),
             dht_options: Default::default(),
