@@ -160,6 +160,8 @@ impl TonSubscriber {
         let account_blocks = extra.read_account_blocks()?;
         let shard_accounts = shard_state.read_accounts()?;
 
+        log::error!("handle_shard_block: {}", block_info.seq_no());
+
         let mut shards_accounts = self.shards_accounts.write();
         shards_accounts.insert(*block_info.shard(), shard_accounts.clone());
         if block_info.after_merge() || block_info.after_split() {

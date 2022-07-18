@@ -15,6 +15,8 @@ pub async fn parse_ton_transaction(
     transaction_hash: UInt256,
     transaction: ton_block::Transaction,
 ) -> Result<CaughtTonTransaction> {
+    log::error!("parse_ton_transaction : {}", transaction_hash);
+
     let in_msg = match &transaction.in_msg {
         Some(message) => message
             .read_struct()
