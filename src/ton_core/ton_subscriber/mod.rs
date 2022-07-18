@@ -24,7 +24,7 @@ pub struct TonSubscriber {
     current_utime: AtomicU32,
     state_subscriptions: RwLock<FxHashMap<UInt256, StateSubscription>>,
     token_subscription: RwLock<Option<TokenSubscription>>,
-    shards_accounts: RwLock<FxHashMap<ton_block::ShardIdent, ShardAccounts>>,
+    shard_accounts_cache: RwLock<FxHashMap<ton_block::ShardIdent, ShardAccounts>>,
     mc_block_awaiters: Mutex<FxHashMap<usize, Box<dyn BlockAwaiter>>>,
     messages_queue: Arc<PendingMessagesQueue>,
 }
@@ -40,7 +40,7 @@ impl TonSubscriber {
                 Default::default(),
             )),
             token_subscription: RwLock::new(None),
-            shards_accounts: RwLock::new(FxHashMap::with_capacity_and_hasher(
+            shard_accounts_cache: RwLock::new(FxHashMap::with_capacity_and_hasher(
                 16,
                 Default::default(),
             )),
@@ -105,19 +105,14 @@ impl TonSubscriber {
         });
     }
 
-    pub fn get_contract_state(&self, account: &UInt256) -> Result<Option<ExistingContract>> {
-        let shards_accounts = self.shards_accounts.read();
-        for (shard_ident, shard_accounts) in shards_accounts.iter() {
-            if contains_account(shard_ident, account) {
-                match shard_accounts.accounts.get(account) {
-                    Ok(account) => return ExistingContract::from_shard_account_opt(&account),
-                    Err(e) => {
-                        log::error!("Failed to get account {}: {:?}", account.to_hex_string(), e);
-                    }
-                };
+    pub fn get_contract_state(&self, account: &UInt256) -> Result<Option<ShardAccount>> {
+        let cache = self.shard_accounts_cache.read();
+        for (shard_ident, shard_accounts) in cache.iter() {
+            if !contains_account(shard_ident, account) {
+                continue;
             }
+            return shard_accounts.get(account);
         }
-
         Ok(None)
     }
 
@@ -159,10 +154,10 @@ impl TonSubscriber {
         let extra = block.extra.read_struct()?;
         let account_blocks = extra.read_account_blocks()?;
         let shard_accounts = shard_state.state().read_accounts()?;
-        let handle = shard_state.ref_mc_state_handle().clone();
+        let state_handle = shard_state.ref_mc_state_handle().clone();
 
-        let mut shards_accounts = self.shards_accounts.write();
-        shards_accounts.insert(*block_info.shard(), ShardAccounts { accounts: shard_accounts.clone(), _handle: handle });
+        let mut shards_accounts = self.shard_accounts_cache.write();
+        shards_accounts.insert(*block_info.shard(), ShardAccounts { accounts: shard_accounts.clone(), state_handle });
         if block_info.after_merge() || block_info.after_split() {
             let block_ids = block_info.read_prev_ids()?;
             match block_ids.len() {
@@ -552,9 +547,47 @@ where
     }
 }
 
-pub struct ShardAccounts {
+pub struct ShardAccount {
+    data: ton_types::Cell,
+    last_transaction_id: LastTransactionId,
+    _state_handle: Arc<RefMcStateHandle>,
+}
+
+pub fn make_existing_contract(state: Option<ShardAccount>) -> Result<Option<ExistingContract>> {
+    let state = match state {
+        Some(this) => this,
+        None => return Ok(None),
+    };
+
+    match ton_block::Account::construct_from_cell(state.data)? {
+        ton_block::Account::AccountNone => Ok(None),
+        ton_block::Account::Account(account) => Ok(Some(ExistingContract {
+            account,
+            timings: GenTimings::Unknown,
+            last_transaction_id: state.last_transaction_id,
+        })),
+    }
+}
+
+struct ShardAccounts {
     accounts: ton_block::ShardAccounts,
-    _handle: Arc<RefMcStateHandle>,
+    state_handle: Arc<RefMcStateHandle>,
+}
+
+impl ShardAccounts {
+    fn get(&self, account: &ton_types::UInt256) -> Result<Option<ShardAccount>> {
+        match self.accounts.get(account)? {
+            Some(account) => Ok(Some(ShardAccount {
+                data: account.account_cell(),
+                last_transaction_id: LastTransactionId::Exact(TransactionId {
+                    lt: account.last_trans_lt(),
+                    hash: *account.last_trans_hash(),
+                }),
+                _state_handle: self.state_handle.clone(),
+            })),
+            None => Ok(None),
+        }
+    }
 }
 
 pub type AccountEventsTx<T> = mpsc::UnboundedSender<T>;

@@ -170,7 +170,7 @@ impl TonCoreContext {
     }
 
     fn get_contract_state(&self, account: &UInt256) -> Result<ExistingContract> {
-        match self.ton_subscriber.get_contract_state(account)? {
+        match self.ton_subscriber.get_contract_state(account).and_then(make_existing_contract)? {
             Some(contract) => Ok(contract),
             None => Err(TonCoreError::AccountNotExist(account.to_hex_string()).into()),
         }
