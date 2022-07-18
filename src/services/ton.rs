@@ -757,8 +757,15 @@ impl TonService for TonServiceImpl {
             .get_address_by_workchain_hex(account_workchain_id, account_hex.clone())
             .await?;
 
-        let (transaction, event) = self.sqlx_client
-            .upsert_send_transaction(address.service_id, message_hash, account_workchain_id, account_hex, input)
+        let (transaction, event) = self
+            .sqlx_client
+            .upsert_send_transaction(
+                address.service_id,
+                message_hash,
+                account_workchain_id,
+                account_hex,
+                input,
+            )
             .await?;
 
         self.notify(&address.service_id, event.into(), NotifyType::Transaction)

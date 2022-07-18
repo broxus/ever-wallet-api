@@ -33,8 +33,10 @@ impl TonCore {
         global_config: ton_indexer::GlobalConfig,
         sqlx_client: SqlxClient,
         owners_cache: OwnersCache,
-        ton_transaction_producer: CaughtTonTransactionTx,
-        token_transaction_producer: CaughtTokenTransactionTx,
+        states_cache: StatesCache,
+        ton_transaction_producer: TonTransactionTx,
+        token_transaction_producer: TokenTransactionTx,
+        full_state_tx: FullStateTx,
         recover_indexer: bool,
     ) -> Result<Arc<Self>> {
         let context = TonCoreContext::new(
@@ -42,6 +44,8 @@ impl TonCore {
             global_config,
             sqlx_client,
             owners_cache,
+            states_cache,
+            full_state_tx,
             recover_indexer,
         )
         .await?;
@@ -115,6 +119,7 @@ impl TonCore {
 pub struct TonCoreContext {
     pub sqlx_client: SqlxClient,
     pub owners_cache: OwnersCache,
+    pub states_cache: StatesCache,
     pub messages_queue: Arc<PendingMessagesQueue>,
     pub ton_subscriber: Arc<TonSubscriber>,
     pub ton_engine: Arc<ton_indexer::Engine>,
@@ -132,6 +137,8 @@ impl TonCoreContext {
         global_config: ton_indexer::GlobalConfig,
         sqlx_client: SqlxClient,
         owners_cache: OwnersCache,
+        states_cache: StatesCache,
+        full_state_tx: FullStateTx,
         recover_indexer: bool,
     ) -> Result<Arc<Self>> {
         let node_config = node_config
@@ -146,7 +153,7 @@ impl TonCoreContext {
 
         let messages_queue = PendingMessagesQueue::new(512);
 
-        let ton_subscriber = TonSubscriber::new(messages_queue.clone());
+        let ton_subscriber = TonSubscriber::new(messages_queue.clone(), full_state_tx);
         let ton_engine = ton_indexer::Engine::new(
             node_config,
             global_config,
@@ -157,6 +164,7 @@ impl TonCoreContext {
         Ok(Arc::new(Self {
             sqlx_client,
             owners_cache,
+            states_cache,
             messages_queue,
             ton_subscriber,
             ton_engine,
@@ -170,7 +178,11 @@ impl TonCoreContext {
     }
 
     fn get_contract_state(&self, account: &UInt256) -> Result<ExistingContract> {
-        match self.ton_subscriber.get_contract_state(account).and_then(make_existing_contract)? {
+        match self
+            .ton_subscriber
+            .get_contract_state(account)
+            .and_then(make_existing_contract)?
+        {
             Some(contract) => Ok(contract),
             None => Err(TonCoreError::AccountNotExist(account.to_hex_string()).into()),
         }
@@ -218,15 +230,18 @@ pub enum CaughtTonTransaction {
     UpdateSent(UpdateSentTransaction),
 }
 
-pub type CaughtTonTransactionTx =
+pub type TonTransactionTx =
     mpsc::UnboundedSender<(CaughtTonTransaction, HandleTransactionStatusTx)>;
-pub type CaughtTonTransactionRx =
+pub type TonTransactionRx =
     mpsc::UnboundedReceiver<(CaughtTonTransaction, HandleTransactionStatusTx)>;
 
-pub type CaughtTokenTransactionTx =
+pub type TokenTransactionTx =
     mpsc::UnboundedSender<(CreateTokenTransaction, HandleTransactionStatusTx)>;
-pub type CaughtTokenTransactionRx =
+pub type TokenTransactionRx =
     mpsc::UnboundedReceiver<(CreateTokenTransaction, HandleTransactionStatusTx)>;
+
+pub type FullStateTx = mpsc::UnboundedSender<(ShardAccounts, HandleTransactionStatusTx)>;
+pub type FullStateRx = mpsc::UnboundedReceiver<(ShardAccounts, HandleTransactionStatusTx)>;
 
 #[derive(thiserror::Error, Debug)]
 enum TonCoreError {

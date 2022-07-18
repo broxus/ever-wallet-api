@@ -1,4 +1,4 @@
-use std::sync::Arc;
+/*use std::sync::Arc;
 
 use anyhow::Result;
 use nekoton::core::models::*;
@@ -8,40 +8,26 @@ use ton_types::UInt256;
 use crate::ton_core::monitoring::*;
 use crate::ton_core::*;
 
-pub struct TokenTransaction {
+pub struct FullState {
     context: Arc<TonCoreContext>,
-    token_transaction_producer: TokenTransactionTx,
-    token_transaction_observer: Arc<AccountObserver<TokenTransactionEvent>>,
+    full_state_events_tx: FullStateTx,
 }
 
-impl TokenTransaction {
-    pub async fn new(
-        context: Arc<TonCoreContext>,
-        token_transaction_producer: TokenTransactionTx,
-    ) -> Result<Arc<Self>> {
-        let (token_transaction_events_tx, token_transaction_events_rx) = mpsc::unbounded_channel();
+impl FullState {
+    pub async fn new(context: Arc<TonCoreContext>) -> Result<Arc<Self>> {
+        let (full_state_events_tx, full_state_events_rx) = mpsc::unbounded_channel();
 
-        let token_transaction = Arc::new(Self {
+        let full_state = Arc::new(Self {
             context,
-            token_transaction_producer,
-            token_transaction_observer: AccountObserver::new(token_transaction_events_tx),
+            full_state_events_tx,
         });
 
-        token_transaction.start_listening_token_transaction_events(token_transaction_events_rx);
+        full_state.start_listening_full_state_events(full_state_events_rx);
 
-        Ok(token_transaction)
+        Ok(full_state)
     }
 
-    pub fn init_token_subscription(&self) {
-        self.context
-            .ton_subscriber
-            .add_token_subscription(&self.token_transaction_observer);
-    }
-
-    fn start_listening_token_transaction_events(
-        self: &Arc<Self>,
-        mut rx: TokenTransactionEventsRx,
-    ) {
+    fn start_listening_full_state_events(self: &Arc<Self>, mut rx: FullStateRx) {
         let token_transaction = Arc::downgrade(self);
 
         tokio::spawn(async move {
@@ -129,3 +115,4 @@ impl ReadFromTransaction for TokenTransactionEvent {
 }
 
 type TokenTransactionEventsRx = mpsc::UnboundedReceiver<TokenTransactionEvent>;
+*/

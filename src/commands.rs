@@ -24,6 +24,7 @@ pub async fn add_root_token(token_name: String, token_address: String) -> Result
             name: token_name,
             address: token_address,
             version: TokenWalletVersionDb::Tip3,
+            state: None,
         })
         .await?;
 

@@ -8,7 +8,6 @@ pub trait ReadFromTransaction: Sized {
 
 #[derive(Copy, Clone)]
 pub struct TxContext<'a> {
-    pub shard_accounts: &'a ton_block::ShardAccounts,
     pub block_info: &'a ton_block::BlockInfo,
     pub block_hash: &'a UInt256,
     pub account: &'a UInt256,

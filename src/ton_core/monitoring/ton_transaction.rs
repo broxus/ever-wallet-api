@@ -9,14 +9,14 @@ use crate::ton_core::*;
 
 pub struct TonTransaction {
     context: Arc<TonCoreContext>,
-    ton_transaction_producer: CaughtTonTransactionTx,
+    ton_transaction_producer: TonTransactionTx,
     ton_transaction_observer: Arc<AccountObserver<TonTransactionEvent>>,
 }
 
 impl TonTransaction {
     pub async fn new(
         context: Arc<TonCoreContext>,
-        ton_transaction_producer: CaughtTonTransactionTx,
+        ton_transaction_producer: TonTransactionTx,
     ) -> Result<Arc<Self>> {
         let (ton_transaction_events_tx, ton_transaction_events_rx) = mpsc::unbounded_channel();
 
