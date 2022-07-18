@@ -12,7 +12,7 @@ use rustc_hash::FxHashMap;
 
 use tokio::sync::Notify;
 use ton_block::{Deserializable, HashmapAugType};
-use ton_indexer::utils::BlockIdExtExtension;
+use ton_indexer::utils::{BlockIdExtExtension, RefMcStateHandle, ShardStateStuff};
 use ton_indexer::{BriefBlockMeta, EngineStatus, ProcessBlockContext};
 use ton_types::{HashmapType, UInt256};
 
@@ -24,7 +24,7 @@ pub struct TonSubscriber {
     current_utime: AtomicU32,
     state_subscriptions: RwLock<FxHashMap<UInt256, StateSubscription>>,
     token_subscription: RwLock<Option<TokenSubscription>>,
-    shards_accounts: RwLock<FxHashMap<ton_block::ShardIdent, ton_block::ShardAccounts>>,
+    shards_accounts: RwLock<FxHashMap<ton_block::ShardIdent, ShardAccounts>>,
     mc_block_awaiters: Mutex<FxHashMap<usize, Box<dyn BlockAwaiter>>>,
     messages_queue: Arc<PendingMessagesQueue>,
 }
@@ -109,7 +109,7 @@ impl TonSubscriber {
         let shards_accounts = self.shards_accounts.read();
         for (shard_ident, shard_accounts) in shards_accounts.iter() {
             if contains_account(shard_ident, account) {
-                match shard_accounts.get(account) {
+                match shard_accounts.accounts.get(account) {
                     Ok(account) => return ExistingContract::from_shard_account_opt(&account),
                     Err(e) => {
                         log::error!("Failed to get account {}: {:?}", account.to_hex_string(), e);
@@ -152,18 +152,17 @@ impl TonSubscriber {
     fn handle_shard_block(
         &self,
         block: &ton_block::Block,
-        shard_state: &ton_block::ShardStateUnsplit,
+        shard_state: &ShardStateStuff,
         block_hash: &UInt256,
     ) -> Result<FuturesUnordered<HandleTransactionStatusRx>> {
         let block_info = block.info.read_struct()?;
         let extra = block.extra.read_struct()?;
         let account_blocks = extra.read_account_blocks()?;
-        let shard_accounts = shard_state.read_accounts()?;
-
-        log::error!("handle_shard_block: {}", block_info.seq_no());
+        let shard_accounts = shard_state.state().read_accounts()?;
+        let handle = shard_state.ref_mc_state_handle().clone();
 
         let mut shards_accounts = self.shards_accounts.write();
-        shards_accounts.insert(*block_info.shard(), shard_accounts.clone());
+        shards_accounts.insert(*block_info.shard(), ShardAccounts { accounts: shard_accounts.clone(), _handle: handle });
         if block_info.after_merge() || block_info.after_split() {
             let block_ids = block_info.read_prev_ids()?;
             match block_ids.len() {
@@ -262,7 +261,7 @@ impl ton_indexer::Subscriber for TonSubscriber {
     async fn process_block(&self, ctx: ProcessBlockContext<'_>) -> Result<()> {
         if ctx.block_stuff().id().is_masterchain() {
             self.handle_masterchain_block(ctx.meta(), ctx.block())?;
-        } else if let Some(shard_state) = ctx.shard_state() {
+        } else if let Some(shard_state) = ctx.shard_state_stuff() {
             let mut states = self.handle_shard_block(
                 ctx.block(),
                 shard_state,
@@ -551,6 +550,11 @@ where
         // Done
         Ok(())
     }
+}
+
+pub struct ShardAccounts {
+    accounts: ton_block::ShardAccounts,
+    _handle: Arc<RefMcStateHandle>,
 }
 
 pub type AccountEventsTx<T> = mpsc::UnboundedSender<T>;
