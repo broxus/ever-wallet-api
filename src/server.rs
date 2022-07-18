@@ -273,8 +273,6 @@ impl EngineContext {
 
         tokio::spawn(async move {
             while let Some((shard_accounts, state)) = rx.recv().await {
-                log::info!("Handle full state");
-
                 let engine_context = match engine_context.upgrade() {
                     Some(engine_context) => engine_context,
                     None => {
@@ -291,8 +289,6 @@ impl EngineContext {
 
                         match shard_accounts.accounts.find_account(&account) {
                             Ok(Some(state)) => {
-                                log::info!("Root token state found");
-
                                 if let Err(err) = sqlx_client
                                     .update_root_token_state(
                                         &token.address,

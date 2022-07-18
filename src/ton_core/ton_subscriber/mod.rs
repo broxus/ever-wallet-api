@@ -152,8 +152,6 @@ impl TonSubscriber {
         shard_state: Option<&ShardStateStuff>,
         block_hash: &UInt256,
     ) -> Result<FuturesUnordered<HandleTransactionStatusRx>> {
-        log::info!("Handle shard block");
-
         let block_info = block.info.read_struct()?;
         let extra = block.extra.read_struct()?;
         let account_blocks = extra.read_account_blocks()?;
@@ -287,8 +285,6 @@ impl ton_indexer::Subscriber for TonSubscriber {
     }
 
     async fn process_full_state(&self, state: &ShardStateStuff) -> Result<()> {
-        log::info!("Process full state");
-
         if state.block_id().shard_id.is_masterchain() {
             return Ok(());
         }
