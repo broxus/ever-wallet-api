@@ -303,9 +303,7 @@ impl EngineContext {
                                     log::error!("Failed to update root token state: {:?}", err);
                                 }
                             }
-                            Err(_) | Ok(None) => {
-                                log::error!("Failed to find account state");
-                            }
+                            Err(_) | Ok(None) => (),
                         }
                     }
                 }

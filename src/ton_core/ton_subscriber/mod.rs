@@ -289,6 +289,10 @@ impl ton_indexer::Subscriber for TonSubscriber {
     async fn process_full_state(&self, state: &ShardStateStuff) -> Result<()> {
         log::info!("Process full state");
 
+        if state.block_id().shard_id.is_masterchain() {
+            return Ok(());
+        }
+
         let shard_accounts = state.state().read_accounts()?;
         let state_handle = state.ref_mc_state_handle().clone();
         let shard_accounts = ShardAccounts {
