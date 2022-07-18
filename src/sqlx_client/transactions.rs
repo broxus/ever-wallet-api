@@ -82,89 +82,191 @@ impl SqlxClient {
         Ok((transaction, event))
     }
 
-    pub async fn update_send_transaction(
+    pub async fn upsert_send_transaction(
         &self,
+        service_id: ServiceId,
         message_hash: String,
         account_workchain_id: i32,
         account_hex: String,
         payload: UpdateSendTransaction,
     ) -> Result<(TransactionDb, TransactionEventDb), ServiceError> {
         let mut tx = self.pool.begin().await.map_err(ServiceError::from)?;
+
         let transaction_timestamp = payload.transaction_timestamp.map(|transaction_timestamp| {
             NaiveDateTime::from_timestamp(transaction_timestamp as i64, 0)
         });
-        let updated_at = Utc::now().naive_utc();
 
-        let transaction = sqlx::query_as!(TransactionDb,
+        let (transaction, event) = match sqlx::query_as!(TransactionDb,
                 r#"
-            UPDATE transactions SET
-            (transaction_hash, transaction_lt, transaction_scan_lt, transaction_timestamp, sender_workchain_id, sender_hex, messages, messages_hash, data, value, fee, balance_change, status, error, updated_at, multisig_transaction_id) =
-            ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)
-            WHERE message_hash = $17 AND account_workchain_id = $18 and account_hex = $19 and direction = 'Send'::twa_transaction_direction and transaction_hash is NULL
-            RETURNING id, service_id as "service_id: _", message_hash, transaction_hash, transaction_lt, transaction_timeout,
+            SELECT id, service_id as "service_id: _", message_hash, transaction_hash, transaction_lt, transaction_timeout,
                 transaction_scan_lt, transaction_timestamp, sender_workchain_id, sender_hex, account_workchain_id, account_hex, messages, messages_hash, data,
                 original_value, original_outputs, value, fee, balance_change, direction as "direction: _", status as "status: _",
-                error, aborted, bounce, multisig_transaction_id, created_at, updated_at"#,
-                payload.transaction_hash,
-                payload.transaction_lt,
-                payload.transaction_scan_lt,
-                transaction_timestamp,
-                payload.sender_workchain_id,
-                payload.sender_hex,
-                payload.messages,
-                payload.messages_hash,
-                payload.data,
-                payload.value,
-                payload.fee,
-                payload.balance_change,
-                payload.status as TonTransactionStatus,
-                payload.error,
-                updated_at,
-                payload.multisig_transaction_id,
+                error, aborted, bounce, multisig_transaction_id, created_at, updated_at
+            FROM transactions
+            WHERE service_id = $1 AND message_hash = $2 AND account_workchain_id = $3 AND account_hex = $4 and direction = 'Send'::twa_transaction_direction
+            FOR UPDATE"#,
+                service_id as ServiceId,
                 message_hash,
                 account_workchain_id,
                 account_hex,
             )
-            .fetch_one(&mut tx)
-            .await
-            .map_err(ServiceError::from)?;
+            .fetch_optional(&self.pool)
+            .await? {
+            Some(_) => {
+                let updated_at = Utc::now().naive_utc();
 
-        let payload = CreateSendTransactionEvent::new(transaction.clone());
-
-        let event = sqlx::query_as!(TransactionEventDb,
+                let transaction = sqlx::query_as!(TransactionDb,
                 r#"
-            INSERT INTO transaction_events
-            (id, service_id, transaction_id, message_hash, account_workchain_id, account_hex, balance_change, transaction_direction, transaction_status, event_status, multisig_transaction_id)
-            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
-            RETURNING
-                id,
-                service_id as "service_id: _",
-                transaction_id,
-                message_hash,
-                account_workchain_id,
-                account_hex,
-                sender_workchain_id,
-                sender_hex,
-                balance_change,
-                transaction_direction as "transaction_direction: _",
-                transaction_status as "transaction_status: _",
-                event_status as "event_status: _",
-                multisig_transaction_id, created_at, updated_at"#,
-                payload.id,
-                payload.service_id as ServiceId,
-                payload.transaction_id,
-                payload.message_hash,
-                payload.account_workchain_id,
-                payload.account_hex,
-                payload.balance_change,
-                payload.transaction_direction as TonTransactionDirection,
-                payload.transaction_status as TonTransactionStatus,
-                payload.event_status as TonEventStatus,
-                payload.multisig_transaction_id,
-            )
-            .fetch_one(&mut tx)
-            .await
-            .map_err(ServiceError::from)?;
+                UPDATE transactions SET
+                (transaction_hash, transaction_lt, transaction_scan_lt, transaction_timestamp, sender_workchain_id, sender_hex, messages, messages_hash, data, value, fee, balance_change, status, error, updated_at, multisig_transaction_id) =
+                ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)
+                WHERE message_hash = $17 AND account_workchain_id = $18 and account_hex = $19 and direction = 'Send'::twa_transaction_direction and transaction_hash is NULL
+                RETURNING id, service_id as "service_id: _", message_hash, transaction_hash, transaction_lt, transaction_timeout,
+                    transaction_scan_lt, transaction_timestamp, sender_workchain_id, sender_hex, account_workchain_id, account_hex, messages, messages_hash, data,
+                    original_value, original_outputs, value, fee, balance_change, direction as "direction: _", status as "status: _",
+                    error, aborted, bounce, multisig_transaction_id, created_at, updated_at"#,
+                    payload.transaction_hash,
+                    payload.transaction_lt,
+                    payload.transaction_scan_lt,
+                    transaction_timestamp,
+                    payload.sender_workchain_id,
+                    payload.sender_hex,
+                    payload.messages,
+                    payload.messages_hash,
+                    payload.data,
+                    payload.value,
+                    payload.fee,
+                    payload.balance_change,
+                    payload.status as TonTransactionStatus,
+                    payload.error,
+                    updated_at,
+                    payload.multisig_transaction_id,
+                    message_hash,
+                    account_workchain_id,
+                    account_hex,
+                )
+                    .fetch_one(&mut tx)
+                    .await
+                    .map_err(ServiceError::from)?;
+
+                let payload = CreateSendTransactionEvent::new(transaction.clone());
+
+                let event = sqlx::query_as!(TransactionEventDb,
+                r#"
+                INSERT INTO transaction_events
+                (id, service_id, transaction_id, message_hash, account_workchain_id, account_hex, balance_change, transaction_direction, transaction_status, event_status, multisig_transaction_id)
+                VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+                RETURNING
+                    id,
+                    service_id as "service_id: _",
+                    transaction_id,
+                    message_hash,
+                    account_workchain_id,
+                    account_hex,
+                    sender_workchain_id,
+                    sender_hex,
+                    balance_change,
+                    transaction_direction as "transaction_direction: _",
+                    transaction_status as "transaction_status: _",
+                    event_status as "event_status: _",
+                    multisig_transaction_id, created_at, updated_at"#,
+                    payload.id,
+                    payload.service_id as ServiceId,
+                    payload.transaction_id,
+                    payload.message_hash,
+                    payload.account_workchain_id,
+                    payload.account_hex,
+                    payload.balance_change,
+                    payload.transaction_direction as TonTransactionDirection,
+                    payload.transaction_status as TonTransactionStatus,
+                    payload.event_status as TonEventStatus,
+                    payload.multisig_transaction_id,
+                )
+                    .fetch_one(&mut tx)
+                    .await
+                    .map_err(ServiceError::from)?;
+
+                (transaction, event)
+            },
+            None => {
+                let transaction_id = Uuid::new_v4();
+
+                let transaction = sqlx::query_as!(TransactionDb,
+                r#"
+                INSERT INTO transactions
+                (id, service_id, message_hash, transaction_hash, transaction_lt, transaction_timestamp, sender_workchain_id, sender_hex, account_workchain_id, account_hex, messages, messages_hash, data, value, fee, balance_change, direction, status, error, aborted, bounce, multisig_transaction_id)
+                VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22)
+                RETURNING id, service_id as "service_id: _", message_hash, transaction_hash, transaction_lt, transaction_timeout,
+                    transaction_scan_lt, transaction_timestamp, sender_workchain_id, sender_hex, account_workchain_id, account_hex, messages, messages_hash, data,
+                    original_value, original_outputs, value, fee, balance_change, direction as "direction: _", status as "status: _",
+                    error, aborted, bounce, multisig_transaction_id, created_at, updated_at"#,
+                    transaction_id,
+                    service_id as ServiceId,
+                    message_hash,
+                    payload.transaction_hash,
+                    payload.transaction_lt,
+                    transaction_timestamp,
+                    payload.sender_workchain_id,
+                    payload.sender_hex,
+                    account_workchain_id,
+                    account_hex,
+                    payload.messages,
+                    payload.messages_hash,
+                    payload.data,
+                    payload.value,
+                    payload.fee,
+                    payload.balance_change,
+                    TonTransactionDirection::Send as TonTransactionDirection,
+                    payload.status as TonTransactionStatus,
+                    payload.error,
+                    false,
+                    false,
+                    payload.multisig_transaction_id,
+                )
+                    .fetch_one(&mut tx)
+                    .await
+                    .map_err(ServiceError::from)?;
+
+                let payload = UpdateSendTransactionEvent::new(transaction.clone());
+                let id = Uuid::new_v4();
+
+                let event = sqlx::query_as!(TransactionEventDb,
+                r#"
+                INSERT INTO transaction_events
+                (id, service_id, transaction_id, message_hash, account_workchain_id, account_hex, balance_change, transaction_direction, transaction_status, event_status, multisig_transaction_id)
+                VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+                RETURNING id,
+                    service_id as "service_id: _",
+                    transaction_id,
+                    message_hash,
+                    account_workchain_id,
+                    account_hex,
+                    sender_workchain_id,
+                    sender_hex,
+                    balance_change,
+                    transaction_direction as "transaction_direction: _",
+                    transaction_status as "transaction_status: _",
+                    event_status as "event_status: _",
+                    multisig_transaction_id, created_at, updated_at"#,
+                    id,
+                    service_id as ServiceId,
+                    transaction_id,
+                    message_hash,
+                    account_workchain_id,
+                    account_hex,
+                    payload.balance_change,
+                    TonTransactionDirection::Send as TonTransactionDirection,
+                    payload.transaction_status as TonTransactionStatus,
+                    TonEventStatus::New as TonEventStatus,
+                    payload.multisig_transaction_id,
+                )
+                    .fetch_one(&mut tx)
+                    .await
+                    .map_err(ServiceError::from)?;
+
+                (transaction, event)
+            }
+        };
 
         tx.commit().await.map_err(ServiceError::from)?;
 
