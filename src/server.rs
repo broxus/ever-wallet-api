@@ -115,6 +115,7 @@ impl EngineContext {
             owners_cache,
             caught_ton_transaction_tx,
             caught_token_transaction_tx,
+            config.recover_indexer,
         )
         .await?;
 

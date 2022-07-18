@@ -1,3 +1,4 @@
+use std::fs;
 use std::sync::Arc;
 
 use anyhow::{Context, Result};
@@ -34,9 +35,16 @@ impl TonCore {
         owners_cache: OwnersCache,
         ton_transaction_producer: CaughtTonTransactionTx,
         token_transaction_producer: CaughtTokenTransactionTx,
+        recover_indexer: bool,
     ) -> Result<Arc<Self>> {
-        let context =
-            TonCoreContext::new(node_config, global_config, sqlx_client, owners_cache).await?;
+        let context = TonCoreContext::new(
+            node_config,
+            global_config,
+            sqlx_client,
+            owners_cache,
+            recover_indexer,
+        )
+        .await?;
 
         let ton_transaction =
             TonTransaction::new(context.clone(), ton_transaction_producer).await?;
@@ -124,11 +132,17 @@ impl TonCoreContext {
         global_config: ton_indexer::GlobalConfig,
         sqlx_client: SqlxClient,
         owners_cache: OwnersCache,
+        recover_indexer: bool,
     ) -> Result<Arc<Self>> {
         let node_config = node_config
             .build_indexer_config()
             .await
             .context("Failed to build node config")?;
+
+        if recover_indexer {
+            fs::remove_dir_all(&node_config.rocks_db_path).unwrap();
+            fs::remove_dir_all(&node_config.file_db_path).unwrap();
+        }
 
         let messages_queue = PendingMessagesQueue::new(512);
 
