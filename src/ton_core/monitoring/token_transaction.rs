@@ -60,7 +60,6 @@ impl TokenTransaction {
                     event.parsed,
                     &token_transaction.context.sqlx_client,
                     &token_transaction.context.owners_cache,
-                    &token_transaction.context.states_cache,
                 )
                 .await
                 {
@@ -90,6 +89,7 @@ pub struct TokenTransactionContext {
     pub block_utime: u32,
     pub transaction_hash: UInt256,
     pub transaction: ton_block::Transaction,
+    pub token_state: ExistingContract,
 }
 
 #[derive(Debug)]
@@ -110,18 +110,21 @@ impl ReadFromTransaction for TokenTransactionEvent {
             return event;
         }
 
-        if let Some(parsed) = ctx.token_transaction {
-            event = Some(TokenTransactionEvent {
-                ctx: TokenTransactionContext {
-                    account: *ctx.account,
-                    block_hash: *ctx.block_hash,
-                    block_utime: ctx.block_info.gen_utime().0,
-                    transaction_hash: *ctx.transaction_hash,
-                    transaction: ctx.transaction.clone(),
-                },
-                parsed: parsed.clone(),
-                state,
-            })
+        if let Some(parsed) = &ctx.token_transaction {
+            if let Some(token_state) = &ctx.token_state {
+                event = Some(TokenTransactionEvent {
+                    ctx: TokenTransactionContext {
+                        account: *ctx.account,
+                        block_hash: *ctx.block_hash,
+                        block_utime: ctx.block_info.gen_utime().0,
+                        transaction_hash: *ctx.transaction_hash,
+                        transaction: ctx.transaction.clone(),
+                        token_state: token_state.clone(),
+                    },
+                    parsed: parsed.clone(),
+                    state,
+                })
+            }
         }
 
         event

@@ -1,5 +1,5 @@
+use nekoton::transport::models::ExistingContract;
 use tokio::sync::oneshot;
-use ton_indexer::utils::ShardStateStuff;
 use ton_types::UInt256;
 
 pub trait ReadFromTransaction: Sized {
@@ -8,12 +8,12 @@ pub trait ReadFromTransaction: Sized {
 }
 
 pub trait ReadFromState: Sized {
-    fn read_from_state(ctx: &StateContext<'_>, state: HandleTransactionStatusTx) -> Option<Self>;
+    fn read_from_state(ctx: &StateContext<'_>, state: HandleTransactionStatusTx) -> Self;
 }
 
 #[derive(Copy, Clone)]
 pub struct StateContext<'a> {
-    pub shard_state: &'a ShardStateStuff,
+    pub block_id: &'a ton_block::BlockIdExt,
 }
 
 #[derive(Copy, Clone)]
@@ -26,6 +26,7 @@ pub struct TxContext<'a> {
     pub transaction: &'a ton_block::Transaction,
     pub in_msg: &'a ton_block::Message,
     pub token_transaction: &'a Option<nekoton::core::models::TokenWalletTransaction>,
+    pub token_state: &'a Option<ExistingContract>,
 }
 
 impl TxContext<'_> {

@@ -1554,55 +1554,6 @@
     },
     "query": "\n            INSERT INTO transaction_events\n            (id, service_id, transaction_id, message_hash, account_workchain_id, account_hex, balance_change, transaction_direction, transaction_status, event_status, multisig_transaction_id)\n            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)\n            RETURNING id,\n                service_id as \"service_id: _\",\n                transaction_id,\n                message_hash,\n                account_workchain_id,\n                account_hex,\n                sender_workchain_id,\n                sender_hex,\n                balance_change,\n                transaction_direction as \"transaction_direction: _\",\n                transaction_status as \"transaction_status: _\",\n                event_status as \"event_status: _\",\n                multisig_transaction_id, created_at, updated_at"
   },
-  "29105e87e26196eb1bf6b46f325f2cc90be4f38da9cde26312e850466423f829": {
-    "describe": {
-      "columns": [
-        {
-          "name": "name",
-          "ordinal": 0,
-          "type_info": "Varchar"
-        },
-        {
-          "name": "address",
-          "ordinal": 1,
-          "type_info": "Varchar"
-        },
-        {
-          "name": "version: _",
-          "ordinal": 2,
-          "type_info": {
-            "Custom": {
-              "kind": {
-                "Enum": [
-                  "OldTip3v4",
-                  "Tip3"
-                ]
-              },
-              "name": "twa_token_wallet_version"
-            }
-          }
-        },
-        {
-          "name": "state",
-          "ordinal": 3,
-          "type_info": "Jsonb"
-        }
-      ],
-      "nullable": [
-        false,
-        false,
-        false,
-        true
-      ],
-      "parameters": {
-        "Left": [
-          "Text",
-          "Jsonb"
-        ]
-      }
-    },
-    "query": "UPDATE token_whitelist SET state = $2\n            WHERE address = $1\n                RETURNING\n                name, address, version as \"version: _\", state"
-  },
   "34ab580e31a5cb9696e0d16f527e351c843bc340e375d3c4370586f0b4b53cb9": {
     "describe": {
       "columns": [
@@ -2303,7 +2254,7 @@
     },
     "query": "\n            SELECT id, service_id as \"service_id: _\", message_hash, transaction_hash, transaction_lt, transaction_timeout,\n                transaction_scan_lt, transaction_timestamp, sender_workchain_id, sender_hex, account_workchain_id, account_hex, messages, messages_hash, data,\n                original_value, original_outputs, value, fee, balance_change, direction as \"direction: _\", status as \"status: _\",\n                error, aborted, bounce, multisig_transaction_id, created_at, updated_at\n            FROM transactions\n            WHERE status = $1"
   },
-  "4970f77aa5a5128e539961af30da89fe6aab11e77fd670a22c20265fe683b57e": {
+  "3ed5a8c725e537965ebc5c9eb31781918c432b48c652f6ec297557957b321b2a": {
     "describe": {
       "columns": [
         {
@@ -2330,18 +2281,12 @@
               "name": "twa_token_wallet_version"
             }
           }
-        },
-        {
-          "name": "state",
-          "ordinal": 3,
-          "type_info": "Jsonb"
         }
       ],
       "nullable": [
         false,
         false,
-        false,
-        true
+        false
       ],
       "parameters": {
         "Left": [
@@ -2361,7 +2306,19 @@
         ]
       }
     },
-    "query": "INSERT INTO token_whitelist\n                (name, address, version)\n                VALUES ($1, $2, $3::twa_token_wallet_version)\n                RETURNING\n                name, address, version as \"version: _\", state"
+    "query": "INSERT INTO token_whitelist\n                (name, address, version)\n                VALUES ($1, $2, $3::twa_token_wallet_version)\n                RETURNING\n                name, address, version as \"version: _\" "
+  },
+  "44c761460198b7ba1f86638d4843870af011e3c2184829c501cdb7a43a226d2c": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": [
+          "Varchar"
+        ]
+      }
+    },
+    "query": "INSERT INTO last_key_blocks (block_id) VALUES ($1)"
   },
   "4a678bf15a0e55d5042795ff424bf3c3f232df49a211549c2527e3003b334d43": {
     "describe": {
@@ -2422,6 +2379,46 @@
       }
     },
     "query": "INSERT INTO token_balances\n                (service_id, account_workchain_id, account_hex, balance, root_address)\n                VALUES ($1, $2, $3, $4, $5)\n                RETURNING\n                service_id as \"service_id: _\", account_workchain_id, account_hex, balance, root_address, created_at, updated_at\n"
+  },
+  "534a999f2e0ec5f5fb6d86b63d42e2e7f5a25b3a6ff4a1cf25089096e11ec452": {
+    "describe": {
+      "columns": [
+        {
+          "name": "name",
+          "ordinal": 0,
+          "type_info": "Varchar"
+        },
+        {
+          "name": "address",
+          "ordinal": 1,
+          "type_info": "Varchar"
+        },
+        {
+          "name": "version: _",
+          "ordinal": 2,
+          "type_info": {
+            "Custom": {
+              "kind": {
+                "Enum": [
+                  "OldTip3v4",
+                  "Tip3"
+                ]
+              },
+              "name": "twa_token_wallet_version"
+            }
+          }
+        }
+      ],
+      "nullable": [
+        false,
+        false,
+        false
+      ],
+      "parameters": {
+        "Left": []
+      }
+    },
+    "query": "SELECT name, address, version as \"version: _\" FROM token_whitelist"
   },
   "5566757821f2f6e500698f5c657e834e5276be5b732722328d65fe834d4d7312": {
     "describe": {
@@ -3831,6 +3828,48 @@
     },
     "query": "SELECT address, owner_account_workchain_id, owner_account_hex, root_address, code_hash, created_at, version as \"version: _\"\n            FROM token_owners "
   },
+  "7a408d09748e749b5c02f0eab8fb3f4155c18be80d475d072422a02160ba71a7": {
+    "describe": {
+      "columns": [
+        {
+          "name": "name",
+          "ordinal": 0,
+          "type_info": "Varchar"
+        },
+        {
+          "name": "address",
+          "ordinal": 1,
+          "type_info": "Varchar"
+        },
+        {
+          "name": "version: _",
+          "ordinal": 2,
+          "type_info": {
+            "Custom": {
+              "kind": {
+                "Enum": [
+                  "OldTip3v4",
+                  "Tip3"
+                ]
+              },
+              "name": "twa_token_wallet_version"
+            }
+          }
+        }
+      ],
+      "nullable": [
+        false,
+        false,
+        false
+      ],
+      "parameters": {
+        "Left": [
+          "Text"
+        ]
+      }
+    },
+    "query": "SELECT name, address, version as \"version: _\"\n                FROM token_whitelist\n                WHERE address = $1"
+  },
   "897ccb3330ec44f5feb8fb994703bf7bccf773eeab1f9cb6de12dafbce8acb47": {
     "describe": {
       "columns": [
@@ -4789,6 +4828,24 @@
     },
     "query": "SELECT address, owner_account_workchain_id, owner_account_hex, root_address, code_hash, created_at, version as \"version: _\"\n            FROM token_owners\n            WHERE address = $1"
   },
+  "98f411962f3db5f2736c502c9b21b19771567b8a09c3e163770388e78047e60c": {
+    "describe": {
+      "columns": [
+        {
+          "name": "block_id",
+          "ordinal": 0,
+          "type_info": "Varchar"
+        }
+      ],
+      "nullable": [
+        false
+      ],
+      "parameters": {
+        "Left": []
+      }
+    },
+    "query": "SELECT block_id FROM last_key_blocks"
+  },
   "aaca2c63063e1d159c736c81e986d20cb10920fd95853a6c5212f6b1bb3b9df8": {
     "describe": {
       "columns": [
@@ -5129,54 +5186,6 @@
       }
     },
     "query": "\n            INSERT INTO transaction_events\n            (id, service_id, transaction_id, message_hash, account_workchain_id, account_hex, sender_workchain_id, sender_hex, balance_change, transaction_direction, transaction_status, event_status)\n            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)\n            RETURNING id,\n                service_id as \"service_id: _\",\n                transaction_id,\n                message_hash,\n                account_workchain_id,\n                account_hex,\n                sender_workchain_id,\n                sender_hex,\n                balance_change,\n                transaction_direction as \"transaction_direction: _\",\n                transaction_status as \"transaction_status: _\",\n                event_status as \"event_status: _\",\n                multisig_transaction_id, created_at, updated_at"
-  },
-  "b5ade642a70369c998c268a392a3233d036580ebbcda22fcd0d130651f548b57": {
-    "describe": {
-      "columns": [
-        {
-          "name": "name",
-          "ordinal": 0,
-          "type_info": "Varchar"
-        },
-        {
-          "name": "address",
-          "ordinal": 1,
-          "type_info": "Varchar"
-        },
-        {
-          "name": "version: _",
-          "ordinal": 2,
-          "type_info": {
-            "Custom": {
-              "kind": {
-                "Enum": [
-                  "OldTip3v4",
-                  "Tip3"
-                ]
-              },
-              "name": "twa_token_wallet_version"
-            }
-          }
-        },
-        {
-          "name": "state",
-          "ordinal": 3,
-          "type_info": "Jsonb"
-        }
-      ],
-      "nullable": [
-        false,
-        false,
-        false,
-        true
-      ],
-      "parameters": {
-        "Left": [
-          "Text"
-        ]
-      }
-    },
-    "query": "SELECT name, address, version as \"version: _\", state\n                FROM token_whitelist\n                WHERE address = $1"
   },
   "b6e0976bf2960fb60ed91fe0cded10324cc45c67d8e5d28950dfafa7e98880da": {
     "describe": {
@@ -6528,52 +6537,6 @@
       }
     },
     "query": "\n            SELECT id, service_id as \"service_id: _\", message_hash, transaction_hash, transaction_lt, transaction_timeout,\n                transaction_scan_lt, transaction_timestamp, sender_workchain_id, sender_hex, account_workchain_id, account_hex, messages, messages_hash, data,\n                original_value, original_outputs, value, fee, balance_change, direction as \"direction: _\", status as \"status: _\",\n                error, aborted, bounce, multisig_transaction_id, created_at, updated_at\n            FROM transactions\n            WHERE messages_hash @> $1::jsonb"
-  },
-  "e5e865f85010f5f7ac65e719c245566cb8c29328a3669e7e9cf54fc299e9b4e7": {
-    "describe": {
-      "columns": [
-        {
-          "name": "name",
-          "ordinal": 0,
-          "type_info": "Varchar"
-        },
-        {
-          "name": "address",
-          "ordinal": 1,
-          "type_info": "Varchar"
-        },
-        {
-          "name": "version: _",
-          "ordinal": 2,
-          "type_info": {
-            "Custom": {
-              "kind": {
-                "Enum": [
-                  "OldTip3v4",
-                  "Tip3"
-                ]
-              },
-              "name": "twa_token_wallet_version"
-            }
-          }
-        },
-        {
-          "name": "state",
-          "ordinal": 3,
-          "type_info": "Jsonb"
-        }
-      ],
-      "nullable": [
-        false,
-        false,
-        false,
-        true
-      ],
-      "parameters": {
-        "Left": []
-      }
-    },
-    "query": "SELECT name, address, version as \"version: _\", state FROM token_whitelist"
   },
   "eddc4a03595d835065196419598143d7beab7186e6ddcc7431b4762ade34fccb": {
     "describe": {

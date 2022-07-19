@@ -104,7 +104,6 @@ impl EngineContext {
 
         let callback_client = Arc::new(CallbackClientImpl::new());
         let owners_cache = OwnersCache::new(sqlx_client.clone()).await?;
-        let states_cache = StatesCache::new(sqlx_client.clone()).await?;
 
         let (ton_transaction_tx, ton_transaction_rx) = mpsc::unbounded_channel();
         let (token_transaction_tx, token_transaction_rx) = mpsc::unbounded_channel();
@@ -114,7 +113,6 @@ impl EngineContext {
             global_config,
             sqlx_client.clone(),
             owners_cache,
-            states_cache,
             ton_transaction_tx,
             token_transaction_tx,
             config.recover_indexer,

@@ -167,5 +167,4 @@ pub struct TokenWhitelistFromDb {
     pub name: String,
     pub address: String,
     pub version: TokenWalletVersionDb,
-    pub state: Option<serde_json::Value>,
 }

@@ -4,6 +4,7 @@ mod addresses;
 mod api_service;
 mod api_service_callbacks;
 mod keys;
+mod last_key_blocks;
 mod token_balances;
 mod token_owners;
 mod token_transactions;

@@ -11,7 +11,7 @@ use parking_lot::{Mutex, RwLock, RwLockReadGuard};
 use rustc_hash::FxHashMap;
 
 use tokio::sync::Notify;
-use ton_block::{Deserializable, HashmapAugType};
+use ton_block::{Deserializable, HashmapAugType, ShardIdent};
 use ton_indexer::utils::{BlockIdExtExtension, RefMcStateHandle, ShardStateStuff};
 use ton_indexer::{BriefBlockMeta, EngineStatus, ProcessBlockContext};
 use ton_types::{HashmapType, UInt256};
@@ -131,6 +131,26 @@ impl TonSubscriber {
         Ok(None)
     }
 
+    pub fn update_shards_accounts_cache(
+        &self,
+        shard_id: ShardIdent,
+        shard_state: Arc<ShardStateStuff>,
+    ) -> Result<()> {
+        let shard_accounts = shard_state.state().read_accounts()?;
+        let state_handle = shard_state.ref_mc_state_handle().clone();
+
+        let mut shards_accounts = self.shards_accounts_cache.write();
+        shards_accounts.insert(
+            shard_id,
+            ShardAccounts {
+                accounts: shard_accounts,
+                state_handle,
+            },
+        );
+
+        Ok(())
+    }
+
     fn handle_masterchain_block(
         &self,
         meta: BriefBlockMeta,
@@ -230,9 +250,11 @@ impl TonSubscriber {
                 }
                 None => {
                     if let Some(token_subscription) = token_subscription.as_ref() {
+                        let shards_accounts_cache = self.shards_accounts_cache.read();
+
                         match token_subscription.handle_block(
                             &state_subscriptions,
-                            shard_state,
+                            &shards_accounts_cache,
                             &block_info,
                             &account_block,
                             &account,
@@ -265,6 +287,19 @@ impl TonSubscriber {
         state: &ShardStateStuff,
     ) -> Result<Option<HandleTransactionStatusRx>> {
         let mut res = None;
+
+        let shard_accounts = state.state().read_accounts()?;
+        let state_handle = state.ref_mc_state_handle().clone();
+
+        let mut shards_accounts = self.shards_accounts_cache.write();
+        shards_accounts.insert(
+            *state.shard(),
+            ShardAccounts {
+                accounts: shard_accounts,
+                state_handle,
+            },
+        );
+        drop(shards_accounts);
 
         let full_state_subscription = self.full_state_subscription.read();
         if let Some(full_state_subscription) = full_state_subscription.as_ref() {
@@ -400,6 +435,7 @@ impl StateSubscription {
                 transaction: &transaction,
                 in_msg: &in_msg,
                 token_transaction: &None,
+                token_state: &None,
             };
 
             // Handle transaction
@@ -441,105 +477,107 @@ impl TokenSubscription {
     fn handle_block(
         &self,
         state_subscriptions: &RwLockReadGuard<FxHashMap<UInt256, StateSubscription>>,
-        shard_state: Option<&ShardStateStuff>,
+        shards_accounts_cache: &FxHashMap<ton_block::ShardIdent, ShardAccounts>,
         block_info: &ton_block::BlockInfo,
         account_block: &ton_block::AccountBlock,
         account: &UInt256,
         block_hash: &UInt256,
     ) -> Result<FuturesUnordered<HandleTransactionStatusRx>> {
         let states = FuturesUnordered::new();
+        for transaction in account_block.transactions().iter() {
+            let (hash, transaction) = match transaction.and_then(|(_, value)| {
+                let cell = value.into_cell().reference(0)?;
+                let hash = cell.repr_hash();
+                ton_block::Transaction::construct_from_cell(cell)
+                    .map(|transaction| (hash, transaction))
+            }) {
+                Ok(tx) => tx,
+                Err(e) => {
+                    log::error!(
+                        "Failed to parse transaction in block {} for account {}: {:?}",
+                        block_info.seq_no(),
+                        account.to_hex_string(),
+                        e
+                    );
+                    continue;
+                }
+            };
 
-        if let Some(shard_state) = shard_state {
-            let shard_accounts = shard_state.state().read_accounts()?;
+            // Skip non-ordinary transactions
+            let transaction_info = match transaction.description.read_struct() {
+                Ok(ton_block::TransactionDescr::Ordinary(info)) => info,
+                _ => continue,
+            };
 
-            for transaction in account_block.transactions().iter() {
-                let (hash, transaction) = match transaction.and_then(|(_, value)| {
-                    let cell = value.into_cell().reference(0)?;
-                    let hash = cell.repr_hash();
-                    ton_block::Transaction::construct_from_cell(cell)
-                        .map(|transaction| (hash, transaction))
-                }) {
-                    Ok(tx) => tx,
-                    Err(e) => {
-                        log::error!(
-                            "Failed to parse transaction in block {} for account {}: {:?}",
-                            block_info.seq_no(),
-                            account.to_hex_string(),
-                            e
-                        );
-                        continue;
-                    }
-                };
-
-                // Skip non-ordinary transactions
-                let transaction_info = match transaction.description.read_struct() {
-                    Ok(ton_block::TransactionDescr::Ordinary(info)) => info,
-                    _ => continue,
-                };
-
-                let parsed_token_transaction = match nekoton::core::parsing::parse_token_transaction(
+            let parsed_token_transaction = match nekoton::core::parsing::parse_token_transaction(
+                &transaction,
+                &transaction_info,
+                TokenWalletVersion::Tip3,
+            ) {
+                Some(parsed_token_transaction) => Some(parsed_token_transaction),
+                None => nekoton::core::parsing::parse_token_transaction(
                     &transaction,
                     &transaction_info,
-                    TokenWalletVersion::Tip3,
-                ) {
-                    Some(parsed_token_transaction) => Some(parsed_token_transaction),
-                    None => nekoton::core::parsing::parse_token_transaction(
-                        &transaction,
-                        &transaction_info,
-                        TokenWalletVersion::OldTip3v4,
-                    ),
-                };
+                    TokenWalletVersion::OldTip3v4,
+                ),
+            };
 
-                if let Some(parsed) = parsed_token_transaction {
-                    let token_contract = shard_accounts
-                        .find_account(account)?
-                        .ok_or_else(|| TonCoreError::AccountNotExist(account.to_string()))?;
-                    let (token_wallet, _, _) = get_token_wallet_details(&token_contract)?;
+            if let Some(parsed) = parsed_token_transaction {
+                let mut token_contract = None;
+                for (_shard_ident, shard_accounts) in shards_accounts_cache.iter() {
+                    if let Some(contract) = shard_accounts.accounts.find_account(account)? {
+                        token_contract = Some(contract);
+                        break;
+                    }
+                }
 
-                    let owner = UInt256::from_be_bytes(
-                        &token_wallet.owner_address.address().get_bytestring(0),
-                    );
+                let token_contract = token_contract
+                    .ok_or_else(|| TonCoreError::AccountNotExist(account.to_string()))?;
 
-                    if state_subscriptions.get(&owner).is_some() {
-                        let in_msg = match transaction
-                            .in_msg
-                            .as_ref()
-                            .map(|message| (message, message.read_struct()))
-                        {
-                            Some((_, Ok(message))) => message,
-                            _ => continue,
-                        };
+                let (token_wallet, _, _) = get_token_wallet_details(&token_contract)?;
 
-                        let ctx = TxContext {
-                            block_info,
-                            block_hash,
-                            account,
-                            transaction_hash: &hash,
-                            transaction_info: &transaction_info,
-                            transaction: &transaction,
-                            in_msg: &in_msg,
-                            token_transaction: &Some(parsed),
-                        };
+                let owner =
+                    UInt256::from_be_bytes(&token_wallet.owner_address.address().get_bytestring(0));
 
-                        if let Some(transaction_subscription) =
-                            self.transaction_subscription.upgrade()
-                        {
-                            let (tx, rx) = oneshot::channel();
+                if state_subscriptions.get(&owner).is_some() {
+                    let in_msg = match transaction
+                        .in_msg
+                        .as_ref()
+                        .map(|message| (message, message.read_struct()))
+                    {
+                        Some((_, Ok(message))) => message,
+                        _ => continue,
+                    };
 
-                            match transaction_subscription.handle_transaction(ctx, tx) {
-                                Ok(_) => {
-                                    states.push(rx);
-                                }
-                                Err(e) => {
-                                    log::error!(
+                    let ctx = TxContext {
+                        block_info,
+                        block_hash,
+                        account,
+                        transaction_hash: &hash,
+                        transaction_info: &transaction_info,
+                        transaction: &transaction,
+                        in_msg: &in_msg,
+                        token_transaction: &Some(parsed),
+                        token_state: &Some(token_contract),
+                    };
+
+                    if let Some(transaction_subscription) = self.transaction_subscription.upgrade()
+                    {
+                        let (tx, rx) = oneshot::channel();
+
+                        match transaction_subscription.handle_transaction(ctx, tx) {
+                            Ok(_) => {
+                                states.push(rx);
+                            }
+                            Err(e) => {
+                                log::error!(
                                     "Failed to handle token transaction {} for account {}: {:?}",
                                     hash.to_hex_string(),
                                     account.to_hex_string(),
                                     e
                                 );
-                                }
-                            };
-                        }
+                            }
+                        };
                     }
                 }
             }
@@ -563,7 +601,9 @@ impl FullStateSubscription {
         if let Some(full_state_subscription) = self.full_state_subscription.upgrade() {
             let (tx, rx) = oneshot::channel();
 
-            let ctx = StateContext { shard_state };
+            let ctx = StateContext {
+                block_id: shard_state.block_id(),
+            };
 
             match full_state_subscription.handle_full_state(ctx, tx) {
                 Ok(_) => res = Some(rx),
@@ -646,10 +686,8 @@ where
         let event = T::read_from_state(&ctx, state);
 
         // Send event to event manager if it exist
-        if let Some(event) = event {
-            if self.0.send(event).is_err() {
-                log::error!("Failed to send event: channel is dropped");
-            }
+        if self.0.send(event).is_err() {
+            log::error!("Failed to send event: channel is dropped");
         }
 
         // Done

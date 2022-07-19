@@ -1,4 +1,5 @@
 use std::fs;
+use std::str::FromStr;
 use std::sync::Arc;
 
 use anyhow::{Context, Result};
@@ -34,7 +35,6 @@ impl TonCore {
         global_config: ton_indexer::GlobalConfig,
         sqlx_client: SqlxClient,
         owners_cache: OwnersCache,
-        states_cache: StatesCache,
         ton_transaction_producer: TonTransactionTx,
         token_transaction_producer: TokenTransactionTx,
         recover_indexer: bool,
@@ -44,7 +44,6 @@ impl TonCore {
             global_config,
             sqlx_client,
             owners_cache,
-            states_cache,
             recover_indexer,
         )
         .await?;
@@ -127,7 +126,6 @@ impl TonCore {
 pub struct TonCoreContext {
     pub sqlx_client: SqlxClient,
     pub owners_cache: OwnersCache,
-    pub states_cache: StatesCache,
     pub messages_queue: Arc<PendingMessagesQueue>,
     pub ton_subscriber: Arc<TonSubscriber>,
     pub ton_engine: Arc<ton_indexer::Engine>,
@@ -145,7 +143,6 @@ impl TonCoreContext {
         global_config: ton_indexer::GlobalConfig,
         sqlx_client: SqlxClient,
         owners_cache: OwnersCache,
-        states_cache: StatesCache,
         recover_indexer: bool,
     ) -> Result<Arc<Self>> {
         let node_config = node_config
@@ -171,7 +168,6 @@ impl TonCoreContext {
         Ok(Arc::new(Self {
             sqlx_client,
             owners_cache,
-            states_cache,
             messages_queue,
             ton_subscriber,
             ton_engine,
@@ -179,6 +175,15 @@ impl TonCoreContext {
     }
 
     async fn start(&self) -> Result<()> {
+        // Load last states
+        let block_ids = self.sqlx_client.get_last_key_blocks().await?;
+        for block_id in block_ids {
+            let block_id = ton_block::BlockIdExt::from_str(&block_id.block_id)?;
+            let state = self.ton_engine.load_state(&block_id).await?;
+            self.ton_subscriber
+                .update_shards_accounts_cache(block_id.shard_id, state)?;
+        }
+
         self.ton_engine.start().await?;
         self.ton_subscriber.start().await?;
         Ok(())
