@@ -175,6 +175,8 @@ impl TonCoreContext {
     }
 
     async fn start(&self) -> Result<()> {
+        self.ton_engine.start().await?;
+
         // Load last states
         let block_ids = self.sqlx_client.get_last_key_blocks().await?;
         for block_id in block_ids {
@@ -184,7 +186,6 @@ impl TonCoreContext {
                 .update_shards_accounts_cache(block_id.shard_id, state)?;
         }
 
-        self.ton_engine.start().await?;
         self.ton_subscriber.start().await?;
         Ok(())
     }
