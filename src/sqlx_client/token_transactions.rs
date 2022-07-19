@@ -22,7 +22,7 @@ impl SqlxClient {
                 original_value, original_outputs, value, fee, balance_change, direction as "direction: _", status as "status: _",
                 error, aborted, bounce, multisig_transaction_id, created_at, updated_at
             FROM transactions
-            WHERE messages_hash @> $1::jsonb"#,
+            WHERE messages_hash @> $1::jsonb FOR UPDATE"#,
                 j_value,
             )
                 .fetch_one(&mut tx)
@@ -183,7 +183,7 @@ impl SqlxClient {
             SELECT id, service_id as "service_id: _", transaction_hash, transaction_timestamp, message_hash, owner_message_hash, account_workchain_id, account_hex,
             value, root_address, payload, error, block_hash, block_time, direction as "direction: _", status as "status: _", in_message_hash, created_at, updated_at
             FROM token_transactions
-            WHERE service_id = $1 AND (message_hash = $2 OR owner_message_hash = $2 OR in_message_hash = $2) FOR UPDATE"#,
+            WHERE service_id = $1 AND (message_hash = $2 OR owner_message_hash = $2 OR in_message_hash = $2)"#,
                 service_id as ServiceId,
                 in_message_hash,
             )
