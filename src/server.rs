@@ -1,12 +1,8 @@
-use std::str::FromStr;
 use std::sync::Arc;
 
 use anyhow::Result;
-use nekoton_utils::TrustMe;
 use sqlx::postgres::PgPoolOptions;
 use tokio::sync::mpsc;
-use ton_block::MsgAddressInt;
-use ton_types::UInt256;
 
 use crate::api::*;
 use crate::client::*;
@@ -112,7 +108,6 @@ impl EngineContext {
 
         let (ton_transaction_tx, ton_transaction_rx) = mpsc::unbounded_channel();
         let (token_transaction_tx, token_transaction_rx) = mpsc::unbounded_channel();
-        let (full_state_tx, full_state_rx) = mpsc::unbounded_channel();
 
         let ton_core = TonCore::new(
             config.ton_core.clone(),
@@ -122,7 +117,6 @@ impl EngineContext {
             states_cache,
             ton_transaction_tx,
             token_transaction_tx,
-            full_state_tx,
             config.recover_indexer,
         )
         .await?;
@@ -152,7 +146,6 @@ impl EngineContext {
 
         engine_context.start_listening_ton_transaction(ton_transaction_rx);
         engine_context.start_listening_token_transaction(token_transaction_rx);
-        engine_context.start_listening_full_state(full_state_rx);
 
         Ok(engine_context)
     }
@@ -261,50 +254,6 @@ impl EngineContext {
                         log::error!("Failed to create token transaction: {:?}", e)
                     }
                 };
-            }
-
-            rx.close();
-            while rx.recv().await.is_some() {}
-        });
-    }
-
-    fn start_listening_full_state(self: &Arc<Self>, mut rx: FullStateRx) {
-        let engine_context = Arc::downgrade(self);
-
-        tokio::spawn(async move {
-            while let Some((shard_accounts, state)) = rx.recv().await {
-                let engine_context = match engine_context.upgrade() {
-                    Some(engine_context) => engine_context,
-                    None => {
-                        log::error!("Engine is already dropped");
-                        return;
-                    }
-                };
-
-                let sqlx_client = engine_context.ton_core.context.sqlx_client.clone();
-                if let Ok(tokens) = sqlx_client.get_token_whitelist().await {
-                    for token in tokens {
-                        let address = MsgAddressInt::from_str(&token.address).trust_me();
-                        let account = UInt256::from_be_bytes(&address.address().get_bytestring(0));
-
-                        match shard_accounts.accounts.find_account(&account) {
-                            Ok(Some(state)) => {
-                                if let Err(err) = sqlx_client
-                                    .update_root_token_state(
-                                        &token.address,
-                                        serde_json::json!(state),
-                                    )
-                                    .await
-                                {
-                                    log::error!("Failed to update root token state: {:?}", err);
-                                }
-                            }
-                            Err(_) | Ok(None) => (),
-                        }
-                    }
-                }
-
-                state.send(HandleTransactionStatus::Success).ok();
             }
 
             rx.close();

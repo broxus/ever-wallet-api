@@ -1,9 +1,19 @@
 use tokio::sync::oneshot;
+use ton_indexer::utils::ShardStateStuff;
 use ton_types::UInt256;
 
 pub trait ReadFromTransaction: Sized {
     fn read_from_transaction(ctx: &TxContext<'_>, state: HandleTransactionStatusTx)
         -> Option<Self>;
+}
+
+pub trait ReadFromState: Sized {
+    fn read_from_state(ctx: &StateContext<'_>, state: HandleTransactionStatusTx) -> Option<Self>;
+}
+
+#[derive(Copy, Clone)]
+pub struct StateContext<'a> {
+    pub shard_state: &'a ShardStateStuff,
 }
 
 #[derive(Copy, Clone)]

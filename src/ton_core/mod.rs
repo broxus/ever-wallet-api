@@ -25,6 +25,7 @@ pub struct TonCore {
     pub context: Arc<TonCoreContext>,
     pub ton_transaction: Mutex<Option<Arc<TonTransaction>>>,
     pub token_transaction: Mutex<Option<Arc<TokenTransaction>>>,
+    pub full_state: Mutex<Option<Arc<FullState>>>,
 }
 
 impl TonCore {
@@ -36,7 +37,6 @@ impl TonCore {
         states_cache: StatesCache,
         ton_transaction_producer: TonTransactionTx,
         token_transaction_producer: TokenTransactionTx,
-        full_state_tx: FullStateTx,
         recover_indexer: bool,
     ) -> Result<Arc<Self>> {
         let context = TonCoreContext::new(
@@ -45,7 +45,6 @@ impl TonCore {
             sqlx_client,
             owners_cache,
             states_cache,
-            full_state_tx,
             recover_indexer,
         )
         .await?;
@@ -56,10 +55,13 @@ impl TonCore {
         let token_transaction =
             TokenTransaction::new(context.clone(), token_transaction_producer).await?;
 
+        let full_state = FullState::new(context.clone()).await?;
+
         Ok(Arc::new(Self {
             context,
             ton_transaction: Mutex::new(Some(ton_transaction)),
             token_transaction: Mutex::new(Some(token_transaction)),
+            full_state: Mutex::new(Some(full_state)),
         }))
     }
 
@@ -83,6 +85,12 @@ impl TonCore {
     pub fn init_token_subscription(&self) {
         if let Some(token_transaction) = &*self.token_transaction.lock() {
             token_transaction.init_token_subscription();
+        }
+    }
+
+    pub fn init_full_state_subscription(&self) {
+        if let Some(full_state) = &*self.full_state.lock() {
+            full_state.init_full_state_subscription();
         }
     }
 
@@ -138,7 +146,6 @@ impl TonCoreContext {
         sqlx_client: SqlxClient,
         owners_cache: OwnersCache,
         states_cache: StatesCache,
-        full_state_tx: FullStateTx,
         recover_indexer: bool,
     ) -> Result<Arc<Self>> {
         let node_config = node_config
@@ -153,7 +160,7 @@ impl TonCoreContext {
 
         let messages_queue = PendingMessagesQueue::new(512);
 
-        let ton_subscriber = TonSubscriber::new(messages_queue.clone(), full_state_tx);
+        let ton_subscriber = TonSubscriber::new(messages_queue.clone());
         let ton_engine = ton_indexer::Engine::new(
             node_config,
             global_config,

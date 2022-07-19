@@ -24,14 +24,14 @@ pub struct TonSubscriber {
     current_utime: AtomicU32,
     state_subscriptions: RwLock<FxHashMap<UInt256, StateSubscription>>,
     token_subscription: RwLock<Option<TokenSubscription>>,
-    full_state_tx: FullStateTx,
+    full_state_subscription: RwLock<Option<FullStateSubscription>>,
     shards_accounts_cache: RwLock<FxHashMap<ton_block::ShardIdent, ShardAccounts>>,
     mc_block_awaiters: Mutex<FxHashMap<usize, Box<dyn BlockAwaiter>>>,
     messages_queue: Arc<PendingMessagesQueue>,
 }
 
 impl TonSubscriber {
-    pub fn new(messages_queue: Arc<PendingMessagesQueue>, full_state_tx: FullStateTx) -> Arc<Self> {
+    pub fn new(messages_queue: Arc<PendingMessagesQueue>) -> Arc<Self> {
         Arc::new(Self {
             ready: AtomicBool::new(false),
             ready_signal: Notify::new(),
@@ -41,6 +41,7 @@ impl TonSubscriber {
                 Default::default(),
             )),
             token_subscription: RwLock::new(None),
+            full_state_subscription: RwLock::new(None),
             shards_accounts_cache: RwLock::new(FxHashMap::with_capacity_and_hasher(
                 16,
                 Default::default(),
@@ -49,7 +50,6 @@ impl TonSubscriber {
                 4,
                 Default::default(),
             )),
-            full_state_tx,
             messages_queue,
         })
     }
@@ -104,6 +104,19 @@ impl TonSubscriber {
 
         let _ = token_subscription.insert(TokenSubscription {
             transaction_subscription: weak.clone(),
+        });
+    }
+
+    pub fn add_full_state_subscription<T>(&self, subscription: &Arc<T>)
+    where
+        T: FullStatesSubscription + 'static,
+    {
+        let mut full_state_subscription = self.full_state_subscription.write();
+
+        let weak = Arc::downgrade(subscription) as Weak<dyn FullStatesSubscription>;
+
+        let _ = full_state_subscription.insert(FullStateSubscription {
+            full_state_subscription: weak.clone(),
         });
     }
 
@@ -247,6 +260,20 @@ impl TonSubscriber {
         Ok(states)
     }
 
+    fn handle_full_state(
+        &self,
+        state: &ShardStateStuff,
+    ) -> Result<Option<HandleTransactionStatusRx>> {
+        let mut res = None;
+
+        let full_state_subscription = self.full_state_subscription.read();
+        if let Some(full_state_subscription) = full_state_subscription.as_ref() {
+            res = full_state_subscription.handle_full_state(state)?;
+        }
+
+        Ok(res)
+    }
+
     async fn wait_sync(&self) {
         if self.ready.load(Ordering::Acquire) {
             return;
@@ -289,20 +316,9 @@ impl ton_indexer::Subscriber for TonSubscriber {
             return Ok(());
         }
 
-        let shard_accounts = state.state().read_accounts()?;
-        let state_handle = state.ref_mc_state_handle().clone();
-        let shard_accounts = ShardAccounts {
-            accounts: shard_accounts,
-            state_handle,
-        };
-
-        let (tx, rx) = oneshot::channel();
-        if let Err(err) = self.full_state_tx.send((shard_accounts, tx)) {
-            log::error!("Failed to send full state to channel: {}", err);
-        }
-
-        if let Err(err) = rx.await {
-            log::error!("Failed to receive full state status: {}", err);
+        let res = self.handle_full_state(state)?;
+        if let Some(rx) = res {
+            rx.await?;
         }
 
         Ok(())
@@ -533,6 +549,34 @@ impl TokenSubscription {
     }
 }
 
+struct FullStateSubscription {
+    full_state_subscription: Weak<dyn FullStatesSubscription>,
+}
+
+impl FullStateSubscription {
+    fn handle_full_state(
+        &self,
+        shard_state: &ShardStateStuff,
+    ) -> Result<Option<HandleTransactionStatusRx>> {
+        let mut res = None;
+
+        if let Some(full_state_subscription) = self.full_state_subscription.upgrade() {
+            let (tx, rx) = oneshot::channel();
+
+            let ctx = StateContext { shard_state };
+
+            match full_state_subscription.handle_full_state(ctx, tx) {
+                Ok(_) => res = Some(rx),
+                Err(e) => {
+                    log::error!("Failed to handle full state: {:?}", e);
+                }
+            };
+        }
+
+        Ok(res)
+    }
+}
+
 trait BlockAwaiter: Send + Sync {
     fn handle_block(
         &mut self,
@@ -550,6 +594,14 @@ pub trait TransactionsSubscription: Send + Sync {
     fn handle_transaction(
         &self,
         ctx: TxContext<'_>,
+        state: HandleTransactionStatusTx,
+    ) -> Result<()>;
+}
+
+pub trait FullStatesSubscription: Send + Sync {
+    fn handle_full_state(
+        &self,
+        ctx: StateContext<'_>,
         state: HandleTransactionStatusTx,
     ) -> Result<()>;
 }
@@ -573,6 +625,25 @@ where
         state: HandleTransactionStatusTx,
     ) -> Result<()> {
         let event = T::read_from_transaction(&ctx, state);
+
+        // Send event to event manager if it exist
+        if let Some(event) = event {
+            if self.0.send(event).is_err() {
+                log::error!("Failed to send event: channel is dropped");
+            }
+        }
+
+        // Done
+        Ok(())
+    }
+}
+
+impl<T> FullStatesSubscription for AccountObserver<T>
+where
+    T: ReadFromState + Send + Sync,
+{
+    fn handle_full_state(&self, ctx: StateContext, state: HandleTransactionStatusTx) -> Result<()> {
+        let event = T::read_from_state(&ctx, state);
 
         // Send event to event manager if it exist
         if let Some(event) = event {
@@ -610,7 +681,7 @@ pub fn make_existing_contract(state: Option<ShardAccount>) -> Result<Option<Exis
 
 pub struct ShardAccounts {
     pub accounts: ton_block::ShardAccounts,
-    state_handle: Arc<RefMcStateHandle>,
+    pub state_handle: Arc<RefMcStateHandle>,
 }
 
 impl ShardAccounts {
