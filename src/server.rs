@@ -248,6 +248,7 @@ impl EngineContext {
                     }
                 };
 
+                let message_hash = transaction.message_hash.clone();
                 match engine_context
                     .ton_service
                     .create_receive_token_transaction(transaction)
@@ -260,7 +261,7 @@ impl EngineContext {
                         state.send(HandleTransactionStatus::Fail).ok();
                         log::error!(
                             "Failed to create token transaction with message hash '{}': {:?}",
-                            transaction.message_hash,
+                            message_hash,
                             e
                         )
                     }
