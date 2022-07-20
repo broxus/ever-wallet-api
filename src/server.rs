@@ -171,6 +171,7 @@ impl EngineContext {
 
                 match transaction {
                     CaughtTonTransaction::Create(transaction) => {
+                        let message_hash = transaction.message_hash.clone();
                         match engine_context
                             .ton_service
                             .create_receive_transaction(transaction)
@@ -181,7 +182,7 @@ impl EngineContext {
                             }
                             Err(err) => {
                                 state.send(HandleTransactionStatus::Fail).ok();
-                                log::error!("Failed to create receive transaction: {:?}", err)
+                                log::error!("Failed to create receive transaction with message hash '{}': {:?}", message_hash, err)
                             }
                         }
                     }
@@ -201,21 +202,29 @@ impl EngineContext {
                             }
                             Err(err) => {
                                 state.send(HandleTransactionStatus::Fail).ok();
-                                log::error!("Failed to update sent transaction: {:?}", err)
+                                log::error!(
+                                    "Failed to update sent transaction with message hash '{}': {:?}",
+                                    transaction.message_hash,
+                                    err
+                                )
                             }
                         }
 
                         if let Err(err) = engine_context
                             .ton_service
                             .update_token_transaction(
-                                transaction.message_hash,
+                                transaction.message_hash.clone(),
                                 transaction.account_workchain_id,
                                 transaction.account_hex,
                                 transaction.input.messages_hash,
                             )
                             .await
                         {
-                            log::error!("Failed to update token transaction: {:?}", err)
+                            log::error!(
+                                "Failed to update token transaction with message hash '{}': {:?}",
+                                transaction.message_hash,
+                                err
+                            )
                         }
                     }
                 }
@@ -249,7 +258,11 @@ impl EngineContext {
                     }
                     Err(e) => {
                         state.send(HandleTransactionStatus::Fail).ok();
-                        log::error!("Failed to create token transaction: {:?}", e)
+                        log::error!(
+                            "Failed to create token transaction with message hash '{}': {:?}",
+                            transaction.message_hash,
+                            e
+                        )
                     }
                 };
             }

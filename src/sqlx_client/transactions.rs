@@ -110,7 +110,7 @@ impl SqlxClient {
                 account_workchain_id,
                 account_hex,
             )
-            .fetch_optional(&self.pool)
+            .fetch_optional(&mut tx)
             .await? {
             Some(_) => {
                 let updated_at = Utc::now().naive_utc();

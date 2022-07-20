@@ -187,7 +187,7 @@ impl SqlxClient {
                 service_id as ServiceId,
                 in_message_hash,
             )
-            .fetch_optional(&self.pool)
+            .fetch_optional(&mut tx)
             .await? {
             let updated_at = Utc::now().naive_utc();
 
