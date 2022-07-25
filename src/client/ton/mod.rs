@@ -342,13 +342,13 @@ impl TonClient for TonClientImpl {
                 let account = UInt256::from_be_bytes(&address.address().get_bytestring(0));
                 let current_state = self.ton_core.get_contract_state(&account)?.account;
 
-                let mut gifts: Vec<nekoton::core::ton_wallet::highload_wallet_v2::Gift> = vec![];
+                let mut gifts: Vec<nekoton::core::ton_wallet::Gift> = vec![];
                 for item in transaction.outputs {
                     let flags = item.output_type.unwrap_or_default();
                     let destination = nekoton_utils::repack_address(&item.recipient_address.0)?;
                     let amount = item.value.to_u64().ok_or(TonClientError::ParseBigDecimal)?;
 
-                    gifts.push(nekoton::core::ton_wallet::highload_wallet_v2::Gift {
+                    gifts.push(nekoton::core::ton_wallet::Gift {
                         flags: flags.into(),
                         bounce,
                         destination,
@@ -382,7 +382,7 @@ impl TonClient for TonClientImpl {
                     .ok_or(TonClientError::ParseBigDecimal)?;
                 let flags = recipient.output_type.clone().unwrap_or_default();
 
-                let gift = nekoton::core::ton_wallet::wallet_v3::Gift {
+                let gift = nekoton::core::ton_wallet::Gift {
                     flags: flags.into(),
                     bounce,
                     destination,
@@ -417,16 +417,21 @@ impl TonClient for TonClientImpl {
                     None => return Err(TonClientError::CustodiansNotFound.into()),
                 };
 
+                let gift = nekoton::core::ton_wallet::Gift {
+                    flags: flags.into(),
+                    bounce,
+                    destination,
+                    amount,
+                    body: None,
+                    state_init: None,
+                };
+
                 nekoton::core::ton_wallet::multisig::prepare_transfer(
                     &SimpleClock,
                     &public_key,
                     has_multiple_owners,
                     address.clone(),
-                    destination,
-                    amount,
-                    flags.into(),
-                    bounce,
-                    None,
+                    gift,
                     expiration,
                 )?
             }
@@ -777,8 +782,7 @@ impl TonClient for TonClientImpl {
         let function_data = function.and_then(|x| {
             let tokens = params.unwrap_or_default();
             let (func, _) = MessageBuilder::new(&x).build();
-            func.encode_input(&Default::default(), &tokens, true, None)
-                .ok()
+            func.encode_internal_input(&tokens).ok()
         });
 
         let destination = nekoton_utils::repack_address(target_addr)?;
@@ -788,7 +792,7 @@ impl TonClient for TonClientImpl {
                 let account = UInt256::from_be_bytes(&address.address().get_bytestring(0));
                 let current_state = self.ton_core.get_contract_state(&account)?.account;
 
-                let gift = nekoton::core::ton_wallet::wallet_v3::Gift {
+                let gift = nekoton::core::ton_wallet::Gift {
                     flags: execution_flag,
                     bounce,
                     destination,
@@ -811,16 +815,21 @@ impl TonClient for TonClientImpl {
                     None => return Err(TonClientError::CustodiansNotFound.into()),
                 };
 
+                let gift = nekoton::core::ton_wallet::Gift {
+                    flags: execution_flag,
+                    bounce,
+                    destination,
+                    amount,
+                    body: function_data.map(|x| x.into()),
+                    state_init: None,
+                };
+
                 nekoton::core::ton_wallet::multisig::prepare_transfer(
                     &SimpleClock,
                     &public_key,
                     has_multiple_owners,
                     address,
-                    destination,
-                    amount,
-                    execution_flag,
-                    bounce,
-                    function_data.map(|x| x.into()),
+                    gift,
                     expiration,
                 )?
             }
@@ -886,7 +895,7 @@ fn build_token_transaction(
             let account = UInt256::from_be_bytes(&owner.address().get_bytestring(0));
             let current_state = ton_core.get_contract_state(&account)?.account;
 
-            let gift = nekoton::core::ton_wallet::highload_wallet_v2::Gift {
+            let gift = nekoton::core::ton_wallet::Gift {
                 flags: flags.into(),
                 bounce,
                 destination,
@@ -907,7 +916,7 @@ fn build_token_transaction(
             let account = UInt256::from_be_bytes(&owner.address().get_bytestring(0));
             let current_state = ton_core.get_contract_state(&account)?.account;
 
-            let gift = nekoton::core::ton_wallet::wallet_v3::Gift {
+            let gift = nekoton::core::ton_wallet::Gift {
                 flags: flags.into(),
                 bounce,
                 destination,
@@ -930,16 +939,21 @@ fn build_token_transaction(
                 None => return Err(TonClientError::CustodiansNotFound.into()),
             };
 
+            let gift = nekoton::core::ton_wallet::Gift {
+                flags: flags.into(),
+                bounce,
+                destination,
+                amount,
+                body,
+                state_init: None,
+            };
+
             nekoton::core::ton_wallet::multisig::prepare_transfer(
                 &SimpleClock,
                 &public_key,
                 has_multiple_owners,
                 owner.clone(),
-                destination,
-                amount,
-                flags.into(),
-                bounce,
-                body,
+                gift,
                 expiration,
             )?
         }
