@@ -452,7 +452,11 @@ pub fn read_contract(
                 rq.function_details.headers,
             )
             .await
-            .map(|value| ReadContractResponse { object: value })?;
+            .map(|value| ReadContractResponse { object: value })
+            .map_err(|e| {
+                log::error!("Failed to execute read contract function. Err: {:?}", e);
+                e
+            })?;
 
         Ok(warp::reply::json(&(tokens)))
     }
