@@ -33,7 +33,7 @@ logger_settings:
         - stdout
       additive: false
     ton_indexer:
-      level: error
+      level: info
       appenders:
         - stdout
       additive: false
