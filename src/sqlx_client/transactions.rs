@@ -120,7 +120,7 @@ impl SqlxClient {
                 UPDATE transactions SET
                 (transaction_hash, transaction_lt, transaction_scan_lt, transaction_timestamp, sender_workchain_id, sender_hex, messages, messages_hash, data, value, fee, balance_change, status, error, updated_at, multisig_transaction_id) =
                 ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)
-                WHERE message_hash = $17 AND account_workchain_id = $18 and account_hex = $19 and direction = 'Send'::twa_transaction_direction
+                WHERE message_hash = $17 AND account_workchain_id = $18 and account_hex = $19 and direction = 'Send'::twa_transaction_direction and transaction_hash is NULL
                 RETURNING id, service_id as "service_id: _", message_hash, transaction_hash, transaction_lt, transaction_timeout,
                     transaction_scan_lt, transaction_timestamp, sender_workchain_id, sender_hex, account_workchain_id, account_hex, messages, messages_hash, data,
                     original_value, original_outputs, value, fee, balance_change, direction as "direction: _", status as "status: _",
