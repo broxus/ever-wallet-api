@@ -3408,6 +3408,7 @@ dependencies = [
  "chacha20poly1305",
  "chrono",
  "config",
+ "dashmap",
  "derive_more",
  "ed25519-dalek",
  "env_logger",

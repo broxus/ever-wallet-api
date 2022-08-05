@@ -76,6 +76,16 @@ async fn internal_transfer_send(
         .map(|message| message.hash().to_hex_string())
         .unwrap_or_default();
 
+    let in_message_src = match token_transaction_ctx
+        .transaction
+        .in_msg
+        .clone()
+        .map(|message| message.read_struct())
+    {
+        Some(Ok(message)) => message.src().map(|addr| addr.address().to_hex_string()),
+        _ => None,
+    };
+
     let transaction = CreateTokenTransaction {
         id: Uuid::new_v4(),
         transaction_hash: Some(token_transaction_ctx.transaction_hash.to_hex_string()),
@@ -95,6 +105,7 @@ async fn internal_transfer_send(
         status: TonTokenTransactionStatus::Done,
         error: None,
         in_message_hash: Some(in_message_hash),
+        in_message_src,
     };
 
     Ok(transaction)
@@ -140,6 +151,7 @@ async fn internal_transfer_receive(
         direction: TonTransactionDirection::Receive,
         status: TonTokenTransactionStatus::Done,
         in_message_hash: None,
+        in_message_src: None,
     };
 
     Ok(transaction)
@@ -185,6 +197,7 @@ async fn internal_transfer_bounced(
         status: TonTokenTransactionStatus::Done,
         error: None,
         in_message_hash: None,
+        in_message_src: None,
     };
 
     Ok(transaction)
@@ -230,6 +243,7 @@ async fn internal_transfer_mint(
         direction: TonTransactionDirection::Receive,
         status: TonTokenTransactionStatus::Done,
         in_message_hash: None,
+        in_message_src: None,
     };
 
     Ok(transaction)

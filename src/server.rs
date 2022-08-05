@@ -1,8 +1,10 @@
 use std::sync::Arc;
 
 use anyhow::Result;
+use everscale_network::utils::FxDashMap;
 use sqlx::postgres::PgPoolOptions;
 use tokio::sync::mpsc;
+use tokio::sync::Mutex;
 
 use crate::api::*;
 use crate::client::*;
@@ -86,6 +88,7 @@ pub struct EngineContext {
     pub auth_service: Arc<AuthServiceImpl>,
     pub memory_storage: Arc<StorageHandler>,
     pub config: AppConfig,
+    pub guards: FxDashMap<String, (Arc<Mutex<bool>>, u32)>,
 }
 
 impl EngineContext {
@@ -140,6 +143,7 @@ impl EngineContext {
             auth_service,
             memory_storage,
             config,
+            guards: Default::default(),
         });
 
         engine_context.start_listening_ton_transaction(ton_transaction_rx);
@@ -160,6 +164,8 @@ impl EngineContext {
         let engine_context = Arc::downgrade(self);
 
         tokio::spawn(async move {
+            use dashmap::mapref::entry::Entry;
+
             while let Some((transaction, state)) = rx.recv().await {
                 let engine_context = match engine_context.upgrade() {
                     Some(engine_context) => engine_context,
@@ -187,6 +193,32 @@ impl EngineContext {
                         }
                     }
                     CaughtTonTransaction::UpdateSent(transaction) => {
+                        let now = chrono::Utc::now().timestamp() as u32;
+
+                        // Delete expired guards
+                        engine_context.guards.retain(|addr, (_, expired_at)| {
+                            if now < *expired_at {
+                                true
+                            } else {
+                                log::info!("Delete guard for {}", addr);
+                                false
+                            }
+                        });
+
+                        let guard =
+                            match engine_context.guards.entry(transaction.account_hex.clone()) {
+                                Entry::Occupied(entry) => entry.get().0.clone(),
+                                Entry::Vacant(entry) => {
+                                    let expired_at = now + DEFAULT_EXPIRATION_TIMEOUT;
+                                    entry
+                                        .insert((Arc::new(Mutex::default()), expired_at))
+                                        .value()
+                                        .0
+                                        .clone()
+                                }
+                            };
+                        guard.lock().await;
+
                         match engine_context
                             .ton_service
                             .upsert_sent_transaction(
@@ -198,7 +230,28 @@ impl EngineContext {
                             .await
                         {
                             Ok(_) => {
-                                state.send(HandleTransactionStatus::Success).ok();
+                                match engine_context
+                                    .ton_service
+                                    .update_token_transaction(
+                                        transaction.message_hash.clone(),
+                                        transaction.account_workchain_id,
+                                        transaction.account_hex,
+                                        transaction.input.messages_hash,
+                                    )
+                                    .await
+                                {
+                                    Ok(_) => {
+                                        state.send(HandleTransactionStatus::Success).ok();
+                                    }
+                                    Err(err) => {
+                                        state.send(HandleTransactionStatus::Fail).ok();
+                                        log::error!(
+                                            "Failed to update sent transaction with message hash '{}': {:?}",
+                                            transaction.message_hash,
+                                            err
+                                        );
+                                    }
+                                }
                             }
                             Err(err) => {
                                 state.send(HandleTransactionStatus::Fail).ok();
@@ -208,23 +261,6 @@ impl EngineContext {
                                     err
                                 )
                             }
-                        }
-
-                        if let Err(err) = engine_context
-                            .ton_service
-                            .update_token_transaction(
-                                transaction.message_hash.clone(),
-                                transaction.account_workchain_id,
-                                transaction.account_hex,
-                                transaction.input.messages_hash,
-                            )
-                            .await
-                        {
-                            log::error!(
-                                "Failed to update token transaction with message hash '{}': {:?}",
-                                transaction.message_hash,
-                                err
-                            )
                         }
                     }
                 }
@@ -239,6 +275,8 @@ impl EngineContext {
         let engine_context = Arc::downgrade(self);
 
         tokio::spawn(async move {
+            use dashmap::mapref::entry::Entry;
+
             while let Some((transaction, state)) = rx.recv().await {
                 let engine_context = match engine_context.upgrade() {
                     Some(engine_context) => engine_context,
@@ -246,6 +284,36 @@ impl EngineContext {
                         log::error!("Engine is already dropped");
                         return;
                     }
+                };
+
+                let now = chrono::Utc::now().timestamp() as u32;
+
+                // Delete expired guards
+                engine_context
+                    .guards
+                    .retain(|_, (_, expired_at)| now < *expired_at);
+
+                let guard = match &transaction.in_message_src {
+                    Some(hex) => {
+                        let guard = match engine_context.guards.entry(hex.clone()) {
+                            Entry::Occupied(entry) => entry.get().0.clone(),
+                            Entry::Vacant(entry) => {
+                                let expired_at = now + DEFAULT_EXPIRATION_TIMEOUT;
+                                entry
+                                    .insert((Arc::new(Mutex::default()), expired_at))
+                                    .value()
+                                    .0
+                                    .clone()
+                            }
+                        };
+                        Some(guard)
+                    }
+                    None => None,
+                };
+
+                let _lock = match &guard {
+                    Some(guard) => Some(guard.lock().await),
+                    None => None,
                 };
 
                 let message_hash = transaction.message_hash.clone();
