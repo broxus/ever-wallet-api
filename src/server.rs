@@ -204,7 +204,7 @@ impl EngineContext {
                             match engine_context.guards.entry(transaction.account_hex.clone()) {
                                 Entry::Occupied(entry) => entry.get().0.clone(),
                                 Entry::Vacant(entry) => {
-                                    let expired_at = now + DEFAULT_EXPIRATION_TIMEOUT;
+                                    let expired_at = now + 5 * DEFAULT_EXPIRATION_TIMEOUT;
                                     entry
                                         .insert((Arc::new(Mutex::default()), expired_at))
                                         .value()
@@ -293,7 +293,7 @@ impl EngineContext {
                         let guard = match engine_context.guards.entry(hex.clone()) {
                             Entry::Occupied(entry) => entry.get().0.clone(),
                             Entry::Vacant(entry) => {
-                                let expired_at = now + DEFAULT_EXPIRATION_TIMEOUT;
+                                let expired_at = now + 5 * DEFAULT_EXPIRATION_TIMEOUT;
                                 entry
                                     .insert((Arc::new(Mutex::default()), expired_at))
                                     .value()
