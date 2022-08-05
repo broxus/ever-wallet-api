@@ -195,15 +195,14 @@ impl EngineContext {
                     CaughtTonTransaction::UpdateSent(transaction) => {
                         let now = chrono::Utc::now().timestamp() as u32;
 
+                        for guard in engine_context.guards.iter() {
+                            log::info!("Guard for {}", guard.key());
+                        }
+
                         // Delete expired guards
-                        engine_context.guards.retain(|addr, (_, expired_at)| {
-                            if now < *expired_at {
-                                true
-                            } else {
-                                log::info!("Delete guard for {}", addr);
-                                false
-                            }
-                        });
+                        engine_context
+                            .guards
+                            .retain(|_, (_, expired_at)| now < *expired_at);
 
                         let guard =
                             match engine_context.guards.entry(transaction.account_hex.clone()) {
