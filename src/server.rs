@@ -195,10 +195,6 @@ impl EngineContext {
                     CaughtTonTransaction::UpdateSent(transaction) => {
                         let now = chrono::Utc::now().timestamp() as u32;
 
-                        for guard in engine_context.guards.iter() {
-                            log::info!("Guard for {}", guard.key());
-                        }
-
                         // Delete expired guards
                         engine_context
                             .guards
@@ -245,7 +241,7 @@ impl EngineContext {
                                     Err(err) => {
                                         state.send(HandleTransactionStatus::Fail).ok();
                                         log::error!(
-                                            "Failed to update sent transaction with message hash '{}': {:?}",
+                                            "Failed to update token transaction with message hash '{}': {:?}",
                                             transaction.message_hash,
                                             err
                                         );
@@ -255,7 +251,7 @@ impl EngineContext {
                             Err(err) => {
                                 state.send(HandleTransactionStatus::Fail).ok();
                                 log::error!(
-                                    "Failed to update sent transaction with message hash '{}': {:?}",
+                                    "Failed to upsert sent transaction with message hash '{}': {:?}",
                                     transaction.message_hash,
                                     err
                                 )
