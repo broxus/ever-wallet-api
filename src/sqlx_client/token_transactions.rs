@@ -14,8 +14,10 @@ impl SqlxClient {
         let mut tx = self.pool.begin().await.map_err(ServiceError::from)?;
 
         if let Some(in_message_hash) = &payload.in_message_hash {
+            log::info!("in_message hash: {}", in_message_hash);
+
             let j_value = serde_json::json!(in_message_hash);
-            if let Ok(transaction) =  sqlx::query_as!(TransactionDb,
+            if let Ok(transaction) = sqlx::query_as!(TransactionDb,
                 r#"
             SELECT id, service_id as "service_id: _", message_hash, transaction_hash, transaction_lt, transaction_timeout,
                 transaction_scan_lt, transaction_timestamp, sender_workchain_id, sender_hex, account_workchain_id, account_hex, messages, messages_hash, data,
@@ -27,6 +29,7 @@ impl SqlxClient {
             )
                 .fetch_one(&mut tx)
                 .await {
+                log::info!("Append owner message hash: {}", transaction.message_hash);
                 payload.owner_message_hash = Some(transaction.message_hash);
             }
         }

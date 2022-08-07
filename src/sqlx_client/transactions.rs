@@ -96,6 +96,14 @@ impl SqlxClient {
             NaiveDateTime::from_timestamp(transaction_timestamp as i64, 0)
         });
 
+        log::info!(
+            "Upsert send transaction: id - {}; mh - {}; wc - {}; hex - {}",
+            service_id,
+            message_hash,
+            account_workchain_id,
+            account_hex
+        );
+
         let (transaction, event) = match sqlx::query_as!(TransactionDb,
                 r#"
             SELECT id, service_id as "service_id: _", message_hash, transaction_hash, transaction_lt, transaction_timeout,
@@ -113,6 +121,8 @@ impl SqlxClient {
             .fetch_optional(&mut tx)
             .await? {
             Some(_) => {
+                log::info!("Exist");
+
                 let updated_at = Utc::now().naive_utc();
 
                 let transaction = sqlx::query_as!(TransactionDb,
@@ -150,6 +160,8 @@ impl SqlxClient {
                     .map_err(ServiceError::from)?;
 
                 let payload = CreateSendTransactionEvent::new(transaction.clone());
+
+                log::info!("Update event");
 
                 let event = sqlx::query_as!(TransactionEventDb,
                 r#"
@@ -190,6 +202,8 @@ impl SqlxClient {
                 (transaction, event)
             },
             None => {
+                log::info!("Not exist");
+
                 let transaction_id = Uuid::new_v4();
 
                 let transaction = sqlx::query_as!(TransactionDb,
@@ -231,6 +245,8 @@ impl SqlxClient {
                 let payload = UpdateSendTransactionEvent::new(transaction.clone());
                 let id = Uuid::new_v4();
 
+                log::info!("Update event");
+
                 let event = sqlx::query_as!(TransactionEventDb,
                 r#"
                 INSERT INTO transaction_events
@@ -269,6 +285,8 @@ impl SqlxClient {
                 (transaction, event)
             }
         };
+
+        log::info!("Commit");
 
         tx.commit().await.map_err(ServiceError::from)?;
 
@@ -381,6 +399,7 @@ impl SqlxClient {
             INSERT INTO transactions
             (id, service_id, message_hash, transaction_hash, transaction_lt, transaction_timeout, transaction_scan_lt, transaction_timestamp, sender_workchain_id, sender_hex, account_workchain_id, account_hex, messages, messages_hash, data, original_value, original_outputs, value, fee, balance_change, direction, status, error, aborted, bounce)
             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25)
+            ON CONFLICT DO NOTHING
             RETURNING id, service_id as "service_id: _", message_hash, transaction_hash, transaction_lt, transaction_timeout,
                 transaction_scan_lt, transaction_timestamp, sender_workchain_id, sender_hex, account_workchain_id, account_hex, messages, messages_hash, data,
                 original_value, original_outputs, value, fee, balance_change, direction as "direction: _", status as "status: _",
@@ -422,6 +441,7 @@ impl SqlxClient {
             INSERT INTO transaction_events
             (id, service_id, transaction_id, message_hash, account_workchain_id, account_hex, sender_workchain_id, sender_hex, balance_change, transaction_direction, transaction_status, event_status)
             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+            ON CONFLICT DO NOTHING
             RETURNING id,
                 service_id as "service_id: _",
                 transaction_id,
