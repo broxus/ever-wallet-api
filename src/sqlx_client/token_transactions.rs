@@ -41,6 +41,7 @@ impl SqlxClient {
             account_workchain_id, account_hex, value, root_address, payload, error, block_hash, block_time,
             direction, status, in_message_hash)
             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)
+            ON CONFLICT DO NOTHING
             RETURNING id, service_id as "service_id: _", transaction_hash, transaction_timestamp, message_hash,
                 owner_message_hash, account_workchain_id, account_hex, value, root_address, payload, error,
                 block_hash, block_time, direction as "direction: _", status as "status: _", in_message_hash,
@@ -75,6 +76,7 @@ impl SqlxClient {
             (id, service_id, token_transaction_id, message_hash, account_workchain_id, account_hex,
             owner_message_hash,value, root_address, transaction_direction, transaction_status, event_status)
             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+            ON CONFLICT DO NOTHING
             RETURNING id,
                 service_id as "service_id: _",
                 token_transaction_id,
