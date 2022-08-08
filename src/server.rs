@@ -192,7 +192,13 @@ impl EngineContext {
                     }
                     CaughtTonTransaction::UpdateSent(transaction) => {
                         let guard = engine_context.get_guard(transaction.account_hex.clone());
+
+                        let acc = transaction.account_hex.clone();
+                        log::info!("Transaction lock for {}", acc);
+
                         guard.lock().await;
+
+                        log::info!("Start handling for {}", acc);
 
                         match engine_context
                             .ton_service
@@ -237,6 +243,8 @@ impl EngineContext {
                                 )
                             }
                         }
+
+                        log::info!("Transaction unlock for {}", acc);
                     }
                 }
             }
@@ -260,7 +268,13 @@ impl EngineContext {
                 };
 
                 let guard = engine_context.get_guard(transaction.account_hex.clone());
+
+                let acc = transaction.account_hex.clone();
+                log::info!("Token lock for {}", acc);
+
                 guard.lock().await;
+
+                log::info!("Start handling for {}", acc);
 
                 let message_hash = transaction.message_hash.clone();
                 match engine_context
@@ -280,6 +294,8 @@ impl EngineContext {
                         )
                     }
                 };
+
+                log::info!("Token unlocked for {}", acc);
             }
 
             rx.close();
