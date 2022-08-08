@@ -24,7 +24,6 @@ pub struct CreateTokenTransaction {
     pub direction: TonTransactionDirection,
     pub status: TonTokenTransactionStatus,
     pub in_message_hash: Option<String>,
-    pub in_message_src: Option<String>,
 }
 
 #[derive(Debug, Deserialize, Serialize, Clone)]

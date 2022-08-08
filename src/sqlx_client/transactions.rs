@@ -92,17 +92,11 @@ impl SqlxClient {
     ) -> Result<(TransactionDb, TransactionEventDb), ServiceError> {
         let mut tx = self.pool.begin().await.map_err(ServiceError::from)?;
 
+        let updated_at = Utc::now().naive_utc();
+
         let transaction_timestamp = payload.transaction_timestamp.map(|transaction_timestamp| {
             NaiveDateTime::from_timestamp(transaction_timestamp as i64, 0)
         });
-
-        log::info!(
-            "Upsert send transaction: id - {}; mh - {}; wc - {}; hex - {}",
-            service_id,
-            message_hash,
-            account_workchain_id,
-            account_hex
-        );
 
         let (transaction, event) = match sqlx::query_as!(TransactionDb,
                 r#"
@@ -121,10 +115,6 @@ impl SqlxClient {
             .fetch_optional(&mut tx)
             .await? {
             Some(_) => {
-                log::info!("Exist");
-
-                let updated_at = Utc::now().naive_utc();
-
                 let transaction = sqlx::query_as!(TransactionDb,
                 r#"
                 UPDATE transactions SET
@@ -202,8 +192,6 @@ impl SqlxClient {
                 (transaction, event)
             },
             None => {
-                log::info!("Not exist");
-
                 let transaction_id = Uuid::new_v4();
 
                 let transaction = sqlx::query_as!(TransactionDb,
@@ -245,8 +233,6 @@ impl SqlxClient {
                 let payload = UpdateSendTransactionEvent::new(transaction.clone());
                 let id = Uuid::new_v4();
 
-                log::info!("Update event");
-
                 let event = sqlx::query_as!(TransactionEventDb,
                 r#"
                 INSERT INTO transaction_events
@@ -278,7 +264,7 @@ impl SqlxClient {
                     payload.transaction_status as TonTransactionStatus,
                     TonEventStatus::New as TonEventStatus,
                     payload.multisig_transaction_id,
-                    Utc::now().naive_utc(),
+                    updated_at,
                 )
                     .fetch_one(&mut tx)
                     .await
@@ -287,8 +273,6 @@ impl SqlxClient {
                 (transaction, event)
             }
         };
-
-        log::info!("Commit");
 
         tx.commit().await.map_err(ServiceError::from)?;
 

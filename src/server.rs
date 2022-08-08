@@ -88,7 +88,7 @@ pub struct EngineContext {
     pub auth_service: Arc<AuthServiceImpl>,
     pub memory_storage: Arc<StorageHandler>,
     pub config: AppConfig,
-    pub guards: FxDashMap<String, (Arc<Mutex<bool>>, u32)>,
+    pub guards: FxDashMap<String, (Arc<Mutex<()>>, u32)>,
 }
 
 impl EngineContext {
@@ -164,8 +164,6 @@ impl EngineContext {
         let engine_context = Arc::downgrade(self);
 
         tokio::spawn(async move {
-            use dashmap::mapref::entry::Entry;
-
             while let Some((transaction, state)) = rx.recv().await {
                 let engine_context = match engine_context.upgrade() {
                     Some(engine_context) => engine_context,
@@ -193,25 +191,7 @@ impl EngineContext {
                         }
                     }
                     CaughtTonTransaction::UpdateSent(transaction) => {
-                        let now = chrono::Utc::now().timestamp() as u32;
-
-                        // Delete expired guards
-                        engine_context
-                            .guards
-                            .retain(|_, (_, expired_at)| now < *expired_at);
-
-                        let guard =
-                            match engine_context.guards.entry(transaction.account_hex.clone()) {
-                                Entry::Occupied(entry) => entry.get().0.clone(),
-                                Entry::Vacant(entry) => {
-                                    let expired_at = now + 5 * DEFAULT_EXPIRATION_TIMEOUT;
-                                    entry
-                                        .insert((Arc::new(Mutex::default()), expired_at))
-                                        .value()
-                                        .0
-                                        .clone()
-                                }
-                            };
+                        let guard = engine_context.get_guard(transaction.account_hex.clone());
                         guard.lock().await;
 
                         match engine_context
@@ -270,8 +250,6 @@ impl EngineContext {
         let engine_context = Arc::downgrade(self);
 
         tokio::spawn(async move {
-            use dashmap::mapref::entry::Entry;
-
             while let Some((transaction, state)) = rx.recv().await {
                 let engine_context = match engine_context.upgrade() {
                     Some(engine_context) => engine_context,
@@ -281,35 +259,8 @@ impl EngineContext {
                     }
                 };
 
-                let now = chrono::Utc::now().timestamp() as u32;
-
-                // Delete expired guards
-                engine_context
-                    .guards
-                    .retain(|_, (_, expired_at)| now < *expired_at);
-
-                let guard = match &transaction.in_message_src {
-                    Some(hex) => {
-                        let guard = match engine_context.guards.entry(hex.clone()) {
-                            Entry::Occupied(entry) => entry.get().0.clone(),
-                            Entry::Vacant(entry) => {
-                                let expired_at = now + 5 * DEFAULT_EXPIRATION_TIMEOUT;
-                                entry
-                                    .insert((Arc::new(Mutex::default()), expired_at))
-                                    .value()
-                                    .0
-                                    .clone()
-                            }
-                        };
-                        Some(guard)
-                    }
-                    None => None,
-                };
-
-                let _lock = match &guard {
-                    Some(guard) => Some(guard.lock().await),
-                    None => None,
-                };
+                let guard = engine_context.get_guard(transaction.account_hex.clone());
+                guard.lock().await;
 
                 let message_hash = transaction.message_hash.clone();
                 match engine_context
@@ -334,6 +285,27 @@ impl EngineContext {
             rx.close();
             while rx.recv().await.is_some() {}
         });
+    }
+
+    fn get_guard(&self, account: String) -> Arc<Mutex<()>> {
+        use dashmap::mapref::entry::Entry;
+
+        let now = chrono::Utc::now().timestamp() as u32;
+
+        // Delete expired guards
+        self.guards.retain(|_, (_, expired_at)| now < *expired_at);
+
+        match self.guards.entry(account) {
+            Entry::Occupied(entry) => entry.get().0.clone(),
+            Entry::Vacant(entry) => {
+                let expired_at = now + 5 * DEFAULT_EXPIRATION_TIMEOUT;
+                entry
+                    .insert((Arc::new(Mutex::default()), expired_at))
+                    .value()
+                    .0
+                    .clone()
+            }
+        }
     }
 }
 
