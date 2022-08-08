@@ -196,7 +196,7 @@ impl EngineContext {
                         let acc = transaction.account_hex.clone();
                         log::info!("Transaction lock for {}", acc);
 
-                        guard.lock().await;
+                        let _lock = guard.lock().await;
 
                         log::info!("Start handling for {}", acc);
 
@@ -272,7 +272,7 @@ impl EngineContext {
                 let acc = transaction.account_hex.clone();
                 log::info!("Token lock for {}", acc);
 
-                guard.lock().await;
+                let _lock = guard.lock().await;
 
                 log::info!("Start handling for {}", acc);
 
