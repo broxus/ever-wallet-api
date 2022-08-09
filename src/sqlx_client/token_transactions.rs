@@ -13,13 +13,6 @@ impl SqlxClient {
     ) -> Result<(TokenTransactionFromDb, TokenTransactionEventDb), ServiceError> {
         let mut tx = self.pool.begin().await.map_err(ServiceError::from)?;
 
-        log::info!(
-            "Create token transaction: account - {}:{};  mh - {:?}",
-            payload.account_workchain_id,
-            payload.account_hex,
-            payload.in_message_hash
-        );
-
         if let Some(in_message_hash) = &payload.in_message_hash {
             let j_value = serde_json::json!(in_message_hash);
             if let Ok(transaction) = sqlx::query_as!(TransactionDb,
@@ -34,8 +27,6 @@ impl SqlxClient {
             )
                 .fetch_one(&mut tx)
                 .await {
-                log::info!("Append owner message hash: {:?}", transaction.message_hash);
-
                 payload.owner_message_hash = Some(transaction.message_hash);
             }
         }
@@ -198,8 +189,6 @@ impl SqlxClient {
             )
             .fetch_optional(&mut tx)
             .await? {
-            log::info!("Token transaction exist for mh: {:?}", in_message_hash);
-
             let updated_at = Utc::now().naive_utc();
 
             let _ = sqlx::query_as!(TokenTransactionFromDb,
