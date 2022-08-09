@@ -278,6 +278,24 @@ dependencies = [
 ]
 
 [[package]]
+name = "broxus-util"
+version = "0.1.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7a0a550e7a39c0d8c5a2ff41e46eb08f6400eb5b57d67b7cdb7afceca9df760a"
+dependencies = [
+ "base64",
+ "config 0.13.2",
+ "hex",
+ "log",
+ "log4rs",
+ "public-ip",
+ "regex",
+ "serde",
+ "serde_yaml 0.9.4",
+ "thiserror",
+]
+
+[[package]]
 name = "buf_redux"
 version = "0.8.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -417,6 +435,21 @@ dependencies = [
  "nom",
  "pathdiff",
  "serde",
+ "yaml-rust",
+]
+
+[[package]]
+name = "config"
+version = "0.13.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "11f1667b8320afa80d69d8bbe40830df2c8a06003d86f73d8e003b2c48df416d"
+dependencies = [
+ "async-trait",
+ "lazy_static",
+ "nom",
+ "pathdiff",
+ "serde",
+ "serde_json",
  "yaml-rust",
 ]
 
@@ -1138,12 +1171,6 @@ dependencies = [
 
 [[package]]
 name = "hashbrown"
-version = "0.9.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d7afe4a420e3fe79967a00898cc1f4db7c8a49a9333a29f8a4bd76a253d5cd04"
-
-[[package]]
-name = "hashbrown"
 version = "0.11.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ab5ef0d4909ef3724cc8cce6ccc8572c5c817592e9285f5464f8e86f8bd3726e"
@@ -1394,12 +1421,12 @@ dependencies = [
 
 [[package]]
 name = "indexmap"
-version = "1.6.2"
+version = "1.9.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "824845a0bf897a9042383849b02c1bc219c2383772efcd5c6f9766fa4b81aef3"
+checksum = "10a35a97730320ffe8e2d410b5d3b69279b98d2c14bdb8b70ea89ecf7888d41e"
 dependencies = [
  "autocfg",
- "hashbrown 0.9.1",
+ "hashbrown 0.12.3",
 ]
 
 [[package]]
@@ -1608,7 +1635,7 @@ dependencies = [
  "serde",
  "serde-value",
  "serde_json",
- "serde_yaml",
+ "serde_yaml 0.8.26",
  "thiserror",
  "thread-id",
  "typemap",
@@ -2772,6 +2799,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "serde_yaml"
+version = "0.9.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "79b7c9017c64a49806c6e8df8ef99b92446d09c92457f85f91835b01a8064ae0"
+dependencies = [
+ "indexmap",
+ "itoa",
+ "ryu",
+ "serde",
+ "unsafe-libyaml",
+]
+
+[[package]]
 name = "sha-1"
 version = "0.8.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3405,9 +3445,10 @@ dependencies = [
  "base64",
  "bigdecimal",
  "block-modes",
+ "broxus-util",
  "chacha20poly1305",
  "chrono",
- "config",
+ "config 0.12.0",
  "dashmap",
  "derive_more",
  "ed25519-dalek",
@@ -3418,7 +3459,6 @@ dependencies = [
  "hmac 0.11.0",
  "http",
  "hyper",
- "indexmap",
  "itertools",
  "lazy_static",
  "log",
@@ -3443,7 +3483,7 @@ dependencies = [
  "sentry-panic",
  "serde",
  "serde_json",
- "serde_yaml",
+ "serde_yaml 0.9.4",
  "sha2 0.9.9",
  "sqlx",
  "thiserror",
@@ -3791,6 +3831,12 @@ checksum = "f30360d7979f5e9c6e6cea48af192ea8fab4afb3cf72597154b8f08935bc9c7f"
 dependencies = [
  "traitobject",
 ]
+
+[[package]]
+name = "unsafe-libyaml"
+version = "0.2.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "931179334a56395bcf64ba5e0ff56781381c1a5832178280c7d7f91d1679aeb0"
 
 [[package]]
 name = "url"

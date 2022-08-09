@@ -2,7 +2,6 @@ use std::sync::Arc;
 
 use anyhow::{Context, Result};
 use argh::FromArgs;
-use serde::Deserialize;
 use tokio::sync::mpsc;
 
 use ton_wallet_api::commands::*;
@@ -20,7 +19,7 @@ async fn main() -> Result<()> {
 async fn run(app: App) -> Result<()> {
     match app.command {
         Subcommand::Server(run) => {
-            let config: AppConfig = read_config(&run.config)?;
+            let config: AppConfig = broxus_util::read_config(&run.config)?;
             run.execute(config).await
         }
         Subcommand::RootToken(run) => run.execute().await,
@@ -65,7 +64,7 @@ impl CmdServer {
         let global_config = ton_indexer::GlobalConfig::from_file(&self.global_config)
             .context("Failed to open global config")?;
 
-        init_logger(&config.logger_settings).context("Failed to init logger")?;
+        broxus_util::init_logger(&config.logger_settings).context("Failed to init logger")?;
 
         log::info!("Initializing ton-wallet-api...");
         let mut shutdown_requests_rx = ton_wallet_api.init(config, global_config).await?;
@@ -139,38 +138,4 @@ impl TonWalletApi {
 
         Ok(shutdown_requests_rx)
     }
-}
-
-fn read_config<P, T>(path: P) -> Result<T>
-where
-    P: AsRef<std::path::Path>,
-    for<'de> T: Deserialize<'de>,
-{
-    let data = std::fs::read_to_string(path)?;
-    let re = regex::Regex::new(r"\$\{([a-zA-Z_][0-9a-zA-Z_]*)\}").unwrap();
-    let result = re.replace_all(&data, |caps: &regex::Captures| {
-        match std::env::var(&caps[1]) {
-            Ok(value) => value,
-            Err(_) => {
-                log::warn!("Environment variable {} was not set", &caps[1]);
-                String::default()
-            }
-        }
-    });
-
-    config::Config::builder()
-        .add_source(config::File::from_str(
-            result.as_ref(),
-            config::FileFormat::Yaml,
-        ))
-        .build()
-        .context("Failed to load config")?
-        .try_deserialize()
-        .context("Failed to parse config")
-}
-
-fn init_logger(config: &serde_yaml::Value) -> Result<()> {
-    let config = serde_yaml::from_value(config.clone())?;
-    log4rs::config::init_raw_config(config)?;
-    Ok(())
 }
