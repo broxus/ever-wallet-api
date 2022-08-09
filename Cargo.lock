@@ -101,13 +101,13 @@ checksum = "47253b98986dafc7a3e1cf3259194f1f47ac61abb57a57f46ec09e48d004ecda"
 
 [[package]]
 name = "argon2"
-version = "0.3.4"
+version = "0.4.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "25df3c03f1040d0069fcd3907e24e36d59f9b6fa07ba49be0eb25a794f036ba7"
+checksum = "db4ce4441f99dbd377ca8a8f57b698c44d0d6e712d8329b5040da5a64aa1ce73"
 dependencies = [
  "base64ct",
  "blake2",
- "password-hash",
+ "password-hash 0.4.2",
 ]
 
 [[package]]
@@ -250,12 +250,6 @@ checksum = "0bf7fe51849ea569fd452f37822f606a5cabb684dc918707a0193fd4664ff324"
 dependencies = [
  "generic-array 0.14.5",
 ]
-
-[[package]]
-name = "block-modes"
-version = "0.9.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9e2211b0817f061502a8dd9f11a37e879e79763e3c698d2418cf824d8cb2f21e"
 
 [[package]]
 name = "block-padding"
@@ -1159,6 +1153,9 @@ name = "hashbrown"
 version = "0.12.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8a9ee70c43aaf417c914396645a0fa852624801b24ebb7ae78fe8272889ac888"
+dependencies = [
+ "ahash",
+]
 
 [[package]]
 name = "hashlink"
@@ -1620,11 +1617,11 @@ dependencies = [
 
 [[package]]
 name = "lru"
-version = "0.6.6"
+version = "0.7.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7ea2d928b485416e8908cff2d97d621db22b27f7b3b6729e438bcf42c671ba91"
+checksum = "e999beba7b6e8345721bd280141ed958096a2e4abdf74f67ff4ce49b4b54e47a"
 dependencies = [
- "hashbrown 0.11.2",
+ "hashbrown 0.12.3",
 ]
 
 [[package]]
@@ -1748,7 +1745,7 @@ dependencies = [
 [[package]]
 name = "nekoton"
 version = "0.11.0"
-source = "git+https://github.com/broxus/nekoton.git#e56192eb7a055832827c3084787fe47e6bbb2335"
+source = "git+https://github.com/broxus/nekoton.git#b6750977b3a4964b3a0f998c1b2d5913be1db274"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -1789,7 +1786,7 @@ dependencies = [
 [[package]]
 name = "nekoton-abi"
 version = "0.11.0"
-source = "git+https://github.com/broxus/nekoton.git#e56192eb7a055832827c3084787fe47e6bbb2335"
+source = "git+https://github.com/broxus/nekoton.git#b6750977b3a4964b3a0f998c1b2d5913be1db274"
 dependencies = [
  "anyhow",
  "base64",
@@ -1815,7 +1812,7 @@ dependencies = [
 [[package]]
 name = "nekoton-contracts"
 version = "0.11.0"
-source = "git+https://github.com/broxus/nekoton.git#e56192eb7a055832827c3084787fe47e6bbb2335"
+source = "git+https://github.com/broxus/nekoton.git#b6750977b3a4964b3a0f998c1b2d5913be1db274"
 dependencies = [
  "anyhow",
  "nekoton-abi",
@@ -1829,7 +1826,7 @@ dependencies = [
 [[package]]
 name = "nekoton-derive"
 version = "0.11.0"
-source = "git+https://github.com/broxus/nekoton.git#e56192eb7a055832827c3084787fe47e6bbb2335"
+source = "git+https://github.com/broxus/nekoton.git#b6750977b3a4964b3a0f998c1b2d5913be1db274"
 dependencies = [
  "either",
  "proc-macro2",
@@ -1840,7 +1837,7 @@ dependencies = [
 [[package]]
 name = "nekoton-utils"
 version = "0.11.0"
-source = "git+https://github.com/broxus/nekoton.git#e56192eb7a055832827c3084787fe47e6bbb2335"
+source = "git+https://github.com/broxus/nekoton.git#b6750977b3a4964b3a0f998c1b2d5913be1db274"
 dependencies = [
  "anyhow",
  "base64",
@@ -2070,9 +2067,9 @@ dependencies = [
 
 [[package]]
 name = "opg"
-version = "0.0.35"
+version = "0.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5c1439103816201e5828e12e3107b2b742c37a6e633018d820188f292841d946"
+checksum = "5acec38f13673212c9983de8a6fd22df24580acd4d08ed5bda793dc2d2a4bfb2"
 dependencies = [
  "either",
  "http",
@@ -2083,9 +2080,9 @@ dependencies = [
 
 [[package]]
 name = "opg_derive"
-version = "0.0.35"
+version = "0.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "027a818edbce39b855ac2cafa5b8bc4de1c4022e8f44f52d3bf305fae122ee80"
+checksum = "168a2a2d84b0a0c7d6818a7740f8389a451e32dd6ec1ce7d29ac4af60bcf49d0"
 dependencies = [
  "either",
  "proc-macro2",
@@ -2162,6 +2159,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "password-hash"
+version = "0.4.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7676374caaee8a325c9e7a2ae557f216c5563a171d6997b0ef8a65af35147700"
+dependencies = [
+ "base64ct",
+ "rand_core",
+ "subtle",
+]
+
+[[package]]
 name = "paste"
 version = "1.0.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2181,7 +2189,7 @@ checksum = "f05894bce6a1ba4be299d0c5f29563e08af2bc18bb7d48313113bed71e904739"
 dependencies = [
  "crypto-mac 0.11.1",
  "hmac 0.11.0",
- "password-hash",
+ "password-hash 0.3.2",
  "sha2 0.9.9",
 ]
 
@@ -2354,17 +2362,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3bcdf212e9776fbcb2d23ab029360416bb1706b1aea2d1a5ba002727cbcab804"
 dependencies = [
  "proc-macro2",
-]
-
-[[package]]
-name = "r2d2"
-version = "0.8.10"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "51de85fb3fb6524929c8a2eb85e6b6d363de4e8c48f9e2c2eac4944abc181c93"
-dependencies = [
- "log",
- "parking_lot 0.12.1",
- "scheduled-thread-pool",
 ]
 
 [[package]]
@@ -2549,15 +2546,6 @@ checksum = "88d6731146462ea25d9244b2ed5fd1d716d25c52e4d54aa4fb0f3c4e9854dbe2"
 dependencies = [
  "lazy_static",
  "windows-sys",
-]
-
-[[package]]
-name = "scheduled-thread-pool"
-version = "0.2.6"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "977a7519bff143a44f842fd07e80ad1329295bd71686457f18e496736f4bf9bf"
-dependencies = [
- "parking_lot 0.12.1",
 ]
 
 [[package]]
@@ -3407,7 +3395,6 @@ dependencies = [
  "async-trait",
  "base64",
  "bigdecimal",
- "block-modes",
  "broxus-util",
  "chacha20poly1305",
  "chrono",
@@ -3435,13 +3422,11 @@ dependencies = [
  "opg",
  "parking_lot 0.12.1",
  "pomfrit",
- "r2d2",
  "rand",
  "regex",
  "reqwest",
  "rustc-hash",
  "sentry",
- "sentry-panic",
  "serde",
  "serde_json",
  "serde_yaml 0.9.4",
@@ -3454,8 +3439,6 @@ dependencies = [
  "ton_abi",
  "ton_block",
  "ton_types",
- "url",
- "urlencoding",
  "uuid",
  "warp",
 ]
@@ -3811,12 +3794,6 @@ dependencies = [
  "percent-encoding",
  "serde",
 ]
-
-[[package]]
-name = "urlencoding"
-version = "2.1.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "68b90931029ab9b034b300b797048cf23723400aa757e8a2bfb9d748102f9821"
 
 [[package]]
 name = "utf-8"
