@@ -2,13 +2,13 @@ use std::sync::Arc;
 
 use anyhow::Result;
 use everscale_network::utils::FxDashMap;
+use pomfrit::formatter::*;
 use sqlx::postgres::PgPoolOptions;
 use tokio::sync::mpsc;
 use tokio::sync::Mutex;
 
 use crate::api::*;
 use crate::client::*;
-use crate::metrics_exporter::*;
 use crate::models::*;
 use crate::services::*;
 use crate::settings::*;
@@ -17,7 +17,6 @@ use crate::ton_core::*;
 use crate::utils::*;
 
 pub struct Engine {
-    metrics_exporter: Arc<MetricsExporter>,
     context: Arc<EngineContext>,
 }
 
@@ -27,20 +26,31 @@ impl Engine {
         global_config: ton_indexer::GlobalConfig,
         shutdown_requests_tx: ShutdownRequestsTx,
     ) -> Result<Arc<Self>> {
-        let metrics_exporter =
-            MetricsExporter::with_config(config.metrics_settings.clone()).await?;
+        let (_metrics_exporter, metrics_writer) =
+            pomfrit::create_exporter(config.metrics_settings.clone()).await?;
 
         let context = EngineContext::new(config, global_config, shutdown_requests_tx).await?;
 
-        Ok(Arc::new(Self {
-            metrics_exporter,
-            context,
-        }))
+        let engine = Arc::new(Self { context });
+
+        metrics_writer.spawn({
+            let engine = Arc::downgrade(&engine);
+            move |buffer| {
+                let engine = match engine.upgrade() {
+                    Some(engine) => engine,
+                    None => return,
+                };
+
+                buffer
+                    .write(LabeledTonServiceMetrics(&engine.context))
+                    .write(LabeledTonSubscriberMetrics(&engine.context));
+            }
+        });
+
+        Ok(engine)
     }
 
     pub async fn start(self: &Arc<Self>) -> Result<()> {
-        self.start_metrics_exporter();
-
         self.context.start().await?;
 
         tokio::spawn(http_service(
@@ -52,31 +62,6 @@ impl Engine {
 
         // Done
         Ok(())
-    }
-
-    fn start_metrics_exporter(self: &Arc<Self>) {
-        let engine = Arc::downgrade(self);
-        let handle = Arc::downgrade(self.metrics_exporter.handle());
-
-        tokio::spawn(async move {
-            loop {
-                let handle = match (engine.upgrade(), handle.upgrade()) {
-                    // Update next metrics buffer
-                    (Some(engine), Some(handle)) => {
-                        let mut buffer = handle.buffers().acquire_buffer().await;
-                        buffer.write(LabeledTonServiceMetrics(&engine.context));
-                        buffer.write(LabeledTonSubscriberMetrics(&engine.context));
-
-                        drop(buffer);
-                        handle
-                    }
-                    // Engine is already dropped
-                    _ => return,
-                };
-
-                handle.wait().await;
-            }
-        });
     }
 }
 

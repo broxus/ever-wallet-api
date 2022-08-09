@@ -5,7 +5,6 @@
 pub mod api;
 pub mod client;
 pub mod commands;
-pub mod metrics_exporter;
 pub mod models;
 pub mod prelude;
 pub mod server;

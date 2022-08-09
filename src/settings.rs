@@ -1,15 +1,13 @@
 use std::convert::TryInto;
-use std::net::{IpAddr, Ipv4Addr, SocketAddr};
+use std::net::SocketAddr;
 use std::path::Path;
 
 use anyhow::{Context, Result};
 use argon2::password_hash::PasswordHasher;
-use http::uri::PathAndQuery;
 use nekoton_utils::TrustMe;
 use serde::{Deserialize, Serialize};
 
 use crate::ton_core::*;
-use crate::utils::*;
 
 #[derive(Serialize, Deserialize)]
 pub struct AppConfig {
@@ -34,7 +32,7 @@ pub struct AppConfig {
     /// Prometheus metrics exporter settings.
     /// Completely disable when not specified
     #[serde(default)]
-    pub metrics_settings: Option<MetricsConfig>,
+    pub metrics_settings: Option<pomfrit::Config>,
 
     /// log4rs settings.
     /// See [docs](https://docs.rs/log4rs/1.0.0/log4rs/) for more details
@@ -44,32 +42,6 @@ pub struct AppConfig {
     /// Recover indexer db
     #[serde(default)]
     pub recover_indexer: bool,
-}
-
-#[derive(Deserialize, Serialize, Clone, Debug)]
-#[serde(default)]
-pub struct MetricsConfig {
-    /// Listen address of metrics. Used by the client to gather prometheus metrics.
-    /// Default: `127.0.0.1:10000`
-    pub listen_address: SocketAddr,
-
-    /// Path to the metrics.
-    /// Default: `/`
-    #[serde(with = "serde_url")]
-    pub metrics_path: PathAndQuery,
-
-    /// Metrics update interval in seconds. Default: 10
-    pub collection_interval_sec: u64,
-}
-
-impl Default for MetricsConfig {
-    fn default() -> Self {
-        Self {
-            listen_address: SocketAddr::new(IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)), 10000),
-            metrics_path: PathAndQuery::from_static("/"),
-            collection_interval_sec: 10,
-        }
-    }
 }
 
 impl ConfigExt for ton_indexer::GlobalConfig {
