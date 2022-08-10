@@ -267,7 +267,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7a0a550e7a39c0d8c5a2ff41e46eb08f6400eb5b57d67b7cdb7afceca9df760a"
 dependencies = [
  "base64",
- "config 0.13.2",
+ "config",
  "hex",
  "log",
  "log4rs",
@@ -405,20 +405,6 @@ dependencies = [
  "glob",
  "libc",
  "libloading",
-]
-
-[[package]]
-name = "config"
-version = "0.12.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "54ad70579325f1a38ea4c13412b82241c5900700a69785d73e2736bd65a33f86"
-dependencies = [
- "async-trait",
- "lazy_static",
- "nom",
- "pathdiff",
- "serde",
- "yaml-rust",
 ]
 
 [[package]]
@@ -3398,7 +3384,7 @@ dependencies = [
  "broxus-util",
  "chacha20poly1305",
  "chrono",
- "config 0.12.0",
+ "config",
  "dashmap",
  "derive_more",
  "ed25519-dalek",
