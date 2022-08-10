@@ -18,6 +18,7 @@ use crate::utils::*;
 
 pub struct Engine {
     context: Arc<EngineContext>,
+    _metrics_exporter: Arc<pomfrit::MetricsExporter>,
 }
 
 impl Engine {
@@ -26,12 +27,15 @@ impl Engine {
         global_config: ton_indexer::GlobalConfig,
         shutdown_requests_tx: ShutdownRequestsTx,
     ) -> Result<Arc<Self>> {
-        let (_metrics_exporter, metrics_writer) =
+        let (metrics_exporter, metrics_writer) =
             pomfrit::create_exporter(config.metrics_settings.clone()).await?;
 
         let context = EngineContext::new(config, global_config, shutdown_requests_tx).await?;
 
-        let engine = Arc::new(Self { context });
+        let engine = Arc::new(Self {
+            context,
+            _metrics_exporter: metrics_exporter,
+        });
 
         metrics_writer.spawn({
             let engine = Arc::downgrade(&engine);

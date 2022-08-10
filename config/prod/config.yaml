@@ -41,3 +41,8 @@ logger_settings:
       appenders:
         - stdout
       additive: false
+    pomfrit:
+      level: info
+      appenders:
+        - stdout
+      additive: false
