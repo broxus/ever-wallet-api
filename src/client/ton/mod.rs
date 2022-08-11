@@ -156,12 +156,6 @@ impl TonClientImpl {
 
         self.ton_core.add_ton_account_subscription(owner_accounts);
 
-        // Add token observer
-        self.ton_core.init_token_subscription();
-
-        // Add full state observer
-        self.ton_core.init_full_state_subscription();
-
         Ok(())
     }
 }

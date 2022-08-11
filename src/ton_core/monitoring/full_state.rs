@@ -7,27 +7,25 @@ use crate::ton_core::*;
 
 pub struct FullState {
     context: Arc<TonCoreContext>,
-    full_state_observer: Arc<AccountObserver<FullStateEvent>>,
+    _full_state_observer: Arc<AccountObserver<FullStateEvent>>,
 }
 
 impl FullState {
     pub async fn new(context: Arc<TonCoreContext>) -> Result<Arc<Self>> {
         let (full_state_events_tx, full_state_events_rx) = mpsc::unbounded_channel();
 
+        let observer = AccountObserver::new(full_state_events_tx);
+        context
+            .ton_subscriber
+            .add_full_state_subscription(&observer);
+
         let full_state = Arc::new(Self {
             context,
-            full_state_observer: AccountObserver::new(full_state_events_tx),
+            _full_state_observer: observer,
         });
-
         full_state.start_listening_full_state_events(full_state_events_rx);
 
         Ok(full_state)
-    }
-
-    pub fn init_full_state_subscription(&self) {
-        self.context
-            .ton_subscriber
-            .add_full_state_subscription(&self.full_state_observer);
     }
 
     fn start_listening_full_state_events(self: &Arc<Self>, mut rx: FullStateEventsRx) {

@@ -38,10 +38,6 @@ pub struct AppConfig {
     /// See [docs](https://docs.rs/log4rs/1.0.0/log4rs/) for more details
     #[serde(default = "default_logger_settings")]
     pub logger_settings: serde_yaml::Value,
-
-    /// Recover indexer db
-    #[serde(default)]
-    pub recover_indexer: bool,
 }
 
 impl ConfigExt for ton_indexer::GlobalConfig {

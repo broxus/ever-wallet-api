@@ -100,14 +100,14 @@ impl EngineContext {
         let (ton_transaction_tx, ton_transaction_rx) = mpsc::unbounded_channel();
         let (token_transaction_tx, token_transaction_rx) = mpsc::unbounded_channel();
 
+        let node_config = config.ton_core.clone();
         let ton_core = TonCore::new(
-            config.ton_core.clone(),
+            node_config,
             global_config,
             sqlx_client.clone(),
             owners_cache,
             ton_transaction_tx,
             token_transaction_tx,
-            config.recover_indexer,
         )
         .await?;
 

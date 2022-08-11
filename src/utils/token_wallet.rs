@@ -209,7 +209,7 @@ pub fn get_token_wallet_basic_info(
 pub fn get_token_wallet_details(
     token_contract: &ExistingContract,
 ) -> Result<(TokenWalletDetails, TokenWalletVersion, [u8; 32])> {
-    let contract_state = nekoton::core::token_wallet::TokenWalletContractState(token_contract);
+    let contract_state = TokenWalletContractState(token_contract);
 
     let hash = *contract_state.get_code_hash()?.as_slice();
     let version = contract_state.get_version(&SimpleClock)?;

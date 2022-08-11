@@ -11,7 +11,7 @@ use crate::ton_core::*;
 pub struct TokenTransaction {
     context: Arc<TonCoreContext>,
     token_transaction_producer: TokenTransactionTx,
-    token_transaction_observer: Arc<AccountObserver<TokenTransactionEvent>>,
+    _token_transaction_observer: Arc<AccountObserver<TokenTransactionEvent>>,
 }
 
 impl TokenTransaction {
@@ -21,21 +21,17 @@ impl TokenTransaction {
     ) -> Result<Arc<Self>> {
         let (token_transaction_events_tx, token_transaction_events_rx) = mpsc::unbounded_channel();
 
+        let observer = AccountObserver::new(token_transaction_events_tx);
+        context.ton_subscriber.add_token_subscription(&observer);
+
         let token_transaction = Arc::new(Self {
             context,
             token_transaction_producer,
-            token_transaction_observer: AccountObserver::new(token_transaction_events_tx),
+            _token_transaction_observer: observer,
         });
-
         token_transaction.start_listening_token_transaction_events(token_transaction_events_rx);
 
         Ok(token_transaction)
-    }
-
-    pub fn init_token_subscription(&self) {
-        self.context
-            .ton_subscriber
-            .add_token_subscription(&self.token_transaction_observer);
     }
 
     fn start_listening_token_transaction_events(

@@ -44,6 +44,9 @@ pub struct NodeConfig {
     pub dht_options: dht::NodeOptions,
     pub overlay_shard_options: overlay::ShardOptions,
     pub neighbours_options: ton_indexer::NeighboursOptions,
+
+    /// Recover indexer db
+    pub recover_indexer: bool,
 }
 
 impl NodeConfig {
@@ -122,6 +125,7 @@ impl Default for NodeConfig {
             dht_options: Default::default(),
             neighbours_options: Default::default(),
             overlay_shard_options: Default::default(),
+            recover_indexer: false,
         }
     }
 }

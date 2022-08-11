@@ -24,9 +24,9 @@ pub use self::settings::*;
 
 pub struct TonCore {
     pub context: Arc<TonCoreContext>,
-    pub ton_transaction: Mutex<Option<Arc<TonTransaction>>>,
-    pub token_transaction: Mutex<Option<Arc<TokenTransaction>>>,
-    pub full_state: Mutex<Option<Arc<FullState>>>,
+    pub full_state: Mutex<Arc<FullState>>,
+    pub ton_transaction: Mutex<Arc<TonTransaction>>,
+    pub token_transaction: Mutex<Arc<TokenTransaction>>,
 }
 
 impl TonCore {
@@ -37,16 +37,11 @@ impl TonCore {
         owners_cache: OwnersCache,
         ton_transaction_producer: TonTransactionTx,
         token_transaction_producer: TokenTransactionTx,
-        recover_indexer: bool,
     ) -> Result<Arc<Self>> {
-        let context = TonCoreContext::new(
-            node_config,
-            global_config,
-            sqlx_client,
-            owners_cache,
-            recover_indexer,
-        )
-        .await?;
+        let context =
+            TonCoreContext::new(node_config, global_config, sqlx_client, owners_cache).await?;
+
+        let full_state = FullState::new(context.clone()).await?;
 
         let ton_transaction =
             TonTransaction::new(context.clone(), ton_transaction_producer).await?;
@@ -54,13 +49,11 @@ impl TonCore {
         let token_transaction =
             TokenTransaction::new(context.clone(), token_transaction_producer).await?;
 
-        let full_state = FullState::new(context.clone()).await?;
-
         Ok(Arc::new(Self {
             context,
-            ton_transaction: Mutex::new(Some(ton_transaction)),
-            token_transaction: Mutex::new(Some(token_transaction)),
-            full_state: Mutex::new(Some(full_state)),
+            full_state: Mutex::new(full_state),
+            ton_transaction: Mutex::new(ton_transaction),
+            token_transaction: Mutex::new(token_transaction),
         }))
     }
 
@@ -76,21 +69,9 @@ impl TonCore {
     where
         I: IntoIterator<Item = UInt256>,
     {
-        if let Some(ton_transaction) = &*self.ton_transaction.lock() {
-            ton_transaction.add_account_subscription(accounts);
-        }
-    }
-
-    pub fn init_token_subscription(&self) {
-        if let Some(token_transaction) = &*self.token_transaction.lock() {
-            token_transaction.init_token_subscription();
-        }
-    }
-
-    pub fn init_full_state_subscription(&self) {
-        if let Some(full_state) = &*self.full_state.lock() {
-            full_state.init_full_state_subscription();
-        }
+        self.ton_transaction
+            .lock()
+            .add_account_subscription(accounts);
     }
 
     pub fn get_contract_state(&self, account: &UInt256) -> Result<ExistingContract> {
@@ -143,21 +124,23 @@ impl TonCoreContext {
         global_config: ton_indexer::GlobalConfig,
         sqlx_client: SqlxClient,
         owners_cache: OwnersCache,
-        recover_indexer: bool,
     ) -> Result<Arc<Self>> {
+        let recover_indexer = node_config.recover_indexer;
+
         let node_config = node_config
             .build_indexer_config()
             .await
             .context("Failed to build node config")?;
 
         if recover_indexer {
-            fs::remove_dir_all(&node_config.rocks_db_path).unwrap();
-            fs::remove_dir_all(&node_config.file_db_path).unwrap();
+            fs::remove_dir_all(&node_config.rocks_db_path)?;
+            fs::remove_dir_all(&node_config.file_db_path)?;
         }
 
         let messages_queue = PendingMessagesQueue::new(512);
 
         let ton_subscriber = TonSubscriber::new(messages_queue.clone());
+
         let ton_engine = ton_indexer::Engine::new(
             node_config,
             global_config,
@@ -265,4 +248,6 @@ enum TonCoreError {
     AccountNotExist(String),
     #[error("Root token `{0}` not included in the whitelist")]
     InvalidRootToken(String),
+    #[error("Invalid contract address")]
+    InvalidContractAddress,
 }

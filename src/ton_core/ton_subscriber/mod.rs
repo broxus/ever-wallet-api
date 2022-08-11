@@ -7,6 +7,7 @@ use futures::stream::FuturesUnordered;
 use futures::StreamExt;
 use nekoton::core::models::TokenWalletVersion;
 use nekoton::transport::models::ExistingContract;
+use nekoton_utils::TrustMe;
 use parking_lot::{Mutex, RwLock, RwLockReadGuard};
 use rustc_hash::FxHashMap;
 
@@ -25,7 +26,7 @@ pub struct TonSubscriber {
     state_subscriptions: RwLock<FxHashMap<UInt256, StateSubscription>>,
     token_subscription: RwLock<Option<TokenSubscription>>,
     full_state_subscription: RwLock<Option<FullStateSubscription>>,
-    shards_accounts_cache: RwLock<FxHashMap<ton_block::ShardIdent, ShardAccounts>>,
+    shards_accounts_cache: RwLock<FxHashMap<ShardIdent, ShardAccounts>>,
     mc_block_awaiters: Mutex<FxHashMap<usize, Box<dyn BlockAwaiter>>>,
     messages_queue: Arc<PendingMessagesQueue>,
 }
@@ -37,11 +38,11 @@ impl TonSubscriber {
             ready_signal: Notify::new(),
             current_utime: AtomicU32::new(0),
             state_subscriptions: RwLock::new(FxHashMap::with_capacity_and_hasher(
-                128,
+                1024,
                 Default::default(),
             )),
-            token_subscription: RwLock::new(None),
-            full_state_subscription: RwLock::new(None),
+            token_subscription: Default::default(),
+            full_state_subscription: Default::default(),
             shards_accounts_cache: RwLock::new(FxHashMap::with_capacity_and_hasher(
                 16,
                 Default::default(),
@@ -227,6 +228,7 @@ impl TonSubscriber {
 
         let state_subscriptions = self.state_subscriptions.read();
         let token_subscription = self.token_subscription.read();
+        let shards_accounts_cache = self.shards_accounts_cache.read();
 
         account_blocks.iterate_with_keys(|account, account_block| {
             match state_subscriptions.get(&account) {
@@ -249,25 +251,23 @@ impl TonSubscriber {
                     };
                 }
                 None => {
-                    if let Some(token_subscription) = token_subscription.as_ref() {
-                        let shards_accounts_cache = self.shards_accounts_cache.read();
+                    let token_subscription = token_subscription.as_ref().trust_me();
 
-                        match token_subscription.handle_block(
-                            &state_subscriptions,
-                            &shards_accounts_cache,
-                            &block_info,
-                            &account_block,
-                            &account,
-                            block_hash,
-                        ) {
-                            Ok(rx_states) => {
-                                if !rx_states.is_empty() {
-                                    states.extend(rx_states);
-                                }
+                    match token_subscription.handle_block(
+                        &state_subscriptions,
+                        &shards_accounts_cache,
+                        &block_info,
+                        &account_block,
+                        &account,
+                        block_hash,
+                    ) {
+                        Ok(rx_states) => {
+                            if !rx_states.is_empty() {
+                                states.extend(rx_states);
                             }
-                            Err(e) => {
-                                log::error!("Failed to handle block: {:?}", e);
-                            }
+                        }
+                        Err(e) => {
+                            log::error!("Failed to handle block: {:?}", e);
                         }
                     }
                 }
@@ -286,8 +286,6 @@ impl TonSubscriber {
         &self,
         state: &ShardStateStuff,
     ) -> Result<Option<HandleTransactionStatusRx>> {
-        let mut res = None;
-
         let shard_accounts = state.state().read_accounts()?;
         let state_handle = state.ref_mc_state_handle().clone();
 
@@ -302,11 +300,10 @@ impl TonSubscriber {
         drop(shards_accounts);
 
         let full_state_subscription = self.full_state_subscription.read();
-        if let Some(full_state_subscription) = full_state_subscription.as_ref() {
-            res = full_state_subscription.handle_full_state(state)?;
-        }
-
-        Ok(res)
+        full_state_subscription
+            .as_ref()
+            .trust_me()
+            .handle_full_state(state)
     }
 
     async fn wait_sync(&self) {
@@ -477,17 +474,19 @@ impl TokenSubscription {
     fn handle_block(
         &self,
         state_subscriptions: &RwLockReadGuard<FxHashMap<UInt256, StateSubscription>>,
-        shards_accounts_cache: &FxHashMap<ton_block::ShardIdent, ShardAccounts>,
+        shards_accounts_cache: &FxHashMap<ShardIdent, ShardAccounts>,
         block_info: &ton_block::BlockInfo,
         account_block: &ton_block::AccountBlock,
         account: &UInt256,
         block_hash: &UInt256,
     ) -> Result<FuturesUnordered<HandleTransactionStatusRx>> {
         let states = FuturesUnordered::new();
+
         for transaction in account_block.transactions().iter() {
             let (hash, transaction) = match transaction.and_then(|(_, value)| {
                 let cell = value.into_cell().reference(0)?;
                 let hash = cell.repr_hash();
+
                 ton_block::Transaction::construct_from_cell(cell)
                     .map(|transaction| (hash, transaction))
             }) {
@@ -523,23 +522,19 @@ impl TokenSubscription {
             };
 
             if let Some(parsed) = parsed_token_transaction {
-                let mut token_contract = None;
-                for (_shard_ident, shard_accounts) in shards_accounts_cache.iter() {
-                    if let Some(contract) = shard_accounts.accounts.find_account(account)? {
-                        token_contract = Some(contract);
-                        break;
-                    }
-                }
-
-                let token_contract = token_contract
+                let token_contract = shards_accounts_cache
+                    .find_account(account)?
                     .ok_or_else(|| TonCoreError::AccountNotExist(account.to_string()))?;
 
-                let (token_wallet, _, _) = get_token_wallet_details(&token_contract)?;
+                let (token_wallet_details, ..) = get_token_wallet_details(&token_contract)?;
+                let owner_account = UInt256::from_be_bytes(
+                    &token_wallet_details
+                        .owner_address
+                        .address()
+                        .get_bytestring(0),
+                );
 
-                let owner =
-                    UInt256::from_be_bytes(&token_wallet.owner_address.address().get_bytestring(0));
-
-                if state_subscriptions.get(&owner).is_some() {
+                if state_subscriptions.get(&owner_account).is_some() {
                     let in_msg = match transaction
                         .in_msg
                         .as_ref()
@@ -723,7 +718,7 @@ pub struct ShardAccounts {
 }
 
 impl ShardAccounts {
-    fn get(&self, account: &ton_types::UInt256) -> Result<Option<ShardAccount>> {
+    fn get(&self, account: &UInt256) -> Result<Option<ShardAccount>> {
         match self.accounts.get(account)? {
             Some(account) => Ok(Some(ShardAccount {
                 data: account.account_cell(),
@@ -734,6 +729,19 @@ impl ShardAccounts {
                 _state_handle: self.state_handle.clone(),
             })),
             None => Ok(None),
+        }
+    }
+}
+
+impl ShardAccountsMapExt for FxHashMap<ShardIdent, ShardAccounts> {
+    fn find_account(&self, account: &UInt256) -> Result<Option<ExistingContract>> {
+        let item = self
+            .iter()
+            .find(|(shard_ident, _)| contains_account(shard_ident, account));
+
+        match item {
+            Some((_, shard)) => shard.accounts.find_account(account),
+            None => Err(TonCoreError::InvalidContractAddress).context("No suitable shard found"),
         }
     }
 }
