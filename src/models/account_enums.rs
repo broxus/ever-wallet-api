@@ -69,14 +69,14 @@ impl From<TokenWalletVersionDb> for TokenWalletVersion {
 
 #[derive(Debug, Deserialize, Serialize, Clone, opg::OpgModel)]
 #[serde(rename_all = "camelCase")]
-#[opg("AddressResponse")]
-pub struct AddressResponse {
+#[opg("Account")]
+pub struct Account {
     pub workchain_id: i32,
     pub hex: Address,
     pub base64url: Address,
 }
 
-impl From<AddressDb> for AddressResponse {
+impl From<AddressDb> for Account {
     fn from(a: AddressDb) -> Self {
         let account = MsgAddressInt::from_str(&format!("{}:{}", a.workchain_id, a.hex)).unwrap();
         let base64url = Address(pack_std_smc_addr(true, &account, true).unwrap());

@@ -16,8 +16,8 @@ pub struct AccountTransactionEvent {
     pub transaction_id: Uuid,
     pub message_hash: String,
     pub owner_message_hash: Option<String>,
-    pub account: AddressResponse,
-    pub sender: Option<AddressResponse>,
+    pub account: Account,
+    pub sender: Option<Account>,
     #[opg("balanceChange", string, optional)]
     pub balance_change: Option<BigDecimal>,
     pub root_address: Option<String>,
@@ -41,7 +41,7 @@ impl From<TokenTransactionEventDb> for AccountTransactionEvent {
             transaction_id: t.token_transaction_id,
             message_hash: t.message_hash,
             owner_message_hash: t.owner_message_hash,
-            account: AddressResponse {
+            account: Account {
                 workchain_id: t.account_workchain_id,
                 hex: Address(t.account_hex),
                 base64url,
@@ -73,7 +73,7 @@ impl From<TransactionEventDb> for AccountTransactionEvent {
                 MsgAddressInt::from_str(&format!("{}:{}", sender_workchain_id, sender_hex))
                     .unwrap();
             let base64url = Address(pack_std_smc_addr(true, &sender, true).unwrap());
-            Some(AddressResponse {
+            Some(Account {
                 workchain_id: sender_workchain_id,
                 hex: Address(sender_hex),
                 base64url,
@@ -87,7 +87,7 @@ impl From<TransactionEventDb> for AccountTransactionEvent {
             transaction_id: t.transaction_id,
             message_hash: t.message_hash,
             owner_message_hash: None,
-            account: AddressResponse {
+            account: Account {
                 workchain_id: t.account_workchain_id,
                 hex: Address(t.account_hex),
                 base64url,

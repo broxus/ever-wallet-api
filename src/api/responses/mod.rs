@@ -3,6 +3,7 @@ use std::str::FromStr;
 use bigdecimal::BigDecimal;
 use nekoton_utils::pack_std_smc_addr;
 use serde::{Deserialize, Serialize};
+use sqlx::FromRow;
 use ton_block::MsgAddressInt;
 use uuid::Uuid;
 
@@ -214,7 +215,7 @@ impl TokenBalanceResponse {
     }
 }
 
-#[derive(Debug, Deserialize, Serialize, Clone, opg::OpgModel)]
+#[derive(Debug, Deserialize, Serialize, Clone, opg::OpgModel, FromRow)]
 #[serde(rename_all = "camelCase")]
 #[opg("AccountAddressResponse")]
 pub struct AccountAddressResponse {

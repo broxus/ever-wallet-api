@@ -1,11 +1,11 @@
 ---
-server_addr: "0.0.0.0:8080"
-database_url: "postgresql://${DB_USER}:${DB_PASSWORD}@${DB_HOST}/${DB_NAME}"
+server_addr: "0.0.0.0:3030"
+database_url: "postgresql://postgres:postgres@127.0.0.1:5432/ton_wallet_api"
 db_pool_size: 5
 ton_core:
   adnl_port: 30310
-  db_path: "/var/ton/ton-wallet-api/data"
-  keys_path: "/var/ton/ton-wallet-api/data/adnl-keys.json"
+  db_path: "./db"
+  keys_path: "./adnl-keys.json"
 #metrics_settings:
 #  listen_address: "0.0.0.0:10000"
 #  metrics_path: "/"

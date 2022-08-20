@@ -1,6 +1,5 @@
 use async_trait::async_trait;
 use chrono::Utc;
-use hmac::{Hmac, Mac, NewMac};
 use http::Method;
 use nekoton_utils::TrustMe;
 use reqwest::Url;
@@ -73,9 +72,7 @@ impl CallbackClient for CallbackClientImpl {
 }
 
 fn calc_sign(body: String, url: String, timestamp_ms: i64, secret: String) -> String {
-    let mut mac = Hmac::<sha2::Sha256>::new_from_slice(secret.as_bytes()).trust_me();
-    let signing_phrase = format!("{}{}{}", timestamp_ms, url, body);
-    mac.update(signing_phrase.as_bytes());
-    let hash_result = mac.finalize().into_bytes();
-    base64::encode(&hash_result)
+    let concat = format!("{}{}{}", timestamp_ms, url, body);
+    let calculated_signature = hmac_sha256::HMAC::mac(concat.as_bytes(), secret.as_bytes());
+    base64::encode(&calculated_signature)
 }

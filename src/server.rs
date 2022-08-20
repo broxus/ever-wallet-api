@@ -1,13 +1,14 @@
 use std::sync::Arc;
 
+use crate::axum_api::http_service;
 use anyhow::Result;
 use everscale_network::utils::FxDashMap;
 use pomfrit::formatter::*;
 use sqlx::postgres::PgPoolOptions;
+use tokio::net::ToSocketAddrs;
 use tokio::sync::mpsc;
 use tokio::sync::Mutex;
 
-use crate::api::*;
 use crate::client::*;
 use crate::models::*;
 use crate::services::*;
@@ -45,9 +46,7 @@ impl Engine {
                     None => return,
                 };
 
-                buffer
-                    .write(LabeledTonServiceMetrics(&engine.context))
-                    .write(LabeledTonSubscriberMetrics(&engine.context));
+                buffer.write(LabeledTonSubscriberMetrics(&engine.context));
             }
         });
 
@@ -55,12 +54,13 @@ impl Engine {
     }
 
     pub async fn start(self: &Arc<Self>) -> Result<()> {
-        self.context.start().await?;
+        //self.context.start().await?;
 
         tokio::spawn(http_service(
             self.context.config.server_addr,
-            self.context.ton_service.clone(),
+            None,
             self.context.auth_service.clone(),
+            self.context.ton_service.clone(),
             self.context.memory_storage.clone(),
         ));
 
@@ -71,10 +71,10 @@ impl Engine {
 
 pub struct EngineContext {
     pub shutdown_requests_tx: ShutdownRequestsTx,
+    pub auth_service: Arc<AuthService>,
     pub ton_core: Arc<TonCore>,
     pub ton_client: Arc<TonClientImpl>,
     pub ton_service: Arc<TonServiceImpl>,
-    pub auth_service: Arc<AuthServiceImpl>,
     pub memory_storage: Arc<StorageHandler>,
     pub config: AppConfig,
     pub guards: FxDashMap<String, (Arc<Mutex<()>>, u32)>,
@@ -120,16 +120,16 @@ impl EngineContext {
             config.key.clone(),
         ));
 
-        let auth_service = Arc::new(AuthServiceImpl::new(sqlx_client.clone()));
+        let auth_service = Arc::new(AuthService::new(sqlx_client.clone()));
 
         let memory_storage = Arc::new(StorageHandler::default());
 
         let engine_context = Arc::new(Self {
             shutdown_requests_tx,
+            auth_service,
             ton_core,
             ton_client,
             ton_service,
-            auth_service,
             memory_storage,
             config,
             guards: Default::default(),
@@ -295,31 +295,6 @@ impl EngineContext {
                     .clone()
             }
         }
-    }
-}
-
-struct LabeledTonServiceMetrics<'a>(&'a EngineContext);
-
-impl std::fmt::Display for LabeledTonServiceMetrics<'_> {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let metrics = self.0.ton_service.metrics();
-
-        f.begin_metric("ton_service_create_address_total_requests")
-            .value(metrics.create_address_count)?;
-
-        f.begin_metric("ton_service_send_transaction_total_requests")
-            .value(metrics.send_transaction_count)?;
-
-        f.begin_metric("ton_service_recv_transaction_total_requests")
-            .value(metrics.recv_transaction_count)?;
-
-        f.begin_metric("ton_service_send_token_transaction_total_requests")
-            .value(metrics.send_token_transaction_count)?;
-
-        f.begin_metric("ton_service_recv_token_transaction_total_requests")
-            .value(metrics.recv_token_transaction_count)?;
-
-        Ok(())
     }
 }
 
