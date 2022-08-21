@@ -1,5 +1,6 @@
+use anyhow::Result;
+
 use crate::models::*;
-use crate::prelude::*;
 use crate::sqlx_client::*;
 
 impl SqlxClient {
@@ -7,7 +8,7 @@ impl SqlxClient {
         &self,
         service_id: ServiceId,
         service_name: &str,
-    ) -> Result<ApiServiceDb, ServiceError> {
+    ) -> Result<ApiServiceDb> {
         sqlx::query_as!(
             ApiServiceDb,
             r#"INSERT INTO api_service
@@ -28,7 +29,7 @@ impl SqlxClient {
         service_id: ServiceId,
         key: &str,
         secret: &str,
-    ) -> Result<ApiServiceKeyDb, ServiceError> {
+    ) -> Result<ApiServiceKeyDb> {
         sqlx::query_as!(
             ApiServiceKeyDb,
             r#"INSERT INTO api_service_key

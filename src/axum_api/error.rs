@@ -3,9 +3,10 @@ use axum::{
     response::{IntoResponse, Response},
     Json,
 };
+use tokio::sync::oneshot;
 use tracing::log;
 
-use crate::axum_api::requests::AuthorizedError;
+use crate::services::TonServiceError;
 
 /// A common error type that can be used throughout the API.
 ///
@@ -34,6 +35,21 @@ pub enum Error {
     #[error("an error occurred with the database")]
     Sqlx(#[from] sqlx::Error),
 
+    #[error("an error occurred with serde")]
+    Serde(#[from] serde_json::Error),
+
+    #[error("an error occurred with oneshot channel")]
+    RecvError(#[from] oneshot::error::RecvError),
+
+    #[error("an error occurred with tokens")]
+    TokensJson(#[from] nekoton_abi::TokensJsonError),
+
+    #[error("an error occurred with hex conversion")]
+    FromHexError(#[from] hex::FromHexError),
+
+    #[error("an error occurred with array conversion")]
+    TryFromSliceError(#[from] std::array::TryFromSliceError),
+
     /// Return `500 Internal Server Error` on a `anyhow::Error`.
     ///
     /// `anyhow::Error` is used in a few places to capture context and backtraces
@@ -50,14 +66,20 @@ pub enum Error {
     Anyhow(#[from] anyhow::Error),
 
     #[error(transparent)]
-    Auth(#[from] AuthorizedError),
+    TonService(#[from] TonServiceError),
 }
 
 impl Error {
     fn status_code(&self) -> StatusCode {
         match self {
-            Self::Sqlx(_) | Self::Anyhow(_) => StatusCode::INTERNAL_SERVER_ERROR,
-            Error::Auth(e) => e.status_code(),
+            Self::Sqlx(_)
+            | Self::Serde(_)
+            | Self::Anyhow(_)
+            | Self::RecvError(_)
+            | Self::TokensJson(_)
+            | Self::FromHexError(_)
+            | Self::TryFromSliceError(_) => StatusCode::INTERNAL_SERVER_ERROR,
+            Error::TonService(e) => e.status_code(),
         }
     }
 }
@@ -75,6 +97,36 @@ impl IntoResponse for Error {
                 log::error!("SQLx error: {:?}", e);
             }
 
+            Self::Serde(ref e) => {
+                // TODO: we probably want to use `tracing` instead
+                // so that this gets linked to the HTTP request by `TraceLayer`.
+                log::error!("Serde error: {:?}", e);
+            }
+
+            Self::RecvError(ref e) => {
+                // TODO: we probably want to use `tracing` instead
+                // so that this gets linked to the HTTP request by `TraceLayer`.
+                log::error!("RecvError error: {:?}", e);
+            }
+
+            Self::TokensJson(ref e) => {
+                // TODO: we probably want to use `tracing` instead
+                // so that this gets linked to the HTTP request by `TraceLayer`.
+                log::error!("TokensJson error: {:?}", e);
+            }
+
+            Self::FromHexError(ref e) => {
+                // TODO: we probably want to use `tracing` instead
+                // so that this gets linked to the HTTP request by `TraceLayer`.
+                log::error!("FromHexError error: {:?}", e);
+            }
+
+            Self::TryFromSliceError(ref e) => {
+                // TODO: we probably want to use `tracing` instead
+                // so that this gets linked to the HTTP request by `TraceLayer`.
+                log::error!("TryFromSliceError error: {:?}", e);
+            }
+
             Self::Anyhow(ref e) => {
                 // TODO: we probably want to use `tracing` instead
                 // so that this gets linked to the HTTP request by `TraceLayer`.
@@ -82,8 +134,8 @@ impl IntoResponse for Error {
             }
 
             // Other errors get mapped normally.
-            Error::Auth(ref e) => {
-                log::error!("Authorization error: {:?}", e);
+            Error::TonService(ref e) => {
+                log::error!("Ton service error: {:?}", e);
             }
         }
 

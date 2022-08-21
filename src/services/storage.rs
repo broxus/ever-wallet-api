@@ -1,7 +1,8 @@
+use std::time::SystemTime;
+
 use everscale_network::utils::FxDashMap;
 use nekoton::crypto::UnsignedMessage;
 use nekoton_utils::TrustMe;
-use std::time::SystemTime;
 
 #[derive(Default)]
 pub struct StorageHandler {

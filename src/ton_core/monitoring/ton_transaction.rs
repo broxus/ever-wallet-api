@@ -54,7 +54,7 @@ impl TonTransaction {
                     }
                 };
 
-                match parse_ton_transaction(
+                match ton_transaction_parser::parse_ton_transaction(
                     event.account,
                     event.block_utime,
                     event.transaction_hash,

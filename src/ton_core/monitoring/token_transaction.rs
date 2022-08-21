@@ -51,7 +51,7 @@ impl TokenTransaction {
                     }
                 };
 
-                match parse_token_transaction(
+                match token_transaction_parser::parse_token_transaction(
                     event.ctx,
                     event.parsed,
                     &token_transaction.context.sqlx_client,

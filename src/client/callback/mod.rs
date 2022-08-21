@@ -1,53 +1,43 @@
-use async_trait::async_trait;
+use anyhow::Result;
 use chrono::Utc;
 use http::Method;
 use nekoton_utils::TrustMe;
 use reqwest::Url;
 
-use crate::models::AccountTransactionEvent;
-use crate::prelude::ServiceError;
-
-#[async_trait]
-pub trait CallbackClient: Send + Sync {
-    async fn send(
-        &self,
-        url: String,
-        payload: AccountTransactionEvent,
-        secret: String,
-    ) -> Result<(), ServiceError>;
-}
+use crate::models::*;
 
 #[derive(Clone)]
-pub struct CallbackClientImpl {
+pub struct CallbackClient {
     client: reqwest::Client,
 }
 
-impl CallbackClientImpl {
+impl CallbackClient {
     pub fn new() -> Self {
         Self {
-            client: reqwest::ClientBuilder::new().build().unwrap(),
+            client: reqwest::ClientBuilder::new().build().trust_me(),
         }
     }
 }
 
-impl Default for CallbackClientImpl {
+impl Default for CallbackClient {
     fn default() -> Self {
         Self::new()
     }
 }
 
-#[async_trait]
-impl CallbackClient for CallbackClientImpl {
-    async fn send(
+impl CallbackClient {
+    pub async fn send(
         &self,
         url: String,
         payload: AccountTransactionEvent,
         secret: String,
-    ) -> Result<(), ServiceError> {
+    ) -> Result<()> {
         let nonce = Utc::now().naive_utc().timestamp() * 1000;
-        let body = serde_json::to_string(&payload).unwrap_or_default();
-        let full_url = Url::parse(&url)
-            .map_err(|_| ServiceError::Auth("Url can not be parsed".to_string()))?;
+
+        let body = serde_json::to_string(&payload)?;
+
+        let full_url = Url::parse(&url)?;
+
         let sign = calc_sign(body, full_url.path().to_string(), nonce, secret);
 
         let res = self
@@ -57,17 +47,16 @@ impl CallbackClient for CallbackClientImpl {
             .header("TIMESTAMP", nonce.to_string())
             .json(&payload)
             .send()
-            .await
-            .map_err(ServiceError::from)?;
+            .await?;
 
         if res.status() != http::StatusCode::OK {
-            Err(ServiceError::Other(anyhow::Error::msg(format!(
+            anyhow::bail!(format!(
                 "Received status is not 200. Payload: {:#?}. Receive: {:?}.",
                 payload, res
-            ))))
-        } else {
-            Ok(())
+            ))
         }
+
+        Ok(())
     }
 }
 

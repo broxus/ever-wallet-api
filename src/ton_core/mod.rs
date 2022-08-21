@@ -80,7 +80,7 @@ impl TonCore {
 
     pub async fn send_ton_message(
         &self,
-        account: &ton_types::UInt256,
+        account: &UInt256,
         message: &ton_block::Message,
         expire_at: u32,
     ) -> Result<MessageStatus> {
@@ -187,7 +187,7 @@ impl TonCoreContext {
 
     async fn send_ton_message(
         &self,
-        account: &ton_types::UInt256,
+        account: &UInt256,
         message: &ton_block::Message,
         expire_at: u32,
     ) -> Result<MessageStatus> {

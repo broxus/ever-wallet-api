@@ -1,13 +1,11 @@
 use std::convert::TryInto;
 use std::str::FromStr;
-use std::sync::atomic::{AtomicU64, Ordering};
-use std::sync::Arc;
+use std::sync::{Arc, Weak};
 
-use async_trait::async_trait;
 use bigdecimal::BigDecimal;
+use http::StatusCode;
 use nekoton::crypto::{SignedMessage, UnsignedMessage};
-use nekoton_abi::ExecutionOutput;
-use nekoton_utils::{repack_address, unpack_std_smc_addr, TrustMe};
+use nekoton_utils::{repack_address, unpack_std_smc_addr};
 use serde_json::Value;
 use ton_abi::contract::ABI_VERSION_2_2;
 use ton_abi::{Param, Token, TokenValue};
@@ -15,235 +13,49 @@ use ton_block::{GetRepresentationHash, MsgAddressInt, Serializable};
 use ton_types::{BuilderData, UInt256};
 use uuid::Uuid;
 
+use crate::axum_api::*;
 use crate::client::*;
 use crate::models::*;
 use crate::prelude::*;
 use crate::sqlx_client::*;
 use crate::utils::*;
 
-#[async_trait]
-pub trait TonService: Send + Sync + 'static {
-    async fn create_address(
-        &self,
-        service_id: &ServiceId,
-        input: CreateAddress,
-    ) -> Result<AddressDb, ServiceError>;
-    async fn check_address(&self, address: Address) -> Result<bool, ServiceError>;
-    async fn get_address_balance(
-        &self,
-        service_id: &ServiceId,
-        address: Address,
-    ) -> Result<(AddressDb, NetworkAddressData), ServiceError>;
-    async fn get_address_info(
-        &self,
-        service_id: &ServiceId,
-        address: Address,
-    ) -> Result<AddressDb, ServiceError>;
-    async fn create_send_transaction(
-        self: Arc<Self>,
-        service_id: &ServiceId,
-        input: TransactionSend,
-    ) -> Result<TransactionDb, ServiceError>;
-    async fn create_confirm_transaction(
-        self: Arc<Self>,
-        service_id: &ServiceId,
-        input: TransactionConfirm,
-    ) -> Result<TransactionDb, ServiceError>;
-    async fn create_receive_transaction(
-        &self,
-        input: CreateReceiveTransaction,
-    ) -> Result<TransactionDb, ServiceError>;
-    async fn upsert_sent_transaction(
-        &self,
-        message_hash: String,
-        account_workchain_id: i32,
-        account_hex: String,
-        input: UpdateSendTransaction,
-    ) -> Result<TransactionDb, ServiceError>;
-    async fn update_token_transaction(
-        &self,
-        message_hash: String,
-        account_workchain_id: i32,
-        account_hex: String,
-        messages_hash: Option<serde_json::Value>,
-    ) -> Result<(), ServiceError>;
-    async fn get_transaction_by_mh(
-        &self,
-        service_id: &ServiceId,
-        message_hash: &str,
-    ) -> Result<TransactionDb, ServiceError>;
-    async fn get_transaction_by_h(
-        &self,
-        service_id: &ServiceId,
-        transaction_hash: &str,
-    ) -> Result<TransactionDb, ServiceError>;
-    async fn get_transaction_by_id(
-        &self,
-        service_id: &ServiceId,
-        id: &uuid::Uuid,
-    ) -> Result<TransactionDb, ServiceError>;
-    async fn get_event_by_id(
-        &self,
-        service_id: &ServiceId,
-        id: &uuid::Uuid,
-    ) -> Result<TransactionEventDb, ServiceError>;
-    async fn search_transaction(
-        &self,
-        service_id: &ServiceId,
-        payload: &TransactionsSearch,
-    ) -> Result<Vec<TransactionDb>, ServiceError>;
-    async fn search_events(
-        &self,
-        service_id: &ServiceId,
-        payload: &TransactionsEventsSearch,
-    ) -> Result<Vec<TransactionEventDb>, ServiceError>;
-    async fn mark_event(
-        &self,
-        service_id: &ServiceId,
-        id: &Uuid,
-    ) -> Result<TransactionEventDb, ServiceError>;
-    async fn mark_all_events(
-        &self,
-        service_id: &ServiceId,
-        event_status: Option<TonEventStatus>,
-    ) -> Result<Vec<TransactionEventDb>, ServiceError>;
-    async fn get_tokens_transaction_by_mh(
-        &self,
-        service_id: &ServiceId,
-        message_hash: &str,
-    ) -> Result<TokenTransactionFromDb, ServiceError>;
-    async fn get_tokens_transaction_by_id(
-        &self,
-        service_id: &ServiceId,
-        id: &uuid::Uuid,
-    ) -> Result<TokenTransactionFromDb, ServiceError>;
-    async fn search_token_events(
-        &self,
-        service_id: &ServiceId,
-        payload: &TokenTransactionsEventsSearch,
-    ) -> Result<Vec<TokenTransactionEventDb>, ServiceError>;
-    async fn mark_token_event(
-        &self,
-        service_id: &ServiceId,
-        id: &Uuid,
-    ) -> Result<TokenTransactionEventDb, ServiceError>;
-    async fn get_token_address_balance(
-        &self,
-        service_id: &ServiceId,
-        address: &Address,
-    ) -> Result<Vec<(TokenBalanceFromDb, NetworkTokenAddressData)>, ServiceError>;
-    async fn create_send_token_transaction(
-        self: Arc<Self>,
-        service_id: &ServiceId,
-        input: &TokenTransactionSend,
-    ) -> Result<TransactionDb, ServiceError>;
-    async fn create_burn_token_transaction(
-        self: Arc<Self>,
-        service_id: &ServiceId,
-        input: &TokenTransactionBurn,
-    ) -> Result<TransactionDb, ServiceError>;
-    async fn create_mint_token_transaction(
-        self: Arc<Self>,
-        service_id: &ServiceId,
-        input: &TokenTransactionMint,
-    ) -> Result<TransactionDb, ServiceError>;
-    async fn create_receive_token_transaction(
-        &self,
-        input: CreateTokenTransaction,
-    ) -> Result<TokenTransactionFromDb, ServiceError>;
-    async fn get_metrics(&self) -> Result<Metrics, ServiceError>;
-
-    async fn execute_contract_function(
-        &self,
-        account_addr: &str,
-        function_name: &str,
-        inputs: Vec<InputParam>,
-        outputs: Vec<Param>,
-        headers: Vec<Param>,
-    ) -> Result<Value, ServiceError>;
-
-    async fn prepare_generic_message(
-        &self,
-        sender_addr: &str,
-        public_key: &[u8],
-        target_addr: &str,
-        execution_flag: u8,
-        value: BigDecimal,
-        bounce: bool,
-        account_type: &AccountType,
-        custodians: &Option<i32>,
-        function_details: Option<FunctionDetails>,
-    ) -> Result<Box<dyn UnsignedMessage>, ServiceError>;
-
-    fn encode_tvm_cell(&self, data: Vec<InputParam>) -> Result<String, ServiceError>;
-
-    async fn send_signed_message(
-        self: Arc<Self>,
-        sender_addr: String,
-        hash: String,
-        msg: SignedMessage,
-    ) -> Result<String, ServiceError>;
-}
-
 #[derive(Clone)]
-pub struct TonServiceImpl {
+pub struct TonService {
     sqlx_client: SqlxClient,
-    request_count: Arc<RequestCount>,
-    ton_api_client: Arc<dyn TonClient>,
-    callback_client: Arc<dyn CallbackClient>,
+    ton_api_client: Arc<TonClient>,
+    callback_client: Arc<CallbackClient>,
     key: Arc<Vec<u8>>,
 }
 
-impl TonServiceImpl {
+impl TonService {
     pub fn new(
         sqlx_client: SqlxClient,
-        ton_api_client: Arc<dyn TonClient>,
-        callback_client: Arc<dyn CallbackClient>,
+        ton_api_client: Arc<TonClient>,
+        callback_client: Arc<CallbackClient>,
         key: Vec<u8>,
     ) -> Self {
-        let request_count = Arc::new(RequestCount::default());
         let key = Arc::new(key);
         Self {
             sqlx_client,
-            request_count,
             ton_api_client,
             callback_client,
             key,
         }
     }
 
-    pub fn metrics(&self) -> ClientServiceMetrics {
-        ClientServiceMetrics {
-            create_address_count: self.request_count.create_address.load(Ordering::Acquire),
-            send_transaction_count: self.request_count.send_transaction.load(Ordering::Acquire),
-            recv_transaction_count: self.request_count.recv_transaction.load(Ordering::Acquire),
-            send_token_transaction_count: self
-                .request_count
-                .send_token_transaction
-                .load(Ordering::Acquire),
-            recv_token_transaction_count: self
-                .request_count
-                .recv_token_transaction
-                .load(Ordering::Acquire),
-        }
-    }
-
-    pub async fn start(self: &Arc<Self>) -> Result<(), ServiceError> {
-        // Load unprocessed sent messages
+    pub async fn start(self: &Arc<Self>) -> anyhow::Result<()> {
+        // Get unprocessed sent transactions
         let transactions: Vec<TransactionDb> = self
             .sqlx_client
             .get_all_transactions_by_status(TonTransactionStatus::New)
             .await?;
 
+        // Resend transactions
         for transaction in transactions {
-            let account = UInt256::from_be_bytes(
-                &hex::decode(transaction.account_hex.clone())
-                    .map_err(|err| ServiceError::Other(err.into()))?,
-            );
-            let message_hash = UInt256::from_be_bytes(
-                &hex::decode(transaction.message_hash.clone())
-                    .map_err(|err| ServiceError::Other(err.into()))?,
-            );
+            let account = UInt256::from_be_bytes(&hex::decode(transaction.account_hex.clone())?);
+            let message_hash =
+                UInt256::from_be_bytes(&hex::decode(transaction.message_hash.clone())?);
             let expire_at = transaction.created_at.timestamp() as u32 + DEFAULT_EXPIRATION_TIMEOUT;
 
             let rx = self
@@ -251,308 +63,49 @@ impl TonServiceImpl {
                 .add_pending_message(account, message_hash, expire_at)?;
 
             let ton_service = Arc::downgrade(self);
-            tokio::spawn(async move {
-                match rx.await {
-                    Ok(MessageStatus::Delivered) => {
-                        log::info!("Successfully sent message `{}`", transaction.message_hash)
-                    }
-                    Ok(MessageStatus::Expired) => {
-                        let ton_service = match ton_service.upgrade() {
-                            Some(ton_service) => ton_service,
-                            None => {
-                                log::error!("TonServiceImpl is already dropped");
-                                return;
-                            }
-                        };
-
-                        if let Err(err) = ton_service
-                            .upsert_sent_transaction(
-                                transaction.message_hash.clone(),
-                                transaction.account_workchain_id,
-                                transaction.account_hex.clone(),
-                                UpdateSendTransaction::error("Expired".to_string()),
-                            )
-                            .await
-                        {
-                            log::error!(
-                                "Failed to upsert expired message `{}` for reason: {:?}",
-                                message_hash.to_hex_string(),
-                                err
-                            )
-                        }
-                    }
-                    Err(err) => {
-                        log::error!(
-                            "Failed to get pending message `{}` for reason: {:?}",
-                            message_hash,
-                            err
-                        )
-                    }
-                }
-            });
+            self.spawn_background_task("Wait message", wait_message(ton_service, transaction, rx));
         }
 
         Ok(())
     }
 
-    async fn notify(
-        &self,
-        service_id: &ServiceId,
-        payload: AccountTransactionEvent,
-        notify_type: NotifyType,
-    ) -> Result<(), ServiceError> {
-        tokio::spawn({
-            let service_id = *service_id;
-            let sqlx_client = Arc::new(self.sqlx_client.clone());
-            let callback_client = self.callback_client.clone();
-
-            async move {
-                if let Ok(url) = sqlx_client.get_callback(service_id).await {
-                    let secret = match sqlx_client
-                        .get_key_by_service_id(&service_id)
-                        .await
-                        .map(|k| k.secret)
-                    {
-                        Ok(secret) => secret,
-                        Err(err) => {
-                            log::error!("Failed sending notify: {:?}", err);
-                            return;
-                        }
-                    };
-
-                    let event_status = match callback_client
-                        .send(url.clone(), payload.clone(), secret)
-                        .await
-                    {
-                        Err(e) => {
-                            log::error!(
-                                "Error on callback sending to {} with payload: {:#?} - {:?}",
-                                url,
-                                payload,
-                                e
-                            );
-                            TonEventStatus::Error
-                        }
-                        Ok(_) => TonEventStatus::Notified,
-                    };
-                    match notify_type {
-                        NotifyType::Transaction => {
-                            if let Err(e) = sqlx_client
-                                .update_event_status_of_transaction_event(
-                                    payload.message_hash.clone(),
-                                    payload.account.workchain_id,
-                                    payload.account.hex.0.clone(),
-                                    event_status,
-                                )
-                                .await
-                            {
-                                log::error!("Error on update event status of transaction event sending with payload: {:#?} , event status: {:#?} - {:?}", payload, event_status, e);
-                            }
-                        }
-                        NotifyType::TokenTransaction => {
-                            if let Err(e) = sqlx_client
-                                .update_event_status_of_token_transaction_event(
-                                    payload.message_hash.clone(),
-                                    payload.account.workchain_id,
-                                    payload.account.hex.0.clone(),
-                                    event_status,
-                                )
-                                .await
-                            {
-                                log::error!("Error on update event status of token transaction event sending with payload: {:#?} , event status: {:#?} - {:?}", payload, event_status, e);
-                            }
-                        }
-                    }
-                }
-            }
-        });
-
-        Ok(())
-    }
-
-    async fn send_transaction_helper(
-        self: &Arc<Self>,
-        message_hash: String,
-        account_hex: String,
-        account_workchain_id: i32,
-        signed_message: SignedMessage,
-        with_db_update: bool,
-    ) -> Result<(), ServiceError> {
-        let account = UInt256::from_be_bytes(
-            &hex::decode(&account_hex).map_err(|err| ServiceError::Other(err.into()))?,
-        );
-
-        let status = self
-            .ton_api_client
-            .send_transaction(account, signed_message)
-            .await?;
-
-        match status {
-            MessageStatus::Delivered => log::info!("Successfully sent message `{}`", message_hash),
-            MessageStatus::Expired => {
-                if with_db_update {
-                    self.upsert_sent_transaction(
-                        message_hash,
-                        account_workchain_id,
-                        account_hex,
-                        UpdateSendTransaction::error("Expired".to_string()),
-                    )
-                    .await?;
-                }
-            }
-        };
-
-        Ok(())
-    }
-
-    async fn send_transaction(
-        self: &Arc<Self>,
-        message_hash: String,
-        account_hex: String,
-        account_workchain_id: i32,
-        signed_message: SignedMessage,
-        non_blocking: bool,
-        handle_status: bool,
-    ) -> Result<(), ServiceError> {
-        let res = if non_blocking {
-            let this = self.clone();
-            self.spawn_background_task("Send transaction", async move {
-                this.send_transaction_helper(
-                    message_hash.clone(),
-                    account_hex.clone(),
-                    account_workchain_id,
-                    signed_message,
-                    handle_status,
-                )
-                .await
-            });
-            Ok(())
-        } else {
-            self.send_transaction_helper(
-                message_hash,
-                account_hex,
-                account_workchain_id,
-                signed_message,
-                handle_status,
-            )
-            .await
-        };
-
-        res
-    }
-
-    async fn deploy_wallet(
-        self: &Arc<Self>,
-        service_id: &ServiceId,
-        address: &AddressDb,
-        public_key: &[u8],
-        private_key: &[u8],
-    ) -> Result<(), ServiceError> {
-        let payload = self
-            .ton_api_client
-            .prepare_deploy(address, public_key, private_key)
-            .await?;
-
-        if let Some((payload, signed_message)) = payload {
-            let (transaction, event) = self
-                .sqlx_client
-                .create_send_transaction(CreateSendTransaction::new(payload, *service_id))
-                .await?;
-
-            self.send_transaction(
-                transaction.message_hash.clone(),
-                transaction.account_hex.clone(),
-                transaction.account_workchain_id,
-                signed_message,
-                false,
-                true,
-            )
-            .await?;
-
-            self.notify(service_id, event.into(), NotifyType::Transaction)
-                .await?;
-        }
-
-        Ok(())
-    }
-
-    /// Waits future in background. In case of error does nothing but logging
-    fn spawn_background_task<F>(self: &Arc<Self>, name: &'static str, fut: F)
-    where
-        F: Future<Output = Result<(), ServiceError>> + Send + 'static,
-    {
-        tokio::spawn(async move {
-            if let Err(e) = fut.await {
-                log::error!("Failed to {}: {:?}", name, e);
-            }
-        });
-    }
-}
-
-#[async_trait]
-impl TonService for TonServiceImpl {
-    async fn create_address(
+    pub async fn create_address(
         &self,
         service_id: &ServiceId,
         input: CreateAddress,
-    ) -> Result<AddressDb, ServiceError> {
-        self.request_count
-            .create_address
-            .fetch_add(1, Ordering::Relaxed);
+    ) -> Result<AddressDb, Error> {
+        let id = Uuid::new_v4();
+        let key = self.key.as_slice().try_into()?;
+        let address = self.ton_api_client.create_address(input).await?;
 
-        let id = uuid::Uuid::new_v4();
-        let payload = self.ton_api_client.create_address(input).await?;
+        let public_key = hex::encode(&address.public_key);
+        let private_key = encrypt_private_key(&address.private_key, key, &id)?;
 
-        let public_key = hex::encode(&payload.public_key);
-        let private_key = encrypt_private_key(
-            &payload.private_key,
-            self.key.as_slice().try_into().trust_me(),
-            &id,
-        )
-        .map_err(|err| {
-            ServiceError::Other(TonServiceError::EncryptPrivateKeyError(err.to_string()).into())
-        })?;
-
-        self.sqlx_client
+        let address = self
+            .sqlx_client
             .create_address(CreateAddressInDb::new(
-                payload,
+                address,
                 id,
                 *service_id,
                 public_key,
                 private_key,
             ))
-            .await
+            .await?;
+
+        Ok(address)
     }
 
-    async fn check_address(&self, address: Address) -> Result<bool, ServiceError> {
+    pub async fn check_address(&self, address: Address) -> Result<bool, Error> {
         Ok(MsgAddressInt::from_str(&address.0).is_ok()
             || (unpack_std_smc_addr(&address.0, false).is_ok())
             || (unpack_std_smc_addr(&address.0, true).is_ok()))
     }
 
-    async fn get_address_balance(
+    pub async fn get_address_balance(
         &self,
         service_id: &ServiceId,
         address: Address,
-    ) -> Result<(AddressDb, NetworkAddressData), ServiceError> {
-        let address = repack_address(&address.0)?;
-        let address_db = self
-            .sqlx_client
-            .get_address(
-                *service_id,
-                address.workchain_id(),
-                address.address().to_hex_string(),
-            )
-            .await?;
-        let network = self.ton_api_client.get_address_info(&address).await?;
-        Ok((address_db, network))
-    }
-
-    async fn get_address_info(
-        &self,
-        service_id: &ServiceId,
-        address: Address,
-    ) -> Result<AddressDb, ServiceError> {
+    ) -> Result<(AddressDb, NetworkAddressData), Error> {
         let account = repack_address(&address.0)?;
         let address = self
             .sqlx_client
@@ -562,40 +115,55 @@ impl TonService for TonServiceImpl {
                 account.address().to_hex_string(),
             )
             .await?;
+        let network = self.ton_api_client.get_address_info(&account).await?;
+
+        Ok((address, network))
+    }
+
+    pub async fn get_address_info(
+        &self,
+        service_id: &ServiceId,
+        address: Address,
+    ) -> Result<AddressDb, Error> {
+        let account = repack_address(&address.0)?;
+        let address = self
+            .sqlx_client
+            .get_address(
+                *service_id,
+                account.workchain_id(),
+                account.address().to_hex_string(),
+            )
+            .await?;
+
         Ok(address)
     }
 
-    async fn create_send_transaction(
-        self: Arc<Self>,
+    pub async fn create_send_transaction(
+        self: &Arc<Self>,
         service_id: &ServiceId,
         input: TransactionSend,
-    ) -> Result<TransactionDb, ServiceError> {
-        self.request_count
-            .send_transaction
-            .fetch_add(1, Ordering::Relaxed);
-
+    ) -> Result<TransactionDb, Error> {
         let address = repack_address(&input.from_address.0)?;
-
         let network = self.ton_api_client.get_address_info(&address).await?;
 
         for transaction_output in input.outputs.iter() {
             let (_, scale) = transaction_output.value.as_bigint_and_exponent();
             if scale != 0 {
-                return Err(ServiceError::WrongInput("Invalid value".to_string()));
+                return Err(TonServiceError::WrongInput.into());
             }
         }
 
-        if input
+        let balance = input
             .outputs
             .iter()
             .map(|o| o.value.clone())
-            .sum::<BigDecimal>()
-            >= network.network_balance
+            .sum::<BigDecimal>();
+        if balance >= network.network_balance
             && input.outputs.iter().all(|o| {
                 o.output_type.is_none() || o.output_type == Some(TransactionSendOutputType::Normal)
             })
         {
-            return Err(ServiceError::WrongInput("Insufficient balance".to_string()));
+            return Err(TonServiceError::InsufficientBalance.into());
         }
 
         let address_db = self
@@ -607,16 +175,10 @@ impl TonService for TonServiceImpl {
             )
             .await?;
 
-        let public_key = hex::decode(address_db.public_key.clone())
-            .map_err(|err| ServiceError::Other(err.into()))?;
-        let private_key = decrypt_private_key(
-            &address_db.private_key,
-            self.key.as_slice().try_into().trust_me(),
-            &address_db.id,
-        )
-        .map_err(|err| {
-            ServiceError::Other(TonServiceError::DecryptPrivateKeyError(err.to_string()).into())
-        })?;
+        let key = self.key.as_slice().try_into()?;
+
+        let public_key = hex::decode(address_db.public_key.clone())?;
+        let private_key = decrypt_private_key(&address_db.private_key, key, &address_db.id)?;
 
         if network.account_status == AccountStatus::UnInit {
             self.deploy_wallet(service_id, &address_db, &public_key, &private_key)
@@ -647,8 +209,7 @@ impl TonService for TonServiceImpl {
             true,
             true,
         )
-        .await
-        .trust_me();
+        .await?;
 
         self.notify(service_id, event.into(), NotifyType::Transaction)
             .await?;
@@ -656,11 +217,11 @@ impl TonService for TonServiceImpl {
         Ok(transaction)
     }
 
-    async fn create_confirm_transaction(
-        self: Arc<Self>,
+    pub async fn create_confirm_transaction(
+        self: &Arc<Self>,
         service_id: &ServiceId,
         input: TransactionConfirm,
-    ) -> Result<TransactionDb, ServiceError> {
+    ) -> Result<TransactionDb, Error> {
         let address = repack_address(&input.address.0)?;
 
         let address_db = self
@@ -673,19 +234,13 @@ impl TonService for TonServiceImpl {
             .await?;
 
         if address_db.account_type != AccountType::SafeMultisig {
-            return Err(ServiceError::WrongInput("Invalid account type".to_string()));
+            return Err(TonServiceError::WrongInput.into());
         }
 
-        let public_key = hex::decode(address_db.public_key.clone())
-            .map_err(|err| ServiceError::Other(err.into()))?;
-        let private_key = decrypt_private_key(
-            &address_db.private_key,
-            self.key.as_slice().try_into().trust_me(),
-            &address_db.id,
-        )
-        .map_err(|err| {
-            ServiceError::Other(TonServiceError::DecryptPrivateKeyError(err.to_string()).into())
-        })?;
+        let key = self.key.as_slice().try_into()?;
+
+        let public_key = hex::decode(address_db.public_key.clone())?;
+        let private_key = decrypt_private_key(&address_db.private_key, key, &address_db.id)?;
 
         let network = self.ton_api_client.get_address_info(&address).await?;
 
@@ -712,8 +267,7 @@ impl TonService for TonServiceImpl {
             true,
             true,
         )
-        .await
-        .trust_me();
+        .await?;
 
         self.notify(service_id, event.into(), NotifyType::Transaction)
             .await?;
@@ -721,14 +275,10 @@ impl TonService for TonServiceImpl {
         Ok(transaction)
     }
 
-    async fn create_receive_transaction(
-        &self,
+    pub async fn create_receive_transaction(
+        self: &Arc<Self>,
         input: CreateReceiveTransaction,
-    ) -> Result<TransactionDb, ServiceError> {
-        self.request_count
-            .recv_transaction
-            .fetch_add(1, Ordering::Relaxed);
-
+    ) -> Result<TransactionDb, Error> {
         let address = self
             .sqlx_client
             .get_address_by_workchain_hex(input.account_workchain_id, input.account_hex.clone())
@@ -745,13 +295,13 @@ impl TonService for TonServiceImpl {
         Ok(transaction)
     }
 
-    async fn upsert_sent_transaction(
-        &self,
+    pub async fn upsert_sent_transaction(
+        self: &Arc<Self>,
         message_hash: String,
         account_workchain_id: i32,
         account_hex: String,
         input: UpdateSendTransaction,
-    ) -> Result<TransactionDb, ServiceError> {
+    ) -> Result<TransactionDb, Error> {
         let address = self
             .sqlx_client
             .get_address_by_workchain_hex(account_workchain_id, account_hex.clone())
@@ -774,13 +324,13 @@ impl TonService for TonServiceImpl {
         Ok(transaction)
     }
 
-    async fn update_token_transaction(
-        &self,
+    pub async fn update_token_transaction(
+        self: &Arc<Self>,
         owner_message_hash: String,
         account_workchain_id: i32,
         account_hex: String,
-        messages_hash: Option<serde_json::Value>,
-    ) -> Result<(), ServiceError> {
+        messages_hash: Option<Value>,
+    ) -> Result<(), Error> {
         if let Some(messages_hash) = messages_hash {
             let messages_hash: Vec<String> = serde_json::from_value(messages_hash.clone())?;
 
@@ -813,141 +363,175 @@ impl TonService for TonServiceImpl {
         Ok(())
     }
 
-    async fn get_transaction_by_mh(
+    pub async fn get_transaction_by_mh(
         &self,
         service_id: &ServiceId,
         message_hash: &str,
-    ) -> Result<TransactionDb, ServiceError> {
-        self.sqlx_client
+    ) -> Result<TransactionDb, Error> {
+        let transaction = self
+            .sqlx_client
             .get_transaction_by_mh(*service_id, message_hash)
-            .await
+            .await?;
+
+        Ok(transaction)
     }
 
-    async fn get_transaction_by_h(
+    pub async fn get_transaction_by_h(
         &self,
         service_id: &ServiceId,
         transaction_hash: &str,
-    ) -> Result<TransactionDb, ServiceError> {
-        self.sqlx_client
+    ) -> Result<TransactionDb, Error> {
+        let transaction = self
+            .sqlx_client
             .get_transaction_by_h(*service_id, transaction_hash)
-            .await
+            .await?;
+
+        Ok(transaction)
     }
 
-    async fn get_transaction_by_id(
-        &self,
-        service_id: &ServiceId,
-        id: &uuid::Uuid,
-    ) -> Result<TransactionDb, ServiceError> {
-        self.sqlx_client
-            .get_transaction_by_id(*service_id, id)
-            .await
-    }
-
-    async fn get_event_by_id(
-        &self,
-        service_id: &ServiceId,
-        id: &uuid::Uuid,
-    ) -> Result<TransactionEventDb, ServiceError> {
-        self.sqlx_client.get_event_by_id(*service_id, id).await
-    }
-
-    async fn search_transaction(
-        &self,
-        service_id: &ServiceId,
-        payload: &TransactionsSearch,
-    ) -> Result<Vec<TransactionDb>, ServiceError> {
-        self.sqlx_client
-            .get_all_transactions(*service_id, payload)
-            .await
-    }
-
-    async fn search_events(
-        &self,
-        service_id: &ServiceId,
-        payload: &TransactionsEventsSearch,
-    ) -> Result<Vec<TransactionEventDb>, ServiceError> {
-        self.sqlx_client
-            .get_all_transaction_events(*service_id, payload)
-            .await
-    }
-
-    async fn mark_event(
+    pub async fn get_transaction_by_id(
         &self,
         service_id: &ServiceId,
         id: &Uuid,
-    ) -> Result<TransactionEventDb, ServiceError> {
-        self.sqlx_client
+    ) -> Result<TransactionDb, Error> {
+        let transaction = self
+            .sqlx_client
+            .get_transaction_by_id(*service_id, id)
+            .await?;
+
+        Ok(transaction)
+    }
+
+    pub async fn get_event_by_id(
+        &self,
+        service_id: &ServiceId,
+        id: &Uuid,
+    ) -> Result<TransactionEventDb, Error> {
+        let event = self.sqlx_client.get_event_by_id(*service_id, id).await?;
+        Ok(event)
+    }
+
+    pub async fn search_transaction(
+        &self,
+        service_id: &ServiceId,
+        payload: &TransactionsSearch,
+    ) -> Result<Vec<TransactionDb>, Error> {
+        let transaction = self
+            .sqlx_client
+            .get_all_transactions(*service_id, payload)
+            .await?;
+
+        Ok(transaction)
+    }
+
+    pub async fn search_events(
+        &self,
+        service_id: &ServiceId,
+        payload: &TransactionsEventsSearch,
+    ) -> Result<Vec<TransactionEventDb>, Error> {
+        let events = self
+            .sqlx_client
+            .get_all_transaction_events(*service_id, payload)
+            .await?;
+
+        Ok(events)
+    }
+
+    pub async fn mark_event(
+        &self,
+        service_id: &ServiceId,
+        id: &Uuid,
+    ) -> Result<TransactionEventDb, Error> {
+        let event = self
+            .sqlx_client
             .update_event_status_of_transaction_event_by_id(
                 *service_id,
                 *id,
                 TonEventStatus::Notified,
             )
-            .await
+            .await?;
+
+        Ok(event)
     }
 
-    async fn mark_all_events(
+    pub async fn mark_all_events(
         &self,
         service_id: &ServiceId,
         event_status: Option<TonEventStatus>,
-    ) -> Result<Vec<TransactionEventDb>, ServiceError> {
-        self.sqlx_client
+    ) -> Result<Vec<TransactionEventDb>, Error> {
+        let events = self
+            .sqlx_client
             .update_event_status_of_transactions_event_by_status(
                 *service_id,
                 event_status,
                 TonEventStatus::Notified,
             )
-            .await
+            .await?;
+
+        Ok(events)
     }
 
-    async fn get_tokens_transaction_by_mh(
+    pub async fn get_tokens_transaction_by_mh(
         &self,
         service_id: &ServiceId,
         message_hash: &str,
-    ) -> Result<TokenTransactionFromDb, ServiceError> {
-        self.sqlx_client
+    ) -> Result<TokenTransactionFromDb, Error> {
+        let transaction = self
+            .sqlx_client
             .get_token_transaction_by_mh(*service_id, message_hash)
-            .await
+            .await?;
+
+        Ok(transaction)
     }
 
-    async fn get_tokens_transaction_by_id(
-        &self,
-        service_id: &ServiceId,
-        id: &uuid::Uuid,
-    ) -> Result<TokenTransactionFromDb, ServiceError> {
-        self.sqlx_client
-            .get_token_transaction_by_id(*service_id, id)
-            .await
-    }
-
-    async fn search_token_events(
-        &self,
-        service_id: &ServiceId,
-        payload: &TokenTransactionsEventsSearch,
-    ) -> Result<Vec<TokenTransactionEventDb>, ServiceError> {
-        self.sqlx_client
-            .get_all_token_transaction_events(*service_id, payload)
-            .await
-    }
-
-    async fn mark_token_event(
+    pub async fn get_tokens_transaction_by_id(
         &self,
         service_id: &ServiceId,
         id: &Uuid,
-    ) -> Result<TokenTransactionEventDb, ServiceError> {
-        self.sqlx_client
+    ) -> Result<TokenTransactionFromDb, Error> {
+        let transaction = self
+            .sqlx_client
+            .get_token_transaction_by_id(*service_id, id)
+            .await?;
+
+        Ok(transaction)
+    }
+
+    pub async fn search_token_events(
+        &self,
+        service_id: &ServiceId,
+        payload: &TokenTransactionsEventsSearch,
+    ) -> Result<Vec<TokenTransactionEventDb>, Error> {
+        let events = self
+            .sqlx_client
+            .get_all_token_transaction_events(*service_id, payload)
+            .await?;
+
+        Ok(events)
+    }
+
+    pub async fn mark_token_event(
+        &self,
+        service_id: &ServiceId,
+        id: &Uuid,
+    ) -> Result<TokenTransactionEventDb, Error> {
+        let event = self
+            .sqlx_client
             .update_event_status_of_token_transaction_event_by_id(
                 *service_id,
                 *id,
                 TonEventStatus::Notified,
             )
-            .await
+            .await?;
+
+        Ok(event)
     }
 
-    async fn get_token_address_balance(
+    pub async fn get_token_address_balance(
         &self,
         service_id: &ServiceId,
         address: &Address,
-    ) -> Result<Vec<(TokenBalanceFromDb, NetworkTokenAddressData)>, ServiceError> {
+    ) -> Result<Vec<(TokenBalanceFromDb, NetworkTokenAddressData)>, Error> {
         let account = repack_address(&address.0)?;
         let balances = self
             .sqlx_client
@@ -958,7 +542,7 @@ impl TonService for TonServiceImpl {
             )
             .await?;
 
-        let mut result = vec![];
+        let mut result = Vec::with_capacity(balances.len());
         for balance in balances {
             let root_address = repack_address(&balance.root_address)?;
 
@@ -967,33 +551,20 @@ impl TonService for TonServiceImpl {
                 .get_token_address_info(&account, &root_address)
                 .await?;
 
-            if network.account_status == AccountStatus::UnInit {
-                return Err(ServiceError::Other(
-                    TonServiceError::AccountNotExist(format!(
-                        "{}:{}",
-                        network.workchain_id, network.hex
-                    ))
-                    .into(),
-                ));
-            }
-
             result.push((balance, network));
         }
+
         Ok(result)
     }
 
-    async fn create_send_token_transaction(
-        self: Arc<Self>,
+    pub async fn create_send_token_transaction(
+        self: &Arc<Self>,
         service_id: &ServiceId,
         input: &TokenTransactionSend,
-    ) -> Result<TransactionDb, ServiceError> {
-        self.request_count
-            .send_token_transaction
-            .fetch_add(1, Ordering::Relaxed);
-
+    ) -> Result<TransactionDb, Error> {
         let (_, scale) = input.value.as_bigint_and_exponent();
         if scale != 0 {
-            return Err(ServiceError::WrongInput("Invalid token value".to_string()));
+            return Err(TonServiceError::WrongInput.into());
         }
 
         let owner = repack_address(&input.from_address.0)?;
@@ -1007,10 +578,12 @@ impl TonService for TonServiceImpl {
             .await?;
 
         if address_db.balance < input.fee {
-            return Err(ServiceError::WrongInput(format!(
+            log::error!(
                 "Address balance is not enough to pay fee for token transfer. Balance: {}. Fee: {}",
-                address_db.balance, input.fee
-            )));
+                address_db.balance,
+                input.fee
+            );
+            return Err(TonServiceError::InsufficientBalance.into());
         }
 
         let token_balance = self
@@ -1021,28 +594,21 @@ impl TonService for TonServiceImpl {
                 owner.address().to_hex_string(),
                 input.root_address.0.clone(),
             )
-            .await
-            .map_err(|_| {
-                ServiceError::WrongInput("Token wallet is not deployed yet".to_string())
-            })?;
+            .await?;
 
         if token_balance.balance < input.value {
-            return Err(ServiceError::WrongInput(format!(
+            log::error!(
                 "Token balance is not enough to make request; Balance: {}. Sent amount: {}",
-                token_balance.balance, input.value
-            )));
+                token_balance.balance,
+                input.value
+            );
+            return Err(TonServiceError::InsufficientBalance.into());
         }
 
-        let public_key = hex::decode(address_db.public_key.clone())
-            .map_err(|err| ServiceError::Other(err.into()))?;
-        let private_key = decrypt_private_key(
-            &address_db.private_key,
-            self.key.as_slice().try_into().trust_me(),
-            &address_db.id,
-        )
-        .map_err(|err| {
-            ServiceError::Other(TonServiceError::DecryptPrivateKeyError(err.to_string()).into())
-        })?;
+        let key = self.key.as_slice().try_into()?;
+
+        let public_key = hex::decode(address_db.public_key.clone())?;
+        let private_key = decrypt_private_key(&address_db.private_key, key, &address_db.id)?;
 
         let owner_network = self.ton_api_client.get_address_info(&owner).await?;
 
@@ -1075,8 +641,7 @@ impl TonService for TonServiceImpl {
             true,
             true,
         )
-        .await
-        .trust_me();
+        .await?;
 
         self.notify(service_id, event.into(), NotifyType::Transaction)
             .await?;
@@ -1084,18 +649,14 @@ impl TonService for TonServiceImpl {
         Ok(transaction)
     }
 
-    async fn create_burn_token_transaction(
-        self: Arc<Self>,
+    pub async fn create_burn_token_transaction(
+        self: &Arc<Self>,
         service_id: &ServiceId,
         input: &TokenTransactionBurn,
-    ) -> Result<TransactionDb, ServiceError> {
-        self.request_count
-            .send_token_transaction
-            .fetch_add(1, Ordering::Relaxed);
-
+    ) -> Result<TransactionDb, Error> {
         let (_, scale) = input.value.as_bigint_and_exponent();
         if scale != 0 {
-            return Err(ServiceError::WrongInput("Invalid token value".to_string()));
+            return Err(TonServiceError::WrongInput.into());
         }
 
         let owner = repack_address(&input.from_address.0)?;
@@ -1109,10 +670,12 @@ impl TonService for TonServiceImpl {
             .await?;
 
         if address_db.balance < input.fee {
-            return Err(ServiceError::WrongInput(format!(
+            log::error!(
                 "Address balance is not enough to pay fee for token transfer. Balance: {}. Fee: {}",
-                address_db.balance, input.fee
-            )));
+                address_db.balance,
+                input.fee
+            );
+            return Err(TonServiceError::InsufficientBalance.into());
         }
 
         let token_balance = self
@@ -1123,28 +686,21 @@ impl TonService for TonServiceImpl {
                 owner.address().to_hex_string(),
                 input.root_address.0.clone(),
             )
-            .await
-            .map_err(|_| {
-                ServiceError::WrongInput("Token wallet is not deployed yet".to_string())
-            })?;
+            .await?;
 
         if token_balance.balance < input.value {
-            return Err(ServiceError::WrongInput(format!(
+            log::error!(
                 "Token balance is not enough to make request; Balance: {}. Sent amount: {}",
-                token_balance.balance, input.value
-            )));
+                token_balance.balance,
+                input.value
+            );
+            return Err(TonServiceError::InsufficientBalance.into());
         }
 
-        let public_key = hex::decode(address_db.public_key.clone())
-            .map_err(|err| ServiceError::Other(err.into()))?;
-        let private_key = decrypt_private_key(
-            &address_db.private_key,
-            self.key.as_slice().try_into().trust_me(),
-            &address_db.id,
-        )
-        .map_err(|err| {
-            ServiceError::Other(TonServiceError::DecryptPrivateKeyError(err.to_string()).into())
-        })?;
+        let key = self.key.as_slice().try_into()?;
+
+        let public_key = hex::decode(address_db.public_key.clone())?;
+        let private_key = decrypt_private_key(&address_db.private_key, key, &address_db.id)?;
 
         let owner_network = self.ton_api_client.get_address_info(&owner).await?;
 
@@ -1177,8 +733,7 @@ impl TonService for TonServiceImpl {
             true,
             true,
         )
-        .await
-        .trust_me();
+        .await?;
 
         self.notify(service_id, event.into(), NotifyType::Transaction)
             .await?;
@@ -1186,25 +741,19 @@ impl TonService for TonServiceImpl {
         Ok(transaction)
     }
 
-    async fn create_mint_token_transaction(
-        self: Arc<Self>,
+    pub async fn create_mint_token_transaction(
+        self: &Arc<Self>,
         service_id: &ServiceId,
         input: &TokenTransactionMint,
-    ) -> Result<TransactionDb, ServiceError> {
-        self.request_count
-            .send_token_transaction
-            .fetch_add(1, Ordering::Relaxed);
-
+    ) -> Result<TransactionDb, Error> {
         let (_, scale) = input.value.as_bigint_and_exponent();
         if scale != 0 {
-            return Err(ServiceError::WrongInput("Invalid token value".to_string()));
+            return Err(TonServiceError::WrongInput.into());
         }
 
         let (_, scale) = input.deploy_wallet_value.as_bigint_and_exponent();
         if scale != 0 {
-            return Err(ServiceError::WrongInput(
-                "Invalid deploy wallet value".to_string(),
-            ));
+            return Err(TonServiceError::WrongInput.into());
         }
 
         let owner = repack_address(&input.owner_address.0)?;
@@ -1218,22 +767,18 @@ impl TonService for TonServiceImpl {
             .await?;
 
         if address_db.balance < input.fee {
-            return Err(ServiceError::WrongInput(format!(
+            log::error!(
                 "Address balance is not enough to pay fee for token transfer. Balance: {}. Fee: {}",
-                address_db.balance, input.fee
-            )));
+                address_db.balance,
+                input.fee
+            );
+            return Err(TonServiceError::InsufficientBalance.into());
         }
 
-        let public_key = hex::decode(address_db.public_key.clone())
-            .map_err(|err| ServiceError::Other(err.into()))?;
-        let private_key = decrypt_private_key(
-            &address_db.private_key,
-            self.key.as_slice().try_into().trust_me(),
-            &address_db.id,
-        )
-        .map_err(|err| {
-            ServiceError::Other(TonServiceError::DecryptPrivateKeyError(err.to_string()).into())
-        })?;
+        let key = self.key.as_slice().try_into()?;
+
+        let public_key = hex::decode(address_db.public_key.clone())?;
+        let private_key = decrypt_private_key(&address_db.private_key, key, &address_db.id)?;
 
         let (payload, signed_message) = self
             .ton_api_client
@@ -1259,8 +804,7 @@ impl TonService for TonServiceImpl {
             true,
             true,
         )
-        .await
-        .trust_me();
+        .await?;
 
         self.notify(service_id, event.into(), NotifyType::Transaction)
             .await?;
@@ -1268,14 +812,10 @@ impl TonService for TonServiceImpl {
         Ok(transaction)
     }
 
-    async fn create_receive_token_transaction(
-        &self,
+    pub async fn create_receive_token_transaction(
+        self: &Arc<Self>,
         input: CreateTokenTransaction,
-    ) -> Result<TokenTransactionFromDb, ServiceError> {
-        self.request_count
-            .recv_token_transaction
-            .fetch_add(1, Ordering::Relaxed);
-
+    ) -> Result<TokenTransactionFromDb, Error> {
         let address = self
             .sqlx_client
             .get_address_by_workchain_hex(input.account_workchain_id, input.account_hex.clone())
@@ -1300,67 +840,147 @@ impl TonService for TonServiceImpl {
         Ok(transaction)
     }
 
-    async fn get_metrics(&self) -> Result<Metrics, ServiceError> {
-        Ok(self.ton_api_client.get_metrics().await?)
+    pub async fn get_metrics(&self) -> Result<Metrics, Error> {
+        let metrics = self.ton_api_client.get_metrics().await?;
+        Ok(metrics)
     }
 
-    async fn execute_contract_function(
-        &self,
+    pub async fn execute_contract_function(
+        self: &Arc<Self>,
         account_addr: &str,
         function_name: &str,
         inputs: Vec<InputParam>,
         outputs: Vec<Param>,
         headers: Vec<Param>,
-    ) -> Result<Value, ServiceError> {
+    ) -> Result<Value, Error> {
         let account_addr = UInt256::from_str(account_addr)?;
 
         let input_params: Vec<Param> = inputs.iter().map(|x| x.param.clone()).collect();
 
         let function = nekoton_abi::FunctionBuilder::new(function_name)
-            .abi_version(ton_abi::contract::ABI_VERSION_2_2)
+            .abi_version(ABI_VERSION_2_2)
             .headers(headers)
             .inputs(input_params)
             .outputs(outputs)
             .build();
 
-        let result: Vec<ton_abi::Token> = match parse_abi_tokens(inputs) {
-            Ok(tokens) => {
-                let output: ExecutionOutput = match self
-                    .ton_api_client
-                    .run_local(account_addr, function, tokens.as_slice())
-                    .await
-                {
-                    Ok(Some(output)) => output,
-                    Ok(None) => {
-                        return Err(ServiceError::Other(anyhow::Error::msg(
-                            "Failed to get execution output",
-                        )))
-                    }
-                    Err(err) => return Err(ServiceError::Other(err)),
-                };
-
-                match output.tokens {
-                    Some(tokens) => {
-                        if tokens.is_empty() {
-                            log::warn!("No response tokens in execution output")
-                        }
-                        tokens
-                    }
-                    None => {
-                        return Err(ServiceError::Other(anyhow::Error::msg(
-                            "Failed to get execution output. No response tokens",
-                        )))
-                    }
-                }
-            }
-            Err(e) => return Err(ServiceError::Other(anyhow::Error::from(e))),
+        let input = parse_abi_tokens(inputs)?;
+        let output = match self
+            .ton_api_client
+            .run_local(account_addr, function, input.as_slice())
+            .await?
+        {
+            Some(output) => output,
+            None => return Err(TonServiceError::ExecuteContract.into()),
         };
 
-        nekoton_abi::make_abi_tokens(result.as_slice()).map_err(ServiceError::Other)
+        let tokens = match output.tokens {
+            Some(tokens) => {
+                if tokens.is_empty() {
+                    log::warn!("No response tokens in execution output")
+                }
+                tokens
+            }
+            None => return Err(TonServiceError::ExecuteContract.into()),
+        };
+
+        let res = nekoton_abi::make_abi_tokens(tokens.as_slice())?;
+        Ok(res)
+    }
+
+    async fn notify(
+        self: &Arc<Self>,
+        service_id: &ServiceId,
+        payload: AccountTransactionEvent,
+        notify_type: NotifyType,
+    ) -> Result<(), Error> {
+        let ton_service = Arc::downgrade(self);
+        self.spawn_background_task(
+            "Send notification",
+            send_notification(ton_service, *service_id, notify_type, payload),
+        );
+
+        Ok(())
+    }
+
+    async fn send_transaction(
+        self: &Arc<Self>,
+        message_hash: String,
+        account_hex: String,
+        account_workchain_id: i32,
+        signed_message: SignedMessage,
+        non_blocking: bool,
+        with_db_update: bool,
+    ) -> Result<(), Error> {
+        let ton_service = Arc::downgrade(self);
+
+        match non_blocking {
+            false => {
+                send_transaction(
+                    ton_service,
+                    message_hash,
+                    account_hex,
+                    account_workchain_id,
+                    signed_message,
+                    with_db_update,
+                )
+                .await?
+            }
+            true => {
+                self.spawn_background_task(
+                    "Send transaction",
+                    send_transaction(
+                        ton_service,
+                        message_hash,
+                        account_hex,
+                        account_workchain_id,
+                        signed_message,
+                        with_db_update,
+                    ),
+                );
+            }
+        }
+
+        Ok(())
+    }
+
+    async fn deploy_wallet(
+        self: &Arc<Self>,
+        service_id: &ServiceId,
+        address: &AddressDb,
+        public_key: &[u8],
+        private_key: &[u8],
+    ) -> Result<(), Error> {
+        let payload = self
+            .ton_api_client
+            .prepare_deploy(address, public_key, private_key)
+            .await?;
+
+        if let Some((payload, signed_message)) = payload {
+            let (transaction, event) = self
+                .sqlx_client
+                .create_send_transaction(CreateSendTransaction::new(payload, *service_id))
+                .await?;
+
+            self.send_transaction(
+                transaction.message_hash,
+                transaction.account_hex,
+                transaction.account_workchain_id,
+                signed_message,
+                false,
+                true,
+            )
+            .await?;
+
+            self.notify(service_id, event.into(), NotifyType::Transaction)
+                .await?;
+        }
+
+        Ok(())
     }
 
     async fn prepare_generic_message(
-        &self,
+        self: &Arc<Self>,
         sender_addr: &str,
         public_key: &[u8],
         target_addr: &str,
@@ -1370,11 +990,11 @@ impl TonService for TonServiceImpl {
         account_type: &AccountType,
         custodians: &Option<i32>,
         function_details: Option<FunctionDetails>,
-    ) -> Result<Box<dyn UnsignedMessage>, ServiceError> {
+    ) -> Result<Box<dyn UnsignedMessage>, Error> {
         let (function, values) = match function_details {
             Some(details) => {
                 let function = nekoton_abi::FunctionBuilder::new(&details.function_name)
-                    .abi_version(ton_abi::contract::ABI_VERSION_2_2)
+                    .abi_version(ABI_VERSION_2_2)
                     .headers(details.headers)
                     .inputs(
                         details
@@ -1409,10 +1029,11 @@ impl TonService for TonServiceImpl {
                 values,
             )
             .await?;
+
         Ok(result)
     }
 
-    fn encode_tvm_cell(&self, data: Vec<InputParam>) -> Result<String, ServiceError> {
+    fn encode_tvm_cell(&self, data: Vec<InputParam>) -> Result<String, Error> {
         let mut tokens: Vec<Token> = Vec::new();
         for d in data {
             let token_value =
@@ -1430,17 +1051,16 @@ impl TonService for TonServiceImpl {
             )?
         };
         let cell = initial.into_cell()?;
-        Ok(base64::encode(cell.write_to_bytes().unwrap()))
+        Ok(base64::encode(cell.write_to_bytes()?))
     }
 
     async fn send_signed_message(
-        self: Arc<Self>,
+        self: &Arc<Self>,
         sender_addr: String,
         hash: String,
         msg: SignedMessage,
-    ) -> Result<String, ServiceError> {
-        let addr = MsgAddressInt::from_str(&sender_addr)
-            .map_err(|_| ServiceError::WrongInput("Bad sender addr".to_string()))?;
+    ) -> Result<String, Error> {
+        let addr = MsgAddressInt::from_str(&sender_addr)?;
         self.ton_api_client
             .add_ton_account_subscription(addr.hash()?);
 
@@ -1454,22 +1074,143 @@ impl TonService for TonServiceImpl {
         )
         .await?;
 
-        let hash = msg
-            .message
-            .hash()
-            .map(|x| x.to_hex_string())
-            .map_err(ServiceError::Other)?;
+        let hash = msg.message.hash().map(|x| x.to_hex_string())?;
+
         Ok(hash)
+    }
+
+    /// Waits future in background. In case of error does nothing but logging
+    fn spawn_background_task<F>(self: &Arc<Self>, name: &'static str, fut: F)
+    where
+        F: Future<Output = Result<(), Error>> + Send + 'static,
+    {
+        tokio::spawn(async move {
+            if let Err(e) = fut.await {
+                log::error!("Failed to {}: {:?}", name, e);
+            }
+        });
     }
 }
 
-fn parse_abi_tokens(params: Vec<InputParam>) -> Result<Vec<ton_abi::Token>, ServiceError> {
-    let mut tokens = Vec::<ton_abi::Token>::new();
-    for i in params {
-        match nekoton_abi::parse_abi_token(&i.param, i.value) {
-            Ok(token) => tokens.push(token),
-            Err(e) => return Err(ServiceError::Other(anyhow::Error::from(e))),
+async fn wait_message(
+    ton_service: Weak<TonService>,
+    transaction: TransactionDb,
+    rx: tokio::sync::oneshot::Receiver<MessageStatus>,
+) -> Result<(), Error> {
+    match rx.await? {
+        MessageStatus::Delivered => {
+            log::info!("Successfully sent message `{}`", transaction.message_hash)
         }
+        MessageStatus::Expired => {
+            let ton_service = match ton_service.upgrade() {
+                Some(ton_service) => ton_service,
+                None => return Err(TonServiceError::ServiceUnavailable.into()),
+            };
+
+            ton_service
+                .upsert_sent_transaction(
+                    transaction.message_hash,
+                    transaction.account_workchain_id,
+                    transaction.account_hex,
+                    UpdateSendTransaction::error("Expired".to_string()),
+                )
+                .await?;
+        }
+    }
+
+    Ok(())
+}
+
+async fn send_notification(
+    ton_service: Weak<TonService>,
+    service_id: ServiceId,
+    notify_type: NotifyType,
+    payload: AccountTransactionEvent,
+) -> Result<(), Error> {
+    let ton_service = match ton_service.upgrade() {
+        Some(ton_service) => ton_service,
+        None => return Err(TonServiceError::ServiceUnavailable.into()),
+    };
+
+    let sqlx_client = &ton_service.sqlx_client;
+    let callback_client = &ton_service.callback_client;
+
+    let url = sqlx_client.get_callback(service_id).await?;
+    let secret = sqlx_client
+        .get_key_by_service_id(&service_id)
+        .await
+        .map(|k| k.secret)?;
+
+    let event_status = match callback_client.send(url, payload.clone(), secret).await {
+        Err(_) => TonEventStatus::Error,
+        Ok(_) => TonEventStatus::Notified,
+    };
+
+    match notify_type {
+        NotifyType::Transaction => {
+            sqlx_client
+                .update_event_status_of_transaction_event(
+                    payload.message_hash,
+                    payload.account.workchain_id,
+                    payload.account.hex.into(),
+                    event_status,
+                )
+                .await?;
+        }
+        NotifyType::TokenTransaction => {
+            sqlx_client
+                .update_event_status_of_token_transaction_event(
+                    payload.message_hash,
+                    payload.account.workchain_id,
+                    payload.account.hex.into(),
+                    event_status,
+                )
+                .await?;
+        }
+    }
+
+    Ok(())
+}
+
+async fn send_transaction(
+    ton_service: Weak<TonService>,
+    message_hash: String,
+    account_hex: String,
+    account_workchain_id: i32,
+    signed_message: SignedMessage,
+    with_db_update: bool,
+) -> Result<(), Error> {
+    let ton_service = match ton_service.upgrade() {
+        Some(ton_service) => ton_service,
+        None => return Err(TonServiceError::ServiceUnavailable.into()),
+    };
+
+    let account = UInt256::from_be_bytes(&hex::decode(&account_hex)?);
+
+    let status = ton_service
+        .ton_api_client
+        .send_transaction(account, signed_message)
+        .await?;
+
+    if status == MessageStatus::Expired && with_db_update {
+        ton_service
+            .upsert_sent_transaction(
+                message_hash,
+                account_workchain_id,
+                account_hex,
+                UpdateSendTransaction::error("Expired".to_string()),
+            )
+            .await?;
+    }
+
+    Ok(())
+}
+
+fn parse_abi_tokens(params: Vec<InputParam>) -> Result<Vec<Token>, Error> {
+    let mut tokens = Vec::<Token>::new();
+    for i in params {
+        let token = nekoton_abi::parse_abi_token(&i.param, i.value)?;
+        tokens.push(token);
     }
 
     Ok(tokens)
@@ -1480,30 +1221,27 @@ enum NotifyType {
     TokenTransaction,
 }
 
-#[derive(Default)]
-struct RequestCount {
-    create_address: AtomicU64,
-    send_transaction: AtomicU64,
-    recv_transaction: AtomicU64,
-    send_token_transaction: AtomicU64,
-    recv_token_transaction: AtomicU64,
-}
-
-#[derive(Debug, Copy, Clone, Eq, PartialEq)]
-pub struct ClientServiceMetrics {
-    pub create_address_count: u64,
-    pub send_transaction_count: u64,
-    pub recv_transaction_count: u64,
-    pub send_token_transaction_count: u64,
-    pub recv_token_transaction_count: u64,
-}
-
 #[derive(thiserror::Error, Debug)]
-enum TonServiceError {
-    #[error("Account not exist: {0}")]
-    AccountNotExist(String),
-    #[error("Failed to encrypt private key: {0}")]
-    EncryptPrivateKeyError(String),
-    #[error("Failed to decrypt private key: {0}")]
-    DecryptPrivateKeyError(String),
+pub enum TonServiceError {
+    #[error("Invalid request")]
+    WrongInput,
+    #[error("Service unavailable")]
+    ServiceUnavailable,
+    #[error("Insufficient balance")]
+    InsufficientBalance,
+    #[error("Execute contract")]
+    ExecuteContract,
+}
+
+impl TonServiceError {
+    pub fn status_code(&self) -> StatusCode {
+        match self {
+            TonServiceError::WrongInput | TonServiceError::InsufficientBalance => {
+                StatusCode::BAD_REQUEST
+            }
+            TonServiceError::ServiceUnavailable | TonServiceError::ExecuteContract => {
+                StatusCode::INTERNAL_SERVER_ERROR
+            }
+        }
+    }
 }

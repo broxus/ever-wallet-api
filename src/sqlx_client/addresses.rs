@@ -1,12 +1,10 @@
+use anyhow::Result;
+
 use crate::models::*;
-use crate::prelude::*;
 use crate::sqlx_client::*;
 
 impl SqlxClient {
-    pub async fn create_address(
-        &self,
-        payload: CreateAddressInDb,
-    ) -> Result<AddressDb, ServiceError> {
+    pub async fn create_address(&self, payload: CreateAddressInDb) -> Result<AddressDb> {
         sqlx::query_as!(AddressDb,
                 r#"INSERT INTO address
                 (id, service_id, workchain_id, hex, base64url, public_key, private_key, account_type, custodians, confirmations, custodians_public_keys)
@@ -36,7 +34,7 @@ impl SqlxClient {
         service_id: ServiceId,
         workchain_id: i32,
         hex: String,
-    ) -> Result<AddressDb, ServiceError> {
+    ) -> Result<AddressDb> {
         sqlx::query_as!(AddressDb,
                 r#"SELECT id, service_id as "service_id: _", workchain_id, hex, base64url, public_key, private_key, account_type as "account_type: _", custodians, confirmations, custodians_public_keys, balance, created_at, updated_at
                 FROM address
@@ -54,7 +52,7 @@ impl SqlxClient {
         &self,
         workchain_id: i32,
         hex: String,
-    ) -> Result<AddressDb, ServiceError> {
+    ) -> Result<AddressDb> {
         sqlx::query_as!(AddressDb,
                 r#"SELECT id, service_id as "service_id: _", workchain_id, hex, base64url, public_key, private_key, account_type as "account_type: _", custodians, confirmations, custodians_public_keys, balance, created_at, updated_at
                 FROM address
@@ -67,7 +65,7 @@ impl SqlxClient {
             .map_err(From::from)
     }
 
-    pub async fn get_all_addresses(&self) -> Result<Vec<AddressDb>, ServiceError> {
+    pub async fn get_all_addresses(&self) -> Result<Vec<AddressDb>> {
         sqlx::query_as!(AddressDb,
                 r#"SELECT id, service_id as "service_id: _", workchain_id, hex, base64url, public_key, private_key, account_type as "account_type: _", custodians, confirmations, custodians_public_keys, balance, created_at, updated_at
                 FROM address"#

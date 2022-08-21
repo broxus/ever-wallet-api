@@ -1,8 +1,8 @@
+use anyhow::Result;
 use chrono::prelude::*;
 use uuid::Uuid;
 
 use crate::models::*;
-use crate::prelude::*;
 use crate::sqlx_client::*;
 
 use itertools::Itertools;
@@ -15,8 +15,8 @@ impl SqlxClient {
     pub async fn create_send_transaction(
         &self,
         payload: CreateSendTransaction,
-    ) -> Result<(TransactionDb, TransactionEventDb), ServiceError> {
-        let mut tx = self.pool.begin().await.map_err(ServiceError::from)?;
+    ) -> Result<(TransactionDb, TransactionEventDb)> {
+        let mut tx = self.pool.begin().await?;
         let transaction = sqlx::query_as!(TransactionDb,
                 r#"
             INSERT INTO transactions
@@ -39,8 +39,7 @@ impl SqlxClient {
                 payload.bounce,
             )
             .fetch_one(&mut tx)
-            .await
-            .map_err(ServiceError::from)?;
+            .await?;
 
         let payload = CreateSendTransactionEvent::new(transaction.clone());
 
@@ -74,10 +73,9 @@ impl SqlxClient {
                 payload.event_status as TonEventStatus
             )
             .fetch_one(&mut tx)
-            .await
-            .map_err(ServiceError::from)?;
+            .await?;
 
-        tx.commit().await.map_err(ServiceError::from)?;
+        tx.commit().await?;
 
         Ok((transaction, event))
     }
@@ -89,8 +87,8 @@ impl SqlxClient {
         account_workchain_id: i32,
         account_hex: String,
         payload: UpdateSendTransaction,
-    ) -> Result<(TransactionDb, TransactionEventDb), ServiceError> {
-        let mut tx = self.pool.begin().await.map_err(ServiceError::from)?;
+    ) -> Result<(TransactionDb, TransactionEventDb)> {
+        let mut tx = self.pool.begin().await?;
 
         let updated_at = Utc::now().naive_utc();
 
@@ -146,8 +144,7 @@ impl SqlxClient {
                     account_hex,
                 )
                     .fetch_one(&mut tx)
-                    .await
-                    .map_err(ServiceError::from)?;
+                    .await?;
 
                 let payload = CreateSendTransactionEvent::new(transaction.clone());
 
@@ -186,8 +183,7 @@ impl SqlxClient {
                     updated_at,
                 )
                     .fetch_one(&mut tx)
-                    .await
-                    .map_err(ServiceError::from)?;
+                    .await?;
 
                 (transaction, event)
             },
@@ -227,8 +223,7 @@ impl SqlxClient {
                     payload.multisig_transaction_id,
                 )
                     .fetch_one(&mut tx)
-                    .await
-                    .map_err(ServiceError::from)?;
+                    .await?;
 
                 let payload = UpdateSendTransactionEvent::new(transaction.clone());
                 let id = Uuid::new_v4();
@@ -267,14 +262,13 @@ impl SqlxClient {
                     updated_at,
                 )
                     .fetch_one(&mut tx)
-                    .await
-                    .map_err(ServiceError::from)?;
+                    .await?;
 
                 (transaction, event)
             }
         };
 
-        tx.commit().await.map_err(ServiceError::from)?;
+        tx.commit().await?;
 
         Ok((transaction, event))
     }
@@ -286,8 +280,8 @@ impl SqlxClient {
         account_workchain_id: i32,
         account_hex: String,
         payload: UpdateSendTransaction,
-    ) -> Result<(TransactionDb, TransactionEventDb), ServiceError> {
-        let mut tx = self.pool.begin().await.map_err(ServiceError::from)?;
+    ) -> Result<(TransactionDb, TransactionEventDb)> {
+        let mut tx = self.pool.begin().await?;
         let transaction_id = Uuid::new_v4();
         let transaction_timestamp =
             NaiveDateTime::from_timestamp(payload.transaction_timestamp.trust_me() as i64, 0);
@@ -325,8 +319,7 @@ impl SqlxClient {
                 payload.multisig_transaction_id,
             )
             .fetch_one(&mut tx)
-            .await
-            .map_err(ServiceError::from)?;
+            .await?;
 
         let payload = UpdateSendTransactionEvent::new(transaction.clone());
         let id = Uuid::new_v4();
@@ -363,10 +356,9 @@ impl SqlxClient {
                 payload.multisig_transaction_id,
         )
         .fetch_one(&mut tx)
-        .await
-        .map_err(ServiceError::from)?;
+        .await?;
 
-        tx.commit().await.map_err(ServiceError::from)?;
+        tx.commit().await?;
 
         Ok((transaction, event))
     }
@@ -375,8 +367,8 @@ impl SqlxClient {
         &self,
         payload: CreateReceiveTransaction,
         service_id: ServiceId,
-    ) -> Result<(TransactionDb, TransactionEventDb), ServiceError> {
-        let mut tx = self.pool.begin().await.map_err(ServiceError::from)?;
+    ) -> Result<(TransactionDb, TransactionEventDb)> {
+        let mut tx = self.pool.begin().await?;
         let transaction_timestamp =
             NaiveDateTime::from_timestamp(payload.transaction_timestamp as i64, 0);
 
@@ -416,8 +408,7 @@ impl SqlxClient {
                 payload.bounce
             )
             .fetch_one(&mut tx)
-            .await
-            .map_err(ServiceError::from)?;
+            .await?;
 
         let payload = CreateReceiveTransactionEvent::new(transaction.clone());
 
@@ -453,10 +444,9 @@ impl SqlxClient {
                 payload.event_status as TonEventStatus
             )
             .fetch_one(&mut tx)
-            .await
-            .map_err(ServiceError::from)?;
+            .await?;
 
-        tx.commit().await.map_err(ServiceError::from)?;
+        tx.commit().await?;
 
         Ok((transaction, event))
     }
@@ -465,7 +455,7 @@ impl SqlxClient {
         &self,
         service_id: ServiceId,
         message_hash: &str,
-    ) -> Result<TransactionDb, ServiceError> {
+    ) -> Result<TransactionDb> {
         sqlx::query_as!(TransactionDb,
                 r#"
             SELECT id, service_id as "service_id: _", message_hash, transaction_hash, transaction_lt, transaction_timeout,
@@ -488,7 +478,7 @@ impl SqlxClient {
         message_hash: String,
         account_workchain_id: i32,
         account_hex: String,
-    ) -> Result<Option<TransactionDb>, ServiceError> {
+    ) -> Result<Option<TransactionDb>> {
         sqlx::query_as!(TransactionDb,
                 r#"
             SELECT id, service_id as "service_id: _", message_hash, transaction_hash, transaction_lt, transaction_timeout,
@@ -511,7 +501,7 @@ impl SqlxClient {
         &self,
         service_id: ServiceId,
         transaction_hash: &str,
-    ) -> Result<TransactionDb, ServiceError> {
+    ) -> Result<TransactionDb> {
         sqlx::query_as!(TransactionDb,
                 r#"
             SELECT id, service_id as "service_id: _", message_hash, transaction_hash, transaction_lt, transaction_timeout,
@@ -530,8 +520,8 @@ impl SqlxClient {
     pub async fn get_transaction_by_id(
         &self,
         service_id: ServiceId,
-        id: &uuid::Uuid,
-    ) -> Result<TransactionDb, ServiceError> {
+        id: &Uuid,
+    ) -> Result<TransactionDb> {
         sqlx::query_as!(TransactionDb,
                 r#"
             SELECT id, service_id as "service_id: _", message_hash, transaction_hash, transaction_lt, transaction_timeout,
@@ -552,7 +542,7 @@ impl SqlxClient {
     pub async fn get_all_transactions_by_status(
         &self,
         status: TonTransactionStatus,
-    ) -> Result<Vec<TransactionDb>, ServiceError> {
+    ) -> Result<Vec<TransactionDb>> {
         sqlx::query_as!(TransactionDb,
                 r#"
             SELECT id, service_id as "service_id: _", message_hash, transaction_hash, transaction_lt, transaction_timeout,
@@ -568,10 +558,7 @@ impl SqlxClient {
             .map_err(From::from)
     }
 
-    pub async fn get_transaction_by_out_msg(
-        &self,
-        message_hash: &str,
-    ) -> Result<TransactionDb, ServiceError> {
+    pub async fn get_transaction_by_out_msg(&self, message_hash: &str) -> Result<TransactionDb> {
         let j_value = serde_json::json!(message_hash);
         sqlx::query_as!(TransactionDb,
                 r#"
@@ -592,7 +579,7 @@ impl SqlxClient {
         &self,
         service_id: ServiceId,
         input: &TransactionsSearch,
-    ) -> Result<Vec<TransactionDb>, ServiceError> {
+    ) -> Result<Vec<TransactionDb>> {
         let mut args = PgArguments::default();
         args.add(service_id.inner());
         let mut args_len = 1;

@@ -1,3 +1,4 @@
+use anyhow::Result;
 use itertools::Itertools;
 use sqlx::postgres::PgArguments;
 use sqlx::Arguments;
@@ -5,7 +6,6 @@ use sqlx::Row;
 use uuid::Uuid;
 
 use crate::models::*;
-use crate::prelude::*;
 use crate::sqlx_client::*;
 
 impl SqlxClient {
@@ -16,7 +16,7 @@ impl SqlxClient {
         service_id: ServiceId,
         account_workchain_id: i32,
         account_hex: String,
-    ) -> Result<TokenTransactionEventDb, ServiceError> {
+    ) -> Result<TokenTransactionEventDb> {
         sqlx::query_as!(
             TokenTransactionEventDb,
             r#"
@@ -51,7 +51,7 @@ impl SqlxClient {
         account_workchain_id: i32,
         account_hex: String,
         event_status: TonEventStatus,
-    ) -> Result<TokenTransactionEventDb, ServiceError> {
+    ) -> Result<TokenTransactionEventDb> {
         sqlx::query_as!(
             TokenTransactionEventDb,
             r#"
@@ -85,7 +85,7 @@ impl SqlxClient {
         &self,
         service_id: ServiceId,
         event_status: TonEventStatus,
-    ) -> Result<Vec<TokenTransactionEventDb>, ServiceError> {
+    ) -> Result<Vec<TokenTransactionEventDb>> {
         sqlx::query_as!(
             TokenTransactionEventDb,
             r#"
@@ -117,7 +117,7 @@ impl SqlxClient {
         service_id: ServiceId,
         id: Uuid,
         event_status: TonEventStatus,
-    ) -> Result<TokenTransactionEventDb, ServiceError> {
+    ) -> Result<TokenTransactionEventDb> {
         sqlx::query_as!(
             TokenTransactionEventDb,
             r#"
@@ -149,7 +149,7 @@ impl SqlxClient {
         &self,
         service_id: ServiceId,
         input: &TokenTransactionsEventsSearch,
-    ) -> Result<Vec<TokenTransactionEventDb>, ServiceError> {
+    ) -> Result<Vec<TokenTransactionEventDb>> {
         let mut args = PgArguments::default();
         args.add(service_id.inner());
         let mut args_len = 1;

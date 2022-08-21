@@ -1,5 +1,6 @@
+use anyhow::Result;
+
 use crate::models::*;
-use crate::prelude::*;
 use crate::sqlx_client::*;
 
 impl SqlxClient {
@@ -7,7 +8,7 @@ impl SqlxClient {
     pub async fn create_token_balances(
         &self,
         payload: CreateTokenBalanceInDb,
-    ) -> Result<TokenBalanceFromDb, ServiceError> {
+    ) -> Result<TokenBalanceFromDb> {
         sqlx::query_as!(TokenBalanceFromDb,
                 r#"INSERT INTO token_balances
                 (service_id, account_workchain_id, account_hex, balance, root_address)
@@ -32,7 +33,7 @@ impl SqlxClient {
         account_workchain_id: i32,
         account_hex: String,
         root_address: String,
-    ) -> Result<TokenBalanceFromDb, ServiceError> {
+    ) -> Result<TokenBalanceFromDb> {
         sqlx::query_as!(TokenBalanceFromDb,
                 r#"SELECT service_id as "service_id: _", account_workchain_id, account_hex, balance, root_address, created_at, updated_at
                 FROM token_balances
@@ -52,7 +53,7 @@ impl SqlxClient {
         account_workchain_id: i32,
         account_hex: String,
         root_address: String,
-    ) -> Result<TokenBalanceFromDb, ServiceError> {
+    ) -> Result<TokenBalanceFromDb> {
         sqlx::query_as!(TokenBalanceFromDb,
                 r#"SELECT service_id as "service_id: _", account_workchain_id, account_hex, balance, root_address, created_at, updated_at
                 FROM token_balances
@@ -70,7 +71,7 @@ impl SqlxClient {
         service_id: ServiceId,
         account_workchain_id: i32,
         account_hex: String,
-    ) -> Result<Vec<TokenBalanceFromDb>, ServiceError> {
+    ) -> Result<Vec<TokenBalanceFromDb>> {
         sqlx::query_as!(TokenBalanceFromDb,
                 r#"SELECT service_id as "service_id: _", account_workchain_id, account_hex, balance, root_address, created_at, updated_at
                 FROM token_balances

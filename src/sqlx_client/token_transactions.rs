@@ -2,7 +2,6 @@ use anyhow::Result;
 use chrono::prelude::*;
 
 use crate::models::*;
-use crate::prelude::*;
 use crate::sqlx_client::*;
 
 impl SqlxClient {
@@ -10,8 +9,8 @@ impl SqlxClient {
         &self,
         mut payload: CreateTokenTransaction,
         service_id: ServiceId,
-    ) -> Result<(TokenTransactionFromDb, TokenTransactionEventDb), ServiceError> {
-        let mut tx = self.pool.begin().await.map_err(ServiceError::from)?;
+    ) -> Result<(TokenTransactionFromDb, TokenTransactionEventDb)> {
+        let mut tx = self.pool.begin().await?;
 
         if let Some(in_message_hash) = &payload.in_message_hash {
             let j_value = serde_json::json!(in_message_hash);
@@ -64,8 +63,7 @@ impl SqlxClient {
                 payload.in_message_hash,
             )
             .fetch_one(&mut tx)
-            .await
-            .map_err(ServiceError::from)?;
+            .await?;
 
         let payload = CreateTokenTransactionEvent::new(transaction.clone());
 
@@ -102,10 +100,9 @@ impl SqlxClient {
                 payload.event_status as TonEventStatus
             )
             .fetch_one(&mut tx)
-            .await
-            .map_err(ServiceError::from)?;
+            .await?;
 
-        tx.commit().await.map_err(ServiceError::from)?;
+        tx.commit().await?;
 
         Ok((transaction, event))
     }
@@ -114,7 +111,7 @@ impl SqlxClient {
         &self,
         service_id: ServiceId,
         message_hash: &str,
-    ) -> Result<TokenTransactionFromDb, ServiceError> {
+    ) -> Result<TokenTransactionFromDb> {
         sqlx::query_as!(TokenTransactionFromDb,
                 r#"
             SELECT id, service_id as "service_id: _", transaction_hash, transaction_timestamp, message_hash, owner_message_hash, account_workchain_id, account_hex,
@@ -133,7 +130,7 @@ impl SqlxClient {
         &self,
         service_id: ServiceId,
         id: &uuid::Uuid,
-    ) -> Result<TokenTransactionFromDb, ServiceError> {
+    ) -> Result<TokenTransactionFromDb> {
         sqlx::query_as!(TokenTransactionFromDb,
                 r#"
             SELECT id, service_id as "service_id: _", transaction_hash, transaction_timestamp, message_hash, owner_message_hash, account_workchain_id, account_hex,
@@ -153,7 +150,7 @@ impl SqlxClient {
         &self,
         service_id: ServiceId,
         transaction_hash: &str,
-    ) -> Result<TokenTransactionFromDb, ServiceError> {
+    ) -> Result<TokenTransactionFromDb> {
         sqlx::query_as!(TokenTransactionFromDb,
                 r#"
             SELECT id, service_id as "service_id: _", transaction_hash, transaction_timestamp, message_hash, owner_message_hash, account_workchain_id, account_hex,
@@ -173,8 +170,8 @@ impl SqlxClient {
         service_id: ServiceId,
         in_message_hash: &str,
         owner_message_hash: Option<String>,
-    ) -> Result<Option<TokenTransactionEventDb>, ServiceError> {
-        let mut tx = self.pool.begin().await.map_err(ServiceError::from)?;
+    ) -> Result<Option<TokenTransactionEventDb>> {
+        let mut tx = self.pool.begin().await?;
 
         let mut res = None;
 
@@ -204,8 +201,7 @@ impl SqlxClient {
                 updated_at
             )
                 .fetch_one(&mut tx)
-                .await
-                .map_err(ServiceError::from)?;
+                .await?;
 
             let event = sqlx::query_as!(TokenTransactionEventDb,
             r#"
@@ -229,13 +225,12 @@ impl SqlxClient {
                 updated_at
         )
                 .fetch_one(&mut tx)
-                .await
-                .map_err(ServiceError::from)?;
+                .await?;
 
             res = Some(event);
         }
 
-        tx.commit().await.map_err(ServiceError::from)?;
+        tx.commit().await?;
 
         Ok(res)
     }
@@ -253,7 +248,7 @@ async fn prepare_test(level_filter: log::LevelFilter) -> SqlxClient {
             writeln!(
                 buf,
                 "{} {}/{} {} [{}] - {}",
-                sqlx::types::chrono::Local::now().format("%Y-%m-%dT%H:%M:%S"),
+                Local::now().format("%Y-%m-%dT%H:%M:%S"),
                 record.module_path().unwrap_or_default(),
                 record.file().unwrap_or_default(),
                 record.line().unwrap_or_default(),

@@ -1,9 +1,10 @@
+use anyhow::Result;
+
 use crate::models::*;
-use crate::prelude::*;
 use crate::sqlx_client::*;
 
 impl SqlxClient {
-    pub async fn get_key(&self, api_key: &str) -> Result<Key, ServiceError> {
+    pub async fn get_key(&self, api_key: &str) -> Result<Key> {
         sqlx::query_as!(
             Key,
             r#"SELECT id,
@@ -19,7 +20,7 @@ impl SqlxClient {
         .await
         .map_err(From::from)
     }
-    pub async fn get_key_by_service_id(&self, service_id: &ServiceId) -> Result<Key, ServiceError> {
+    pub async fn get_key_by_service_id(&self, service_id: &ServiceId) -> Result<Key> {
         sqlx::query_as!(
             Key,
             r#"SELECT id,

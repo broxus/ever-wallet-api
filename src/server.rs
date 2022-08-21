@@ -5,12 +5,12 @@ use anyhow::Result;
 use everscale_network::utils::FxDashMap;
 use pomfrit::formatter::*;
 use sqlx::postgres::PgPoolOptions;
-use tokio::net::ToSocketAddrs;
 use tokio::sync::mpsc;
 use tokio::sync::Mutex;
 
 use crate::client::*;
 use crate::models::*;
+use crate::prelude::*;
 use crate::services::*;
 use crate::settings::*;
 use crate::sqlx_client::*;
@@ -73,8 +73,8 @@ pub struct EngineContext {
     pub shutdown_requests_tx: ShutdownRequestsTx,
     pub auth_service: Arc<AuthService>,
     pub ton_core: Arc<TonCore>,
-    pub ton_client: Arc<TonClientImpl>,
-    pub ton_service: Arc<TonServiceImpl>,
+    pub ton_client: Arc<TonClient>,
+    pub ton_service: Arc<TonService>,
     pub memory_storage: Arc<StorageHandler>,
     pub config: AppConfig,
     pub guards: FxDashMap<String, (Arc<Mutex<()>>, u32)>,
@@ -94,7 +94,7 @@ impl EngineContext {
 
         let sqlx_client = SqlxClient::new(pool);
 
-        let callback_client = Arc::new(CallbackClientImpl::new());
+        let callback_client = Arc::new(CallbackClient::new());
         let owners_cache = OwnersCache::new(sqlx_client.clone()).await?;
 
         let (ton_transaction_tx, ton_transaction_rx) = mpsc::unbounded_channel();
@@ -111,9 +111,9 @@ impl EngineContext {
         )
         .await?;
 
-        let ton_client = Arc::new(TonClientImpl::new(ton_core.clone(), sqlx_client.clone()));
+        let ton_client = Arc::new(TonClient::new(ton_core.clone(), sqlx_client.clone()));
 
-        let ton_service = Arc::new(TonServiceImpl::new(
+        let ton_service = Arc::new(TonService::new(
             sqlx_client.clone(),
             ton_client.clone(),
             callback_client.clone(),

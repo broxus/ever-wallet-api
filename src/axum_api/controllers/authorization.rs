@@ -1,34 +1,15 @@
-use std::net::SocketAddr;
 use std::sync::Arc;
-use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
-use crate::models::ServiceId;
-use anyhow::Context;
 use axum::async_trait;
 use axum::body::{boxed, Body, Full};
-use axum::error_handling::HandleErrorLayer;
-use axum::extract::{ContentLengthLimit, FromRequest, OriginalUri, RequestParts};
+use axum::extract::{FromRequest, OriginalUri, RequestParts};
 use axum::http::Request;
 use axum::middleware::Next;
 use axum::response::IntoResponse;
-use axum::routing::{get, post};
-use axum::{middleware, BoxError, Extension, Router};
-use http::header::{HeaderName, AUTHORIZATION, CONTENT_TYPE};
-use http::method::Method;
-use http::{header, HeaderMap, HeaderValue, StatusCode};
-use metrics::{
-    describe_counter, describe_gauge, describe_histogram, gauge, histogram, increment_counter,
-};
-use metrics_exporter_prometheus::Matcher;
-use reqwest::Url;
-use serde_json::Value;
-use tokio::time::Instant;
-use tower::util::error::optional::None;
-use tower::ServiceBuilder;
-use tower_http::cors::{AllowHeaders, AllowMethods, AllowOrigin, CorsLayer};
-use tower_http::metrics::InFlightRequestsLayer;
+use http::{Method, StatusCode};
 
-use crate::services::{AuthService, StorageHandler, TonService};
+use crate::models::*;
+use crate::services::*;
 
 pub async fn verify_auth(
     req: Request<Body>,
@@ -109,16 +90,17 @@ async fn check_api_key(
         }
     };
 
-    auth_service
+    let service_id = auth_service
         .authenticate(&api_key, &timestamp, &signature, &path, &body, real_ip)
         .await?;
+
+    // Forward service id to request handler
+    parts.extensions_mut().insert(IdExtractor(service_id));
 
     Ok(Request::from_request(&mut parts).await.expect("can't fail"))
 }
 
 pub struct IdExtractor(pub ServiceId);
-
-struct IdWrapper(pub ServiceId);
 
 #[async_trait]
 impl<B> FromRequest<B> for IdExtractor
@@ -129,10 +111,14 @@ where
 
     async fn from_request(req: &mut RequestParts<B>) -> Result<Self, Self::Rejection> {
         let extensions = req.extensions();
-        let id: Option<&IdWrapper> = extensions.get();
+
+        let id: Option<&IdExtractor> = extensions.get();
         match id {
-            Some(a) => Ok(IdExtractor(a.0)),
-            None => Err(Rejection("(".to_string(), StatusCode::IM_A_TEAPOT)),
+            Some(service_id) => Ok(IdExtractor(service_id.0)),
+            None => Err(Rejection(
+                "Service id not found".to_string(),
+                StatusCode::UNAUTHORIZED,
+            )),
         }
     }
 }

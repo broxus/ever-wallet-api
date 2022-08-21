@@ -1,9 +1,10 @@
+use anyhow::Result;
+
 use crate::models::*;
-use crate::prelude::*;
 use crate::sqlx_client::*;
 
 impl SqlxClient {
-    pub async fn get_callback(&self, service_id: ServiceId) -> Result<String, ServiceError> {
+    pub async fn get_callback(&self, service_id: ServiceId) -> Result<String> {
         sqlx::query!(
             r#"SELECT callback
                 FROM api_service_callback

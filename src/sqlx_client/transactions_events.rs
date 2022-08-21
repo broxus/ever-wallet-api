@@ -1,3 +1,4 @@
+use anyhow::Result;
 use itertools::Itertools;
 use sqlx::postgres::PgArguments;
 use sqlx::Arguments;
@@ -5,7 +6,6 @@ use sqlx::Row;
 use uuid::Uuid;
 
 use crate::models::*;
-use crate::prelude::*;
 use crate::sqlx_client::*;
 
 impl SqlxClient {
@@ -16,7 +16,7 @@ impl SqlxClient {
         message_hash: String,
         account_workchain_id: i32,
         account_hex: String,
-    ) -> Result<TransactionEventDb, ServiceError> {
+    ) -> Result<TransactionEventDb> {
         sqlx::query_as!(
             TransactionEventDb,
             r#"
@@ -51,7 +51,7 @@ impl SqlxClient {
         account_workchain_id: i32,
         account_hex: String,
         event_status: TonEventStatus,
-    ) -> Result<TransactionEventDb, ServiceError> {
+    ) -> Result<TransactionEventDb> {
         sqlx::query_as!(
             TransactionEventDb,
             r#"
@@ -85,7 +85,7 @@ impl SqlxClient {
         service_id: ServiceId,
         id: Uuid,
         event_status: TonEventStatus,
-    ) -> Result<TransactionEventDb, ServiceError> {
+    ) -> Result<TransactionEventDb> {
         sqlx::query_as!(
             TransactionEventDb,
             r#"
@@ -118,7 +118,7 @@ impl SqlxClient {
         service_id: ServiceId,
         old_event_status: Option<TonEventStatus>,
         event_status: TonEventStatus,
-    ) -> Result<Vec<TransactionEventDb>, ServiceError> {
+    ) -> Result<Vec<TransactionEventDb>> {
         let mut args = PgArguments::default();
         args.add(event_status);
         args.add(service_id.inner());
@@ -176,8 +176,8 @@ impl SqlxClient {
     pub async fn get_event_by_id(
         &self,
         service_id: ServiceId,
-        id: &uuid::Uuid,
-    ) -> Result<TransactionEventDb, ServiceError> {
+        id: &Uuid,
+    ) -> Result<TransactionEventDb> {
         sqlx::query_as!(
             TransactionEventDb,
             r#"
@@ -210,7 +210,7 @@ impl SqlxClient {
         &self,
         service_id: ServiceId,
         input: &TransactionsEventsSearch,
-    ) -> Result<Vec<TransactionEventDb>, ServiceError> {
+    ) -> Result<Vec<TransactionEventDb>> {
         let mut args = PgArguments::default();
         args.add(service_id.inner());
         let mut args_len = 1;

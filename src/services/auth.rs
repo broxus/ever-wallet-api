@@ -1,13 +1,9 @@
 use std::collections::HashMap;
 use std::sync::Arc;
 
-use async_trait::async_trait;
-use chrono::{NaiveDateTime, Utc};
-use http::{header::HeaderValue, HeaderMap};
 use parking_lot::Mutex;
 
 use crate::models::*;
-use crate::prelude::*;
 use crate::sqlx_client::*;
 
 pub const TIMESTAMP_EXPIRED_SEC: i64 = 10;
@@ -34,13 +30,7 @@ impl AuthService {
         path: &str,
         body: &str,
         real_ip: Option<String>,
-    ) -> anyhow::Result<()> {
-        log::info!("apikey: {}", api_key);
-        log::info!("timestamp: {}", timestamp);
-        log::info!("signature: {}", signature);
-        log::info!("path: {}", path);
-        log::info!("body: {}", body);
-
+    ) -> anyhow::Result<ServiceId> {
         let key = self
             .get_key(api_key)
             .await
@@ -87,10 +77,10 @@ impl AuthService {
             anyhow::bail!("Invalid signature");
         }
 
-        Ok(())
+        Ok(key.service_id)
     }
 
-    async fn get_key(&self, api_key: &str) -> Result<Key, ServiceError> {
+    async fn get_key(&self, api_key: &str) -> anyhow::Result<Key> {
         let cached_key = {
             let lock = self.keys_hash.lock();
             lock.get(api_key).cloned()
