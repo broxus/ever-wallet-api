@@ -1,6 +1,5 @@
 use std::str::FromStr;
 
-use anyhow::Result;
 use bigdecimal::BigDecimal;
 use derive_more::Constructor;
 use nekoton_utils::{pack_std_smc_addr, TrustMe};
@@ -9,6 +8,7 @@ use serde::{Deserialize, Serialize};
 use ton_block::MsgAddressInt;
 use uuid::Uuid;
 
+use crate::axum_api::*;
 use crate::models::*;
 
 #[derive(Serialize, Deserialize, OpgModel, Constructor)]
@@ -27,8 +27,8 @@ pub struct AddressResponse {
     pub error_message: Option<String>,
 }
 
-impl From<Result<Account>> for AddressResponse {
-    fn from(r: Result<Account>) -> Self {
+impl From<Result<Account, Error>> for AddressResponse {
+    fn from(r: Result<Account, Error>) -> Self {
         match r {
             Ok(data) => Self {
                 status: TonStatus::Ok,
@@ -52,8 +52,8 @@ pub struct CheckedAddressResponse {
     pub data: Option<AddressValidResponse>,
 }
 
-impl From<Result<AddressValidResponse>> for CheckedAddressResponse {
-    fn from(r: Result<AddressValidResponse>) -> Self {
+impl From<Result<AddressValidResponse, Error>> for CheckedAddressResponse {
+    fn from(r: Result<AddressValidResponse, Error>) -> Self {
         match r {
             Ok(data) => Self {
                 status: TonStatus::Ok,
@@ -76,8 +76,8 @@ pub struct AddressBalanceResponse {
     pub error_message: Option<String>,
 }
 
-impl From<Result<AddressBalanceDataResponse>> for AddressBalanceResponse {
-    fn from(r: Result<AddressBalanceDataResponse>) -> Self {
+impl From<Result<AddressBalanceDataResponse, Error>> for AddressBalanceResponse {
+    fn from(r: Result<AddressBalanceDataResponse, Error>) -> Self {
         match r {
             Ok(data) => Self {
                 status: TonStatus::Ok,
@@ -102,8 +102,8 @@ pub struct AddressInfoResponse {
     pub error_message: Option<String>,
 }
 
-impl From<Result<AddressInfoDataResponse>> for AddressInfoResponse {
-    fn from(r: Result<AddressInfoDataResponse>) -> Self {
+impl From<Result<AddressInfoDataResponse, Error>> for AddressInfoResponse {
+    fn from(r: Result<AddressInfoDataResponse, Error>) -> Self {
         match r {
             Ok(data) => Self {
                 status: TonStatus::Ok,

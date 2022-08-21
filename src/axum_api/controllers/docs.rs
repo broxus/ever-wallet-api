@@ -18,6 +18,8 @@ pub fn swagger(prod_url: &str) -> String {
         },
         tags: {
             addresses,
+            tokens,
+            metrics,
         },
         paths: {
             ("address" / "check"): {
@@ -25,7 +27,20 @@ pub fn swagger(prod_url: &str) -> String {
                     tags: { addresses },
                     summary: "Check address",
                     description: "Check correction of EVER address.",
-                    parameters: { (header "api-key") },
+                    parameters: {
+                        (header "api-key"): {
+                            description: "API Key",
+                        },
+                        (header "sign"): {
+                            description: "Signature",
+                        },
+                        (header "timestamp"): {
+                            description: "Timestamp in ms",
+                        },
+                        (header "x-real-ip"): {
+                            required: false
+                        },
+                    },
                     body: requests::AddressCheckRequest,
                     200: responses::CheckedAddressResponse,
                 }
@@ -35,27 +50,110 @@ pub fn swagger(prod_url: &str) -> String {
                     tags: { addresses },
                     summary: "Address creation",
                     description: "Create user address.",
-                    parameters: { (header "api-key") },
+                    parameters: {
+                        (header "api-key"): {
+                            description: "API Key",
+                        },
+                        (header "sign"): {
+                            description: "Signature",
+                        },
+                        (header "timestamp"): {
+                            description: "Timestamp in ms",
+                        },
+                        (header "x-real-ip"): {
+                            required: false
+                        },
+                    },
                     body: requests::CreateAddressRequest,
                     200: responses::AddressResponse,
                 }
             },
-             ("address" / String): {
+             ("address" / { address: String }): {
                 GET: {
                     tags: { addresses },
                     summary: "Address balance",
                     description: "Get address balance.",
-                    parameters: { (header "api-key") },
+                    parameters: {
+                        (header "api-key"): {
+                            description: "API Key",
+                        },
+                        (header "sign"): {
+                            description: "Signature",
+                        },
+                        (header "timestamp"): {
+                            description: "Timestamp in ms",
+                        },
+                        (header "x-real-ip"): {
+                            required: false
+                        },
+                    },
                     200: responses::AddressBalanceResponse,
                 }
             },
-             ("address" / String / "info"): {
+             ("address" / { address: String } / "info"): {
                 GET: {
                     tags: { addresses },
                     summary: "Address info",
                     description: "Get address info.",
-                    parameters: { (header "api-key") },
+                    parameters: {
+                        (header "api-key"): {
+                            description: "API Key",
+                        },
+                        (header "sign"): {
+                            description: "Signature",
+                        },
+                        (header "timestamp"): {
+                            description: "Timestamp in ms",
+                        },
+                        (header "x-real-ip"): {
+                            required: false
+                        },
+                    },
                     200: responses::AddressInfoResponse,
+                }
+            },
+            ("tokens" / "address" / { address: String }): {
+                GET: {
+                    tags: { addresses, tokens },
+                    summary: "Address tokens balances",
+                    description: "Get address tokens balances.",
+                    parameters: {
+                        (header "api-key"): {
+                            description: "API Key",
+                        },
+                        (header "sign"): {
+                            description: "Signature",
+                        },
+                        (header "timestamp"): {
+                            description: "Timestamp in ms",
+                        },
+                        (header "x-real-ip"): {
+                            required: false
+                        },
+                    },
+                    200: responses::TokenBalanceResponse,
+                }
+            },
+            ("metrics"): {
+                GET: {
+                    tags: { metrics  },
+                    summary: "Get metrics",
+                    description: "Get metrics of api health.",
+                    parameters: {
+                        (header "api-key"): {
+                            description: "API Key",
+                        },
+                        (header "sign"): {
+                            description: "Signature",
+                        },
+                        (header "timestamp"): {
+                            description: "Timestamp in ms",
+                        },
+                        (header "x-real-ip"): {
+                            required: false
+                        },
+                    },
+                    200: responses::MetricsResponse,
                 }
             },
         }

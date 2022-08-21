@@ -16,9 +16,9 @@ pub async fn post_address_create(
         .ton_service
         .create_address(&service_id, req.into())
         .await
-        .unwrap();
+        .map(From::from);
 
-    Ok(Json(AddressResponse::from(Ok(address.into()))))
+    Ok(Json(AddressResponse::from(address)))
 }
 
 pub async fn post_address_check(
@@ -29,10 +29,9 @@ pub async fn post_address_check(
         .ton_service
         .check_address(req.address)
         .await
-        .map(AddressValidResponse::new)
-        .unwrap();
+        .map(AddressValidResponse::new);
 
-    Ok(Json(CheckedAddressResponse::from(Ok(address))))
+    Ok(Json(CheckedAddressResponse::from(address)))
 }
 
 pub async fn get_address_balance(
@@ -44,10 +43,9 @@ pub async fn get_address_balance(
         .ton_service
         .get_address_balance(&service_id, address)
         .await
-        .map(|(a, b)| AddressBalanceDataResponse::new(a, b))
-        .unwrap();
+        .map(|(a, b)| AddressBalanceDataResponse::new(a, b));
 
-    Ok(Json(AddressBalanceResponse::from(Ok(address))))
+    Ok(Json(AddressBalanceResponse::from(address)))
 }
 
 pub async fn get_address_info(
@@ -59,8 +57,7 @@ pub async fn get_address_info(
         .ton_service
         .get_address_info(&service_id, address)
         .await
-        .map(AddressInfoDataResponse::new)
-        .unwrap();
+        .map(AddressInfoDataResponse::new);
 
-    Ok(Json(AddressInfoResponse::from(Ok(address))))
+    Ok(Json(AddressInfoResponse::from(address)))
 }
