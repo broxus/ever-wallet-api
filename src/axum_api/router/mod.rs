@@ -3,7 +3,7 @@ use std::sync::Arc;
 
 use axum::response::IntoResponse;
 use axum::routing::get_service;
-use axum::{routing::get, Extension, Router};
+use axum::{Extension, Router};
 use tower::service_fn;
 
 use crate::axum_api::*;
@@ -42,7 +42,6 @@ pub fn router(
                 )
             })),
         )
-        .route("/healthcheck", get(controllers::get_healthcheck))
 }
 
 fn api_router(
