@@ -743,7 +743,9 @@ impl TonClient {
                     expiration,
                 )?
             }
-            AccountType::HighloadWallet => return Err(TonServiceError::WrongInput.into()),
+            AccountType::HighloadWallet => {
+                return Err(TonServiceError::WrongInput("Invalid account type".to_string()).into())
+            }
         };
 
         let unsigned_message = match transfer_action {

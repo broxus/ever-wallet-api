@@ -149,7 +149,7 @@ impl TonService {
         for transaction_output in input.outputs.iter() {
             let (_, scale) = transaction_output.value.as_bigint_and_exponent();
             if scale != 0 {
-                return Err(TonServiceError::WrongInput.into());
+                return Err(TonServiceError::WrongInput("Invalid value".to_string()).into());
             }
         }
 
@@ -234,7 +234,7 @@ impl TonService {
             .await?;
 
         if address_db.account_type != AccountType::SafeMultisig {
-            return Err(TonServiceError::WrongInput.into());
+            return Err(TonServiceError::WrongInput("Invalid account type".to_string()).into());
         }
 
         let key = self.key.as_slice().try_into()?;
@@ -564,7 +564,7 @@ impl TonService {
     ) -> Result<TransactionDb, Error> {
         let (_, scale) = input.value.as_bigint_and_exponent();
         if scale != 0 {
-            return Err(TonServiceError::WrongInput.into());
+            return Err(TonServiceError::WrongInput("Invalid value".to_string()).into());
         }
 
         let owner = repack_address(&input.from_address.0)?;
@@ -656,7 +656,7 @@ impl TonService {
     ) -> Result<TransactionDb, Error> {
         let (_, scale) = input.value.as_bigint_and_exponent();
         if scale != 0 {
-            return Err(TonServiceError::WrongInput.into());
+            return Err(TonServiceError::WrongInput("Invalid value".to_string()).into());
         }
 
         let owner = repack_address(&input.from_address.0)?;
@@ -748,12 +748,12 @@ impl TonService {
     ) -> Result<TransactionDb, Error> {
         let (_, scale) = input.value.as_bigint_and_exponent();
         if scale != 0 {
-            return Err(TonServiceError::WrongInput.into());
+            return Err(TonServiceError::WrongInput("Invalid value".to_string()).into());
         }
 
         let (_, scale) = input.deploy_wallet_value.as_bigint_and_exponent();
         if scale != 0 {
-            return Err(TonServiceError::WrongInput.into());
+            return Err(TonServiceError::WrongInput("Invalid value".to_string()).into());
         }
 
         let owner = repack_address(&input.owner_address.0)?;
@@ -1223,8 +1223,8 @@ enum NotifyType {
 
 #[derive(thiserror::Error, Debug)]
 pub enum TonServiceError {
-    #[error("Invalid request")]
-    WrongInput,
+    #[error("Invalid request: `{0}` ")]
+    WrongInput(String),
     #[error("Service unavailable")]
     ServiceUnavailable,
     #[error("Insufficient balance")]
@@ -1236,7 +1236,7 @@ pub enum TonServiceError {
 impl TonServiceError {
     pub fn status_code(&self) -> StatusCode {
         match self {
-            TonServiceError::WrongInput | TonServiceError::InsufficientBalance => {
+            TonServiceError::WrongInput(_) | TonServiceError::InsufficientBalance => {
                 StatusCode::BAD_REQUEST
             }
             TonServiceError::ServiceUnavailable | TonServiceError::ExecuteContract => {
