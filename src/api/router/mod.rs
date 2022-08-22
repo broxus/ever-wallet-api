@@ -6,7 +6,7 @@ use axum::routing::get_service;
 use axum::{Extension, Router};
 use tower::service_fn;
 
-use crate::axum_api::*;
+use crate::api::*;
 use crate::services::*;
 
 mod address;
@@ -14,6 +14,7 @@ mod events;
 mod metrics;
 mod misc;
 mod tokens;
+mod transactions;
 
 const API_PREFIX: &str = "/ton/v3";
 
@@ -56,6 +57,7 @@ fn api_router(
         .nest("/tokens", tokens::router())
         .nest("/misc", misc::router())
         .nest("/metrics", metrics::router())
+        .nest("/transactions", transactions::router())
         .layer(axum::middleware::from_fn(move |req, next| {
             controllers::verify_auth(req, next, auth_service.clone())
         }))

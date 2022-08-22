@@ -2,8 +2,7 @@
 #![allow(clippy::too_many_arguments)]
 #![allow(clippy::inconsistent_struct_constructor)]
 
-//pub mod api;
-pub mod axum_api;
+pub mod api;
 pub mod client;
 pub mod commands;
 pub mod models;

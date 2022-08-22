@@ -110,7 +110,14 @@ impl TonClient {
 
                 let mut custodians = Vec::with_capacity(public_keys.len());
                 for key in public_keys {
-                    custodians.push(PublicKey::from_bytes(&hex::decode(key)?)?);
+                    custodians.push(
+                        PublicKey::from_bytes(&hex::decode(key).map_err(|_| {
+                            TonServiceError::WrongInput("Invalid custodian".to_string())
+                        })?)
+                        .map_err(|_| {
+                            TonServiceError::WrongInput("Invalid custodian".to_string())
+                        })?,
+                    );
                 }
                 custodians.push(public);
 

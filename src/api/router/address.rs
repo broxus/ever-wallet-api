@@ -3,7 +3,7 @@ use axum::{
     Router,
 };
 
-use crate::axum_api::controllers;
+use crate::api::controllers;
 
 pub fn router() -> Router {
     Router::new()

@@ -1,4 +1,3 @@
-use crate::axum_api::controllers::ControllersError;
 use axum::{
     http::StatusCode,
     response::{IntoResponse, Response},
@@ -7,6 +6,7 @@ use axum::{
 use tokio::sync::oneshot;
 use tracing::log;
 
+use crate::api::controllers::ControllersError;
 use crate::services::TonServiceError;
 
 /// A common error type that can be used throughout the API.

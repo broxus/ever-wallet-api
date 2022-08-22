@@ -3,15 +3,17 @@
 use nekoton_utils::TrustMe;
 use opg::*;
 
-use crate::axum_api::requests;
-use crate::axum_api::responses;
+use crate::api::requests;
+use crate::api::responses;
+
+use crate::models::*;
 
 pub fn swagger(prod_url: &str) -> String {
     let api = describe_api! {
         info: {
             title: "Everscale API",
             version: "4.0.0",
-            description: r##"This API allows you to use Everscale API"##,
+            description: r##"This API allows you to use Everscale Wallet API"##,
         },
         servers: {
             prod_url
@@ -112,6 +114,175 @@ pub fn swagger(prod_url: &str) -> String {
                         },
                     },
                     200: responses::AddressInfoResponse,
+                }
+            },
+            ("transactions"): {
+                POST: {
+                    tags: { transactions },
+                    summary: "Search transactions",
+                    description: "Search transactions.",
+                    parameters: {
+                        (header "api-key"): {
+                            description: "API Key",
+                        },
+                        (header "sign"): {
+                            description: "Signature",
+                        },
+                        (header "timestamp"): {
+                            description: "Timestamp in ms",
+                        },
+                        (header "x-real-ip"): {
+                            required: false
+                        },
+                    },
+                    body: requests::TonTransactionsRequest,
+                    200: responses::TonTransactionsResponse,
+                }
+            },
+            ("transactions" / "create"): {
+                POST: {
+                    tags: { transactions },
+                    summary: "Create transaction",
+                    description: "Send transaction.",
+                    parameters: {
+                        (header "api-key"): {
+                            description: "API Key",
+                        },
+                        (header "sign"): {
+                            description: "Signature",
+                        },
+                        (header "timestamp"): {
+                            description: "Timestamp in ms",
+                        },
+                        (header "x-real-ip"): {
+                            required: false
+                        },
+                    },
+                    body: requests::TonTransactionSendRequest,
+                    200: responses::TransactionResponse,
+                    callbacks: {
+                        transactionSent: {
+                            ("callbackUrl"): {
+                                POST: {
+                                    description: "Event transaction sent. If address are not \
+                                    deployed the event will be sent a twice since in this case \
+                                    will be created two transactions.",
+                                    parameters: {
+                                        (header "timestamp"),
+                                        (header "sign")
+                                    },
+                                    body: AccountTransactionEvent,
+                                    200: None,
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            ("transactions" / "confirm"): {
+                POST: {
+                    tags: { transactions },
+                    summary: "Create confirm transaction",
+                    description: "Confirm transaction.",
+                    parameters: {
+                        (header "api-key"): {
+                            description: "API Key",
+                        },
+                        (header "sign"): {
+                            description: "Signature",
+                        },
+                        (header "timestamp"): {
+                            description: "Timestamp in ms",
+                        },
+                        (header "x-real-ip"): {
+                            required: false
+                        },
+                    },
+                    body: requests::TonTransactionConfirmRequest,
+                    200: responses::TransactionResponse,
+                    callbacks: {
+                        transactionSent: {
+                            ("callbackUrl"): {
+                                POST: {
+                                    description: "Event transaction sent. If address are not \
+                                    deployed the event will be sent a twice since in this case \
+                                    will be created two transactions.",
+                                    parameters: {
+                                        (header "timestamp"),
+                                        (header "sign")
+                                    },
+                                    body: AccountTransactionEvent,
+                                    200: None,
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            ("transactions" / "id" / { transaction_id: String }): {
+                GET: {
+                    tags: { transactions },
+                    summary: "Get transaction",
+                    description: "Get transaction by id.",
+                    parameters: {
+                        (header "api-key"): {
+                            description: "API Key",
+                        },
+                        (header "sign"): {
+                            description: "Signature",
+                        },
+                        (header "timestamp"): {
+                            description: "Timestamp in ms",
+                        },
+                        (header "x-real-ip"): {
+                            required: false
+                        },
+                    },
+                    200: responses::TransactionResponse,
+                }
+            },
+            ("transactions" / "h" / { transaction_hash: String }): {
+                GET: {
+                    tags: { transactions },
+                    summary: "Get transaction",
+                    description: "Get transaction by transaction hash.",
+                    parameters: {
+                        (header "api-key"): {
+                            description: "API Key",
+                        },
+                        (header "sign"): {
+                            description: "Signature",
+                        },
+                        (header "timestamp"): {
+                            description: "Timestamp in ms",
+                        },
+                        (header "x-real-ip"): {
+                            required: false
+                        },
+                    },
+                    200: responses::TransactionResponse,
+                }
+            },
+            ("transactions" / "mh" / { message_hash: String }): {
+                GET: {
+                    tags: { transactions },
+                    summary: "Get transaction",
+                    description: "Get transaction by message hash.",
+                    parameters: {
+                        (header "api-key"): {
+                            description: "API Key",
+                        },
+                        (header "sign"): {
+                            description: "Signature",
+                        },
+                        (header "timestamp"): {
+                            description: "Timestamp in ms",
+                        },
+                        (header "x-real-ip"): {
+                            required: false
+                        },
+                    },
+                    200: responses::TransactionResponse,
                 }
             },
             ("events" / "id" / { id: String }): {
@@ -271,6 +442,166 @@ pub fn swagger(prod_url: &str) -> String {
                     },
                     body: requests::TonTokenMarkEventsRequest,
                     200: responses::MarkTokenEventsResponse,
+                }
+            },
+            ("tokens" / "transactions" / "mh" / { message_hash: String }): {
+                GET: {
+                    tags: { transactions, tokens  },
+                    summary: "Get tokens transaction",
+                    description: "Get tokens transaction by message hash.",
+                    parameters: {
+                        (header "api-key"): {
+                            description: "API Key",
+                        },
+                        (header "sign"): {
+                            description: "Signature",
+                        },
+                        (header "timestamp"): {
+                            description: "Timestamp in ms",
+                        },
+                        (header "x-real-ip"): {
+                            required: false
+                        },
+                    },
+                    200: responses::TokenTransactionResponse,
+                }
+            },
+            ("tokens" / "transactions" / "id" / { id: String }): {
+                GET: {
+                    tags: { transactions, tokens },
+                    summary: "Get tokens transaction",
+                    description: "Get tokens transaction by id.",
+                    parameters: {
+                        (header "api-key"): {
+                            description: "API Key",
+                        },
+                        (header "sign"): {
+                            description: "Signature",
+                        },
+                        (header "timestamp"): {
+                            description: "Timestamp in ms",
+                        },
+                        (header "x-real-ip"): {
+                            required: false
+                        },
+                    },
+                    200: responses::TokenTransactionResponse,
+                }
+            },
+            ("tokens" / "transactions" / "create"): {
+                POST: {
+                    tags: { transactions, tokens },
+                    summary: "Create token transaction",
+                    description: "Send token transaction.",
+                    parameters: {
+                        (header "api-key"): {
+                            description: "API Key",
+                        },
+                        (header "sign"): {
+                            description: "Signature",
+                        },
+                        (header "timestamp"): {
+                            description: "Timestamp in ms",
+                        },
+                        (header "x-real-ip"): {
+                            required: false
+                        },
+                    },
+                    body: requests::TonTokenTransactionSendRequest,
+                    200: responses::TokenTransactionResponse,
+                    callbacks: {
+                        tokenTransactionSent: {
+                            ("callbackUrl"): {
+                                POST: {
+                                    description: "Event token transaction sent. If address are not \
+                                    deployed the event will be sent a twice since in this case \
+                                    will be created two transactions.",
+                                    parameters: {
+                                        (header "timestamp"),
+                                        (header "sign")
+                                    },
+                                    body: AccountTransactionEvent,
+                                    200: None,
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            ("tokens" / "transactions" / "burn"): {
+                POST: {
+                    tags: { transactions, tokens },
+                    summary: "Burn token transaction",
+                    description: "Burn token transaction.",
+                    parameters: {
+                        (header "api-key"): {
+                            description: "API Key",
+                        },
+                        (header "sign"): {
+                            description: "Signature",
+                        },
+                        (header "timestamp"): {
+                            description: "Timestamp in ms",
+                        },
+                        (header "x-real-ip"): {
+                            required: false
+                        },
+                    },
+                    body: requests::TonTokenTransactionBurnRequest,
+                    200: responses::TokenTransactionResponse,
+                    callbacks: {
+                        tokenTransactionSent: {
+                            ("callbackUrl"): {
+                                POST: {
+                                    description: "Event token transaction burn.",
+                                    parameters: {
+                                        (header "timestamp"),
+                                        (header "sign")
+                                    },
+                                    body: AccountTransactionEvent,
+                                    200: None,
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            ("tokens" / "transactions" / "mint"): {
+                POST: {
+                    tags: { transactions, tokens },
+                    summary: "Mint token transaction",
+                    description: "Mint token transaction.",
+                    parameters: {
+                        (header "api-key"): {
+                            description: "API Key",
+                        },
+                        (header "sign"): {
+                            description: "Signature",
+                        },
+                        (header "timestamp"): {
+                            description: "Timestamp in ms",
+                        },
+                        (header "x-real-ip"): {
+                            required: false
+                        },
+                    },
+                    body: requests::TonTokenTransactionMintRequest,
+                    200: responses::TokenTransactionResponse,
+                    callbacks: {
+                        tokenTransactionSent: {
+                            ("callbackUrl"): {
+                                POST: {
+                                    description: "Event token transaction mint.",
+                                    parameters: {
+                                        (header "timestamp"),
+                                        (header "sign")
+                                    },
+                                    body: AccountTransactionEvent,
+                                    200: None,
+                                }
+                            }
+                        }
+                    }
                 }
             },
             ("read-contract"): {

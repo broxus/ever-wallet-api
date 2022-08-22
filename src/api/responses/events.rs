@@ -1,7 +1,7 @@
 use opg::OpgModel;
 use serde::Serialize;
 
-use crate::axum_api::*;
+use crate::api::*;
 use crate::models::*;
 
 #[derive(Serialize, OpgModel)]

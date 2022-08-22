@@ -8,7 +8,7 @@ use serde::Serialize;
 use ton_block::MsgAddressInt;
 use uuid::Uuid;
 
-use crate::axum_api::*;
+use crate::api::*;
 use crate::models::*;
 
 #[derive(Serialize, OpgModel, Constructor)]

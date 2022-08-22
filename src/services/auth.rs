@@ -1,3 +1,4 @@
+use chrono::{NaiveDateTime, Utc};
 use std::collections::HashMap;
 use std::sync::Arc;
 
@@ -48,7 +49,7 @@ impl AuthService {
             }
         }
 
-        /*let timestamp_ms = timestamp
+        let timestamp_ms = timestamp
             .parse::<i64>()
             .map_err(|_| anyhow::Error::msg("Failed to read timestamp header"))?;
 
@@ -63,9 +64,7 @@ impl AuthService {
                 "TIMESTAMP expired. server time: {}, header time: {}",
                 now, then
             ))
-        }*/
-
-        let timestamp_ms = 1;
+        }
 
         let concat = format!("{}{}{}", timestamp_ms, path, body);
 

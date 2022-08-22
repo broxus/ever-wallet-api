@@ -1,6 +1,5 @@
 use std::sync::Arc;
 
-use crate::axum_api::http_service;
 use anyhow::Result;
 use everscale_network::utils::FxDashMap;
 use pomfrit::formatter::*;
@@ -8,6 +7,7 @@ use sqlx::postgres::PgPoolOptions;
 use tokio::sync::mpsc;
 use tokio::sync::Mutex;
 
+use crate::api::*;
 use crate::client::*;
 use crate::models::*;
 use crate::prelude::*;
@@ -54,7 +54,7 @@ impl Engine {
     }
 
     pub async fn start(self: &Arc<Self>) -> Result<()> {
-        //self.context.start().await?;
+        self.context.start().await?;
 
         tokio::spawn(http_service(
             self.context.config.server_addr,

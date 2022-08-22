@@ -1,9 +1,9 @@
 use axum::{Extension, Json};
 
-use crate::axum_api::controllers::*;
-use crate::axum_api::requests::*;
-use crate::axum_api::responses::*;
-use crate::axum_api::*;
+use crate::api::controllers::*;
+use crate::api::requests::*;
+use crate::api::responses::*;
+use crate::api::*;
 use crate::models::*;
 
 pub async fn post_read_contract(

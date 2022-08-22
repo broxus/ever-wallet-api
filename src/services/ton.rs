@@ -13,7 +13,7 @@ use ton_block::{GetRepresentationHash, MsgAddressInt, Serializable};
 use ton_types::{BuilderData, UInt256};
 use uuid::Uuid;
 
-use crate::axum_api::*;
+use crate::api::*;
 use crate::client::*;
 use crate::models::*;
 use crate::prelude::*;

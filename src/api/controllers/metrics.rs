@@ -1,7 +1,7 @@
 use axum::{Extension, Json};
 
-use crate::axum_api::responses::*;
-use crate::axum_api::*;
+use crate::api::responses::*;
+use crate::api::*;
 
 pub async fn get_metrics(
     Extension(ctx): Extension<Arc<ApiContext>>,
