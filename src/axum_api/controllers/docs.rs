@@ -20,6 +20,7 @@ pub fn swagger(prod_url: &str) -> String {
             address,
             events,
             tokens,
+            misc,
             metrics,
         },
         paths: {
@@ -270,6 +271,98 @@ pub fn swagger(prod_url: &str) -> String {
                     },
                     body: requests::TonTokenMarkEventsRequest,
                     200: responses::MarkTokenEventsResponse,
+                }
+            },
+            ("read-contract"): {
+                POST: {
+                    tags: { misc  },
+                    summary: "Read contract data",
+                    description: "Execute function of generic contract",
+                    parameters: {
+                        (header "api-key"): {
+                            description: "API Key",
+                        },
+                        (header "sign"): {
+                            description: "Signature",
+                        },
+                        (header "timestamp"): {
+                            description: "Timestamp in ms",
+                        },
+                        (header "x-real-ip"): {
+                            required: false
+                        },
+                    },
+                    body: requests::ExecuteContractRequest,
+                    200: responses::ReadContractResponse,
+                }
+            },
+            ("encode-into-cell"): {
+                POST: {
+                    tags: { misc  },
+                    summary: "Encode tvm cell",
+                    description: "Create cell from custom tokens and get base64 cell representation",
+                    parameters: {
+                        (header "api-key"): {
+                            description: "API Key",
+                        },
+                        (header "sign"): {
+                            description: "Signature",
+                        },
+                        (header "timestamp"): {
+                            description: "Timestamp in ms",
+                        },
+                        (header "x-real-ip"): {
+                            required: false
+                        },
+                    },
+                    body: requests::EncodeParamRequest,
+                    200: responses::EncodedCellResponse,
+                }
+            },
+            ("prepare-message"): {
+                POST: {
+                    tags: { misc  },
+                    summary: "Prepare message from params",
+                    description: "Prepare unsigned message from specified tokens",
+                    parameters: {
+                        (header "api-key"): {
+                            description: "API Key",
+                        },
+                        (header "sign"): {
+                            description: "Signature",
+                        },
+                        (header "timestamp"): {
+                            description: "Timestamp in ms",
+                        },
+                        (header "x-real-ip"): {
+                            required: false
+                        },
+                    },
+                    body: requests::PrepareMessageRequest,
+                    200: responses::UnsignedMessageHashResponse,
+                }
+            },
+            ("send-signed-message"): {
+                POST: {
+                    tags: { misc  },
+                    summary: "Send signed message",
+                    description: "Seng signed message",
+                    parameters: {
+                        (header "api-key"): {
+                            description: "API Key",
+                        },
+                        (header "sign"): {
+                            description: "Signature",
+                        },
+                        (header "timestamp"): {
+                            description: "Timestamp in ms",
+                        },
+                        (header "x-real-ip"): {
+                            required: false
+                        },
+                    },
+                    body: requests::SignedMessageRequest,
+                    200: responses::SignedMessageHashResponse,
                 }
             },
             ("metrics"): {

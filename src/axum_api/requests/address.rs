@@ -1,16 +1,16 @@
 use opg::OpgModel;
-use serde::{Deserialize, Serialize};
+use serde::Deserialize;
 
 use crate::models::*;
 
-#[derive(Serialize, Deserialize, OpgModel)]
+#[derive(Deserialize, OpgModel)]
 #[serde(rename_all = "camelCase")]
 #[opg("AddressCheckRequest")]
 pub struct AddressCheckRequest {
     pub address: Address,
 }
 
-#[derive(Serialize, Deserialize, OpgModel)]
+#[derive(Deserialize, OpgModel)]
 #[serde(rename_all = "camelCase")]
 #[opg("CreateAddressRequest")]
 pub struct CreateAddressRequest {

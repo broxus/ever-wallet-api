@@ -1,10 +1,10 @@
 use opg::OpgModel;
-use serde::{Deserialize, Serialize};
+use serde::Serialize;
 
 use crate::axum_api::*;
 use crate::models::*;
 
-#[derive(Serialize, Deserialize, OpgModel)]
+#[derive(Serialize, OpgModel)]
 #[serde(rename_all = "camelCase")]
 #[opg("EventsResponse")]
 pub struct EventsResponse {
@@ -12,7 +12,7 @@ pub struct EventsResponse {
     pub items: Vec<AccountTransactionEvent>,
 }
 
-#[derive(Serialize, Deserialize, OpgModel)]
+#[derive(Serialize, OpgModel)]
 #[serde(rename_all = "camelCase")]
 #[opg("TonEventsResponse")]
 pub struct TonEventsResponse {
@@ -38,7 +38,7 @@ impl From<Result<EventsResponse, Error>> for TonEventsResponse {
     }
 }
 
-#[derive(Serialize, Deserialize, OpgModel)]
+#[derive(Serialize, OpgModel)]
 #[serde(rename_all = "camelCase")]
 #[opg("MarkEventsResponse")]
 pub struct MarkEventsResponse {
@@ -76,7 +76,7 @@ impl From<Result<Vec<TransactionEventDb>, Error>> for MarkEventsResponse {
     }
 }
 
-#[derive(Serialize, Deserialize, OpgModel)]
+#[derive(Serialize, OpgModel)]
 #[serde(rename_all = "camelCase")]
 #[opg("TonEventsResponse")]
 pub struct TonTokenEventsResponse {
@@ -102,7 +102,7 @@ impl From<Result<TokenEventsResponse, Error>> for TonTokenEventsResponse {
     }
 }
 
-#[derive(Serialize, Deserialize, OpgModel)]
+#[derive(Serialize, OpgModel)]
 #[serde(rename_all = "camelCase")]
 #[opg("TokenEventsResponse")]
 pub struct TokenEventsResponse {
@@ -110,7 +110,7 @@ pub struct TokenEventsResponse {
     pub items: Vec<AccountTransactionEvent>,
 }
 
-#[derive(Serialize, Deserialize, OpgModel)]
+#[derive(Serialize, OpgModel)]
 #[serde(rename_all = "camelCase")]
 #[opg("MarkTokenEventsResponse")]
 pub struct MarkTokenEventsResponse {
@@ -133,7 +133,7 @@ impl From<Result<TokenTransactionEventDb, Error>> for MarkTokenEventsResponse {
     }
 }
 
-#[derive(Serialize, Deserialize, OpgModel)]
+#[derive(Serialize, OpgModel)]
 #[serde(rename_all = "camelCase")]
 #[opg("TransactionEventResponse")]
 pub struct TransactionEventResponse {

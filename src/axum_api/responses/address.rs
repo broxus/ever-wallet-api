@@ -4,21 +4,21 @@ use bigdecimal::BigDecimal;
 use derive_more::Constructor;
 use nekoton_utils::{pack_std_smc_addr, TrustMe};
 use opg::OpgModel;
-use serde::{Deserialize, Serialize};
+use serde::Serialize;
 use ton_block::MsgAddressInt;
 use uuid::Uuid;
 
 use crate::axum_api::*;
 use crate::models::*;
 
-#[derive(Serialize, Deserialize, OpgModel, Constructor)]
+#[derive(Serialize, OpgModel, Constructor)]
 #[serde(rename_all = "camelCase")]
 #[opg("AddressValidResponse")]
 pub struct AddressValidResponse {
     pub valid: bool,
 }
 
-#[derive(Serialize, Deserialize, OpgModel)]
+#[derive(Serialize, OpgModel)]
 #[serde(rename_all = "camelCase")]
 #[opg("AddressResponse")]
 pub struct AddressResponse {
@@ -44,7 +44,7 @@ impl From<Result<Account, Error>> for AddressResponse {
     }
 }
 
-#[derive(Serialize, Deserialize, opg::OpgModel)]
+#[derive(Serialize, opg::OpgModel)]
 #[serde(rename_all = "camelCase")]
 #[opg("CheckedAddressResponse")]
 pub struct CheckedAddressResponse {
@@ -67,7 +67,7 @@ impl From<Result<AddressValidResponse, Error>> for CheckedAddressResponse {
     }
 }
 
-#[derive(Serialize, Deserialize, OpgModel)]
+#[derive(Serialize, OpgModel)]
 #[serde(rename_all = "camelCase")]
 #[opg("AddressBalanceResponse")]
 pub struct AddressBalanceResponse {
@@ -93,7 +93,7 @@ impl From<Result<AddressBalanceDataResponse, Error>> for AddressBalanceResponse 
     }
 }
 
-#[derive(Serialize, Deserialize, OpgModel)]
+#[derive(Serialize, OpgModel)]
 #[serde(rename_all = "camelCase")]
 #[opg("AddressBalanceDataResponse")]
 pub struct AddressBalanceDataResponse {
@@ -139,7 +139,7 @@ impl AddressBalanceDataResponse {
     }
 }
 
-#[derive(Serialize, Deserialize, OpgModel)]
+#[derive(Serialize, OpgModel)]
 #[serde(rename_all = "camelCase")]
 #[opg("AddressInfoResponse")]
 pub struct AddressInfoResponse {
@@ -165,7 +165,7 @@ impl From<Result<AddressInfoDataResponse, Error>> for AddressInfoResponse {
     }
 }
 
-#[derive(Serialize, Deserialize, OpgModel)]
+#[derive(Serialize, OpgModel)]
 #[serde(rename_all = "camelCase")]
 #[opg("AddressInfoDataResponse")]
 pub struct AddressInfoDataResponse {
@@ -208,7 +208,7 @@ impl AddressInfoDataResponse {
     }
 }
 
-#[derive(Serialize, Deserialize, OpgModel)]
+#[derive(Serialize, OpgModel)]
 #[serde(rename_all = "camelCase")]
 #[opg("TokenBalanceResponse")]
 pub struct TokenBalanceResponse {
@@ -234,7 +234,7 @@ impl From<Result<Vec<TokenBalanceDataResponse>, Error>> for TokenBalanceResponse
     }
 }
 
-#[derive(Serialize, Deserialize, OpgModel)]
+#[derive(Serialize, OpgModel)]
 #[serde(rename_all = "camelCase")]
 #[opg("TokenBalanceDataResponse")]
 pub struct TokenBalanceDataResponse {

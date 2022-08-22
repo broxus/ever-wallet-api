@@ -12,6 +12,7 @@ use crate::services::*;
 mod address;
 mod events;
 mod metrics;
+mod misc;
 mod tokens;
 
 const API_PREFIX: &str = "/ton/v3";
@@ -53,6 +54,7 @@ fn api_router(
         .nest("/address", address::router())
         .nest("/events", events::router())
         .nest("/tokens", tokens::router())
+        .nest("/misc", misc::router())
         .nest("/metrics", metrics::router())
         .layer(axum::middleware::from_fn(move |req, next| {
             controllers::verify_auth(req, next, auth_service.clone())

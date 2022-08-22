@@ -1,12 +1,12 @@
 use derive_more::Constructor;
 use opg::OpgModel;
-use serde::{Deserialize, Serialize};
+use serde::Deserialize;
 use uuid::Uuid;
 
 use crate::models::*;
 use crate::prelude::*;
 
-#[derive(Serialize, Deserialize, OpgModel)]
+#[derive(Deserialize, OpgModel)]
 #[serde(rename_all = "camelCase")]
 #[opg("TonTransactionEventsRequest")]
 pub struct TonTransactionEventsRequest {
@@ -41,21 +41,21 @@ impl From<TonTransactionEventsRequest> for TransactionsEventsSearch {
     }
 }
 
-#[derive(Serialize, Deserialize, OpgModel, Constructor)]
+#[derive(Deserialize, OpgModel, Constructor)]
 #[serde(rename_all = "camelCase")]
 #[opg("TonMarkEventsRequest")]
 pub struct TonMarkEventsRequest {
     pub id: Uuid,
 }
 
-#[derive(Serialize, Deserialize, OpgModel, Constructor)]
+#[derive(Deserialize, OpgModel, Constructor)]
 #[serde(rename_all = "camelCase")]
 #[opg("MarkAllTransactionEventRequest")]
 pub struct MarkAllTransactionEventRequest {
     pub event_status: Option<TonEventStatus>,
 }
 
-#[derive(Serialize, Deserialize, OpgModel)]
+#[derive(Deserialize, OpgModel)]
 #[serde(rename_all = "camelCase")]
 #[opg("TonTokenTransactionEventsRequest")]
 pub struct TonTokenTransactionEventsRequest {
@@ -94,7 +94,7 @@ impl From<TonTokenTransactionEventsRequest> for TokenTransactionsEventsSearch {
     }
 }
 
-#[derive(Serialize, Deserialize, OpgModel, Constructor)]
+#[derive(Deserialize, OpgModel, Constructor)]
 #[serde(rename_all = "camelCase")]
 #[opg("TonTokenMarkEventsRequest")]
 pub struct TonTokenMarkEventsRequest {

@@ -1,3 +1,4 @@
+use crate::axum_api::controllers::ControllersError;
 use axum::{
     http::StatusCode,
     response::{IntoResponse, Response},
@@ -67,6 +68,9 @@ pub enum Error {
 
     #[error(transparent)]
     TonService(#[from] TonServiceError),
+
+    #[error(transparent)]
+    Controllers(#[from] ControllersError),
 }
 
 impl Error {
@@ -80,6 +84,7 @@ impl Error {
             | Self::FromHexError(_)
             | Self::TryFromSliceError(_) => StatusCode::INTERNAL_SERVER_ERROR,
             Error::TonService(e) => e.status_code(),
+            Error::Controllers(e) => e.status_code(),
         }
     }
 }
@@ -136,6 +141,10 @@ impl IntoResponse for Error {
             // Other errors get mapped normally.
             Error::TonService(ref e) => {
                 log::error!("Ton service error: {:?}", e);
+            }
+
+            Error::Controllers(ref e) => {
+                log::error!("Controllers error: {:?}", e);
             }
         }
 

@@ -1,9 +1,9 @@
 use opg::OpgModel;
-use serde::{Deserialize, Serialize};
+use serde::Serialize;
 
 use crate::models::*;
 
-#[derive(Serialize, Deserialize, OpgModel)]
+#[derive(Serialize, OpgModel)]
 #[serde(rename_all = "camelCase")]
 #[opg("MetricsResponse")]
 pub struct MetricsResponse {
