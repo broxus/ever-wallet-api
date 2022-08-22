@@ -1,5 +1,8 @@
 use axum::extract::Path;
 use axum::{Extension, Json};
+use tokio::time::Instant;
+
+use metrics::{histogram, increment_counter};
 
 use crate::api::controllers::*;
 use crate::api::requests::*;
@@ -12,11 +15,17 @@ pub async fn post_address_create(
     Extension(ctx): Extension<Arc<ApiContext>>,
     IdExtractor(service_id): IdExtractor,
 ) -> Result<Json<AddressResponse>> {
+    let start = Instant::now();
+
     let address = ctx
         .ton_service
         .create_address(&service_id, req.into())
         .await
         .map(From::from);
+
+    let elapsed = start.elapsed();
+    histogram!("execution_time_seconds", elapsed, "method" => "createAddress");
+    increment_counter!("requests_processed", "method" => "createAddress");
 
     Ok(Json(AddressResponse::from(address)))
 }

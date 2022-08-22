@@ -49,7 +49,7 @@ pub async fn http_service(
             ServiceBuilder::new().layer(
                 CorsLayer::new()
                     .allow_headers(AllowHeaders::any())
-                    .allow_origin(AllowOrigin::mirror_request())
+                    .allow_origin(AllowOrigin::any())
                     .allow_methods(AllowMethods::list([
                         Method::GET,
                         Method::POST,

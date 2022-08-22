@@ -1,17 +1,19 @@
 use std::convert::Infallible;
 use std::sync::Arc;
+use std::time::Duration;
 
 use axum::response::IntoResponse;
 use axum::routing::get_service;
 use axum::{Extension, Router};
+use metrics::{describe_gauge, gauge};
 use tower::service_fn;
+use tower_http::metrics::InFlightRequestsLayer;
 
 use crate::api::*;
 use crate::services::*;
 
 mod address;
 mod events;
-mod metrics;
 mod misc;
 mod tokens;
 mod transactions;
@@ -23,6 +25,16 @@ pub fn router(
     ton_service: Arc<TonService>,
     memory_storage: Arc<StorageHandler>,
 ) -> Router {
+    describe_gauge!("in_flight_requests", "number of inflight requests");
+    let (in_flight_requests_layer, counter) = InFlightRequestsLayer::pair();
+    tokio::spawn(async {
+        counter
+            .run_emitter(Duration::from_secs(5), |count| async move {
+                gauge!("in_flight_requests", count as f64)
+            })
+            .await;
+    });
+
     Router::new()
         .nest(
             API_PREFIX,
@@ -44,6 +56,7 @@ pub fn router(
                 )
             })),
         )
+        .layer(in_flight_requests_layer)
 }
 
 fn api_router(
@@ -56,7 +69,6 @@ fn api_router(
         .nest("/events", events::router())
         .nest("/tokens", tokens::router())
         .nest("/misc", misc::router())
-        .nest("/metrics", metrics::router())
         .nest("/transactions", transactions::router())
         .layer(axum::middleware::from_fn(move |req, next| {
             controllers::verify_auth(req, next, auth_service.clone())

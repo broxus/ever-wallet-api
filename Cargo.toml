@@ -55,7 +55,6 @@ tower-http = { version = "0.3.3", features = ["trace", "cors", "limit", "set-hea
 tracing = "0.1.34"
 
 uuid = { version = "0.8", features = ["v4", "serde"] }
-warp = { version = "0.3" }
 
 ed25519-dalek = { git = "https://github.com/broxus/ed25519-dalek.git" }
 

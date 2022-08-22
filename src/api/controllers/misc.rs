@@ -1,4 +1,6 @@
 use axum::{Extension, Json};
+use metrics::{histogram, increment_counter};
+use tokio::time::Instant;
 
 use crate::api::controllers::*;
 use crate::api::requests::*;
@@ -10,6 +12,8 @@ pub async fn post_read_contract(
     Json(req): Json<ExecuteContractRequest>,
     Extension(ctx): Extension<Arc<ApiContext>>,
 ) -> Result<Json<ReadContractResponse>> {
+    let start = Instant::now();
+
     let tokens = ctx
         .ton_service
         .execute_contract_function(
@@ -26,6 +30,10 @@ pub async fn post_read_contract(
         .await
         .map(|value| ReadContractResponse { object: value })?;
 
+    let elapsed = start.elapsed();
+    histogram!("execution_time_seconds", elapsed, "method" => "readContract");
+    increment_counter!("requests_processed", "method" => "readContract");
+
     Ok(Json(tokens))
 }
 
@@ -33,6 +41,8 @@ pub async fn post_encode_tvm_cell(
     Json(req): Json<EncodeParamRequest>,
     Extension(ctx): Extension<Arc<ApiContext>>,
 ) -> Result<Json<EncodedCellResponse>> {
+    let start = Instant::now();
+
     let cell = ctx
         .ton_service
         .encode_tvm_cell(
@@ -43,6 +53,10 @@ pub async fn post_encode_tvm_cell(
         )
         .map(|cell| EncodedCellResponse { base64_cell: cell })?;
 
+    let elapsed = start.elapsed();
+    histogram!("execution_time_seconds", elapsed, "method" => "encodeTvmCell");
+    increment_counter!("requests_processed", "method" => "encodeTvmCell");
+
     Ok(Json(cell))
 }
 
@@ -50,6 +64,8 @@ pub async fn post_prepare_generic_message(
     Json(req): Json<PrepareMessageRequest>,
     Extension(ctx): Extension<Arc<ApiContext>>,
 ) -> Result<Json<UnsignedMessageHashResponse>> {
+    let start = Instant::now();
+
     let function_details = req.function_details.map(|d| FunctionDetails {
         function_name: d.function_name,
         input_params: d
@@ -78,6 +94,10 @@ pub async fn post_prepare_generic_message(
 
     ctx.memory_storage.add_message(unsigned_message.clone());
 
+    let elapsed = start.elapsed();
+    histogram!("execution_time_seconds", elapsed, "method" => "prepareGenericMessage");
+    increment_counter!("requests_processed", "method" => "prepareGenericMessage");
+
     Ok(Json(UnsignedMessageHashResponse {
         unsigned_message_hash: hex::encode(unsigned_message.hash()),
     }))
@@ -87,6 +107,8 @@ pub async fn post_send_signed_message(
     Json(req): Json<SignedMessageRequest>,
     Extension(ctx): Extension<Arc<ApiContext>>,
 ) -> Result<Json<SignedMessageHashResponse>> {
+    let start = Instant::now();
+
     let res = match ctx.memory_storage.get_message(&req.hash) {
         Some(message) => {
             let signature: [u8; 64] = hex::decode(req.signature)
@@ -111,6 +133,10 @@ pub async fn post_send_signed_message(
             "Message unknown or expired".to_string(),
         )),
     }?;
+
+    let elapsed = start.elapsed();
+    histogram!("execution_time_seconds", elapsed, "method" => "sendSignedMessage");
+    increment_counter!("requests_processed", "method" => "sendSignedMessage");
 
     Ok(Json(res))
 }

@@ -29,10 +29,15 @@ pub struct AppConfig {
     #[serde(default)]
     pub ton_core: NodeConfig,
 
-    /// Prometheus metrics exporter settings.
+    /// API prometheus metrics exporter settings.
     /// Completely disable when not specified
     #[serde(default)]
-    pub metrics_settings: Option<pomfrit::Config>,
+    pub api_metrics_addr: Option<SocketAddr>,
+
+    /// Node prometheus metrics exporter settings.
+    /// Completely disable when not specified
+    #[serde(default)]
+    pub node_metrics_settings: Option<pomfrit::Config>,
 
     /// log4rs settings.
     /// See [docs](https://docs.rs/log4rs/1.0.0/log4rs/) for more details

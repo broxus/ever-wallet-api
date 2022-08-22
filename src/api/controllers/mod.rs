@@ -5,7 +5,6 @@ pub use self::address::*;
 pub use self::authorization::*;
 pub use self::docs::*;
 pub use self::events::*;
-pub use self::metrics::*;
 pub use self::misc::*;
 pub use self::transactions::*;
 
@@ -13,7 +12,6 @@ mod address;
 mod authorization;
 mod docs;
 mod events;
-mod metrics;
 mod misc;
 mod transactions;
 

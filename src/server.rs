@@ -19,7 +19,7 @@ use crate::utils::*;
 
 pub struct Engine {
     context: Arc<EngineContext>,
-    _metrics_exporter: Arc<pomfrit::MetricsExporter>,
+    _node_metrics_exporter: Arc<pomfrit::MetricsExporter>,
 }
 
 impl Engine {
@@ -29,13 +29,13 @@ impl Engine {
         shutdown_requests_tx: ShutdownRequestsTx,
     ) -> Result<Arc<Self>> {
         let (metrics_exporter, metrics_writer) =
-            pomfrit::create_exporter(config.metrics_settings.clone()).await?;
+            pomfrit::create_exporter(config.node_metrics_settings.clone()).await?;
 
         let context = EngineContext::new(config, global_config, shutdown_requests_tx).await?;
 
         let engine = Arc::new(Self {
             context,
-            _metrics_exporter: metrics_exporter,
+            _node_metrics_exporter: metrics_exporter,
         });
 
         metrics_writer.spawn({
@@ -58,7 +58,7 @@ impl Engine {
 
         tokio::spawn(http_service(
             self.context.config.server_addr,
-            None,
+            self.context.config.api_metrics_addr,
             self.context.auth_service.clone(),
             self.context.ton_service.clone(),
             self.context.memory_storage.clone(),

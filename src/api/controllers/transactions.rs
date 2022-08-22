@@ -1,5 +1,7 @@
 use axum::extract::Path;
 use axum::{Extension, Json};
+use metrics::{histogram, increment_counter};
+use tokio::time::Instant;
 use uuid::Uuid;
 
 use crate::api::controllers::*;
@@ -35,11 +37,17 @@ pub async fn post_transactions_create(
     Extension(ctx): Extension<Arc<ApiContext>>,
     IdExtractor(service_id): IdExtractor,
 ) -> Result<Json<TransactionResponse>> {
+    let start = Instant::now();
+
     let transaction = ctx
         .ton_service
         .create_send_transaction(&service_id, req.into())
         .await
         .map(From::from);
+
+    let elapsed = start.elapsed();
+    histogram!("execution_time_seconds", elapsed, "method" => "transactionCreate");
+    increment_counter!("requests_processed", "method" => "transactionCreate");
 
     Ok(Json(TransactionResponse::from(transaction)))
 }
@@ -49,11 +57,17 @@ pub async fn post_transactions_confirm(
     Extension(ctx): Extension<Arc<ApiContext>>,
     IdExtractor(service_id): IdExtractor,
 ) -> Result<Json<TransactionResponse>> {
+    let start = Instant::now();
+
     let transaction = ctx
         .ton_service
         .create_confirm_transaction(&service_id, req.into())
         .await
         .map(From::from);
+
+    let elapsed = start.elapsed();
+    histogram!("execution_time_seconds", elapsed, "method" => "transactionConfirm");
+    increment_counter!("requests_processed", "method" => "transactionConfirm");
 
     Ok(Json(TransactionResponse::from(transaction)))
 }
@@ -133,11 +147,17 @@ pub async fn post_tokens_transactions_create(
     Extension(ctx): Extension<Arc<ApiContext>>,
     IdExtractor(service_id): IdExtractor,
 ) -> Result<Json<TransactionResponse>> {
+    let start = Instant::now();
+
     let transaction = ctx
         .ton_service
         .create_send_token_transaction(&service_id, &req.into())
         .await
         .map(From::from);
+
+    let elapsed = start.elapsed();
+    histogram!("execution_time_seconds", elapsed, "method" => "tokenTransactionCreate");
+    increment_counter!("requests_processed", "method" => "tokenTransactionCreate");
 
     Ok(Json(TransactionResponse::from(transaction)))
 }
@@ -147,11 +167,17 @@ pub async fn post_tokens_transactions_burn(
     Extension(ctx): Extension<Arc<ApiContext>>,
     IdExtractor(service_id): IdExtractor,
 ) -> Result<Json<TransactionResponse>> {
+    let start = Instant::now();
+
     let transaction = ctx
         .ton_service
         .create_burn_token_transaction(&service_id, &req.into())
         .await
         .map(From::from);
+
+    let elapsed = start.elapsed();
+    histogram!("execution_time_seconds", elapsed, "method" => "tokenTransactionBurn");
+    increment_counter!("requests_processed", "method" => "tokenTransactionBurn");
 
     Ok(Json(TransactionResponse::from(transaction)))
 }
@@ -161,11 +187,17 @@ pub async fn post_tokens_transactions_mint(
     Extension(ctx): Extension<Arc<ApiContext>>,
     IdExtractor(service_id): IdExtractor,
 ) -> Result<Json<TransactionResponse>> {
+    let start = Instant::now();
+
     let transaction = ctx
         .ton_service
         .create_mint_token_transaction(&service_id, &req.into())
         .await
         .map(From::from);
+
+    let elapsed = start.elapsed();
+    histogram!("execution_time_seconds", elapsed, "method" => "tokenTransactionMint");
+    increment_counter!("requests_processed", "method" => "tokenTransactionMint");
 
     Ok(Json(TransactionResponse::from(transaction)))
 }
