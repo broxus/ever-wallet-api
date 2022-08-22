@@ -17,14 +17,15 @@ pub fn swagger(prod_url: &str) -> String {
             prod_url
         },
         tags: {
-            addresses,
+            address,
+            events,
             tokens,
             metrics,
         },
         paths: {
             ("address" / "check"): {
                 POST: {
-                    tags: { addresses },
+                    tags: { address },
                     summary: "Check address",
                     description: "Check correction of EVER address.",
                     parameters: {
@@ -47,7 +48,7 @@ pub fn swagger(prod_url: &str) -> String {
             },
             ("address" / "create"): {
                 POST: {
-                    tags: { addresses },
+                    tags: { address },
                     summary: "Address creation",
                     description: "Create user address.",
                     parameters: {
@@ -70,7 +71,7 @@ pub fn swagger(prod_url: &str) -> String {
             },
              ("address" / { address: String }): {
                 GET: {
-                    tags: { addresses },
+                    tags: { address },
                     summary: "Address balance",
                     description: "Get address balance.",
                     parameters: {
@@ -92,7 +93,7 @@ pub fn swagger(prod_url: &str) -> String {
             },
              ("address" / { address: String } / "info"): {
                 GET: {
-                    tags: { addresses },
+                    tags: { address },
                     summary: "Address info",
                     description: "Get address info.",
                     parameters: {
@@ -112,9 +113,100 @@ pub fn swagger(prod_url: &str) -> String {
                     200: responses::AddressInfoResponse,
                 }
             },
+            ("events" / "id" / { id: String }): {
+                GET: {
+                    tags: { events },
+                    summary: "Get event",
+                    description: "Get event by id.",
+                    parameters: {
+                        (header "api-key"): {
+                            description: "API Key",
+                        },
+                        (header "sign"): {
+                            description: "Signature",
+                        },
+                        (header "timestamp"): {
+                            description: "Timestamp in ms",
+                        },
+                        (header "x-real-ip"): {
+                            required: false
+                        },
+                    },
+                    200: responses::TransactionEventResponse,
+                }
+            },
+            ("events" ): {
+                POST: {
+                    tags: { events },
+                    summary: "Get events",
+                    description: "Get events.",
+                    parameters: {
+                        (header "api-key"): {
+                            description: "API Key",
+                        },
+                        (header "sign"): {
+                            description: "Signature",
+                        },
+                        (header "timestamp"): {
+                            description: "Timestamp in ms",
+                        },
+                        (header "x-real-ip"): {
+                            required: false
+                        },
+                    },
+                    body: requests::TonTransactionEventsRequest,
+                    200: responses::TonEventsResponse,
+                }
+            },
+            ("events" / "mark" ): {
+                POST: {
+                    tags: { events },
+                    summary: "Mark event",
+                    description: "Mark event by id.",
+                    parameters: {
+                        (header "api-key"): {
+                            description: "API Key",
+                        },
+                        (header "sign"): {
+                            description: "Signature",
+                        },
+                        (header "timestamp"): {
+                            description: "Timestamp in ms",
+                        },
+                        (header "x-real-ip"): {
+                            required: false
+                        },
+                    },
+                    body: requests::TonMarkEventsRequest,
+                    200: responses::MarkEventsResponse,
+                }
+            },
+            ("events" / "mark" / "all" ): {
+                POST: {
+                    tags: { events },
+                    summary: "Mark events",
+                    description: "Mark events by status optional.",
+                    parameters: {
+                        (header "api-key"): {
+                            description: "API Key",
+                        },
+                        (header "sign"): {
+                            description: "Signature",
+                        },
+                        (header "timestamp"): {
+                            description: "Timestamp in ms",
+                        },
+                        (header "x-real-ip"): {
+                            required: false
+                        },
+                    },
+                    body: requests::MarkAllTransactionEventRequest,
+                    200: responses::MarkEventsResponse,
+                }
+            },
             ("tokens" / "address" / { address: String }): {
                 GET: {
-                    tags: { addresses, tokens },
+                    tags: { address, tokens },
                     summary: "Address tokens balances",
                     description: "Get address tokens balances.",
                     parameters: {
@@ -132,6 +224,52 @@ pub fn swagger(prod_url: &str) -> String {
                         },
                     },
                     200: responses::TokenBalanceResponse,
+                }
+            },
+            ("tokens" / "events" ): {
+                POST: {
+                    tags: { events, tokens },
+                    summary: "Get token events",
+                    description: "Get token events.",
+                    parameters: {
+                        (header "api-key"): {
+                            description: "API Key",
+                        },
+                        (header "sign"): {
+                            description: "Signature",
+                        },
+                        (header "timestamp"): {
+                            description: "Timestamp in ms",
+                        },
+                        (header "x-real-ip"): {
+                            required: false
+                        },
+                    },
+                    body: requests::TonTokenTransactionEventsRequest,
+                    200: responses::TonTokenEventsResponse,
+                }
+            },
+            ("tokens" / "events" / "mark" ): {
+                POST: {
+                    tags: { events, tokens },
+                    summary: "Mark tokens event",
+                    description: "Mark tokens event by id.",
+                    parameters: {
+                        (header "api-key"): {
+                            description: "API Key",
+                        },
+                        (header "sign"): {
+                            description: "Signature",
+                        },
+                        (header "timestamp"): {
+                            description: "Timestamp in ms",
+                        },
+                        (header "x-real-ip"): {
+                            required: false
+                        },
+                    },
+                    body: requests::TonTokenMarkEventsRequest,
+                    200: responses::MarkTokenEventsResponse,
                 }
             },
             ("metrics"): {

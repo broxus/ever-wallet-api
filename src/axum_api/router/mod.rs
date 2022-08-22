@@ -10,6 +10,7 @@ use crate::axum_api::*;
 use crate::services::*;
 
 mod address;
+mod events;
 mod metrics;
 mod tokens;
 
@@ -51,6 +52,7 @@ fn api_router(
 ) -> Router {
     Router::new()
         .nest("/address", address::router())
+        .nest("/events", events::router())
         .nest("/tokens", tokens::router())
         .nest("/metrics", metrics::router())
         .layer(axum::middleware::from_fn(move |req, next| {
