@@ -7,6 +7,7 @@ use tokio::sync::oneshot;
 use tracing::log;
 
 use crate::api::controllers::ControllersError;
+use crate::client::TonClientError;
 use crate::services::TonServiceError;
 
 /// A common error type that can be used throughout the API.
@@ -39,6 +40,9 @@ pub enum Error {
     #[error("an error occurred with serde")]
     Serde(#[from] serde_json::Error),
 
+    #[error("an error occurred with ed25519")]
+    Ed25519(#[from] ed25519_dalek::ed25519::Error),
+
     #[error("an error occurred with oneshot channel")]
     RecvError(#[from] oneshot::error::RecvError),
 
@@ -70,6 +74,9 @@ pub enum Error {
     TonService(#[from] TonServiceError),
 
     #[error(transparent)]
+    TonClient(#[from] TonClientError),
+
+    #[error(transparent)]
     Controllers(#[from] ControllersError),
 }
 
@@ -79,11 +86,13 @@ impl Error {
             Self::Sqlx(_)
             | Self::Serde(_)
             | Self::Anyhow(_)
+            | Self::Ed25519(_)
             | Self::RecvError(_)
             | Self::TokensJson(_)
             | Self::FromHexError(_)
             | Self::TryFromSliceError(_) => StatusCode::INTERNAL_SERVER_ERROR,
             Error::TonService(e) => e.status_code(),
+            Error::TonClient(e) => e.status_code(),
             Error::Controllers(e) => e.status_code(),
         }
     }
@@ -106,6 +115,12 @@ impl IntoResponse for Error {
                 // TODO: we probably want to use `tracing` instead
                 // so that this gets linked to the HTTP request by `TraceLayer`.
                 log::error!("Serde error: {:?}", e);
+            }
+
+            Self::Ed25519(ref e) => {
+                // TODO: we probably want to use `tracing` instead
+                // so that this gets linked to the HTTP request by `TraceLayer`.
+                log::error!("Ed25519 error: {:?}", e);
             }
 
             Self::RecvError(ref e) => {
@@ -141,6 +156,11 @@ impl IntoResponse for Error {
             // Other errors get mapped normally.
             Error::TonService(ref e) => {
                 log::error!("Ton service error: {:?}", e);
+            }
+
+            // Other errors get mapped normally.
+            Error::TonClient(ref e) => {
+                log::error!("Ton client error: {:?}", e);
             }
 
             Error::Controllers(ref e) => {

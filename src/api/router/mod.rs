@@ -16,6 +16,7 @@ mod address;
 mod events;
 mod misc;
 mod tokens;
+mod ton_metrics;
 mod transactions;
 
 const API_PREFIX: &str = "/ton/v3";
@@ -70,6 +71,7 @@ fn api_router(
         .nest("/tokens", tokens::router())
         .nest("/misc", misc::router())
         .nest("/transactions", transactions::router())
+        .nest("/metrics", ton_metrics::router())
         .layer(axum::middleware::from_fn(move |req, next| {
             controllers::verify_auth(req, next, auth_service.clone())
         }))

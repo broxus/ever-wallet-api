@@ -1,8 +1,8 @@
 use std::sync::Arc;
 
-use anyhow::Result;
 use bigdecimal::{BigDecimal, ToPrimitive};
 use ed25519_dalek::{Keypair, PublicKey, SecretKey, Signer};
+use http::StatusCode;
 use nekoton::core::models::Expiration;
 use nekoton::core::ton_wallet::{MultisigType, TransferAction};
 use nekoton::core::InternalMessage;
@@ -16,6 +16,7 @@ use ton_block::{GetRepresentationHash, MsgAddressInt};
 use ton_types::UInt256;
 use uuid::Uuid;
 
+use crate::api::*;
 use crate::models::*;
 use crate::prelude::*;
 use crate::services::*;
@@ -41,7 +42,7 @@ impl TonClient {
         }
     }
 
-    pub async fn start(&self) -> Result<()> {
+    pub async fn start(&self) -> anyhow::Result<()> {
         let owner_addresses = self
             .sqlx_client
             .get_all_addresses()
@@ -64,7 +65,7 @@ impl TonClient {
         Ok(())
     }
 
-    pub async fn create_address(&self, payload: CreateAddress) -> Result<CreatedAddress> {
+    pub async fn create_address(&self, payload: CreateAddress) -> Result<CreatedAddress, Error> {
         let generated_key = nekoton::crypto::generate_key(nekoton::crypto::MnemonicType::Labs(0));
 
         let Keypair { public, secret } = nekoton::crypto::derive_from_phrase(
@@ -102,6 +103,15 @@ impl TonClient {
             ),
             AccountType::HighloadWallet | AccountType::Wallet => (None, None),
         };
+
+        if let (Some(custodians), Some(confirmations)) = (custodians, confirmations) {
+            if confirmations > custodians {
+                return Err(TonServiceError::WrongInput(
+                    "Invalid number of confirmations".to_string(),
+                )
+                .into());
+            }
+        }
 
         // Validate custodians and append created pubkey to them
         let custodians_public_keys = match account_type {
@@ -148,7 +158,10 @@ impl TonClient {
         })
     }
 
-    pub async fn get_address_info(&self, owner: &MsgAddressInt) -> Result<NetworkAddressData> {
+    pub async fn get_address_info(
+        &self,
+        owner: &MsgAddressInt,
+    ) -> Result<NetworkAddressData, Error> {
         let account = UInt256::from_be_bytes(&owner.address().get_bytestring(0));
         let contract = match self.ton_core.get_contract_state(&account) {
             Ok(contract) => contract,
@@ -177,7 +190,7 @@ impl TonClient {
         address: &AddressDb,
         public_key: &[u8],
         private_key: &[u8],
-    ) -> Result<Option<(SentTransaction, SignedMessage)>> {
+    ) -> Result<Option<(SentTransaction, SignedMessage)>, Error> {
         let public_key = PublicKey::from_bytes(public_key)?;
 
         let unsigned_message = match address.account_type {
@@ -235,7 +248,7 @@ impl TonClient {
         private_key: &[u8],
         account_type: &AccountType,
         custodians: &Option<i32>,
-    ) -> Result<(SentTransaction, SignedMessage)> {
+    ) -> Result<(SentTransaction, SignedMessage), Error> {
         let original_value = transaction.outputs.iter().map(|o| o.value.clone()).sum();
         let original_outputs = serde_json::to_value(transaction.outputs.clone())?;
 
@@ -380,7 +393,7 @@ impl TonClient {
         transaction: TransactionConfirm,
         public_key: &[u8],
         private_key: &[u8],
-    ) -> Result<(SentTransaction, SignedMessage)> {
+    ) -> Result<(SentTransaction, SignedMessage), Error> {
         let public_key = PublicKey::from_bytes(public_key)?;
         let address = nekoton_utils::repack_address(&transaction.address.0)?;
 
@@ -421,7 +434,7 @@ impl TonClient {
         &self,
         owner: &MsgAddressInt,
         root_address: &MsgAddressInt,
-    ) -> Result<NetworkTokenAddressData> {
+    ) -> Result<NetworkTokenAddressData, Error> {
         let root_account = UInt256::from_be_bytes(&root_address.address().get_bytestring(0));
         let root_contract = self.ton_core.get_contract_state(&root_account)?;
 
@@ -463,7 +476,7 @@ impl TonClient {
         private_key: &[u8],
         account_type: &AccountType,
         custodians: &Option<i32>,
-    ) -> Result<(SentTransaction, SignedMessage)> {
+    ) -> Result<(SentTransaction, SignedMessage), Error> {
         let owner = nekoton_utils::repack_address(&input.from_address.0)?;
 
         let token_owner_db = self
@@ -503,7 +516,7 @@ impl TonClient {
             Default::default(),
         )?;
 
-        build_token_transaction(
+        let res = build_token_transaction(
             &self.ton_core,
             input.id,
             owner,
@@ -512,7 +525,9 @@ impl TonClient {
             account_type,
             custodians,
             internal_message,
-        )
+        )?;
+
+        Ok(res)
     }
 
     pub async fn prepare_token_burn(
@@ -522,7 +537,7 @@ impl TonClient {
         private_key: &[u8],
         account_type: &AccountType,
         custodians: &Option<i32>,
-    ) -> Result<(SentTransaction, SignedMessage)> {
+    ) -> Result<(SentTransaction, SignedMessage), Error> {
         let owner = nekoton_utils::repack_address(&input.from_address.0)?;
 
         let token_owner_db = self
@@ -560,7 +575,7 @@ impl TonClient {
             Default::default(),
         )?;
 
-        build_token_transaction(
+        let res = build_token_transaction(
             &self.ton_core,
             input.id,
             owner,
@@ -569,7 +584,9 @@ impl TonClient {
             account_type,
             custodians,
             internal_message,
-        )
+        )?;
+
+        Ok(res)
     }
 
     pub async fn prepare_token_mint(
@@ -579,7 +596,7 @@ impl TonClient {
         private_key: &[u8],
         account_type: &AccountType,
         custodians: &Option<i32>,
-    ) -> Result<(SentTransaction, SignedMessage)> {
+    ) -> Result<(SentTransaction, SignedMessage), Error> {
         let owner = nekoton_utils::repack_address(&input.owner_address.0)?;
         let root_token = nekoton_utils::repack_address(&input.root_address.0)?;
         let recipient = nekoton_utils::repack_address(&input.recipient_address.0)?;
@@ -620,7 +637,7 @@ impl TonClient {
             Default::default(),
         )?;
 
-        build_token_transaction(
+        let res = build_token_transaction(
             &self.ton_core,
             input.id,
             owner,
@@ -629,17 +646,22 @@ impl TonClient {
             account_type,
             custodians,
             internal_message,
-        )
+        )?;
+
+        Ok(res)
     }
 
     pub async fn send_transaction(
         &self,
         account: UInt256,
         signed_message: SignedMessage,
-    ) -> Result<MessageStatus> {
-        self.ton_core
+    ) -> Result<MessageStatus, Error> {
+        let status = self
+            .ton_core
             .send_ton_message(&account, &signed_message.message, signed_message.expire_at)
-            .await
+            .await?;
+
+        Ok(status)
     }
 
     pub fn add_pending_message(
@@ -647,12 +669,15 @@ impl TonClient {
         account: UInt256,
         message_hash: UInt256,
         expire_at: u32,
-    ) -> Result<oneshot::Receiver<MessageStatus>> {
-        self.ton_core
-            .add_pending_message(account, message_hash, expire_at)
+    ) -> Result<oneshot::Receiver<MessageStatus>, Error> {
+        let status = self
+            .ton_core
+            .add_pending_message(account, message_hash, expire_at)?;
+
+        Ok(status)
     }
 
-    pub async fn get_metrics(&self) -> Result<Metrics> {
+    pub async fn get_metrics(&self) -> Result<Metrics, Error> {
         let gen_utime = self.ton_core.current_utime();
         Ok(Metrics { gen_utime })
     }
@@ -662,7 +687,7 @@ impl TonClient {
         contract_address: UInt256,
         function: ton_abi::Function,
         input: &[ton_abi::Token],
-    ) -> Result<Option<nekoton_abi::ExecutionOutput>> {
+    ) -> anyhow::Result<Option<nekoton_abi::ExecutionOutput>> {
         use nekoton_abi::FunctionExt;
 
         let state = match self.ton_core.get_contract_state(&contract_address) {
@@ -690,7 +715,7 @@ impl TonClient {
         custodians: &Option<i32>,
         function: Option<ton_abi::Function>,
         params: Option<Vec<ton_abi::Token>>,
-    ) -> Result<Box<dyn UnsignedMessage>> {
+    ) -> Result<Box<dyn UnsignedMessage>, Error> {
         let address = nekoton_utils::repack_address(sender_addr)?;
         let public_key = PublicKey::from_bytes(public_key)?;
 
@@ -770,7 +795,7 @@ impl TonClient {
 }
 
 #[derive(thiserror::Error, Debug)]
-enum TonClientError {
+pub enum TonClientError {
     #[error("Recipient is empty")]
     RecipientNotFound,
     #[error("Account `{0}` not deployed")]
@@ -783,6 +808,19 @@ enum TonClientError {
     ParseBigUint,
 }
 
+impl TonClientError {
+    pub fn status_code(&self) -> StatusCode {
+        match self {
+            TonClientError::ParseBigUint
+            | TonClientError::RecipientNotFound
+            | TonClientError::AccountNotDeployed(_) => StatusCode::BAD_REQUEST,
+            TonClientError::CustodiansNotFound | TonClientError::ParseBigDecimal => {
+                StatusCode::INTERNAL_SERVER_ERROR
+            }
+        }
+    }
+}
+
 fn build_token_transaction(
     ton_core: &Arc<TonCore>,
     id: Uuid,
@@ -792,7 +830,7 @@ fn build_token_transaction(
     account_type: &AccountType,
     custodians: &Option<i32>,
     internal_message: InternalMessage,
-) -> Result<(SentTransaction, SignedMessage)> {
+) -> anyhow::Result<(SentTransaction, SignedMessage)> {
     let flags = TransactionSendOutputType::default();
 
     let bounce = internal_message.bounce;

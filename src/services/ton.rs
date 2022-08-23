@@ -1223,7 +1223,7 @@ enum NotifyType {
 
 #[derive(thiserror::Error, Debug)]
 pub enum TonServiceError {
-    #[error("Invalid request: `{0}` ")]
+    #[error("Invalid request: `{0}`")]
     WrongInput(String),
     #[error("Service unavailable")]
     ServiceUnavailable,

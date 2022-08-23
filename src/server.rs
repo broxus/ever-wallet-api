@@ -4,7 +4,6 @@ use anyhow::Result;
 use everscale_network::utils::FxDashMap;
 use pomfrit::formatter::*;
 use sqlx::postgres::PgPoolOptions;
-use tokio::net::ToSocketAddrs;
 use tokio::sync::mpsc;
 use tokio::sync::Mutex;
 
@@ -64,8 +63,6 @@ impl Engine {
             self.context.ton_service.clone(),
             self.context.memory_storage.clone(),
         ));
-
-        tokio::spawn(healthcheck_service(self.context.config.healthcheck_addr));
 
         // Done
         Ok(())
@@ -344,15 +341,6 @@ impl std::fmt::Display for LabeledTonSubscriberMetrics<'_> {
             .value(metrics.pending_message_count)?;
 
         Ok(())
-    }
-}
-
-async fn healthcheck_service<A: ToSocketAddrs>(address: A) {
-    let listener = tokio::net::TcpListener::bind(address).await.unwrap();
-    loop {
-        if let Err(e) = listener.accept().await {
-            log::error!("Failed to accept healthcheck connection: {e:?}");
-        }
     }
 }
 

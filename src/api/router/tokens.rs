@@ -21,15 +21,15 @@ pub fn router() -> Router {
         )
         .route(
             "/transactions/create",
-            get(controllers::post_tokens_transactions_create),
+            post(controllers::post_tokens_transactions_create),
         )
         .route(
             "/transactions/burn",
-            get(controllers::post_tokens_transactions_burn),
+            post(controllers::post_tokens_transactions_burn),
         )
         .route(
             "/transactions/mint",
-            get(controllers::post_tokens_transactions_mint),
+            post(controllers::post_tokens_transactions_mint),
         )
         .route("/events", post(controllers::post_tokens_events))
         .route("/events/mark", post(controllers::post_tokens_events_mark))

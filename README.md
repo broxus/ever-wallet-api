@@ -80,18 +80,13 @@ NOTE: scripts are prepared and tested on **Ubuntu 20.04**. You may need to modif
    journalctl -fu ton-wallet-api
    ```
 
-   > ton-wallet-api has a built-in Prometheus metrics exporter which is configured in the `metrics_settings` section of the config.
+   > ton-wallet-api has a built-in Prometheus metrics exporter which is configured in the `node_metrics_settings` section of the config.
    > By default, metrics are available at `http://127.0.0.1:10000/`
    >
    > <details><summary><b>Response example:</b></summary>
    > <p>
    >
    > ```
-   > ton_service_create_address_total_requests 0
-   > ton_service_send_transaction_total_requests 0
-   > ton_service_recv_transaction_total_requests 0
-   > ton_service_send_token_transaction_total_requests 0
-   > ton_service_recv_token_transaction_total_requests 0
    > ton_subscriber_ready 1
    > ton_subscriber_current_utime 1639490380
    > ton_subscriber_time_diff 4

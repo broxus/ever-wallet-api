@@ -695,7 +695,29 @@ pub fn swagger(prod_url: &str) -> String {
                     body: requests::SignedMessageRequest,
                     200: responses::SignedMessageHashResponse,
                 }
-            }
+            },
+            ("metrics"): {
+                GET: {
+                    tags: { metrics  },
+                    summary: "Get metrics",
+                    description: "Get metrics of api health.",
+                    parameters: {
+                        (header "api-key"): {
+                            description: "API Key",
+                        },
+                        (header "sign"): {
+                            description: "Signature",
+                        },
+                        (header "timestamp"): {
+                            description: "Timestamp in ms",
+                        },
+                        (header "x-real-ip"): {
+                            required: false
+                        },
+                    },
+                    200: responses::MetricsResponse,
+                }
+            },
         }
     };
 
