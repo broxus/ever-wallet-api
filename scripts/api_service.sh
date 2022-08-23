@@ -104,4 +104,4 @@ else
 fi
 
 echo "Exporting keys from $path"
-sudo -E bash -c "DATABASE_URL=$database_url $ton_wallet_api_binary --id $service_id --name $service_name --key service_key --secret $service_secret"
+sudo -E bash -c "DATABASE_URL=$database_url $ton_wallet_api_binary --id $service_id --name $service_name --key $service_key --secret $service_secret"
