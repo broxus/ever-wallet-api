@@ -24,6 +24,7 @@ async fn run(app: App) -> Result<()> {
         }
         Subcommand::RootToken(run) => run.execute().await,
         Subcommand::ApiService(run) => run.execute().await,
+        Subcommand::Salt(run) => run.execute().await,
     }
 }
 
@@ -40,6 +41,7 @@ enum Subcommand {
     Server(CmdServer),
     RootToken(CmdRootToken),
     ApiService(CmdApiService),
+    Salt(CmdSalt),
 }
 
 #[derive(Debug, PartialEq, FromArgs)]
@@ -114,6 +116,17 @@ struct CmdApiService {
 impl CmdApiService {
     async fn execute(self) -> Result<()> {
         create_api_service(self.id, self.name, self.key, self.secret).await
+    }
+}
+
+#[derive(Debug, PartialEq, FromArgs)]
+/// Create a new api service
+#[argh(subcommand, name = "salt")]
+struct CmdSalt {}
+
+impl CmdSalt {
+    async fn execute(self) -> Result<()> {
+        generate_salt().await
     }
 }
 

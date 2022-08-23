@@ -1,6 +1,7 @@
 use std::str::FromStr;
 
 use anyhow::{Context, Result};
+use argon2::password_hash::{rand_core::OsRng, SaltString};
 use sqlx::postgres::PgPoolOptions;
 
 use crate::models::*;
@@ -63,6 +64,13 @@ pub async fn create_api_service(
         "Api service key {:?} created successfully!",
         api_service_key
     );
+
+    Ok(())
+}
+
+pub async fn generate_salt() -> Result<()> {
+    let salt = SaltString::generate(&mut OsRng);
+    println!("Salt: {}", salt);
 
     Ok(())
 }

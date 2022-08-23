@@ -50,11 +50,11 @@ NOTE: scripts are prepared and tested on **Ubuntu 20.04**. You may need to modif
 
    > SECRET - any string to encrypt/decrypt all addresses private keys.
 
-   > SALT - 16 bytes recommended in base64 for secret hashing.
+   > SALT - 16 bytes recommended in B64 for secret hashing.
 
    ###### How to get SALT
    ```bash
-   cat /dev/random | head -c 16 | base64
+   ./target/release/ton-wallet-api salt
    ```
 
 3. ##### Create api service
