@@ -219,7 +219,7 @@ pub fn swagger(prod_url: &str) -> String {
                     }
                 }
             },
-            ("transactions" / "id" / { transaction_id: String }): {
+            ("transactions" / "id" / { id: String }): {
                 GET: {
                     tags: { transactions },
                     summary: "Get transaction",
