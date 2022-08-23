@@ -14,6 +14,9 @@ pub struct AppConfig {
     /// Listen address of service.
     pub server_addr: SocketAddr,
 
+    /// Listen address of healthcheck service
+    pub healthcheck_addr: SocketAddr,
+
     /// Postgres database url.
     pub database_url: String,
 

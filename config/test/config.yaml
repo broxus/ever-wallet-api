@@ -1,5 +1,6 @@
 ---
 server_addr: "0.0.0.0:3030"
+healthcheck_addr: "0.0.0.0:3031"
 database_url: "postgresql://postgres:postgres@127.0.0.1:5432/ton_wallet_api"
 db_pool_size: 5
 ton_core:
@@ -26,13 +27,8 @@ logger_settings:
       appenders:
         - stdout
       additive: false
-    warp:
-      level: info
-      appenders:
-        - stdout
-      additive: false
     ton_indexer:
-      level: error
+      level: info
       appenders:
         - stdout
       additive: false
