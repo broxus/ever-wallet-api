@@ -87,11 +87,14 @@ struct CmdRootToken {
     /// root token address
     #[argh(option, short = 'a')]
     address: String,
+    /// root token version
+    #[argh(option, short = 'v')]
+    version: String,
 }
 
 impl CmdRootToken {
     async fn execute(self) -> Result<()> {
-        add_root_token(self.name, self.address).await
+        add_root_token(self.name, self.address, self.version).await
     }
 }
 

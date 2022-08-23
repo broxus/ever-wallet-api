@@ -9,7 +9,11 @@ use crate::sqlx_client::*;
 
 const DB_POOL_SIZE: u32 = 1;
 
-pub async fn add_root_token(token_name: String, token_address: String) -> Result<()> {
+pub async fn add_root_token(
+    token_name: String,
+    token_address: String,
+    token_version: String,
+) -> Result<()> {
     let database_url = std::env::var("DATABASE_URL")
         .context("The DATABASE_URL environment variable must be set")?;
 
@@ -24,7 +28,7 @@ pub async fn add_root_token(token_name: String, token_address: String) -> Result
         .create_root_token(TokenWhitelistFromDb {
             name: token_name,
             address: token_address,
-            version: TokenWalletVersionDb::Tip3,
+            version: TokenWalletVersionDb::from_str(&token_version)?,
         })
         .await?;
 

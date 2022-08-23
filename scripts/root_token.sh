@@ -12,6 +12,7 @@ function print_help() {
   echo '                    example: "postgresql://${DB_USER}:${DB_PASSWORD}@${DB_HOST}/${DB_NAME}"'
   echo '  --name            Token name (ticker)'
   echo '  --address         Token address'
+  echo '  --version         Token version: Tip3 | OldTip3v4'
 }
 
 while [[ $# -gt 0 ]]; do
@@ -65,6 +66,17 @@ while [[ $# -gt 0 ]]; do
           exit 1
         fi
       ;;
+      --version)
+        version="$2"
+        shift # past argument
+        if [ "$#" -gt 0 ]; then shift;
+        else
+          echo 'ERROR: Expected token version'
+          echo ''
+          print_help
+          exit 1
+        fi
+      ;;
       *)    # unknown option
       path="$1"
       shift # past argument
@@ -79,4 +91,9 @@ else
   exit 1
 fi
 
-sudo -E bash -c "DATABASE_URL=$database_url $ton_wallet_api_binary --name $token_name --address $token_address"
+if [[ $version != "Tip3" ]] && [[ $version != "OldTip3v4" ]]; then
+  echo 'ERROR: Invalid token version'
+  exit 1
+fi
+
+sudo -E bash -c "DATABASE_URL=$database_url $ton_wallet_api_binary --name $token_name --address $token_address --version $version"

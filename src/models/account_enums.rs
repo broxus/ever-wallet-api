@@ -3,6 +3,7 @@ use std::str::FromStr;
 use nekoton::core::models::TokenWalletVersion;
 use nekoton_utils::pack_std_smc_addr;
 use serde::{Deserialize, Serialize};
+use strum_macros::EnumString;
 use ton_block::{AccountState, MsgAddressInt};
 
 use crate::models::{Address, AddressDb};
@@ -41,7 +42,9 @@ impl From<AccountState> for AccountStatus {
     }
 }
 
-#[derive(Debug, Deserialize, Serialize, Clone, opg::OpgModel, Eq, PartialEq, sqlx::Type, Copy)]
+#[derive(
+    Debug, Deserialize, Serialize, Clone, opg::OpgModel, Eq, PartialEq, sqlx::Type, Copy, EnumString,
+)]
 #[opg("TokenWalletVersion")]
 #[sqlx(type_name = "twa_token_wallet_version", rename_all = "PascalCase")]
 pub enum TokenWalletVersionDb {
