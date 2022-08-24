@@ -1,5 +1,10 @@
 <p align="center">
-    <h3 align="center">Everscale Wallet API</h3>
+   <h3 align="center">Everscale Wallet API</h3>
+    <p align="center">
+        <a href="/LICENSE">
+            <img alt="GitHub" src="https://img.shields.io/github/license/broxus/octusbridge-relay" />
+        </a>
+    </p>
 </p>
 
 ### Overview
