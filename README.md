@@ -1,10 +1,11 @@
 <p align="center">
-    <h3 align="center">Ton Wallet API</h3>
+    <h3 align="center">Everscale Wallet API</h3>
 </p>
 
 ### Overview
-The wallet api for TON client.
-
+EVER Wallet API is a full-fledged Everscale wallet service that comes with EVER address generation, tracking EVER/Token
+transfers, getting EVER/Token balances, transfer of Ever/Token and notify subscriber on each incoming/outgoing
+Ever/Token transfer. Former Ton Wallet Api therefore further you can meet this name.
 
 ### Runtime requirements
 - CPU: 4 cores, 2 GHz
@@ -54,6 +55,7 @@ NOTE: scripts are prepared and tested on **Ubuntu 20.04**. You may need to modif
 
    ###### How to get SALT
    ```bash
+   cargo build --release
    ./target/release/ton-wallet-api salt
    ```
 
@@ -80,8 +82,10 @@ NOTE: scripts are prepared and tested on **Ubuntu 20.04**. You may need to modif
    journalctl -fu ton-wallet-api
    ```
 
-   > ton-wallet-api has a built-in Prometheus metrics exporter which is configured in the `node_metrics_settings` section of the config.
-   > By default, metrics are available at `http://127.0.0.1:10000/`
+   > Wallet API has a two built-in Prometheus metrics exporters: API and Node.
+   > You can enable API metrics by giving the value of api_metrics_addr in config.
+   > Node metrics exporter is configured in the `node_metrics_settings` section of the config.
+   > By default, node metrics are available at `http://127.0.0.1:10000/`
    >
    > <details><summary><b>Response example:</b></summary>
    > <p>
@@ -147,7 +151,7 @@ API will call web hook with POST method on `callback` url. Body will contain `Ac
 
 
 ### Swagger
-When server starts locally the swagger schema can be accessible by http://localhost:8080/ton/v3/swagger.yaml.
+When server starts locally the swagger schema can be accessible by http://localhost:8080/swagger.yaml.
 
 
 ### Postman
@@ -201,11 +205,6 @@ logger_settings:
   loggers:
     ton_wallet_api:
       level: info
-      appenders:
-        - stdout
-      additive: false
-    warp:
-      level: error
       appenders:
         - stdout
       additive: false
