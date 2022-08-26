@@ -45,7 +45,8 @@ pub fn router(
             "/",
             get_service(service_fn(|_: _| async move {
                 Ok::<_, Infallible>(
-                    controllers::swagger("https://ton-api.broxus.com/ton/v3").into_response(),
+                    controllers::swagger(&format!("https://tonapi.broxus.com{}", API_PREFIX))
+                        .into_response(),
                 )
             })),
         )
@@ -53,7 +54,8 @@ pub fn router(
             "/swagger.yaml",
             get_service(service_fn(|_: _| async move {
                 Ok::<_, Infallible>(
-                    controllers::swagger("https://ton-api.broxus.com/ton/v3").into_response(),
+                    controllers::swagger(&format!("https://tonapi.broxus.com{}", API_PREFIX))
+                        .into_response(),
                 )
             })),
         )
