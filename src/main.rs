@@ -9,7 +9,7 @@ use ton_wallet_api::server::*;
 use ton_wallet_api::settings::*;
 
 #[global_allocator]
-static GLOBAL: ton_indexer::alloc::Allocator = ton_indexer::alloc::allocator();
+static GLOBAL: broxus_util::alloc::Allocator = broxus_util::alloc::allocator();
 
 #[tokio::main]
 async fn main() -> Result<()> {
@@ -28,14 +28,14 @@ async fn run(app: App) -> Result<()> {
     }
 }
 
-#[derive(Debug, PartialEq, FromArgs)]
+#[derive(Debug, FromArgs)]
 #[argh(description = "")]
 struct App {
     #[argh(subcommand)]
     command: Subcommand,
 }
 
-#[derive(Debug, PartialEq, FromArgs)]
+#[derive(Debug, FromArgs)]
 #[argh(subcommand)]
 enum Subcommand {
     Server(CmdServer),
@@ -44,7 +44,7 @@ enum Subcommand {
     Salt(CmdSalt),
 }
 
-#[derive(Debug, PartialEq, FromArgs)]
+#[derive(Debug, FromArgs)]
 /// Starts relay node
 #[argh(subcommand, name = "server")]
 struct CmdServer {
@@ -77,7 +77,7 @@ impl CmdServer {
     }
 }
 
-#[derive(Debug, PartialEq, FromArgs)]
+#[derive(Debug, FromArgs)]
 /// Add root token address
 #[argh(subcommand, name = "root_token")]
 struct CmdRootToken {
@@ -98,7 +98,7 @@ impl CmdRootToken {
     }
 }
 
-#[derive(Debug, PartialEq, FromArgs)]
+#[derive(Debug, FromArgs)]
 /// Create a new api service
 #[argh(subcommand, name = "api_service")]
 struct CmdApiService {
@@ -122,7 +122,7 @@ impl CmdApiService {
     }
 }
 
-#[derive(Debug, PartialEq, FromArgs)]
+#[derive(Debug, FromArgs)]
 /// Create a new api service
 #[argh(subcommand, name = "salt")]
 struct CmdSalt {}

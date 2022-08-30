@@ -304,20 +304,27 @@ impl TonClient {
                     .ok_or(TonClientError::ParseBigDecimal)?;
                 let flags = recipient.output_type.clone().unwrap_or_default();
 
-                let gift = nekoton::core::ton_wallet::Gift {
+                let gifts = vec![nekoton::core::ton_wallet::Gift {
                     flags: flags.into(),
                     bounce,
                     destination,
                     amount,
                     body: None,
                     state_init: None,
-                };
+                }];
+
+                let seqno_offset = nekoton::core::ton_wallet::wallet_v3::estimate_seqno_offset(
+                    &SimpleClock,
+                    &current_state,
+                    &[],
+                );
 
                 nekoton::core::ton_wallet::wallet_v3::prepare_transfer(
                     &SimpleClock,
                     &public_key,
                     &current_state,
-                    vec![gift],
+                    seqno_offset,
+                    gifts,
                     expiration,
                 )?
             }
@@ -734,20 +741,27 @@ impl TonClient {
                 let account = UInt256::from_be_bytes(&address.address().get_bytestring(0));
                 let current_state = self.ton_core.get_contract_state(&account)?.account;
 
-                let gift = nekoton::core::ton_wallet::Gift {
+                let gifts = vec![nekoton::core::ton_wallet::Gift {
                     flags: execution_flag,
                     bounce,
                     destination,
                     amount,
                     body: function_data.map(|x| x.into()),
                     state_init: None,
-                };
+                }];
+
+                let seqno_offset = nekoton::core::ton_wallet::wallet_v3::estimate_seqno_offset(
+                    &SimpleClock,
+                    &current_state,
+                    &[],
+                );
 
                 nekoton::core::ton_wallet::wallet_v3::prepare_transfer(
                     &SimpleClock,
                     &public_key,
                     &current_state,
-                    vec![gift],
+                    seqno_offset,
+                    gifts,
                     expiration,
                 )?
             }
@@ -868,20 +882,27 @@ fn build_token_transaction(
             let account = UInt256::from_be_bytes(&owner.address().get_bytestring(0));
             let current_state = ton_core.get_contract_state(&account)?.account;
 
-            let gift = nekoton::core::ton_wallet::Gift {
+            let gifts = vec![nekoton::core::ton_wallet::Gift {
                 flags: flags.into(),
                 bounce,
                 destination,
                 amount,
                 body,
                 state_init: None,
-            };
+            }];
+
+            let seqno_offset = nekoton::core::ton_wallet::wallet_v3::estimate_seqno_offset(
+                &SimpleClock,
+                &current_state,
+                &[],
+            );
 
             nekoton::core::ton_wallet::wallet_v3::prepare_transfer(
                 &SimpleClock,
                 &public_key,
                 &current_state,
-                vec![gift],
+                seqno_offset,
+                gifts,
                 expiration,
             )?
         }
