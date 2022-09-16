@@ -92,6 +92,8 @@ impl EngineContext {
             .await
             .expect("fail pg pool");
 
+        sqlx::migrate!().run(&pool).await?;
+
         let sqlx_client = SqlxClient::new(pool);
 
         let callback_client = Arc::new(CallbackClient::new());

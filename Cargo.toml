@@ -72,7 +72,7 @@ nekoton-utils = { git = "https://github.com/broxus/nekoton.git" }
 nekoton-contracts = { git = "https://github.com/broxus/nekoton.git" }
 
 # Broxus utils
-broxus-util = { version = "0.1.4", features = ["alloc", "public-ip", "config", "log4rs"] }
+broxus-util = { version = "0.1.5", features = ["alloc", "public-ip", "config", "log4rs"] }
 
 # Indexer engine
 ton-indexer = { git = "https://github.com/broxus/ton-indexer.git" }
