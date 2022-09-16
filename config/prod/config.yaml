@@ -6,6 +6,7 @@ ton_core:
   adnl_port: 30310
   db_path: "/var/ton/ton-wallet-api/data"
   keys_path: "/var/ton/ton-wallet-api/data/adnl-keys.json"
+  recover_indexer: true
 api_metrics_addr: "0.0.0.0:9999"
 node_metrics_settings:
   listen_address: "0.0.0.0:10000"
@@ -27,7 +28,7 @@ logger_settings:
       appenders:
         - stdout
       additive: false
-    warp:
+    tower_http:
       level: info
       appenders:
         - stdout

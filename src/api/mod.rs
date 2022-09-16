@@ -4,10 +4,14 @@ use std::sync::Arc;
 use anyhow::Context;
 use axum::handler::Handler;
 use http::method::Method;
+use http::Request;
+use hyper::Body;
 use metrics::{describe_counter, describe_histogram};
 use metrics_exporter_prometheus::Matcher;
 use tower::ServiceBuilder;
 use tower_http::cors::{AllowHeaders, AllowMethods, AllowOrigin, CorsLayer};
+use tower_http::trace::TraceLayer;
+use tracing::Span;
 
 use crate::services::{AuthService, StorageHandler, TonService};
 
@@ -56,6 +60,11 @@ pub async fn http_service(
                         Method::OPTIONS,
                     ])),
             ),
+        )
+        .layer(
+            TraceLayer::new_for_http().on_request(|request: &Request<Body>, _span: &Span| {
+                tracing::info!("started {} {}", request.method(), request.uri().path())
+            }),
         )
         .fallback(controllers::handler_404.into_service());
 

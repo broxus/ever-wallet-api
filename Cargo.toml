@@ -52,8 +52,8 @@ strum_macros = "0.24.1"
 thiserror = "1.0"
 tokio = { version = "1.16.1", features = ["sync", "fs", "rt-multi-thread", "macros", "signal", "parking_lot"] }
 tokio-util = "0.7.1"
-tower = { version = "0.4.12", features = ["limit"] }
-tower-http = { version = "0.3.3", features = ["trace", "cors", "limit", "set-header", "metrics"] }
+tower = { version = "0.4.13", features = ["limit"] }
+tower-http = { version = "0.3.4", features = ["trace", "cors", "limit", "set-header", "metrics"] }
 tracing = "0.1.34"
 
 uuid = { version = "0.8", features = ["v4", "serde"] }

@@ -163,7 +163,7 @@ pub enum TransactionsSearchOrdering {
     TransactionTimestampDesc,
 }
 
-#[derive(Debug, Deserialize, Serialize, Clone, PartialEq, opg::OpgModel)]
+#[derive(Debug, Deserialize, Serialize, Clone, Eq, PartialEq, opg::OpgModel)]
 #[opg("TransactionSendOutputType")]
 pub enum TransactionSendOutputType {
     Normal,
