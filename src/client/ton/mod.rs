@@ -26,8 +26,6 @@ use crate::utils::*;
 
 mod utils;
 
-const DEFAULT_MULTISIG_TYPE: MultisigType = MultisigType::SafeMultisigWallet;
-
 #[derive(Clone)]
 pub struct TonClient {
     ton_core: Arc<TonCore>,
@@ -90,7 +88,7 @@ impl TonClient {
             AccountType::SafeMultisig => {
                 nekoton::core::ton_wallet::multisig::compute_contract_address(
                     &public,
-                    DEFAULT_MULTISIG_TYPE,
+                    MultisigType::SafeMultisigWallet,
                     workchain_id as i8,
                 )
             }
@@ -207,7 +205,7 @@ impl TonClient {
                 nekoton::core::ton_wallet::multisig::prepare_deploy(
                     &SimpleClock,
                     &public_key,
-                    DEFAULT_MULTISIG_TYPE,
+                    MultisigType::SafeMultisigWallet,
                     address.workchain_id as i8,
                     Expiration::Timeout(DEFAULT_EXPIRATION_TIMEOUT),
                     &owners,
@@ -357,6 +355,7 @@ impl TonClient {
 
                 nekoton::core::ton_wallet::multisig::prepare_transfer(
                     &SimpleClock,
+                    MultisigType::SafeMultisigWallet,
                     &public_key,
                     has_multiple_owners,
                     address.clone(),
@@ -409,6 +408,7 @@ impl TonClient {
 
         let unsigned_message = nekoton::core::ton_wallet::multisig::prepare_confirm_transaction(
             &SimpleClock,
+            MultisigType::SafeMultisigWallet,
             &public_key,
             address,
             transaction.transaction_id,
@@ -782,6 +782,7 @@ impl TonClient {
 
                 nekoton::core::ton_wallet::multisig::prepare_transfer(
                     &SimpleClock,
+                    MultisigType::SafeMultisigWallet,
                     &public_key,
                     has_multiple_owners,
                     address,
@@ -923,6 +924,7 @@ fn build_token_transaction(
 
             nekoton::core::ton_wallet::multisig::prepare_transfer(
                 &SimpleClock,
+                MultisigType::SafeMultisigWallet,
                 &public_key,
                 has_multiple_owners,
                 owner.clone(),

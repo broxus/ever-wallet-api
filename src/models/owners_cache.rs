@@ -1,3 +1,4 @@
+use std::num::NonZeroUsize;
 use std::str::FromStr;
 use std::sync::Arc;
 
@@ -76,9 +77,9 @@ impl OwnersCache {
     pub async fn new(sqlx_client: SqlxClient) -> Result<Self, anyhow::Error> {
         let balances = sqlx_client.get_all_token_owners().await?;
         // no more than 10 mb
-        let mut res = LruCache::new(5000);
+        let mut cache = LruCache::new(NonZeroUsize::new(5000).trust_me());
         balances.into_iter().for_each(|x| {
-            res.put(
+            cache.put(
                 nekoton_utils::repack_address(&x.address).trust_me(),
                 OwnerInfo {
                     owner_address: MsgAddressInt::from_str(&format!(
@@ -93,7 +94,7 @@ impl OwnersCache {
             );
         });
         Ok(Self {
-            cache: Arc::new(Mutex::new(res)),
+            cache: Arc::new(Mutex::new(cache)),
             db: sqlx_client,
         })
     }

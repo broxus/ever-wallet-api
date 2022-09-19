@@ -1,6 +1,7 @@
 use anyhow::Result;
 use bigdecimal::BigDecimal;
 use nekoton::core::models::{MultisigTransaction, TransactionError};
+use nekoton::core::ton_wallet::MultisigType;
 use num_traits::FromPrimitive;
 use serde::{Deserialize, Serialize};
 use ton_block::CommonMsgInfo;
@@ -47,12 +48,15 @@ pub async fn parse_ton_transaction(
     let fee = BigDecimal::from_u128(compute_fees(&transaction));
     let value = BigDecimal::from_u128(compute_value(&transaction));
     let balance_change = BigDecimal::from_i128(nekoton_utils::compute_balance_change(&transaction));
-    let multisig_transaction_id = nekoton::core::parsing::parse_multisig_transaction(&transaction)
-        .and_then(|transaction| match transaction {
-            MultisigTransaction::Send(_) => None,
-            MultisigTransaction::Confirm(transaction) => Some(transaction.transaction_id as i64),
-            MultisigTransaction::Submit(transaction) => Some(transaction.trans_id as i64),
-        });
+    let multisig_transaction_id = nekoton::core::parsing::parse_multisig_transaction(
+        MultisigType::SafeMultisigWallet,
+        &transaction,
+    )
+    .and_then(|transaction| match transaction {
+        MultisigTransaction::Send(_) => None,
+        MultisigTransaction::Confirm(transaction) => Some(transaction.transaction_id as i64),
+        MultisigTransaction::Submit(transaction) => Some(transaction.trans_id as i64),
+    });
 
     let parsed = match in_msg.header() {
         CommonMsgInfo::IntMsgInfo(header) => {

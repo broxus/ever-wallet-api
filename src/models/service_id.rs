@@ -47,6 +47,6 @@ impl FromStr for ServiceId {
 
 impl Display for ServiceId {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        f.write_str(&format!("{}", self.0.to_hyphenated()))
+        f.write_str(&format!("{}", self.0))
     }
 }
