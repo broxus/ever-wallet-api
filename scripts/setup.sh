@@ -79,7 +79,7 @@ if [[ "$setup_type" == "native" ]]; then
 
   echo 'INFO: building ton-wallet-api'
   cd "$REPO_DIR"
-  RUSTFLAGS="-C target_cpu=native" cargo build --release
+  RUSTFLAGS="-C target_cpu=native" SQLX_OFFLINE=true cargo build --release
   sudo cp "$REPO_DIR/target/release/ton-wallet-api" /usr/local/bin/ton-wallet-api
 
   echo 'INFO: creating systemd service'
