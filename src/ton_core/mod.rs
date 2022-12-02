@@ -133,8 +133,12 @@ impl TonCoreContext {
             .context("Failed to build node config")?;
 
         if recover_indexer {
-            fs::remove_dir_all(&node_config.rocks_db_path)?;
-            fs::remove_dir_all(&node_config.file_db_path)?;
+            if let Err(e) = fs::remove_dir_all(&node_config.rocks_db_path) {
+                log::error!("Error on remove rocks db - {}", e.to_string());
+            }
+            if let Err(e) = fs::remove_dir_all(&node_config.file_db_path) {
+                log::error!("Error on remove file db - {}", e.to_string());
+            }
         }
 
         let messages_queue = PendingMessagesQueue::new(512);
