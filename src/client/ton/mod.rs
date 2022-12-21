@@ -4,6 +4,7 @@ use bigdecimal::{BigDecimal, ToPrimitive};
 use ed25519_dalek::{Keypair, PublicKey, SecretKey, Signer};
 use http::StatusCode;
 use nekoton::core::models::Expiration;
+use nekoton::core::ton_wallet::multisig::DeployParams;
 use nekoton::core::ton_wallet::{MultisigType, TransferAction};
 use nekoton::core::InternalMessage;
 use nekoton::crypto::{SignedMessage, UnsignedMessage};
@@ -208,8 +209,11 @@ impl TonClient {
                     MultisigType::SafeMultisigWallet,
                     address.workchain_id as i8,
                     Expiration::Timeout(DEFAULT_EXPIRATION_TIMEOUT),
-                    &owners,
-                    address.confirmations.trust_me() as u8,
+                    DeployParams {
+                        owners: &owners,
+                        req_confirms: address.confirmations.trust_me() as u8,
+                        expiration_time: None,
+                    }
                 )?
             }
             AccountType::HighloadWallet | AccountType::Wallet => {

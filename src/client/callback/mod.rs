@@ -63,5 +63,5 @@ impl CallbackClient {
 fn calc_sign(body: String, url: String, timestamp_ms: i64, secret: String) -> String {
     let concat = format!("{}{}{}", timestamp_ms, url, body);
     let calculated_signature = hmac_sha256::HMAC::mac(concat.as_bytes(), secret.as_bytes());
-    base64::encode(&calculated_signature)
+    base64::encode(calculated_signature)
 }
