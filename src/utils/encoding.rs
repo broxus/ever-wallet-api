@@ -8,7 +8,7 @@ pub fn encrypt_private_key(private_key: &[u8], key: [u8; 32], id: &uuid::Uuid) -
     let key = chacha20poly1305::Key::from_slice(&key[..]);
     let mut encryptor = ChaCha20Poly1305::new(key);
     let res = encryptor.encrypt(nonce, private_key).map_err(Error::msg)?;
-    Ok(base64::encode(&res))
+    Ok(base64::encode(res))
 }
 
 pub fn decrypt_private_key(private_key: &str, key: [u8; 32], id: &uuid::Uuid) -> Result<Vec<u8>> {
