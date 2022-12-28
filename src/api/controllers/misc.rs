@@ -1,6 +1,7 @@
 use axum::{Extension, Json};
 use metrics::{histogram, increment_counter};
 use tokio::time::Instant;
+use ton_block::GetRepresentationHash;
 
 use crate::api::controllers::*;
 use crate::api::requests::*;
@@ -139,4 +140,48 @@ pub async fn post_send_signed_message(
     increment_counter!("requests_processed", "method" => "sendSignedMessage");
 
     Ok(Json(res))
+}
+
+pub async fn post_send_generic_message(
+    Json(req): Json<SendMessageRequest>,
+    Extension(ctx): Extension<Arc<ApiContext>>,
+    IdExtractor(service_id): IdExtractor,
+) -> Result<Json<SignedMessageHashResponse>> {
+    let start = Instant::now();
+
+    let function_details = req.function_details.map(|d| FunctionDetails {
+        function_name: d.function_name,
+        input_params: d
+            .input_params
+            .into_iter()
+            .map(InputParam::from)
+            .collect::<Vec<InputParam>>(),
+        output_params: d.output_params,
+        headers: d.headers,
+    });
+
+    let signed_message = ctx
+        .ton_service
+        .prepare_and_send_signed_generic_message(
+            &service_id,
+            &req.sender_addr,
+            &req.target_account_addr,
+            req.execution_flag,
+            req.value,
+            req.bounce,
+            &req.account_type,
+            &req.custodians,
+            function_details,
+        )
+        .await?;
+
+    let signed_message_hash = signed_message.message.hash()?.to_hex_string();
+
+    let elapsed = start.elapsed();
+    histogram!("execution_time_seconds", elapsed, "method" => "sendGenericMessage");
+    increment_counter!("requests_processed", "method" => "sendGenericMessage");
+
+    Ok(Json(SignedMessageHashResponse {
+        signed_message_hash,
+    }))
 }
