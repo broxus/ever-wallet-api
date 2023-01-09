@@ -888,6 +888,89 @@ impl TonService {
         Ok(res)
     }
 
+    pub async fn prepare_and_send_signed_generic_message(
+        self: &Arc<Self>,
+        service_id: &ServiceId,
+        sender_addr: &str,
+        target_addr: &str,
+        execution_flag: u8,
+        value: BigDecimal,
+        bounce: bool,
+        account_type: &AccountType,
+        custodians: &Option<i32>,
+        function_details: Option<FunctionDetails>,
+    ) -> Result<SignedMessage, Error> {
+        let (function, values) = match function_details {
+            Some(details) => {
+                let function = nekoton_abi::FunctionBuilder::new(&details.function_name)
+                    .abi_version(ABI_VERSION_2_2)
+                    .headers(details.headers)
+                    .inputs(
+                        details
+                            .input_params
+                            .clone()
+                            .into_iter()
+                            .map(|x| x.param)
+                            .collect::<Vec<Param>>(),
+                    )
+                    .outputs(details.output_params)
+                    .build();
+
+                let tokens = parse_abi_tokens(details.input_params)?;
+
+                (Some(function), Some(tokens))
+            }
+            None => (None, None),
+        };
+
+        let sender = repack_address(sender_addr)?;
+
+        let address_db = self
+            .sqlx_client
+            .get_address(
+                *service_id,
+                sender.workchain_id(),
+                sender.address().to_hex_string(),
+            )
+            .await?;
+
+        let key = self.key.as_slice().try_into()?;
+
+        let public_key = hex::decode(address_db.public_key.clone())?;
+        let private_key = decrypt_private_key(&address_db.private_key, key, &address_db.id)?;
+
+        let signed_message = self
+            .ton_api_client
+            .prepare_signed_generic_message(
+                sender_addr,
+                &public_key,
+                &private_key,
+                target_addr,
+                execution_flag,
+                value,
+                bounce,
+                account_type,
+                custodians,
+                function,
+                values,
+            )
+            .await?;
+
+        let hash = signed_message.message.hash().map(|x| x.to_hex_string())?;
+
+        self.send_transaction(
+            hash,
+            sender.address().to_hex_string(),
+            sender.workchain_id(),
+            signed_message.clone(),
+            true,
+            false,
+        )
+        .await?;
+
+        Ok(signed_message)
+    }
+
     pub async fn prepare_generic_message(
         self: &Arc<Self>,
         sender_addr: &str,

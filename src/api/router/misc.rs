@@ -14,4 +14,8 @@ pub fn router() -> Router {
             "/send-signed-message",
             post(controllers::post_send_signed_message),
         )
+        .route(
+            "/send-message",
+            post(controllers::post_send_generic_message),
+        )
 }

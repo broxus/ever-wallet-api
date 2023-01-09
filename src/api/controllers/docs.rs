@@ -696,6 +696,29 @@ pub fn swagger(prod_url: &str) -> String {
                     200: responses::SignedMessageHashResponse,
                 }
             },
+            ("send-message"): {
+                POST: {
+                    tags: { misc  },
+                    summary: "Prepare and send message from params",
+                    description: "Prepare unsigned message from specified tokens, sign and send it",
+                    parameters: {
+                        (header "api-key"): {
+                            description: "API Key",
+                        },
+                        (header "sign"): {
+                            description: "Signature",
+                        },
+                        (header "timestamp"): {
+                            description: "Timestamp in ms",
+                        },
+                        (header "x-real-ip"): {
+                            required: false
+                        },
+                    },
+                    body: requests::SendMessageRequest,
+                    200: responses::SignedMessageHashResponse,
+                }
+            },
             ("metrics"): {
                 GET: {
                     tags: { metrics  },

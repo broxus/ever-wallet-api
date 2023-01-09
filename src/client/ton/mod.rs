@@ -213,7 +213,7 @@ impl TonClient {
                         owners: &owners,
                         req_confirms: address.confirmations.trust_me() as u8,
                         expiration_time: None,
-                    }
+                    },
                 )?
             }
             AccountType::HighloadWallet | AccountType::Wallet => {
@@ -712,6 +712,48 @@ impl TonClient {
         function
             .run_local(&SimpleClock, state.account, input)
             .map(Some)
+    }
+
+    pub async fn prepare_signed_generic_message(
+        &self,
+        sender_addr: &str,
+        public_key: &[u8],
+        private_key: &[u8],
+        target_addr: &str,
+        execution_flag: u8,
+        value: BigDecimal,
+        bounce: bool,
+        account_type: &AccountType,
+        custodians: &Option<i32>,
+        function: Option<ton_abi::Function>,
+        params: Option<Vec<ton_abi::Token>>,
+    ) -> Result<SignedMessage, Error> {
+        let unsigned_message = self
+            .prepare_generic_message(
+                sender_addr,
+                public_key,
+                target_addr,
+                execution_flag,
+                value,
+                bounce,
+                account_type,
+                custodians,
+                function,
+                params,
+            )
+            .await?;
+
+        let public_key = PublicKey::from_bytes(public_key).unwrap_or_default();
+
+        let key_pair = Keypair {
+            secret: SecretKey::from_bytes(private_key)?,
+            public: public_key,
+        };
+
+        let signature = key_pair.sign(unsigned_message.hash());
+        let signed_message = unsigned_message.sign(&signature.to_bytes())?;
+
+        Ok(signed_message)
     }
 
     pub async fn prepare_generic_message(

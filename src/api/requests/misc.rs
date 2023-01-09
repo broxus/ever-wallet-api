@@ -69,3 +69,17 @@ pub struct SignedMessageRequest {
     pub hash: String,
     pub signature: String,
 }
+
+#[derive(Deserialize, OpgModel)]
+#[serde(rename_all = "camelCase")]
+pub struct SendMessageRequest {
+    pub sender_addr: String,
+    pub target_account_addr: String,
+    pub execution_flag: u8,
+    #[opg("value", string)]
+    pub value: BigDecimal,
+    pub bounce: bool,
+    pub account_type: AccountType,
+    pub custodians: Option<i32>,
+    pub function_details: Option<FunctionDetailsDTO>,
+}
