@@ -1,7 +1,6 @@
 use std::sync::Arc;
 
 use anyhow::Result;
-use everscale_network::utils::FxDashMap;
 use pomfrit::formatter::*;
 use sqlx::postgres::PgPoolOptions;
 use tokio::sync::mpsc;

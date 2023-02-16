@@ -53,9 +53,9 @@ pub async fn parse_ton_transaction(
         &transaction,
     )
     .and_then(|transaction| match transaction {
-        MultisigTransaction::Send(_) => None,
         MultisigTransaction::Confirm(transaction) => Some(transaction.transaction_id as i64),
         MultisigTransaction::Submit(transaction) => Some(transaction.trans_id as i64),
+        _ => None,
     });
 
     let parsed = match in_msg.header() {

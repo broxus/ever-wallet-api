@@ -1,4 +1,4 @@
-use anyhow::Result;
+use anyhow::{Context, Result};
 use chrono::prelude::*;
 
 use crate::models::*;
@@ -10,6 +10,10 @@ impl SqlxClient {
         mut payload: CreateTokenTransaction,
         service_id: ServiceId,
     ) -> Result<(TokenTransactionFromDb, TokenTransactionEventDb)> {
+        let transaction_timestamp =
+            NaiveDateTime::from_timestamp_opt(payload.transaction_timestamp as i64, 0)
+                .context("Invalid transaction timestamp")?;
+
         let mut tx = self.pool.begin().await?;
 
         if let Some(in_message_hash) = &payload.in_message_hash {
@@ -29,9 +33,6 @@ impl SqlxClient {
                 payload.owner_message_hash = Some(transaction.message_hash);
             }
         }
-
-        let transaction_timestamp =
-            NaiveDateTime::from_timestamp(payload.transaction_timestamp as i64, 0);
 
         let transaction = sqlx::query_as!(TokenTransactionFromDb,
                 r#"
@@ -239,9 +240,7 @@ impl SqlxClient {
 #[cfg(test)]
 async fn prepare_test(level_filter: log::LevelFilter) -> SqlxClient {
     use env_logger::Builder;
-    use sqlx::PgPool;
     use std::io::Write;
-    use std::str::FromStr;
 
     Builder::new()
         .format(|buf, record| {
@@ -264,9 +263,7 @@ async fn prepare_test(level_filter: log::LevelFilter) -> SqlxClient {
             .await
             .unwrap();
 
-    let sqlx_client = SqlxClient::new(pg_pool);
-
-    sqlx_client
+    SqlxClient::new(pg_pool)
 }
 
 #[cfg(test)]
@@ -282,7 +279,7 @@ mod test {
         let service_id =
             ServiceId::new(uuid::Uuid::from_str("5b30733f-e1cc-44e2-91f3-0ab7128e4534").unwrap());
         let message_hash = "8ec136e3833c1c2f490807668495209240c1a2ff1e22de253abada40a0ab81a7";
-        let res = sqlx_client
+        sqlx_client
             .get_token_transaction_by_mh(service_id, message_hash)
             .await
             .unwrap();

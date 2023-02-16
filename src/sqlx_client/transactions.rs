@@ -1,4 +1,4 @@
-use anyhow::Result;
+use anyhow::{Context, Result};
 use chrono::prelude::*;
 use uuid::Uuid;
 
@@ -92,9 +92,13 @@ impl SqlxClient {
 
         let updated_at = Utc::now().naive_utc();
 
-        let transaction_timestamp = payload.transaction_timestamp.map(|transaction_timestamp| {
-            NaiveDateTime::from_timestamp(transaction_timestamp as i64, 0)
-        });
+        let transaction_timestamp = payload
+            .transaction_timestamp
+            .map(|transaction_timestamp| {
+                NaiveDateTime::from_timestamp_opt(transaction_timestamp as i64, 0)
+                    .context("Invalid transaction timestamp")
+            })
+            .transpose()?;
 
         let (transaction, event) = match sqlx::query_as!(TransactionDb,
                 r#"
@@ -284,7 +288,8 @@ impl SqlxClient {
         let mut tx = self.pool.begin().await?;
         let transaction_id = Uuid::new_v4();
         let transaction_timestamp =
-            NaiveDateTime::from_timestamp(payload.transaction_timestamp.trust_me() as i64, 0);
+            NaiveDateTime::from_timestamp_opt(payload.transaction_timestamp.trust_me() as i64, 0)
+                .context("Invalid transaction timestamp")?;
 
         let transaction = sqlx::query_as!(TransactionDb,
                 r#"
@@ -370,7 +375,8 @@ impl SqlxClient {
     ) -> Result<(TransactionDb, TransactionEventDb)> {
         let mut tx = self.pool.begin().await?;
         let transaction_timestamp =
-            NaiveDateTime::from_timestamp(payload.transaction_timestamp as i64, 0);
+            NaiveDateTime::from_timestamp_opt(payload.transaction_timestamp as i64, 0)
+                .context("Invalid transaction timestamp")?;
 
         let transaction = sqlx::query_as!(TransactionDb,
                 r#"
@@ -717,19 +723,25 @@ pub fn filter_transaction_query(
     if let Some(created_at_min) = created_at_min {
         updates.push(format!(" AND created_at >= ${} ", *args_len + 1,));
         *args_len += 1;
-        args.add(NaiveDateTime::from_timestamp(
-            created_at_min / 1000,
-            ((created_at_min % 1000) * 1_000_000) as u32,
-        ))
+        args.add(
+            NaiveDateTime::from_timestamp_opt(
+                created_at_min / 1000,
+                ((created_at_min % 1000) * 1_000_000) as u32,
+            )
+            .expect("Shouldn't fail"),
+        )
     }
 
     if let Some(created_at_max) = created_at_max {
         updates.push(format!(" AND created_at <= ${} ", *args_len + 1,));
         *args_len += 1;
-        args.add(NaiveDateTime::from_timestamp(
-            created_at_max / 1000,
-            ((created_at_max % 1000) * 1_000_000) as u32,
-        ))
+        args.add(
+            NaiveDateTime::from_timestamp_opt(
+                created_at_max / 1000,
+                ((created_at_max % 1000) * 1_000_000) as u32,
+            )
+            .expect("Shouldn't fail"),
+        )
     }
 
     updates

@@ -1,7 +1,8 @@
-use chrono::{NaiveDateTime, Utc};
 use std::collections::HashMap;
 use std::sync::Arc;
 
+use anyhow::Context;
+use chrono::{NaiveDateTime, Utc};
 use parking_lot::Mutex;
 
 use crate::models::*;
@@ -56,7 +57,7 @@ impl AuthService {
         let timestamp = timestamp_ms / 1000;
 
         let now = Utc::now().naive_utc();
-        let then = NaiveDateTime::from_timestamp(timestamp, 0);
+        let then = NaiveDateTime::from_timestamp_opt(timestamp, 0).context("Invalid timestamp")?;
 
         let delta = (now - then).num_seconds();
         if delta > TIMESTAMP_EXPIRED_SEC {
