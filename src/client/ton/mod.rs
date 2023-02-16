@@ -226,7 +226,11 @@ impl TonClient {
             public: public_key,
         };
 
-        let signature = key_pair.sign(unsigned_message.hash());
+        let data_to_sign = ton_abi::extend_signature_with_id(
+            unsigned_message.hash(),
+            self.ton_core.signature_id(),
+        );
+        let signature = key_pair.sign(&data_to_sign);
         let signed_message = unsigned_message.sign(&signature.to_bytes())?;
 
         let sent_transaction = SentTransaction {
@@ -381,7 +385,11 @@ impl TonClient {
             public: public_key,
         };
 
-        let signature = key_pair.sign(unsigned_message.hash());
+        let data_to_sign = ton_abi::extend_signature_with_id(
+            unsigned_message.hash(),
+            self.ton_core.signature_id(),
+        );
+        let signature = key_pair.sign(&data_to_sign);
         let signed_message = unsigned_message.sign(&signature.to_bytes())?;
 
         let sent_transaction = SentTransaction {
@@ -424,7 +432,11 @@ impl TonClient {
             public: public_key,
         };
 
-        let signature = key_pair.sign(unsigned_message.hash());
+        let data_to_sign = ton_abi::extend_signature_with_id(
+            unsigned_message.hash(),
+            self.ton_core.signature_id(),
+        );
+        let signature = key_pair.sign(&data_to_sign);
         let signed_message = unsigned_message.sign(&signature.to_bytes())?;
 
         let sent_transaction = SentTransaction {
@@ -750,7 +762,11 @@ impl TonClient {
             public: public_key,
         };
 
-        let signature = key_pair.sign(unsigned_message.hash());
+        let data_to_sign = ton_abi::extend_signature_with_id(
+            unsigned_message.hash(),
+            self.ton_core.signature_id(),
+        );
+        let signature = key_pair.sign(&data_to_sign);
         let signed_message = unsigned_message.sign(&signature.to_bytes())?;
 
         Ok(signed_message)
@@ -992,7 +1008,9 @@ fn build_token_transaction(
         public: public_key,
     };
 
-    let signature = key_pair.sign(unsigned_message.hash());
+    let data_to_sign =
+        ton_abi::extend_signature_with_id(unsigned_message.hash(), ton_core.signature_id());
+    let signature = key_pair.sign(&data_to_sign);
     let signed_message = unsigned_message.sign(&signature.to_bytes())?;
 
     let sent_transaction = SentTransaction {

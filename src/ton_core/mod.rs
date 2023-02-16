@@ -102,6 +102,10 @@ impl TonCore {
     pub fn current_utime(&self) -> u32 {
         self.context.ton_subscriber.current_utime()
     }
+
+    pub fn signature_id(&self) -> Option<i32> {
+        self.context.ton_subscriber.signature_id()
+    }
 }
 
 pub struct TonCoreContext {
@@ -174,7 +178,7 @@ impl TonCoreContext {
             }
         }
 
-        self.ton_subscriber.start().await?;
+        self.ton_subscriber.start(&self.ton_engine).await?;
         Ok(())
     }
 

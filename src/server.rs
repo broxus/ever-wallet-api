@@ -325,6 +325,11 @@ impl std::fmt::Display for LabeledTonSubscriberMetrics<'_> {
             f.begin_metric("ton_subscriber_current_utime")
                 .value(metrics.current_utime)?;
 
+            if let Some(signature_id) = metrics.signature_id {
+                f.begin_metric("ton_subscriber_signature_id")
+                    .value(signature_id)?;
+            }
+
             f.begin_metric("ton_subscriber_time_diff")
                 .value(mc_time_diff)?;
 
