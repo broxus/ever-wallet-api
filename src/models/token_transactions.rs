@@ -36,6 +36,7 @@ pub struct TokenTransactionSend {
     pub notify_receiver: bool,
     pub send_gas_to: Option<Address>,
     pub fee: BigDecimal,
+    pub payload: Option<String>,
 }
 
 #[derive(Debug, Deserialize, Serialize, Clone)]

@@ -32,10 +32,16 @@ pub async fn parse_token_transaction(
             internal_transfer_mint(token_transaction_ctx, tokens, parse_ctx).await?
         }
         TokenWalletTransaction::OutgoingTransfer(token_transfer) => {
-            internal_transfer_send(token_transaction_ctx, token_transfer.tokens, parse_ctx).await?
+            internal_transfer_send(
+                token_transaction_ctx,
+                token_transfer.tokens,
+                Some(token_transfer.payload),
+                parse_ctx,
+            )
+            .await?
         }
-        TokenWalletTransaction::SwapBack(token_transfer) => {
-            internal_transfer_send(token_transaction_ctx, token_transfer.tokens, parse_ctx).await?
+        TokenWalletTransaction::SwapBack(swap_back) => {
+            internal_transfer_send(token_transaction_ctx, swap_back.tokens, None, parse_ctx).await?
         }
         TokenWalletTransaction::TransferBounced(tokens)
         | TokenWalletTransaction::SwapBackBounced(tokens) => {
@@ -49,6 +55,7 @@ pub async fn parse_token_transaction(
 async fn internal_transfer_send(
     token_transaction_ctx: TokenTransactionContext,
     tokens: BigUint,
+    payload_cell: Option<ton_types::Cell>,
     parse_ctx: ParseContext<'_>,
 ) -> Result<CreateTokenTransaction> {
     let address = MsgAddressInt::with_standart(
@@ -88,7 +95,7 @@ async fn internal_transfer_send(
         sender_hex: None,
         root_address: owner_info.root_address.to_string(),
         value: -BigDecimal::new(tokens.into(), 0),
-        payload: None,
+        payload: payload_cell.map(|c| c.write_to_bytes()).transpose()?,
         block_hash: token_transaction_ctx.block_hash.to_hex_string(),
         block_time: token_transaction_ctx.block_utime as i32,
         direction: TonTransactionDirection::Send,

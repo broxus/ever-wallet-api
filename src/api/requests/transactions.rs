@@ -119,6 +119,8 @@ pub struct TonTokenTransactionSendRequest {
     pub notify_receiver: Option<bool>,
     #[opg("fee", string, optional)]
     pub fee: Option<BigDecimal>,
+    #[opg("base64 encoded payload", string, optional)]
+    pub payload: Option<String>,
 }
 
 impl From<TonTokenTransactionSendRequest> for TokenTransactionSend {
@@ -134,6 +136,7 @@ impl From<TonTokenTransactionSendRequest> for TokenTransactionSend {
             fee: c
                 .fee
                 .unwrap_or_else(|| BigDecimal::from_u64(TOKEN_FEE).trust_me()),
+            payload: c.payload,
         }
     }
 }
