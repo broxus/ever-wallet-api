@@ -14,7 +14,7 @@ use num_bigint::BigUint;
 use num_traits::FromPrimitive;
 use tokio::sync::oneshot;
 use ton_block::{GetRepresentationHash, MsgAddressInt};
-use ton_types::UInt256;
+use ton_types::{deserialize_tree_of_cells, UInt256};
 use uuid::Uuid;
 
 use crate::api::*;
@@ -527,6 +527,17 @@ impl TonClient {
 
         let attached_amount = input.fee.to_u64().ok_or(TonClientError::ParseBigDecimal)?;
 
+        // parse input payload
+        let payload_cell = match &input.payload {
+            None => None,
+            Some(s) => {
+                let bytes = base64::decode(s).map_err(anyhow::Error::from)?;
+                let mut slice = &bytes[..];
+                let tree_of_cells = deserialize_tree_of_cells(&mut slice)?;
+                Some(tree_of_cells)
+            }
+        };
+
         let internal_message = prepare_token_transfer(
             owner.clone(),
             token_wallet,
@@ -536,7 +547,7 @@ impl TonClient {
             send_gas_to,
             input.notify_receiver,
             attached_amount,
-            Default::default(),
+            payload_cell.unwrap_or_default(),
         )?;
 
         let res = build_token_transaction(
