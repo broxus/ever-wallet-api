@@ -817,6 +817,7 @@ impl TonClient {
             let (func, _) = MessageBuilder::new(&x).build();
             func.encode_internal_input(&tokens).ok()
         });
+        let body = function_data.map(|x| x.into());
 
         let destination = nekoton_utils::repack_address(target_addr)?;
         let amount = value.to_u64().ok_or(TonClientError::ParseBigDecimal)?;
@@ -830,7 +831,7 @@ impl TonClient {
                     bounce,
                     destination,
                     amount,
-                    body: function_data.map(|x| x.into()),
+                    body,
                     state_init: None,
                 }];
 
@@ -860,7 +861,7 @@ impl TonClient {
                     bounce,
                     destination,
                     amount,
-                    body: function_data.map(|x| x.into()),
+                    body,
                     state_init: None,
                 };
 
@@ -875,7 +876,25 @@ impl TonClient {
                 )?
             }
             AccountType::HighloadWallet => {
-                return Err(TonServiceError::WrongInput("Invalid account type".to_string()).into())
+                let account = UInt256::from_be_bytes(&address.address().get_bytestring(0));
+                let current_state = self.ton_core.get_contract_state(&account)?.account;
+
+                let gift = nekoton::core::ton_wallet::Gift {
+                    flags: execution_flag,
+                    bounce,
+                    destination,
+                    amount,
+                    body,
+                    state_init: None,
+                };
+
+                nekoton::core::ton_wallet::highload_wallet_v2::prepare_transfer(
+                    &SimpleClock,
+                    &public_key,
+                    &current_state,
+                    vec![gift],
+                    expiration,
+                )?
             }
         };
 
