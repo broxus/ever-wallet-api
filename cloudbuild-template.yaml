@@ -1,7 +1,4 @@
 steps:
-  - name: $CONFIG_BUILDER
-    args: ['bash', '/root/entrypoint.sh']
-    timeout: 3600s
   - name: 'gcr.io/cloud-builders/gsutil'
     args: ['-m', 'cp', '-r', 'migrations/*', 'gs://binaries.broxus.com/$CONFIG_GROUP/$CONFIG_APPLICATION/$IMAGE_VERSION/migrations']
   - name: 'gcr.io/cloud-builders/gsutil'
