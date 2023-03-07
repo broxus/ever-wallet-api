@@ -6,7 +6,7 @@ cloudbuild:rust-artifact:
   only:
     - master
   variables:
-    CONFIG_BUILDER: gcr.io/dexpa-175115/rust/rust-builder:stable
+    CONFIG_BUILDER: gcr.io/dexpa-175115/rust/rust-builder:v1.64.0
     BINARY_NAME: ton-wallet-api
     CONFIG_APPLICATION: ton-wallet-api
     CONFIG_GROUP: ton
@@ -24,7 +24,7 @@ cloudbuild:rust-artifact-prod:
   only:
     - prod
   variables:
-    CONFIG_BUILDER: gcr.io/dexpa-175115/rust/rust-builder:stable
+    CONFIG_BUILDER: gcr.io/dexpa-175115/rust/rust-builder:v1.64.0
     BINARY_NAME: ton-wallet-api
     CONFIG_APPLICATION: ton-wallet-api
     CONFIG_GROUP: ton
