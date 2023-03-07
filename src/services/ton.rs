@@ -899,7 +899,8 @@ impl TonService {
         account_type: &AccountType,
         custodians: &Option<i32>,
         function_details: Option<FunctionDetails>,
-    ) -> Result<SignedMessage, Error> {
+        transaction_id: Uuid,
+    ) -> Result<TransactionDb, Error> {
         let (function, values) = match function_details {
             Some(details) => {
                 let function = nekoton_abi::FunctionBuilder::new(&details.function_name)
@@ -947,7 +948,7 @@ impl TonService {
                 &private_key,
                 target_addr,
                 execution_flag,
-                value,
+                value.clone(),
                 bounce,
                 account_type,
                 custodians,
@@ -956,19 +957,36 @@ impl TonService {
             )
             .await?;
 
-        let hash = signed_message.message.hash().map(|x| x.to_hex_string())?;
+        let sent_transaction = SentTransaction {
+            id: transaction_id,
+            message_hash: signed_message.message.hash()?.to_hex_string(),
+            account_workchain_id: sender.workchain_id(),
+            account_hex: sender.address().to_hex_string(),
+            original_value: Some(value),
+            original_outputs: None,
+            aborted: false,
+            bounce,
+        };
+
+        let (transaction, event) = self
+            .sqlx_client
+            .create_send_transaction(CreateSendTransaction::new(sent_transaction, *service_id))
+            .await?;
 
         self.send_transaction(
-            hash,
-            sender.address().to_hex_string(),
-            sender.workchain_id(),
-            signed_message.clone(),
+            transaction.message_hash.clone(),
+            transaction.account_hex.clone(),
+            transaction.account_workchain_id,
+            signed_message,
             true,
             false,
         )
         .await?;
 
-        Ok(signed_message)
+        self.notify(service_id, event.into(), NotifyType::Transaction)
+            .await?;
+
+        Ok(transaction)
     }
 
     pub async fn prepare_generic_message(

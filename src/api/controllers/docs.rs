@@ -693,7 +693,7 @@ pub fn swagger(prod_url: &str) -> String {
                         },
                     },
                     body: requests::SignedMessageRequest,
-                    200: responses::SignedMessageHashResponse,
+                    200: responses::TransactionResponse,
                 }
             },
             ("send-message"): {

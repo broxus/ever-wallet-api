@@ -2,6 +2,7 @@ use bigdecimal::BigDecimal;
 use opg::OpgModel;
 use serde::Deserialize;
 use ton_abi::Param;
+use uuid::Uuid;
 
 use crate::models::*;
 
@@ -73,6 +74,7 @@ pub struct SignedMessageRequest {
 #[derive(Deserialize, OpgModel)]
 #[serde(rename_all = "camelCase")]
 pub struct SendMessageRequest {
+    pub id: Option<Uuid>,
     pub sender_addr: String,
     pub target_account_addr: String,
     pub execution_flag: u8,
