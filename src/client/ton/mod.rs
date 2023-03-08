@@ -265,6 +265,17 @@ impl TonClient {
 
         let expiration = Expiration::Timeout(DEFAULT_EXPIRATION_TIMEOUT);
 
+        // parse input payload
+        let payload_cell = match &transaction.payload {
+            None => None,
+            Some(s) => {
+                let bytes = base64::decode(s).map_err(anyhow::Error::from)?;
+                let mut slice = &bytes[..];
+                let tree_of_cells = deserialize_tree_of_cells(&mut slice)?;
+                Some(tree_of_cells)
+            }
+        };
+
         let transfer_action = match account_type {
             AccountType::HighloadWallet => {
                 let account = UInt256::from_be_bytes(&address.address().get_bytestring(0));
@@ -281,7 +292,7 @@ impl TonClient {
                         bounce,
                         destination,
                         amount,
-                        body: None,
+                        body: payload_cell.as_ref().map(|c| c.into()),
                         state_init: None,
                     });
                 }
@@ -315,7 +326,7 @@ impl TonClient {
                     bounce,
                     destination,
                     amount,
-                    body: None,
+                    body: payload_cell.as_ref().map(|c| c.into()),
                     state_init: None,
                 }];
 
@@ -357,7 +368,7 @@ impl TonClient {
                     bounce,
                     destination,
                     amount,
-                    body: None,
+                    body: payload_cell.as_ref().map(|c| c.into()),
                     state_init: None,
                 };
 

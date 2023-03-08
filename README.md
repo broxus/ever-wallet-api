@@ -148,12 +148,13 @@ NOTE: scripts are prepared and tested on **Ubuntu 20.04**. You may need to modif
 
    To add more tokens to the whitelist, use the script:
    ```bash
-     ./scripts/root_token.sh -t native --database-url ${DATABASE_URL} --name ${TOKEN_NAME} --address ${TOKEN_ADDRESS}
+     ./scripts/root_token.sh -t native --database-url ${DATABASE_URL} --name ${TOKEN_NAME} --address ${TOKEN_ADDRESS} --version ${TOKEN_CONTRACT_VERSION}
    ```
    
    DATABASE_URL - Postgres connection url (example: postgresql://postgres:postgres@127.0.0.1/ton_wallet_api) \
    TOKEN_NAME - Token name (example: WTON) \
    TOKEN_ADDRESS - Token address (example: 0:0ee39330eddb680ce731cd6a443c71d9069db06d149a9bec9569d1eb8d04eb37)
+   TOKEN_CONTRACT_VERSION - "Tip3" or "OldTip3v4"
 
 4. #### Transfer EVER
    Example request:
@@ -174,7 +175,9 @@ NOTE: scripts are prepared and tested on **Ubuntu 20.04**. You may need to modif
             // Recipient address of EVERs
             "recipientAddress":"0:0000000000000000000000000000000000000000000000000000000000000000"
          }
-      ]
+      ],
+      // base64 encoded payload
+      payload: "te6ccgEBAQEABgAACAVriBQ="
    }
    ```
    Or use the script:
@@ -226,7 +229,9 @@ NOTE: scripts are prepared and tested on **Ubuntu 20.04**. You may need to modif
       // The address to which to return the residuals EVER. For example, your system address.
       "sendGasTo":"0:0000000000000000000000000000000000000000000000000000000000000000",
       // Token Address from whitelist
-      "rootAddress":"0:0000000000000000000000000000000000000000000000000000000000000000"
+      "rootAddress":"0:0000000000000000000000000000000000000000000000000000000000000000",
+      // base64 encoded payload
+      "payload": "te6ccgEBAQEABgAACAVriBQ="
    }
    ```
    Or use the script:

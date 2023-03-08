@@ -11,6 +11,7 @@ pub struct TransactionSend {
     pub from_address: Address,
     pub outputs: Vec<TransactionSendOutput>,
     pub bounce: Option<bool>,
+    pub payload: Option<String>,
 }
 
 #[derive(Clone, Debug, serde::Serialize, serde::Deserialize, Eq, PartialEq)]
