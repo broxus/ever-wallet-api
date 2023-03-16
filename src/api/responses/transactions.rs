@@ -56,7 +56,7 @@ pub struct TransactionDataResponse {
     pub original_value: Option<BigDecimal>,
     #[opg("fee", string)]
     pub fee: Option<BigDecimal>,
-    #[opg("balanceСhange", string)]
+    #[opg("balanceChange", string)]
     pub balance_change: BigDecimal,
     pub out_messages: Option<Vec<TransactionMessage>>,
     pub original_outputs: Option<Vec<TransactionOutput>>,

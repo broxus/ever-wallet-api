@@ -17,6 +17,8 @@ pub struct TonTransactionSendRequest {
     pub from_address: Address,
     pub outputs: Vec<TonTransactionSendOutputRequest>,
     pub bounce: Option<bool>,
+    #[opg("base64 encoded payload", string, optional)]
+    pub payload: Option<String>,
 }
 
 impl From<TonTransactionSendRequest> for TransactionSend {
@@ -26,6 +28,7 @@ impl From<TonTransactionSendRequest> for TransactionSend {
             from_address: c.from_address,
             bounce: c.bounce,
             outputs: c.outputs.into_iter().map(From::from).collect(),
+            payload: c.payload,
         }
     }
 }
