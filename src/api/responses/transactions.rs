@@ -255,6 +255,7 @@ pub struct TokenTransactionDataResponse {
     pub created_at: i64,
     #[opg("UTC timestamp in milliseconds", integer, format = "int64")]
     pub updated_at: i64,
+    pub payload: Option<String>,
 }
 
 impl From<TokenTransactionFromDb> for TokenTransactionDataResponse {
@@ -263,6 +264,7 @@ impl From<TokenTransactionFromDb> for TokenTransactionDataResponse {
             MsgAddressInt::from_str(&format!("{}:{}", c.account_workchain_id, c.account_hex))
                 .unwrap();
         let base64url = Address(pack_std_smc_addr(true, &account, true).unwrap());
+        let payload = c.payload.map(base64::encode);
 
         TokenTransactionDataResponse {
             id: c.id,
@@ -282,6 +284,7 @@ impl From<TokenTransactionFromDb> for TokenTransactionDataResponse {
             status: c.status,
             created_at: c.created_at.timestamp_millis(),
             updated_at: c.updated_at.timestamp_millis(),
+            payload,
         }
     }
 }

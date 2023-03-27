@@ -86,6 +86,7 @@ pub struct TokenTransactionContext {
     pub transaction_hash: UInt256,
     pub transaction: ton_block::Transaction,
     pub token_state: ExistingContract,
+    pub in_msg: ton_block::Message,
 }
 
 #[derive(Debug)]
@@ -116,6 +117,7 @@ impl ReadFromTransaction for TokenTransactionEvent {
                         transaction_hash: *ctx.transaction_hash,
                         transaction: ctx.transaction.clone(),
                         token_state: token_state.clone(),
+                        in_msg: ctx.in_msg.clone(),
                     },
                     parsed: parsed.clone(),
                     state,
