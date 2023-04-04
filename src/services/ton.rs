@@ -95,6 +95,26 @@ impl TonService {
         Ok(address)
     }
 
+    pub async fn add_address(
+        &self,
+        service_id: &ServiceId,
+        input: AddAddress,
+    ) -> Result<AddressDb, Error> {
+        let id = Uuid::new_v4();
+        let key = self.key.as_slice().try_into()?;
+        let pk_bytes = hex::decode(&input.private_key)?;
+        let pk_enc = encrypt_private_key(&pk_bytes, key, &id)?;
+
+        let address = repack_address(&input.address)?;
+        let base64url = nekoton_utils::pack_std_smc_addr(true, &address, true)?;
+        let payload =
+            CreateAddressInDb::from_add_address(input, address, base64url, id, *service_id, pk_enc);
+
+        let address = self.sqlx_client.create_address(payload).await?;
+
+        Ok(address)
+    }
+
     pub async fn check_address(&self, address: Address) -> Result<bool, Error> {
         Ok(MsgAddressInt::from_str(&address.0).is_ok()
             || (unpack_std_smc_addr(&address.0, false).is_ok())

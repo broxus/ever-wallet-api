@@ -11,4 +11,5 @@ pub fn router() -> Router {
         .route("/create", post(controllers::post_address_create))
         .route("/:address", get(controllers::get_address_balance))
         .route("/:address/info", get(controllers::get_address_info))
+        .route("/add", post(controllers::post_address_add))
 }

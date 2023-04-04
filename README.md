@@ -136,6 +136,27 @@ NOTE: scripts are prepared and tested on **Ubuntu 20.04**. You may need to modif
    API_KEY=${API_KEY} SECRET=${API_SECRET} HOST=${HOST} \
    ./scripts/wallet.sh -m create_account
    ```
+   <details>
+      <summary>Adding an existing address</summary>
+   
+      To add an existing address, you need to make a request to the path `/address/add`. The response will return the added address. 
+   
+      ```
+      Example request:
+      {
+         // wallet public key
+         publicKey: "0000000000000000000000000000000000000000000000000000000000000000",
+         // wallet secret
+         privateKey: "0000000000000000000000000000000000000000000000000000000000000000",
+         // wallet address
+         address: "0:0000000000000000000000000000000000000000000000000000000000000000",
+      }
+      ```
+   
+      *Please note that in this scenario, there will be no synchronization of the balance with the existing one. 
+       Ever wallet API will only record transactions that were made after adding the address.
+       Therefore, the user will have to independently monitor the correspondence of the real balance to the balance known to the application.* 
+   </details>
 
 2. #### Callbacks
    In the table `api_service_callback` we enter the address of our backend, which will deal with payment processing.

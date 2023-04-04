@@ -30,6 +30,26 @@ pub async fn post_address_create(
     Ok(Json(AddressResponse::from(address)))
 }
 
+pub async fn post_address_add(
+    Json(req): Json<AddAddressRequest>,
+    Extension(ctx): Extension<Arc<ApiContext>>,
+    IdExtractor(service_id): IdExtractor,
+) -> Result<Json<AddressResponse>> {
+    let start = Instant::now();
+
+    let address = ctx
+        .ton_service
+        .add_address(&service_id, req.into())
+        .await
+        .map(From::from);
+
+    let elapsed = start.elapsed();
+    histogram!("execution_time_seconds", elapsed, "method" => "addAddress");
+    increment_counter!("requests_processed", "method" => "addAddress");
+
+    Ok(Json(AddressResponse::from(address)))
+}
+
 pub async fn post_address_check(
     Json(req): Json<AddressCheckRequest>,
     Extension(ctx): Extension<Arc<ApiContext>>,
