@@ -8,19 +8,16 @@ use ton_block::{AccountState, MsgAddressInt};
 
 use crate::models::{Address, AddressDb};
 
-#[derive(Debug, Deserialize, Serialize, Clone, opg::OpgModel, Eq, PartialEq, sqlx::Type, Copy)]
+#[derive(
+    Debug, Default, Deserialize, Serialize, Clone, opg::OpgModel, Eq, PartialEq, sqlx::Type, Copy,
+)]
 #[opg("AccountType")]
 #[sqlx(type_name = "twa_account_type", rename_all = "PascalCase")]
 pub enum AccountType {
+    #[default]
     HighloadWallet,
     Wallet,
     SafeMultisig,
-}
-
-impl Default for AccountType {
-    fn default() -> AccountType {
-        AccountType::HighloadWallet
-    }
 }
 
 #[derive(Debug, Deserialize, Serialize, Clone, opg::OpgModel, sqlx::Type, Eq, PartialEq)]
@@ -163,9 +160,10 @@ pub enum TransactionsSearchOrdering {
     TransactionTimestampDesc,
 }
 
-#[derive(Debug, Deserialize, Serialize, Clone, Eq, PartialEq, opg::OpgModel)]
+#[derive(Debug, Default, Deserialize, Serialize, Clone, Eq, PartialEq, opg::OpgModel)]
 #[opg("TransactionSendOutputType")]
 pub enum TransactionSendOutputType {
+    #[default]
     Normal,
     AllBalance,
     AllBalanceDeleteNetworkAccount,
@@ -191,12 +189,6 @@ impl From<TransactionSendOutputType> for u8 {
             TransactionSendOutputType::AllBalance => 128,
             TransactionSendOutputType::AllBalanceDeleteNetworkAccount => 128 + 32,
         }
-    }
-}
-
-impl Default for TransactionSendOutputType {
-    fn default() -> Self {
-        TransactionSendOutputType::Normal
     }
 }
 
