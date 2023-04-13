@@ -83,31 +83,6 @@ impl CreateAddressInDb {
                 .map(|c| serde_json::to_value(c).unwrap_or_default()),
         }
     }
-
-    pub fn from_add_address(
-        a: AddAddress,
-        account: ton_block::MsgAddressInt,
-        base64url: String,
-        id: uuid::Uuid,
-        service_id: ServiceId,
-        private_key: String,
-    ) -> Self {
-        Self {
-            id,
-            service_id,
-            workchain_id: account.workchain_id(),
-            hex: account.address().to_hex_string(),
-            base64url,
-            public_key: a.public_key,
-            private_key,
-            account_type: a.account_type.unwrap_or_default(),
-            custodians: a.custodians,
-            confirmations: a.confirmations,
-            custodians_public_keys: a
-                .custodians_public_keys
-                .map(|c| serde_json::to_value(c).unwrap_or_default()),
-        }
-    }
 }
 
 #[derive(Clone, Debug, serde::Serialize, serde::Deserialize, Eq, PartialEq)]

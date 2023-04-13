@@ -100,15 +100,43 @@ impl TonService {
         service_id: &ServiceId,
         input: AddAddress,
     ) -> Result<AddressDb, Error> {
+        let (custodians, confirmations) =
+            validate_account_type(&input.account_type, input.custodians, input.confirmations)?;
+
+        let public_keys = input
+            .custodians_public_keys
+            .as_ref()
+            .map(|keys| keys.iter().map(|k| k.as_str()).collect::<Vec<_>>())
+            .unwrap_or_default();
+
+        let (custodians_public_keys, public_key_enc) = validate_public_keys(
+            &public_keys[..],
+            input.public_key.as_str(),
+            &input.account_type,
+        )?;
+
         let id = Uuid::new_v4();
         let key = self.key.as_slice().try_into()?;
-        let pk_bytes = hex::decode(&input.private_key)?;
-        let pk_enc = encrypt_private_key(&pk_bytes, key, &id)?;
+        let private_key_bytes = hex::decode(&input.private_key)?;
+        let private_key_enc = encrypt_private_key(&private_key_bytes, key, &id)?;
 
         let address = repack_address(&input.address)?;
         let base64url = nekoton_utils::pack_std_smc_addr(true, &address, true)?;
-        let payload =
-            CreateAddressInDb::from_add_address(input, address, base64url, id, *service_id, pk_enc);
+
+        let payload = CreateAddressInDb {
+            id,
+            service_id: *service_id,
+            workchain_id: address.workchain_id(),
+            hex: address.address().to_hex_string(),
+            base64url,
+            public_key: public_key_enc,
+            private_key: private_key_enc,
+            account_type: input.account_type.unwrap_or_default(),
+            custodians,
+            confirmations,
+            custodians_public_keys: custodians_public_keys
+                .map(|c| serde_json::to_value(c).unwrap_or_default()),
+        };
 
         let address = self.sqlx_client.create_address(payload).await?;
 

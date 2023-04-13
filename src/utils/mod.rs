@@ -2,6 +2,7 @@ use std::hash::BuildHasherDefault;
 
 use rustc_hash::FxHasher;
 
+pub use self::address::*;
 pub use self::encoding::*;
 pub use self::existing_contract::*;
 pub use self::pending_messages_queue::*;
@@ -9,6 +10,7 @@ pub use self::shard_utils::*;
 pub use self::token_wallet::*;
 pub use self::tx_context::*;
 
+mod address;
 mod encoding;
 mod existing_contract;
 mod pending_messages_queue;

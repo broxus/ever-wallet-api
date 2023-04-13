@@ -95,22 +95,11 @@ impl TonClient {
             }
         };
 
-        let (custodians, confirmations) = match account_type {
-            AccountType::SafeMultisig => (
-                Some(payload.custodians.unwrap_or(1)),
-                Some(payload.confirmations.unwrap_or(1)),
-            ),
-            AccountType::HighloadWallet | AccountType::Wallet => (None, None),
-        };
-
-        if let (Some(custodians), Some(confirmations)) = (custodians, confirmations) {
-            if confirmations > custodians {
-                return Err(TonServiceError::WrongInput(
-                    "Invalid number of confirmations".to_string(),
-                )
-                .into());
-            }
-        }
+        let (custodians, confirmations) = validate_account_type(
+            &payload.account_type,
+            payload.custodians,
+            payload.confirmations,
+        )?;
 
         // Validate custodians and append created pubkey to them
         let custodians_public_keys = match account_type {
