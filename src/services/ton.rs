@@ -123,6 +123,8 @@ impl TonService {
         let address = repack_address(&input.address)?;
         let base64url = nekoton_utils::pack_std_smc_addr(true, &address, true)?;
 
+        let address_data = self.ton_api_client.get_address_info(&address).await?;
+
         let payload = CreateAddressInDb {
             id,
             service_id: *service_id,
@@ -138,7 +140,10 @@ impl TonService {
                 .map(|c| serde_json::to_value(c).unwrap_or_default()),
         };
 
-        let address = self.sqlx_client.create_address(payload).await?;
+        let address = self
+            .sqlx_client
+            .create_address_with_balance(payload, address_data.network_balance)
+            .await?;
 
         Ok(address)
     }

@@ -3801,6 +3801,137 @@
     },
     "query": "\n            SELECT id, service_id as \"service_id: _\", transaction_hash, transaction_timestamp, message_hash, owner_message_hash, account_workchain_id, account_hex,\n            value, root_address, payload, error, block_hash, block_time, direction as \"direction: _\", status as \"status: _\", in_message_hash, created_at, updated_at\n            FROM token_transactions\n            WHERE service_id = $1 AND id = $2"
   },
+  "8a494b7b3ac8b993778ecc84466e5812ec95c6d58f537d6ae47f9e27b91136a0": {
+    "describe": {
+      "columns": [
+        {
+          "name": "id",
+          "ordinal": 0,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "service_id: _",
+          "ordinal": 1,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "workchain_id",
+          "ordinal": 2,
+          "type_info": "Int4"
+        },
+        {
+          "name": "hex",
+          "ordinal": 3,
+          "type_info": "Varchar"
+        },
+        {
+          "name": "base64url",
+          "ordinal": 4,
+          "type_info": "Varchar"
+        },
+        {
+          "name": "public_key",
+          "ordinal": 5,
+          "type_info": "Varchar"
+        },
+        {
+          "name": "private_key",
+          "ordinal": 6,
+          "type_info": "Varchar"
+        },
+        {
+          "name": "account_type: _",
+          "ordinal": 7,
+          "type_info": {
+            "Custom": {
+              "kind": {
+                "Enum": [
+                  "HighloadWallet",
+                  "Wallet",
+                  "SafeMultisig"
+                ]
+              },
+              "name": "twa_account_type"
+            }
+          }
+        },
+        {
+          "name": "custodians",
+          "ordinal": 8,
+          "type_info": "Int4"
+        },
+        {
+          "name": "confirmations",
+          "ordinal": 9,
+          "type_info": "Int4"
+        },
+        {
+          "name": "custodians_public_keys",
+          "ordinal": 10,
+          "type_info": "Jsonb"
+        },
+        {
+          "name": "balance",
+          "ordinal": 11,
+          "type_info": "Numeric"
+        },
+        {
+          "name": "created_at",
+          "ordinal": 12,
+          "type_info": "Timestamp"
+        },
+        {
+          "name": "updated_at",
+          "ordinal": 13,
+          "type_info": "Timestamp"
+        }
+      ],
+      "nullable": [
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        true,
+        true,
+        true,
+        false,
+        false,
+        false
+      ],
+      "parameters": {
+        "Left": [
+          "Uuid",
+          "Uuid",
+          "Int4",
+          "Varchar",
+          "Varchar",
+          "Varchar",
+          "Varchar",
+          {
+            "Custom": {
+              "kind": {
+                "Enum": [
+                  "HighloadWallet",
+                  "Wallet",
+                  "SafeMultisig"
+                ]
+              },
+              "name": "twa_account_type"
+            }
+          },
+          "Int4",
+          "Int4",
+          "Jsonb",
+          "Numeric"
+        ]
+      }
+    },
+    "query": "INSERT INTO address\n                (id, service_id, workchain_id, hex, base64url, public_key, private_key, account_type, custodians, confirmations, custodians_public_keys, balance)\n                VALUES ($1, $2, $3, $4, $5, $6, $7, $8::twa_account_type, $9, $10, $11, $12)\n                RETURNING\n                id, service_id as \"service_id: _\", workchain_id, hex, base64url, public_key, private_key, account_type as \"account_type: _\", custodians, confirmations, custodians_public_keys, balance, created_at, updated_at\n"
+  },
   "8d7ce1366663f290e4b39fe251e929976e5a6afa8d1940cd5a048033bce80fbe": {
     "describe": {
       "columns": [

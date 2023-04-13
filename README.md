@@ -14,6 +14,7 @@
 </p>
 
 ### Overview
+
 This is a light node + api for sending and tracking payments. The app listens for addresses from the database and
 indexes all transactions, putting information about them in the postsgres DB. All transactions with native EVERs are
 tracked, and there is a whitelist of root token addresses to be tracked in the settings. There is a callbacks table
@@ -23,6 +24,7 @@ It takes about 20 minutes to synchronize the node.
 Both the ton-wallet-api and callback requests use HMAC signatures in the headers.
 
 ### Runtime requirements
+
 - CPU: 4 cores, 2 GHz
 - RAM: 8 GB
 - Storage: 100 GB fast SSD
@@ -37,6 +39,7 @@ there is a set of scripts for configuring the ton-wallet-api.
 NOTE: scripts are prepared and tested on **Ubuntu 20.04**. You may need to modify them a little for other distros.
 
 1. ##### Setup ton-wallet-api service
+
    ```bash
    ./scripts/setup.sh -t native --database-url ${DATABASE_URL}
    ```
@@ -49,6 +52,7 @@ NOTE: scripts are prepared and tested on **Ubuntu 20.04**. You may need to modif
    **Do not start this service yet!**
 
 2. ##### Prepare config
+
    Either add the environment variables to the `[Service]` section of unit file.
    It is located at `/etc/systemd/system/ton-wallet-api.service`.
 
@@ -69,12 +73,14 @@ NOTE: scripts are prepared and tested on **Ubuntu 20.04**. You may need to modif
    > SALT - 16 bytes recommended in B64 for secret hashing.
 
    ###### How to gen SALT
+
    ```bash
    cargo build --release
    ./target/release/ton-wallet-api salt
    ```
 
 3. ##### Create api service
+
    ```bash
      ./scripts/api_service.sh -t native --database-url ${DATABASE_URL} --id ${SERVICE_ID} --name ${SERVICE_NAME} --key ${SERVICE_KEY} --secret ${SERVICE_SECRET}
    ```
@@ -86,6 +92,7 @@ NOTE: scripts are prepared and tested on **Ubuntu 20.04**. You may need to modif
    SERVICE_SECRET - Secret key (example: apiSecret)
 
 4. ##### Enable and start ton-wallet-api service
+
    ```bash
    systemctl enable ton-wallet-api
    systemctl start ton-wallet-api
@@ -117,68 +124,72 @@ NOTE: scripts are prepared and tested on **Ubuntu 20.04**. You may need to modif
    > </details>
 
 5. ##### Update service
+
    ```bash
      ./scripts/update.sh -t native --database-url ${DATABASE_URL}
    ```
 
    DATABASE_URL - Postgres connection url (example: postgresql://postgres:postgres@127.0.0.1/ton_wallet_api)
 
-
 ### Let's start using Wallet API
 
 1. #### Create address
+
    Create yourself a "system address" by calling `/address/create` with empty parameters. The response will return a EVER
    address. It is necessary to send EVERs on it, which will be consumed as gas for further work.
-   
+
    **For simplicity, you use the script**
 
    ```bash
    API_KEY=${API_KEY} SECRET=${API_SECRET} HOST=${HOST} \
    ./scripts/wallet.sh -m create_account
    ```
+
    <details>
       <summary>Adding an existing address</summary>
-   
-      To add an existing address, you need to make a request to the path `/address/add`. The response will return the added address. 
-   
-      ```
-      Example request:
-      {
-         // wallet public key
-         publicKey: "0000000000000000000000000000000000000000000000000000000000000000",
-         // wallet secret
-         privateKey: "0000000000000000000000000000000000000000000000000000000000000000",
-         // wallet address
-         address: "0:0000000000000000000000000000000000000000000000000000000000000000",
-      }
-      ```
-   
-      *Please note that in this scenario, there will be no synchronization of the balance with the existing one. 
-       Ever wallet API will only record transactions that were made after adding the address.
-       Therefore, the user will have to independently monitor the correspondence of the real balance to the balance known to the application.* 
+
+   To add an existing address, you need to make a request to the path `/address/add`. The response will return the added address.
+
+   ```
+   Example request:
+   {
+      // wallet public key
+      publicKey: "0000000000000000000000000000000000000000000000000000000000000000",
+      // wallet secret
+      privateKey: "0000000000000000000000000000000000000000000000000000000000000000",
+      // wallet address
+      address: "0:0000000000000000000000000000000000000000000000000000000000000000",
+   }
+   ```
+
    </details>
 
 2. #### Callbacks
+
    In the table `api_service_callback` we enter the address of our backend, which will deal with payment processing.
    After receiving or sending new transactions or token transactions Wallet API will call web hook with POST method on
    `callback` url. Body will contain `AccountTransactionEvent` from [swagger](https://tonapi.broxus.com/swagger.yaml).
 
 3. #### Token Whitelist
+
    You can see the root-contract addresses at [manifest](https://raw.githubusercontent.com/broxus/ton-assets/master/manifest.json).
    By default, the whitelist already includes all the tokens in this list.
 
    To add more tokens to the whitelist, use the script:
+
    ```bash
      ./scripts/root_token.sh -t native --database-url ${DATABASE_URL} --name ${TOKEN_NAME} --address ${TOKEN_ADDRESS} --version ${TOKEN_CONTRACT_VERSION}
    ```
-   
+
    DATABASE_URL - Postgres connection url (example: postgresql://postgres:postgres@127.0.0.1/ton_wallet_api) \
    TOKEN_NAME - Token name (example: WTON) \
    TOKEN_ADDRESS - Token address (example: 0:0ee39330eddb680ce731cd6a443c71d9069db06d149a9bec9569d1eb8d04eb37)
    TOKEN_CONTRACT_VERSION - "Tip3" or "OldTip3v4"
 
 4. #### Transfer EVER
+
    Example request:
+
    ```
    /transactions/create
    {
@@ -201,25 +212,31 @@ NOTE: scripts are prepared and tested on **Ubuntu 20.04**. You may need to modif
       payload: "te6ccgEBAQEABgAACAVriBQ="
    }
    ```
+
    Or use the script:
+
    ```bash
    # Create transaction
    API_KEY=${API_KEY} SECRET=${API_SECRET} HOST=${HOST} \
    ./scripts/wallet.sh -m create_transaction \
    --src-addr {sender} --dst-addr {recipient} --amount {amount}
    ```
-   
+
    You can track the status of a transaction with:
-   1) (Recommended way) via callback `AccountTransactionEvent`, which has transactionStatus field:
-      * `expired` - end state for failed transactions,
-      * `done` - final state for successful transactions. 
-      
+
+   1. (Recommended way) via callback `AccountTransactionEvent`, which has transactionStatus field:
+
+      - `expired` - end state for failed transactions,
+      - `done` - final state for successful transactions.
+
       If your backend was disabled during the callback or responded with an error, the event will have an `Error` state.
       In this case you should query all events `/events` in `Error` state at backend startup, process them and give each
       event a `Done` state by calling `/events/mark`.
-   2) by polling the GET method `/transactions/id/<uuid>`
+
+   2. by polling the GET method `/transactions/id/<uuid>`
 
 5. #### How to process a payment from a user on the backend
+
    We generate a deposit address for the user by calling `/address/create` with empty parameters. After receiving the
    payment, the backend receives a callback of the form `AccountTransactionEvent` (see [swagger](https://tonapi.broxus.com/swagger.yaml)).
    You can also get such events in a list, using the /events method.
@@ -230,10 +247,12 @@ NOTE: scripts are prepared and tested on **Ubuntu 20.04**. You may need to modif
    can do extra checks on it to make sure that your backend doesn't re-process events.
 
 6. #### Transfer tokens
+
    First, check the status and balance of the address you want to send tokens from by making a GET request to /address/{string}.
    The address you are sending tokens from must have at least 0.6 EVER (balance >= 600000000).
 
    To transfer tokens, use the method:
+
    ```
    /tokens/transactions/create
    {
@@ -255,7 +274,9 @@ NOTE: scripts are prepared and tested on **Ubuntu 20.04**. You may need to modif
       "payload": "te6ccgEBAQEABgAACAVriBQ="
    }
    ```
+
    Or use the script:
+
    ```bash
     # Create token transaction
    API_KEY=${API_KEY} SECRET=${API_SECRET} HOST=${HOST} \
@@ -265,18 +286,20 @@ NOTE: scripts are prepared and tested on **Ubuntu 20.04**. You may need to modif
    ```
 
    You can track the status of a transaction with:
-   1) (Recommended way) via callback `AccountTransactionEvent`, which has `transactionStatus` field:
-      * `expired` - end state for failed transactions,
-      * `done` - final state for successful transactions.
+
+   1. (Recommended way) via callback `AccountTransactionEvent`, which has `transactionStatus` field:
+
+      - `expired` - end state for failed transactions,
+      - `done` - final state for successful transactions.
 
       If your backend was down at the time of the callback or responded with an error, the event will have an `Error` state.
       In this case, you should query all events `/token/events` in Error state at backend startup, process them, and set
       each event to `Done` state by calling `/token/events/mark`.
 
-   2) by polling with the GET method `/tokens/transactions/id/<uuid>`
-
+   2. by polling with the GET method `/tokens/transactions/id/<uuid>`
 
 ### Postman
+
 [pre-request-script.js](scripts/pre-request-script.js) is javascript for using with Postman's pre-request script feature. It generates HTTP request headers for HMAC authentication.
 Copy the contents of [pre-request-script.js](scripts/pre-request-script.js) into the "Pre-request Script" tab in Postman to send signed request.
 
