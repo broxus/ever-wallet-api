@@ -67,7 +67,7 @@ pub enum Error {
     ///
     /// Like with `Error::Sqlx`, the actual error message is not returned to the client
     /// for security reasons.
-    #[error("an internal server error occurred")]
+    #[error("an internal server error occurred: {0}")]
     Anyhow(#[from] anyhow::Error),
 
     #[error(transparent)]
