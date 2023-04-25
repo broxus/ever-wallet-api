@@ -31,7 +31,7 @@ impl From<Result<EventsResponse, Error>> for TonEventsResponse {
             },
             Err(e) => Self {
                 status: TonStatus::Error,
-                error_message: Some(e.to_string()),
+                error_message: Some(e.get_error()),
                 data: None,
             },
         }
@@ -55,7 +55,7 @@ impl From<Result<TransactionEventDb, Error>> for MarkEventsResponse {
             },
             Err(e) => Self {
                 status: TonStatus::Error,
-                error_message: Some(e.to_string()),
+                error_message: Some(e.get_error()),
             },
         }
     }
@@ -70,7 +70,7 @@ impl From<Result<Vec<TransactionEventDb>, Error>> for MarkEventsResponse {
             },
             Err(e) => Self {
                 status: TonStatus::Error,
-                error_message: Some(e.to_string()),
+                error_message: Some(e.get_error()),
             },
         }
     }
@@ -95,7 +95,7 @@ impl From<Result<TokenEventsResponse, Error>> for TonTokenEventsResponse {
             },
             Err(e) => Self {
                 status: TonStatus::Error,
-                error_message: Some(e.to_string()),
+                error_message: Some(e.get_error()),
                 data: None,
             },
         }
@@ -127,7 +127,7 @@ impl From<Result<TokenTransactionEventDb, Error>> for MarkTokenEventsResponse {
             },
             Err(e) => Self {
                 status: TonStatus::Error,
-                error_message: Some(e.to_string()),
+                error_message: Some(e.get_error()),
             },
         }
     }
@@ -152,7 +152,7 @@ impl From<Result<AccountTransactionEvent, Error>> for TransactionEventResponse {
             },
             Err(e) => Self {
                 status: TonStatus::Error,
-                error_message: Some(e.to_string()),
+                error_message: Some(e.get_error()),
                 data: None,
             },
         }

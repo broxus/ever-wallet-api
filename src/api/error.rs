@@ -97,6 +97,7 @@ impl Error {
         }
     }
 }
+
 /// Axum allows you to return `Result` from handler functions, but the error type
 /// also must be some sort of response type.
 ///
@@ -104,6 +105,16 @@ impl Error {
 /// to the client.
 impl IntoResponse for Error {
     fn into_response(self) -> Response {
+        (
+            self.status_code(),
+            Json(serde_json::json!({"reason":self.to_string()})),
+        )
+            .into_response()
+    }
+}
+
+impl Error {
+    pub fn get_error(self) -> String {
         match self {
             Self::Sqlx(ref e) => {
                 // TODO: we probably want to use `tracing` instead
@@ -154,24 +165,20 @@ impl IntoResponse for Error {
             }
 
             // Other errors get mapped normally.
-            Error::TonService(ref e) => {
+            Self::TonService(ref e) => {
                 log::error!("Ton service error: {:?}", e);
             }
 
             // Other errors get mapped normally.
-            Error::TonClient(ref e) => {
+            Self::TonClient(ref e) => {
                 log::error!("Ton client error: {:?}", e);
             }
 
-            Error::Controllers(ref e) => {
+            Self::Controllers(ref e) => {
                 log::error!("Controllers error: {:?}", e);
             }
         }
 
-        (
-            self.status_code(),
-            Json(serde_json::json!({"reason":self.to_string()})),
-        )
-            .into_response()
+        self.to_string()
     }
 }

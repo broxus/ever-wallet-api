@@ -37,7 +37,7 @@ impl From<Result<Account, Error>> for AddressResponse {
             },
             Err(e) => Self {
                 status: TonStatus::Error,
-                error_message: Some(e.to_string()),
+                error_message: Some(e.get_error()),
                 data: None,
             },
         }
@@ -87,7 +87,7 @@ impl From<Result<AddressBalanceDataResponse, Error>> for AddressBalanceResponse 
             Err(e) => Self {
                 status: TonStatus::Error,
                 data: None,
-                error_message: Some(format!("{:?}", e)),
+                error_message: Some(e.get_error()),
             },
         }
     }
@@ -159,7 +159,7 @@ impl From<Result<AddressInfoDataResponse, Error>> for AddressInfoResponse {
             Err(e) => Self {
                 status: TonStatus::Error,
                 data: None,
-                error_message: Some(format!("{:?}", e)),
+                error_message: Some(e.get_error()),
             },
         }
     }
@@ -227,7 +227,7 @@ impl From<Result<Vec<TokenBalanceDataResponse>, Error>> for TokenBalanceResponse
             },
             Err(e) => Self {
                 status: TonStatus::Error,
-                error_message: Some(e.to_string()),
+                error_message: Some(e.get_error()),
                 data: None,
             },
         }

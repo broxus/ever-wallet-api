@@ -29,7 +29,7 @@ impl From<Result<TransactionDataResponse, Error>> for TransactionResponse {
             },
             Err(e) => Self {
                 status: TonStatus::Error,
-                error_message: Some(e.to_string()),
+                error_message: Some(e.get_error()),
                 data: None,
             },
         }
@@ -194,7 +194,7 @@ impl From<Result<TransactionsResponse, Error>> for TonTransactionsResponse {
             },
             Err(e) => Self {
                 status: TonStatus::Error,
-                error_message: Some(e.to_string()),
+                error_message: Some(e.get_error()),
                 data: None,
             },
         }
@@ -228,7 +228,7 @@ impl From<Result<TokenTransactionDataResponse, Error>> for TokenTransactionRespo
             },
             Err(e) => Self {
                 status: TonStatus::Error,
-                error_message: Some(e.to_string()),
+                error_message: Some(e.get_error()),
                 data: None,
             },
         }
