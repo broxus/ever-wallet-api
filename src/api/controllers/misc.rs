@@ -27,6 +27,7 @@ pub async fn post_read_contract(
                 .collect::<Vec<InputParam>>(),
             req.function_details.output_params,
             req.function_details.headers,
+            req.responsible.unwrap_or_default(),
         )
         .await
         .map(|value| ReadContractResponse { object: value })?;

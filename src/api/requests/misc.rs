@@ -11,6 +11,7 @@ use crate::models::*;
 pub struct ExecuteContractRequest {
     pub target_account_addr: String,
     pub function_details: FunctionDetailsDTO,
+    pub responsible: Option<bool>,
 }
 
 #[derive(Deserialize, OpgModel)]
