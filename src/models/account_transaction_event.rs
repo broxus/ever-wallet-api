@@ -14,6 +14,7 @@ use crate::models::*;
 pub struct AccountTransactionEvent {
     pub id: Uuid,
     pub transaction_id: Uuid,
+    pub transaction_hash: Option<String>,
     pub message_hash: String,
     pub owner_message_hash: Option<String>,
     pub account: Account,
@@ -39,6 +40,7 @@ impl From<TokenTransactionEventDb> for AccountTransactionEvent {
         Self {
             id: t.id,
             transaction_id: t.token_transaction_id,
+            transaction_hash: t.token_transaction_hash,
             message_hash: t.message_hash,
             owner_message_hash: t.owner_message_hash,
             account: Account {
@@ -85,6 +87,7 @@ impl From<TransactionEventDb> for AccountTransactionEvent {
         Self {
             id: t.id,
             transaction_id: t.transaction_id,
+            transaction_hash: t.transaction_hash,
             message_hash: t.message_hash,
             owner_message_hash: None,
             account: Account {

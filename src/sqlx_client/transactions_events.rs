@@ -20,21 +20,23 @@ impl SqlxClient {
         sqlx::query_as!(
             TransactionEventDb,
             r#"
-            SELECT id,
-                service_id as "service_id: _",
-                transaction_id,
-                message_hash,
-                account_workchain_id,
-                account_hex,
-                sender_workchain_id,
-                sender_hex,
-                balance_change,
-                transaction_direction as "transaction_direction: _",
-                transaction_status as "transaction_status: _",
-                event_status as "event_status: _",
-                multisig_transaction_id, created_at, updated_at
-            FROM transaction_events
-            WHERE service_id = $1 AND message_hash = $2 AND account_workchain_id = $3 AND account_hex = $4"#,
+            SELECT te.id,
+                te.service_id as "service_id: _",
+                te.transaction_id,
+                t.transaction_hash,
+                te.message_hash,
+                te.account_workchain_id,
+                te.account_hex,
+                te.sender_workchain_id,
+                te.sender_hex,
+                te.balance_change,
+                te.transaction_direction as "transaction_direction: _",
+                te.transaction_status as "transaction_status: _",
+                te.event_status as "event_status: _",
+                te.multisig_transaction_id, te.created_at, te.updated_at
+            FROM transaction_events te
+                LEFT JOIN transactions t on t.id = te.transaction_id
+            WHERE te.service_id = $1 AND te.message_hash = $2 AND te.account_workchain_id = $3 AND te.account_hex = $4"#,
             service_id as ServiceId,
             message_hash,
             account_workchain_id,
@@ -55,21 +57,24 @@ impl SqlxClient {
         sqlx::query_as!(
             TransactionEventDb,
             r#"
-            UPDATE transaction_events SET event_status = $1
-            WHERE message_hash = $2 AND account_workchain_id = $3 AND account_hex = $4
-            RETURNING id,
-                service_id as "service_id: _",
-                transaction_id,
-                message_hash,
-                account_workchain_id,
-                account_hex,
-                sender_workchain_id,
-                sender_hex,
-                balance_change,
-                transaction_direction as "transaction_direction: _",
-                transaction_status as "transaction_status: _",
-                event_status as "event_status: _",
-                multisig_transaction_id, created_at, updated_at"#,
+            UPDATE transaction_events te SET event_status = $1
+            FROM transactions t
+            WHERE te.message_hash = $2 AND te.account_workchain_id = $3 AND te.account_hex = $4
+                AND te.transaction_id = t.id
+            RETURNING te.id,
+                te.service_id as "service_id: _",
+                te.transaction_id,
+                t.transaction_hash,
+                te.message_hash,
+                te.account_workchain_id,
+                te.account_hex,
+                te.sender_workchain_id,
+                te.sender_hex,
+                te.balance_change,
+                te.transaction_direction as "transaction_direction: _",
+                te.transaction_status as "transaction_status: _",
+                te.event_status as "event_status: _",
+                te.multisig_transaction_id, te.created_at, te.updated_at"#,
             event_status as TonEventStatus,
             message_hash,
             account_workchain_id,
@@ -89,21 +94,24 @@ impl SqlxClient {
         sqlx::query_as!(
             TransactionEventDb,
             r#"
-            UPDATE transaction_events SET event_status = $1
-            WHERE service_id = $2 AND id = $3
-            RETURNING id,
-                service_id as "service_id: _",
-                transaction_id,
-                message_hash,
-                account_workchain_id,
-                account_hex,
-                sender_workchain_id,
-                sender_hex,
-                balance_change,
-                transaction_direction as "transaction_direction: _",
-                transaction_status as "transaction_status: _",
-                event_status as "event_status: _",
-                multisig_transaction_id, created_at, updated_at"#,
+            UPDATE transaction_events te SET event_status = $1
+            FROM transactions t
+            WHERE te.service_id = $2 AND te.id = $3
+                AND te.transaction_id = t.id
+            RETURNING te.id,
+                te.service_id as "service_id: _",
+                te.transaction_id,
+                t.transaction_hash,
+                te.message_hash,
+                te.account_workchain_id,
+                te.account_hex,
+                te.sender_workchain_id,
+                te.sender_hex,
+                te.balance_change,
+                te.transaction_direction as "transaction_direction: _",
+                te.transaction_status as "transaction_status: _",
+                te.event_status as "event_status: _",
+                te.multisig_transaction_id, te.created_at, te.updated_at"#,
             event_status as TonEventStatus,
             service_id as ServiceId,
             id,
@@ -126,25 +134,29 @@ impl SqlxClient {
         let old = old_event_status
             .map(|old| {
                 args.add(old);
-                "AND event_status = $3"
+                "AND te.event_status = $3"
             })
             .unwrap_or_default();
         let query = format!(
-            r#"UPDATE transaction_events SET event_status = $1
-            WHERE service_id = $2 {}
+            r#"UPDATE transaction_events te SET event_status = $1
+            FROM transactions t
+            WHERE te.service_id = $2 {}
+                AND te.transaction_id = t.id
             RETURNING id,
-                service_id as "service_id: _",
-                transaction_id,
-                message_hash,
-                account_workchain_id,
-                account_hex,
-                sender_workchain_id,
-                sender_hex,
-                balance_change,
-                transaction_direction as "transaction_direction: _",
-                transaction_status as "transaction_status: _",
-                event_status as "event_status: _",
-                multisig_transaction_id, created_at, updated_at"#,
+                te.service_id as "service_id: _",
+                te.transaction_id,
+                te.message_hash,
+                te.account_workchain_id,
+                te.account_hex,
+                te.sender_workchain_id,
+                te.sender_hex,
+                te.balance_change,
+                te.transaction_direction as "transaction_direction: _",
+                te.transaction_status as "transaction_status: _",
+                te.event_status as "event_status: _",
+                te.multisig_transaction_id, te.created_at, te.updated_at,
+                t.transaction_hash
+            "#,
             old
         );
 
@@ -168,6 +180,7 @@ impl SqlxClient {
                 multisig_transaction_id: x.get(12),
                 created_at: x.get(13),
                 updated_at: x.get(14),
+                transaction_hash: x.get(15),
             })
             .collect::<Vec<_>>();
         Ok(res)
@@ -181,23 +194,25 @@ impl SqlxClient {
         sqlx::query_as!(
             TransactionEventDb,
             r#"
-            SELECT id,
-                service_id as "service_id: _",
-                transaction_id,
-                message_hash,
-                account_workchain_id,
-                account_hex,
-                sender_workchain_id,
-                sender_hex,
-                balance_change,
-                transaction_direction as "transaction_direction: _",
-                transaction_status as "transaction_status: _",
-                event_status as "event_status: _",
-                multisig_transaction_id,
-                created_at,
-                updated_at
-            FROM transaction_events
-            WHERE service_id = $1 AND id = $2"#,
+            SELECT te.id,
+                te.service_id as "service_id: _",
+                te.transaction_id,
+                t.transaction_hash,
+                te.message_hash,
+                te.account_workchain_id,
+                te.account_hex,
+                te.sender_workchain_id,
+                te.sender_hex,
+                te.balance_change,
+                te.transaction_direction as "transaction_direction: _",
+                te.transaction_status as "transaction_status: _",
+                te.event_status as "event_status: _",
+                te.multisig_transaction_id,
+                te.created_at,
+                te.updated_at
+            FROM transaction_events te
+                LEFT JOIN transactions t ON t.id = te.transaction_id
+            WHERE te.service_id = $1 AND te.id = $2"#,
             service_id as ServiceId,
             id,
         )
@@ -219,22 +234,25 @@ impl SqlxClient {
 
         let query: String = format!(
             r#"SELECT
-                id,
-                service_id as "service_id: _",
-                transaction_id,
-                message_hash,
-                account_workchain_id,
-                account_hex,
-                sender_workchain_id,
-                sender_hex,
-                balance_change,
-                transaction_direction as "transaction_direction: _",
-                transaction_status as "transaction_status: _",
-                event_status as "event_status: _",
-                multisig_transaction_id,
-                created_at,
-                updated_at
-                FROM transaction_events WHERE service_id = $1 {} ORDER BY created_at DESC OFFSET ${} LIMIT ${}"#,
+                te.id,
+                te.service_id as "service_id: _",
+                te.transaction_id,
+                te.message_hash,
+                te.account_workchain_id,
+                te.account_hex,
+                te.sender_workchain_id,
+                te.sender_hex,
+                te.balance_change,
+                te.transaction_direction as "transaction_direction: _",
+                te.transaction_status as "transaction_status: _",
+                te.event_status as "event_status: _",
+                te.multisig_transaction_id,
+                te.created_at,
+                te.updated_at,
+                t.transaction_hash
+                FROM transaction_events te
+                    LEFT JOIN transactions t ON t.id = te.transaction_id
+                WHERE te.service_id = $1 {} ORDER BY te.created_at DESC OFFSET ${} LIMIT ${}"#,
             updates.iter().format(""),
             args_len + 1,
             args_len + 2
@@ -262,6 +280,7 @@ impl SqlxClient {
                 multisig_transaction_id: x.get(12),
                 created_at: x.get(13),
                 updated_at: x.get(14),
+                transaction_hash: x.get(15),
             })
             .collect::<Vec<_>>();
         Ok(res)
@@ -288,55 +307,61 @@ pub fn filter_transaction_query(
     let mut updates = Vec::new();
 
     if let Some(transaction_id) = transaction_id {
-        updates.push(format!(" AND transaction_id = ${} ", *args_len + 1,));
+        updates.push(format!(" AND te.transaction_id = ${} ", *args_len + 1,));
         *args_len += 1;
         args.add(transaction_id)
     }
 
     if let Some(message_hash) = message_hash {
-        updates.push(format!(" AND message_hash = ${} ", *args_len + 1,));
+        updates.push(format!(" AND te.message_hash = ${} ", *args_len + 1,));
         *args_len += 1;
         args.add(message_hash)
     }
 
     if let Some(account_workchain_id) = account_workchain_id {
-        updates.push(format!(" AND account_workchain_id = ${} ", *args_len + 1,));
+        updates.push(format!(
+            " AND te.account_workchain_id = ${} ",
+            *args_len + 1,
+        ));
         *args_len += 1;
         args.add(account_workchain_id)
     }
 
     if let Some(account_hex) = account_hex {
-        updates.push(format!(" AND account_hex = ${} ", *args_len + 1,));
+        updates.push(format!(" AND te.account_hex = ${} ", *args_len + 1,));
         *args_len += 1;
         args.add(account_hex)
     }
 
     if let Some(transaction_direction) = transaction_direction {
-        updates.push(format!(" AND transaction_direction = ${} ", *args_len + 1,));
+        updates.push(format!(
+            " AND te.transaction_direction = ${} ",
+            *args_len + 1,
+        ));
         *args_len += 1;
         args.add(transaction_direction)
     }
 
     if let Some(transaction_status) = transaction_status {
-        updates.push(format!(" AND transaction_status = ${} ", *args_len + 1,));
+        updates.push(format!(" AND te.transaction_status = ${} ", *args_len + 1,));
         *args_len += 1;
         args.add(transaction_status)
     }
 
     if let Some(event_status) = event_status {
-        updates.push(format!(" AND event_status = ${} ", *args_len + 1,));
+        updates.push(format!(" AND te.event_status = ${} ", *args_len + 1,));
         *args_len += 1;
         args.add(event_status)
     }
 
     if let Some(created_at_ge) = created_at_ge {
-        updates.push(format!(" AND created_at >= ${} ", *args_len + 1,));
+        updates.push(format!(" AND te.created_at >= ${} ", *args_len + 1,));
         *args_len += 1;
         args.add(created_at_ge)
     }
 
     if let Some(created_at_le) = created_at_le {
-        updates.push(format!(" AND created_at <= ${} ", *args_len + 1,));
+        updates.push(format!(" AND te.created_at <= ${} ", *args_len + 1,));
         *args_len += 1;
         args.add(created_at_le)
     }
