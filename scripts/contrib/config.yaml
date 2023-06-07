@@ -14,7 +14,7 @@ ton_core:
   # NOTE: Will be generated if it was not there.
   # Default: "./adnl-keys.json"
   keys_path: "/etc/ton-wallet-api/adnl-keys.json"
-metrics_settings:
+node_metrics_settings:
   # Listen address of metrics. Used by the client to gather prometheus metrics.
   # Default: "127.0.0.1:10000"
   listen_address: "0.0.0.0:10000"
