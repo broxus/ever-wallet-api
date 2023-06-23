@@ -113,7 +113,7 @@ impl ReadFromTransaction for TokenTransactionEvent {
                     ctx: TokenTransactionContext {
                         account: *ctx.account,
                         block_hash: *ctx.block_hash,
-                        block_utime: ctx.block_info.gen_utime().0,
+                        block_utime: ctx.block_info.gen_utime().as_u32(),
                         transaction_hash: *ctx.transaction_hash,
                         transaction: ctx.transaction.clone(),
                         token_state: token_state.clone(),

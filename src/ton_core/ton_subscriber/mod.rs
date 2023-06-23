@@ -290,7 +290,7 @@ impl TonSubscriber {
         })?;
 
         self.messages_queue
-            .update(block_info.shard(), block_info.gen_utime().0);
+            .update(block_info.shard(), block_info.gen_utime().as_u32());
 
         Ok(states)
     }

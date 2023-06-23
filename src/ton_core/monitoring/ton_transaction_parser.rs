@@ -133,15 +133,16 @@ fn get_messages(transaction: &ton_block::Transaction) -> Result<Vec<Message>> {
         .out_msgs
         .iterate(|ton_block::InRefValue(item)| {
             let fee = match item.get_fee()? {
-                Some(fee) => {
-                    Some(BigDecimal::from_u128(fee.0).ok_or(TransactionError::InvalidStructure)?)
-                }
+                Some(fee) => Some(
+                    BigDecimal::from_u128(fee.as_u128())
+                        .ok_or(TransactionError::InvalidStructure)?,
+                ),
                 None => None,
             };
 
             let value = match item.get_value() {
                 Some(value) => Some(
-                    BigDecimal::from_u128(value.grams.0)
+                    BigDecimal::from_u128(value.grams.as_u128())
                         .ok_or(TransactionError::InvalidStructure)?,
                 ),
                 None => None,
@@ -193,13 +194,13 @@ fn compute_value(transaction: &ton_block::Transaction) -> u128 {
         .and_then(|data| data.read_struct().ok())
     {
         if let ton_block::CommonMsgInfo::IntMsgInfo(header) = in_msg.header() {
-            value += header.value.grams.0;
+            value += header.value.grams.as_u128();
         }
     }
 
     let _ = transaction.out_msgs.iterate(|out_msg| {
         if let CommonMsgInfo::IntMsgInfo(header) = out_msg.0.header() {
-            value += header.value.grams.0;
+            value += header.value.grams.as_u128();
         }
         Ok(true)
     });

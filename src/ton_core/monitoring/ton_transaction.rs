@@ -101,7 +101,7 @@ impl ReadFromTransaction for TonTransactionEvent {
     ) -> Option<Self> {
         Some(TonTransactionEvent {
             account: *ctx.account,
-            block_utime: ctx.block_info.gen_utime().0,
+            block_utime: ctx.block_info.gen_utime().as_u32(),
             transaction_hash: *ctx.transaction_hash,
             transaction: ctx.transaction.clone(),
             state,

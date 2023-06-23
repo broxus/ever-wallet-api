@@ -204,7 +204,7 @@ impl TonCoreContext {
             _ => return Err(TonCoreError::ExternalTonMessageExpected.into()),
         };
 
-        let cells = message.write_to_new_cell()?.into();
+        let cells = message.write_to_new_cell()?.into_cell()?;
         let serialized = ton_types::serialize_toc(&cells)?;
 
         let rx = self

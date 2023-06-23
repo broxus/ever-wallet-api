@@ -76,3 +76,7 @@ broxus-util = { version = "0.2", features = ["alloc", "public-ip", "config", "lo
 
 # Indexer engine
 ton-indexer = { git = "https://github.com/broxus/ton-indexer.git" }
+
+[features]
+default = []
+venom = ["ton_block/venom", "ton-indexer/venom"]

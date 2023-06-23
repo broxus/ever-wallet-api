@@ -128,10 +128,10 @@ async fn internal_transfer_receive(
         .map(|message| message.hash().to_hex_string())
         .unwrap_or_default();
 
-    let payload : Option<ton_types::Cell> = {
+    let payload: Option<ton_types::Cell> = {
         let mut bd = BuilderData::new();
         if token_transaction_ctx.in_msg.write_to(&mut bd).is_ok() {
-            Some(bd.into())
+            Some(bd.into_cell()?)
         } else {
             None
         }
@@ -149,7 +149,10 @@ async fn internal_transfer_receive(
         sender_hex: Some(token_transfer.sender_address.address().to_hex_string()),
         value: BigDecimal::new(token_transfer.tokens.into(), 0),
         root_address: owner_info.root_address.to_string(),
-        payload: payload.map(|m| m.write_to_bytes()).transpose().unwrap_or(None),
+        payload: payload
+            .map(|m| m.write_to_bytes())
+            .transpose()
+            .unwrap_or(None),
         error: None,
         block_hash: token_transaction_ctx.block_hash.to_hex_string(),
         block_time: token_transaction_ctx.block_utime as i32,

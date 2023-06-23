@@ -11,7 +11,7 @@ use nekoton_contracts::{old_tip3, tip3_1};
 use nekoton_utils::SimpleClock;
 use num_bigint::BigUint;
 use ton_block::MsgAddressInt;
-use ton_types::UInt256;
+use ton_types::{SliceData, UInt256};
 
 const INITIAL_BALANCE: u64 = 100_000_000; // 0.1 TON
 
@@ -71,7 +71,7 @@ pub fn prepare_token_transfer(
         }
     };
 
-    let body = function.encode_internal_input(&input)?.into();
+    let body = SliceData::load_builder(function.encode_internal_input(&input)?)?;
 
     Ok(InternalMessage {
         source: Some(owner),
@@ -114,7 +114,7 @@ pub fn prepare_token_burn(
         }
     };
 
-    let body = function.encode_internal_input(&input)?.into();
+    let body = SliceData::load_builder(function.encode_internal_input(&input)?)?;
 
     Ok(InternalMessage {
         source: Some(owner),
@@ -152,7 +152,7 @@ pub fn prepare_token_mint(
         }
     };
 
-    let body = function.encode_internal_input(&input)?.into();
+    let body = SliceData::load_builder(function.encode_internal_input(&input)?)?;
 
     Ok(InternalMessage {
         source: Some(owner),

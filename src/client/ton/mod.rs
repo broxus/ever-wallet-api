@@ -14,7 +14,7 @@ use num_bigint::BigUint;
 use num_traits::FromPrimitive;
 use tokio::sync::oneshot;
 use ton_block::{GetRepresentationHash, MsgAddressInt};
-use ton_types::{deserialize_tree_of_cells, UInt256};
+use ton_types::{deserialize_tree_of_cells, SliceData, UInt256};
 use uuid::Uuid;
 
 use crate::api::*;
@@ -167,8 +167,9 @@ impl TonClient {
             Err(_) => return Ok(NetworkAddressData::uninit(owner)),
         };
 
-        let network_balance = BigDecimal::from_u128(contract.account.storage.balance.grams.0)
-            .ok_or(TonClientError::ParseBigDecimal)?;
+        let network_balance =
+            BigDecimal::from_u128(contract.account.storage.balance.grams.as_u128())
+                .ok_or(TonClientError::ParseBigDecimal)?;
 
         let (last_transaction_hash, last_transaction_lt) =
             utils::parse_last_transaction(&contract.last_transaction_id);
@@ -286,13 +287,17 @@ impl TonClient {
                     let flags = item.output_type.unwrap_or_default();
                     let destination = nekoton_utils::repack_address(&item.recipient_address.0)?;
                     let amount = item.value.to_u64().ok_or(TonClientError::ParseBigDecimal)?;
+                    let body = payload_cell
+                        .as_ref()
+                        .map(|c| SliceData::load_cell(c.clone()))
+                        .transpose()?;
 
                     gifts.push(nekoton::core::ton_wallet::Gift {
                         flags: flags.into(),
                         bounce,
                         destination,
                         amount,
-                        body: payload_cell.as_ref().map(|c| c.into()),
+                        body,
                         state_init: None,
                     });
                 }
@@ -320,13 +325,14 @@ impl TonClient {
                     .to_u64()
                     .ok_or(TonClientError::ParseBigDecimal)?;
                 let flags = recipient.output_type.clone().unwrap_or_default();
+                let body = payload_cell.map(SliceData::load_cell).transpose()?;
 
                 let gifts = vec![nekoton::core::ton_wallet::Gift {
                     flags: flags.into(),
                     bounce,
                     destination,
                     amount,
-                    body: payload_cell.as_ref().map(|c| c.into()),
+                    body,
                     state_init: None,
                 }];
 
@@ -363,12 +369,14 @@ impl TonClient {
                     None => return Err(TonClientError::CustodiansNotFound.into()),
                 };
 
+                let body = payload_cell.map(SliceData::load_cell).transpose()?;
+
                 let gift = nekoton::core::ton_wallet::Gift {
                     flags: flags.into(),
                     bounce,
                     destination,
                     amount,
-                    body: payload_cell.as_ref().map(|c| c.into()),
+                    body,
                     state_init: None,
                 };
 
@@ -817,7 +825,7 @@ impl TonClient {
             let (func, _) = MessageBuilder::new(&x).build();
             func.encode_internal_input(&tokens).ok()
         });
-        let body = function_data.map(|x| x.into());
+        let body = function_data.map(SliceData::load_builder).transpose()?;
 
         let destination = nekoton_utils::repack_address(target_addr)?;
         let amount = value.to_u64().ok_or(TonClientError::ParseBigDecimal)?;

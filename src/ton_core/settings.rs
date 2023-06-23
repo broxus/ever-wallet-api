@@ -24,8 +24,8 @@ pub struct NodeConfig {
     /// NOTE: generates new keys if specified path doesn't exist
     pub keys_path: PathBuf,
 
-    /// Allowed DB size in bytes. Default: one third of all machine RAM
-    pub max_db_memory_usage: usize,
+    /// Internal DB options.
+    pub db_options: ton_indexer::DbOptions,
 
     /// Archives map queue. Default: 16
     pub parallel_archive_downloads: usize,
@@ -86,7 +86,7 @@ impl NodeConfig {
                     ..Default::default()
                 }),
             shard_state_cache_options: None,
-            max_db_memory_usage: self.max_db_memory_usage,
+            db_options: self.db_options,
             archive_options: Some(Default::default()),
             sync_options: ton_indexer::SyncOptions {
                 old_blocks_policy,
@@ -115,7 +115,7 @@ impl Default for NodeConfig {
             adnl_port: 30303,
             db_path: "db".into(),
             keys_path: "adnl-keys.json".into(),
-            max_db_memory_usage: ton_indexer::default_max_db_memory_usage(),
+            db_options: Default::default(),
             parallel_archive_downloads: 16,
             states_gc_enabled: true,
             blocks_gc_enabled: true,
