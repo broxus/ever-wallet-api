@@ -12,6 +12,9 @@ function print_help() {
   echo '  -f,--force        Clear "/var/db/ton-wallet-api" on update'
   echo '  -s,--sync         Restart "timesyncd" service'
   echo '  -t,--type TYPE    Installation types: native'
+  echo '  -n,--network      One of two networks:'
+  echo '                      - Everscale'
+  echo '                      - Venom'
   echo '  --database-url    Postgres connection url which is needed to create'
   echo '                    database and make migration before running ton-wallet-api.'
   echo '                    example: "postgresql://${DB_USER}:${DB_PASSWORD}@${DB_HOST}/${DB_NAME}"'
@@ -45,6 +48,17 @@ while [[ $# -gt 0 ]]; do
           exit 1
         fi
       ;;
+      -n|--network)
+        network="$2"
+        shift # past argument
+        if [ "$#" -gt 0 ]; then shift;
+        else
+          echo 'ERROR: Expected network'
+          echo ''
+          print_help
+          exit 1
+        fi
+      ;;
       --database-url)
         database_url="$2"
         shift # past argument
@@ -72,6 +86,13 @@ if [[ "$setup_type" != "native" ]]; then
   exit 1
 fi
 
+if [[ "$network" != "Everscale" ]] && [[ "$network" != "Venom" ]]; then
+  echo 'ERROR: Unknown network'
+  echo ''
+  print_help
+  exit 1
+fi
+
 echo "INFO: stopping ton-wallet-api service"
 sudo systemctl stop ton-wallet-api
 
@@ -89,7 +110,14 @@ if [[ "$setup_type" == "native" ]]; then
 
   echo 'INFO: building ton-wallet-api'
   cd "$REPO_DIR"
-  RUSTFLAGS="-C target_cpu=native" cargo build --release
+  if [[ "$network" == "Everscale" ]]; then
+    RUSTFLAGS="-C target_cpu=native" cargo build --release
+  elif [[ "$network" == "Venom" ]]; then
+    RUSTFLAGS="-C target_cpu=native" cargo build --release --features venom
+  else
+    echo 'ERROR: Unexpected'
+    exit 1
+  fi
   sudo cp "$REPO_DIR/target/release/ton-wallet-api" /usr/local/bin/ton-wallet-api
 
 else

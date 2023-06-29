@@ -10,6 +10,9 @@ function print_help() {
   echo 'Options:'
   echo '  -h,--help         Print this help message and exit'
   echo '  -t,--type TYPE    Installation types: native'
+  echo '  -n,--network      One of two networks:'
+  echo '                      - Everscale'
+  echo '                      - Venom'
   echo '  --database-url    Postgres connection url which is needed to create'
   echo '                    database and make migration before running ton-wallet-api.'
   echo '                    example: "postgresql://${DB_USER}:${DB_PASSWORD}@${DB_HOST}/${DB_NAME}"'
@@ -28,6 +31,17 @@ while [[ $# -gt 0 ]]; do
         if [ "$#" -gt 0 ]; then shift;
         else
           echo 'ERROR: Expected installation type'
+          echo ''
+          print_help
+          exit 1
+        fi
+      ;;
+      -n|--network)
+        network="$2"
+        shift # past argument
+        if [ "$#" -gt 0 ]; then shift;
+        else
+          echo 'ERROR: Expected network'
           echo ''
           print_help
           exit 1
@@ -60,6 +74,13 @@ if [[ "$setup_type" != "native" ]]; then
   exit 1
 fi
 
+if [[ "$network" != "Everscale" ]] && [[ "$network" != "Venom" ]]; then
+  echo 'ERROR: Unknown network'
+  echo ''
+  print_help
+  exit 1
+fi
+
 service_path="/etc/systemd/system/ton-wallet-api.service"
 config_path="/etc/ton-wallet-api/config.yaml"
 
@@ -79,7 +100,15 @@ if [[ "$setup_type" == "native" ]]; then
 
   echo 'INFO: building ton-wallet-api'
   cd "$REPO_DIR"
-  RUSTFLAGS="-C target_cpu=native" SQLX_OFFLINE=true cargo build --release
+
+  if [[ "$network" == "Everscale" ]]; then
+    RUSTFLAGS="-C target_cpu=native" SQLX_OFFLINE=true cargo build --release
+  elif [[ "$network" == "Venom" ]]; then
+    RUSTFLAGS="-C target_cpu=native" SQLX_OFFLINE=true cargo build --release --features venom
+  else
+    echo 'ERROR: Unexpected'
+    exit 1
+  fi
   sudo cp "$REPO_DIR/target/release/ton-wallet-api" /usr/local/bin/ton-wallet-api
 
   echo 'INFO: creating systemd service'
