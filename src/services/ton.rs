@@ -852,6 +852,7 @@ impl TonService {
         inputs: Vec<InputParam>,
         outputs: Vec<Param>,
         headers: Vec<Param>,
+        responsible: bool,
     ) -> Result<Value, Error> {
         let account_addr = UInt256::from_str(account_addr)?;
 
@@ -867,7 +868,7 @@ impl TonService {
         let input = parse_abi_tokens(inputs)?;
         let output = match self
             .ton_api_client
-            .run_local(account_addr, function, input.as_slice())
+            .run_local(account_addr, function, input.as_slice(), responsible)
             .await?
         {
             Some(output) => output,

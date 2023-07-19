@@ -77,6 +77,7 @@ impl SqlxClient {
             RETURNING id,
                 service_id as "service_id: _",
                 token_transaction_id,
+                $13 as token_transaction_hash,
                 message_hash,
                 account_workchain_id,
                 account_hex,
@@ -98,7 +99,8 @@ impl SqlxClient {
                 payload.root_address,
                 payload.transaction_direction as TonTransactionDirection,
                 payload.transaction_status as TonTokenTransactionStatus,
-                payload.event_status as TonEventStatus
+                payload.event_status as TonEventStatus,
+                &transaction.transaction_hash as &Option<String>,
             )
             .fetch_one(&mut tx)
             .await?;
@@ -211,6 +213,7 @@ impl SqlxClient {
             RETURNING id,
                 service_id as "service_id: _",
                 token_transaction_id,
+                $4 as token_transaction_hash,
                 message_hash,
                 account_workchain_id,
                 account_hex,
@@ -223,7 +226,8 @@ impl SqlxClient {
                 created_at, updated_at"#,
                 token_transaction.id,
                 owner_message_hash,
-                updated_at
+                updated_at,
+                &token_transaction.transaction_hash as &Option<String>,
         )
                 .fetch_one(&mut tx)
                 .await?;

@@ -740,6 +740,7 @@ impl TonClient {
         contract_address: UInt256,
         function: ton_abi::Function,
         input: &[ton_abi::Token],
+        responsible: bool,
     ) -> anyhow::Result<Option<nekoton_abi::ExecutionOutput>> {
         use nekoton_abi::FunctionExt;
 
@@ -751,9 +752,13 @@ impl TonClient {
             }
         };
 
-        function
-            .run_local(&SimpleClock, state.account, input)
-            .map(Some)
+        let res = if responsible {
+            function.run_local_responsible(&SimpleClock, state.account, input)
+        } else {
+            function.run_local(&SimpleClock, state.account, input)
+        };
+
+        res.map(Some)
     }
 
     pub async fn prepare_signed_generic_message(

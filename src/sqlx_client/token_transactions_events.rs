@@ -20,21 +20,23 @@ impl SqlxClient {
         sqlx::query_as!(
             TokenTransactionEventDb,
             r#"
-            SELECT id,
-                service_id as "service_id: _",
-                token_transaction_id,
-                message_hash,
-                account_workchain_id,
-                account_hex,
-                owner_message_hash,
-                value,
-                root_address,
-                transaction_direction as "transaction_direction: _",
-                transaction_status as "transaction_status: _",
-                event_status as "event_status: _",
-                created_at, updated_at
-            FROM token_transaction_events
-            WHERE service_id = $1 AND message_hash = $2 AND account_workchain_id = $3 AND account_hex = $4"#,
+            SELECT tte.id,
+                tte.service_id as "service_id: _",
+                tte.token_transaction_id,
+                tt.transaction_hash as token_transaction_hash,
+                tte.message_hash,
+                tte.account_workchain_id,
+                tte.account_hex,
+                tte.owner_message_hash,
+                tte.value,
+                tte.root_address,
+                tte.transaction_direction as "transaction_direction: _",
+                tte.transaction_status as "transaction_status: _",
+                tte.event_status as "event_status: _",
+                tte.created_at, tte.updated_at
+            FROM token_transaction_events tte
+                LEFT JOIN token_transactions tt on tt.id = tte.token_transaction_id
+            WHERE tte.service_id = $1 AND tte.message_hash = $2 AND tte.account_workchain_id = $3 AND tte.account_hex = $4"#,
             service_id as ServiceId,
             message_hash,
             account_workchain_id,
@@ -55,21 +57,24 @@ impl SqlxClient {
         sqlx::query_as!(
             TokenTransactionEventDb,
             r#"
-            UPDATE token_transaction_events SET event_status = $1
-            WHERE message_hash = $2 AND account_workchain_id = $3 AND account_hex = $4
-            RETURNING id,
-                service_id as "service_id: _",
-                token_transaction_id,
-                message_hash,
-                account_workchain_id,
-                account_hex,
-                owner_message_hash,
-                value,
-                root_address,
-                transaction_direction as "transaction_direction: _",
-                transaction_status as "transaction_status: _",
-                event_status as "event_status: _",
-                created_at, updated_at"#,
+            UPDATE token_transaction_events tte SET event_status = $1
+            FROM token_transactions tt
+            WHERE tte.message_hash = $2 AND tte.account_workchain_id = $3 AND tte.account_hex = $4
+                AND tte.token_transaction_id = tt.id
+            RETURNING tte.id,
+                tte.service_id as "service_id: _",
+                tte.token_transaction_id,
+                tt.transaction_hash as token_transaction_hash,
+                tte.message_hash,
+                tte.account_workchain_id,
+                tte.account_hex,
+                tte.owner_message_hash,
+                tte.value,
+                tte.root_address,
+                tte.transaction_direction as "transaction_direction: _",
+                tte.transaction_status as "transaction_status: _",
+                tte.event_status as "event_status: _",
+                tte.created_at, tte.updated_at"#,
             event_status as TonEventStatus,
             message_hash,
             account_workchain_id,
@@ -89,21 +94,23 @@ impl SqlxClient {
         sqlx::query_as!(
             TokenTransactionEventDb,
             r#"
-            SELECT id,
-                service_id as "service_id: _",
-                token_transaction_id,
-                message_hash,
-                account_workchain_id,
-                account_hex,
-                owner_message_hash,
-                value,
-                root_address,
-                transaction_direction as "transaction_direction: _",
-                transaction_status as "transaction_status: _",
-                event_status as "event_status: _",
-                created_at, updated_at
-            FROM token_transaction_events
-            WHERE service_id = $1 AND event_status = $2"#,
+            SELECT tte.id,
+                tte.service_id as "service_id: _",
+                tte.token_transaction_id,
+                tt.transaction_hash as token_transaction_hash,
+                tte.message_hash,
+                tte.account_workchain_id,
+                tte.account_hex,
+                tte.owner_message_hash,
+                tte.value,
+                tte.root_address,
+                tte.transaction_direction as "transaction_direction: _",
+                tte.transaction_status as "transaction_status: _",
+                tte.event_status as "event_status: _",
+                tte.created_at, tte.updated_at
+            FROM token_transaction_events tte
+                LEFT JOIN token_transactions tt on tt.id = tte.token_transaction_id
+            WHERE tte.service_id = $1 AND tte.event_status = $2"#,
             service_id as ServiceId,
             event_status as TonEventStatus,
         )
@@ -121,21 +128,24 @@ impl SqlxClient {
         sqlx::query_as!(
             TokenTransactionEventDb,
             r#"
-            UPDATE token_transaction_events SET event_status = $1
-            WHERE service_id = $2 AND id = $3
-            RETURNING id,
-                service_id as "service_id: _",
-                token_transaction_id,
-                message_hash,
-                account_workchain_id,
-                account_hex,
-                owner_message_hash,
-                value,
-                root_address,
-                transaction_direction as "transaction_direction: _",
-                transaction_status as "transaction_status: _",
-                event_status as "event_status: _",
-                created_at, updated_at"#,
+            UPDATE token_transaction_events tte SET event_status = $1
+            FROM token_transactions tt
+            WHERE tte.service_id = $2 AND tte.id = $3
+                AND tte.token_transaction_id = tt.id
+            RETURNING tte.id,
+                tte.service_id as "service_id: _",
+                tte.token_transaction_id,
+                tt.transaction_hash as token_transaction_hash,
+                tte.message_hash,
+                tte.account_workchain_id,
+                tte.account_hex,
+                tte.owner_message_hash,
+                tte.value,
+                tte.root_address,
+                tte.transaction_direction as "transaction_direction: _",
+                tte.transaction_status as "transaction_status: _",
+                tte.event_status as "event_status: _",
+                tte.created_at, tte.updated_at"#,
             event_status as TonEventStatus,
             service_id as ServiceId,
             id,
@@ -158,21 +168,24 @@ impl SqlxClient {
 
         let query: String = format!(
             r#"SELECT
-                id,
-                service_id as "service_id: _",
-                token_transaction_id,
-                message_hash,
-                account_workchain_id,
-                account_hex,
-                owner_message_hash,
-                value,
-                root_address,
-                transaction_direction as "transaction_direction: _",
-                transaction_status as "transaction_status: _",
-                event_status as "event_status: _",
-                created_at,
-                updated_at
-                FROM token_transaction_events WHERE service_id = $1 {} ORDER BY created_at DESC OFFSET ${} LIMIT ${}"#,
+                tte.id,
+                tte.service_id as "service_id: _",
+                tte.token_transaction_id,
+                tte.message_hash,
+                tte.account_workchain_id,
+                tte.account_hex,
+                tte.owner_message_hash,
+                tte.value,
+                tte.root_address,
+                tte.transaction_direction as "transaction_direction: _",
+                tte.transaction_status as "transaction_status: _",
+                tte.event_status as "event_status: _",
+                tte.created_at,
+                tte.updated_at,
+                tt.transaction_hash as token_transaction_hash
+                FROM token_transaction_events tte
+                    LEFT JOIN token_transactions tt on tt.id = tte.token_transaction_id
+                WHERE tte.service_id = $1 {} ORDER BY tte.created_at DESC OFFSET ${} LIMIT ${}"#,
             updates.iter().format(""),
             args_len + 1,
             args_len + 2
@@ -199,6 +212,7 @@ impl SqlxClient {
                 event_status: x.get(11),
                 created_at: x.get(12),
                 updated_at: x.get(13),
+                token_transaction_hash: x.get(14),
             })
             .collect::<Vec<_>>();
         Ok(res)
@@ -227,67 +241,76 @@ pub fn filter_token_transaction_query(
     let mut updates = Vec::new();
 
     if let Some(token_transaction_id) = token_transaction_id {
-        updates.push(format!(" AND token_transaction_id = ${} ", *args_len + 1,));
+        updates.push(format!(
+            " AND tte.token_transaction_id = ${} ",
+            *args_len + 1,
+        ));
         *args_len += 1;
         args.add(token_transaction_id)
     }
 
     if let Some(root_address) = root_address {
-        updates.push(format!(" AND root_address = ${} ", *args_len + 1,));
+        updates.push(format!(" AND tte.root_address = ${} ", *args_len + 1,));
         *args_len += 1;
         args.add(root_address)
     }
 
     if let Some(message_hash) = message_hash {
-        updates.push(format!(" AND message_hash = ${} ", *args_len + 1,));
+        updates.push(format!(" AND tte.message_hash = ${} ", *args_len + 1,));
         *args_len += 1;
         args.add(message_hash)
     }
 
     if let Some(account_workchain_id) = account_workchain_id {
-        updates.push(format!(" AND account_workchain_id = ${} ", *args_len + 1,));
+        updates.push(format!(
+            " AND tte.account_workchain_id = ${} ",
+            *args_len + 1,
+        ));
         *args_len += 1;
         args.add(account_workchain_id)
     }
 
     if let Some(account_hex) = account_hex {
-        updates.push(format!(" AND account_hex = ${} ", *args_len + 1,));
+        updates.push(format!(" AND tte.account_hex = ${} ", *args_len + 1,));
         *args_len += 1;
         args.add(account_hex)
     }
 
     if let Some(owner_message_hash) = owner_message_hash {
-        updates.push(format!(" AND owner_message_hash = ${} ", *args_len + 1,));
+        updates.push(format!(" AND tte.owner_message_hash = ${} ", *args_len + 1,));
         *args_len += 1;
         args.add(owner_message_hash)
     }
 
     if let Some(transaction_direction) = transaction_direction {
-        updates.push(format!(" AND transaction_direction = ${} ", *args_len + 1,));
+        updates.push(format!(
+            " AND tte.transaction_direction = ${} ",
+            *args_len + 1,
+        ));
         *args_len += 1;
         args.add(transaction_direction)
     }
 
     if let Some(transaction_status) = transaction_status {
-        updates.push(format!(" AND transaction_status = ${} ", *args_len + 1,));
+        updates.push(format!(" AND tte.transaction_status = ${} ", *args_len + 1,));
         *args_len += 1;
         args.add(transaction_status)
     }
 
     if let Some(event_status) = event_status {
-        updates.push(format!(" AND event_status = ${} ", *args_len + 1,));
+        updates.push(format!(" AND tte.event_status = ${} ", *args_len + 1,));
         *args_len += 1;
         args.add(event_status)
     }
 
     if let Some(created_at_ge) = created_at_ge {
-        updates.push(format!(" AND created_at >= ${} ", *args_len + 1,));
+        updates.push(format!(" AND tte.created_at >= ${} ", *args_len + 1,));
         *args_len += 1;
         args.add(created_at_ge)
     }
 
     if let Some(created_at_le) = created_at_le {
-        updates.push(format!(" AND created_at <= ${} ", *args_len + 1,));
+        updates.push(format!(" AND tte.created_at <= ${} ", *args_len + 1,));
         *args_len += 1;
         args.add(created_at_le)
     }

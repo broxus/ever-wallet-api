@@ -52,6 +52,7 @@ impl SqlxClient {
                 id,
                 service_id as "service_id: _",
                 transaction_id,
+                $10 as transaction_hash,
                 message_hash,
                 account_workchain_id,
                 account_hex,
@@ -70,7 +71,8 @@ impl SqlxClient {
                 payload.account_hex,
                 payload.transaction_direction as TonTransactionDirection,
                 payload.transaction_status as TonTransactionStatus,
-                payload.event_status as TonEventStatus
+                payload.event_status as TonEventStatus,
+                &transaction.transaction_hash as &Option<String>,
             )
             .fetch_one(&mut tx)
             .await?;
@@ -163,6 +165,7 @@ impl SqlxClient {
                     id,
                     service_id as "service_id: _",
                     transaction_id,
+                    $13 as transaction_hash,
                     message_hash,
                     account_workchain_id,
                     account_hex,
@@ -185,6 +188,7 @@ impl SqlxClient {
                     payload.event_status as TonEventStatus,
                     payload.multisig_transaction_id,
                     updated_at,
+                    &transaction.transaction_hash as &Option<String>,
                 )
                     .fetch_one(&mut tx)
                     .await?;
@@ -242,6 +246,7 @@ impl SqlxClient {
                 RETURNING id,
                     service_id as "service_id: _",
                     transaction_id,
+                    $13 as transaction_hash,
                     message_hash,
                     account_workchain_id,
                     account_hex,
@@ -264,6 +269,7 @@ impl SqlxClient {
                     TonEventStatus::New as TonEventStatus,
                     payload.multisig_transaction_id,
                     updated_at,
+                    &transaction.transaction_hash as &Option<String>,
                 )
                     .fetch_one(&mut tx)
                     .await?;
@@ -338,6 +344,7 @@ impl SqlxClient {
             RETURNING id,
                 service_id as "service_id: _",
                 transaction_id,
+                $12 as transaction_hash,
                 message_hash,
                 account_workchain_id,
                 account_hex,
@@ -359,6 +366,7 @@ impl SqlxClient {
                 payload.transaction_status as TonTransactionStatus,
                 TonEventStatus::New as TonEventStatus,
                 payload.multisig_transaction_id,
+                &transaction.transaction_hash as &Option<String>,
         )
         .fetch_one(&mut tx)
         .await?;
@@ -426,6 +434,7 @@ impl SqlxClient {
             RETURNING id,
                 service_id as "service_id: _",
                 transaction_id,
+                $13 as transaction_hash,
                 message_hash,
                 account_workchain_id,
                 account_hex,
@@ -447,7 +456,8 @@ impl SqlxClient {
                 payload.balance_change,
                 payload.transaction_direction as TonTransactionDirection,
                 payload.transaction_status as TonTransactionStatus,
-                payload.event_status as TonEventStatus
+                payload.event_status as TonEventStatus,
+                &transaction.transaction_hash as &Option<String>,
             )
             .fetch_one(&mut tx)
             .await?;
