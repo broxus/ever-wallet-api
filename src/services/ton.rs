@@ -1097,16 +1097,16 @@ impl TonService {
     ) -> Result<String, Error> {
         let id = Uuid::new_v4();
 
-        let record = self
+        let _ = self
             .sqlx_client
             .set_callback(ApiServiceCallbackDb::new(
                 id,
                 *service_id,
-                callback,
+                callback.clone(),
             ))
             .await?;
 
-        Ok(record.callback)
+        Ok(callback)
     }
 
     async fn notify(
