@@ -21,7 +21,7 @@ impl SqlxClient {
         sqlx::query_as!(ApiServiceCallbackDb,
                 r#"INSERT INTO api_service_callback
                 (service_id, callback)
-                VALUES ($1, $2, $3, $4)
+                VALUES ($1, $2)
                 RETURNING
                 id, service_id as "service_id: _", callback, created_at"#,
                 payload.service_id as ServiceId,
