@@ -1,4 +1,5 @@
 use bigdecimal::BigDecimal;
+use chrono::Utc;
 use opg::OpgModel;
 use serde::Deserialize;
 use ton_abi::Param;
@@ -85,4 +86,11 @@ pub struct SendMessageRequest {
     pub account_type: AccountType,
     pub custodians: Option<i32>,
     pub function_details: Option<FunctionDetailsDTO>,
+}
+
+#[derive(Deserialize, OpgModel)]
+#[serde(rename_all = "camelCase")]
+#[opg("SetCallbackRequest")]
+pub struct SetCallbackRequest {
+    pub callback: String,
 }

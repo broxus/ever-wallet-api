@@ -4,6 +4,7 @@ use crate::api::controllers;
 
 pub fn router() -> Router {
     Router::new()
+        .route("/callback", post(controllers::post_set_callback))
         .route("/read-contract", post(controllers::post_read_contract))
         .route("/encode-into-cell", post(controllers::post_encode_tvm_cell))
         .route(

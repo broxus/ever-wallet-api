@@ -1,9 +1,9 @@
 use bigdecimal::BigDecimal;
 
-use chrono::NaiveDateTime;
 use uuid::Uuid;
 
 use crate::models::*;
+use chrono::{NaiveDateTime, Utc};
 
 #[derive(Clone, Debug, serde::Serialize, serde::Deserialize, Eq, PartialEq)]
 pub struct ApiServiceDb {
@@ -28,6 +28,17 @@ pub struct ApiServiceCallbackDb {
     pub service_id: ServiceId,
     pub callback: String,
     pub created_at: NaiveDateTime,
+}
+
+impl ApiServiceCallbackDb {
+    pub fn new(id: Uuid, service_id: ServiceId, callback: String) -> Self {
+        Self {
+            id,
+            service_id,
+            callback,
+            created_at: Utc::now().naive_utc(),
+        }
+    }
 }
 
 #[derive(Clone, Debug, serde::Serialize, serde::Deserialize, Eq, PartialEq)]

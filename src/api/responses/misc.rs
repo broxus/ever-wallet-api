@@ -25,3 +25,9 @@ pub struct UnsignedMessageHashResponse {
 pub struct SignedMessageHashResponse {
     pub signed_message_hash: String,
 }
+
+#[derive(Serialize, OpgModel)]
+#[serde(rename_all = "camelCase")]
+pub struct SetCallbackResponse {
+    pub callback: String,
+}

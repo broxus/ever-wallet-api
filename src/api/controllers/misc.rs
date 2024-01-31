@@ -184,3 +184,22 @@ pub async fn post_send_generic_message(
 
     Ok(Json(TransactionResponse::from(transaction)))
 }
+
+pub async fn post_set_callback(
+    Json(req): Json<String>,
+    Extension(ctx): Extension<Arc<ApiContext>>,
+    IdExtractor(service_id): IdExtractor,
+) -> Result<Json<String>> {
+    let start = Instant::now();
+
+    let callback = ctx
+        .ton_service
+        .set_callback(&service_id, req.into())
+        .await?;
+
+    let elapsed = start.elapsed();
+    histogram!("execution_time_seconds", elapsed, "method" => "setCallback");
+    increment_counter!("requests_processed", "method" => "setCallback");
+
+    Ok(Json(callback))
+}

@@ -1090,6 +1090,25 @@ impl TonService {
         Ok(hash)
     }
 
+    pub async fn set_callback(
+        &self,
+        service_id: &ServiceId,
+        callback: String,
+    ) -> Result<String, Error> {
+        let id = Uuid::new_v4();
+
+        let record = self
+            .sqlx_client
+            .set_callback(ApiServiceCallbackDb::new(
+                id,
+                *service_id,
+                callback,
+            ))
+            .await?;
+
+        Ok(record.callback)
+    }
+
     async fn notify(
         self: &Arc<Self>,
         service_id: &ServiceId,
