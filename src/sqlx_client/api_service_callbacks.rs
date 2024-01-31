@@ -17,18 +17,15 @@ impl SqlxClient {
         .map(|x| x.callback)
     }
 
-    pub async fn set_callback(&self, payload: ApiServiceCallbackDb) -> Result<ApiServiceCallbackDb> {
+    pub async fn set_callback(&self, payload: ApiServiceCallbackDb) ->  Result<()> {
         sqlx::query_as!(ApiServiceCallbackDb,
-                r#"INSERT INTO api_service_callback
-                (service_id, callback)
-                VALUES ($1, $2)
-                RETURNING
-                id, service_id as "service_id: _", callback, created_at"#,
+                r#"INSERT INTO api_service_callback (service_id, callback) VALUES ($1, $2)"#,
                 payload.service_id as ServiceId,
                 payload.callback,
             )
-            .fetch_one(&self.pool)
-            .await
-            .map_err(From::from)
+            .execute(&self.pool)
+            .await?;
+
+        Ok(())
     }
 }

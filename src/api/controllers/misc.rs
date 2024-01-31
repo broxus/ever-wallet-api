@@ -191,10 +191,11 @@ pub async fn post_set_callback(
     IdExtractor(service_id): IdExtractor,
 ) -> Result<Json<String>> {
     let start = Instant::now();
+    let callback = req.into();
 
-    let callback = ctx
+    let _ = ctx
         .ton_service
-        .set_callback(&service_id, req.into())
+        .set_callback(&service_id, callback.clone())
         .await?;
 
     let elapsed = start.elapsed();
