@@ -20,14 +20,12 @@ impl SqlxClient {
     pub async fn set_callback(&self, payload: ApiServiceCallbackDb) -> Result<ApiServiceCallbackDb> {
         sqlx::query_as!(ApiServiceCallbackDb,
                 r#"INSERT INTO api_service_callback
-                (id, service_id, callback, created_at)
+                (service_id, callback)
                 VALUES ($1, $2, $3, $4)
                 RETURNING
                 id, service_id as "service_id: _", callback, created_at"#,
-                payload.id,
                 payload.service_id as ServiceId,
                 payload.callback,
-                payload.created_at,
             )
             .fetch_one(&self.pool)
             .await
