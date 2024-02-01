@@ -19,7 +19,10 @@ impl SqlxClient {
 
     pub async fn set_callback(&self, payload: ApiServiceCallbackDb) ->  Result<()> {
         sqlx::query!(
-                r#"INSERT INTO api_service_callback (id, service_id, callback, created_at) VALUES ($1, $2, $3, $4) ON CONFLICT DO NOTHING"#,
+                r#"INSERT INTO api_service_callback
+                (id, service_id, callback, created_at) VALUES ($1, $2, $3, $4)
+                ON CONFLICT (service_id)
+                DO UPDATE SET callback = $3"#,
                 payload.id,
                 payload.service_id as ServiceId,
                 payload.callback,
