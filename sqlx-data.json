@@ -3700,6 +3700,21 @@
     },
     "query": "\n            SELECT id, service_id as \"service_id: _\", transaction_hash, transaction_timestamp, message_hash, owner_message_hash, account_workchain_id, account_hex,\n            value, root_address, payload, error, block_hash, block_time, direction as \"direction: _\", status as \"status: _\", in_message_hash, created_at, updated_at\n            FROM token_transactions\n            WHERE service_id = $1 AND transaction_hash = $2"
   },
+  "741d23196ccb745277150a668b5572e67990d2c389eba59ead58315e49e5a8f0": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": [
+          "Uuid",
+          "Uuid",
+          "Text",
+          "Timestamp"
+        ]
+      }
+    },
+    "query": "INSERT INTO api_service_callback\n                (id, service_id, callback, created_at) VALUES ($1, $2, $3, $4)\n                ON CONFLICT (service_id)\n                DO UPDATE SET callback = $3"
+  },
   "74d26929cd254f8ca6a66a60de4dca95ea6b355bdb3e04e03444f6f014555e67": {
     "describe": {
       "columns": [
