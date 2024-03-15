@@ -278,7 +278,11 @@ impl TonService {
     pub async fn create_receive_transaction(
         self: &Arc<Self>,
         input: CreateReceiveTransaction,
-    ) -> Result<TransactionDb, Error> {
+    ) -> Result<Option<TransactionDb>, Error> {
+        if input.bounce && input.aborted {
+            return Ok(None);
+        }
+
         let address = self
             .sqlx_client
             .get_address_by_workchain_hex(input.account_workchain_id, input.account_hex.clone())
@@ -292,7 +296,7 @@ impl TonService {
         self.notify(&address.service_id, event.into(), NotifyType::Transaction)
             .await?;
 
-        Ok(transaction)
+        Ok(Some(transaction))
     }
 
     pub async fn upsert_sent_transaction(
@@ -1097,7 +1101,7 @@ impl TonService {
     ) -> Result<String, Error> {
         let id = Uuid::new_v4();
 
-        let _ = self
+        self
             .sqlx_client
             .set_callback(ApiServiceCallbackDb::new(
                 id,

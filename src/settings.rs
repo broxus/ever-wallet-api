@@ -1,4 +1,3 @@
-use std::convert::TryInto;
 use std::net::SocketAddr;
 use std::path::Path;
 
@@ -84,7 +83,7 @@ fn default_key() -> Vec<u8> {
             .hash
             .context("No hash")?
             .as_bytes()
-            .try_into()?;
+            .into();
 
         Ok(key)
     }
