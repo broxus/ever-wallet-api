@@ -413,13 +413,14 @@ impl StateSubscription {
         }
 
         for transaction in account_block.transactions().iter() {
-            let (hash, transaction) = match transaction.and_then(|(_, value)| {
+            let result = transaction.and_then(|(_, value)| {
                 let cell = value.into_cell().reference(0)?;
                 let hash = cell.repr_hash();
 
                 ton_block::Transaction::construct_from_cell(cell)
                     .map(|transaction| (hash, transaction))
-            }) {
+            });
+            let (hash, transaction) = match result {
                 Ok(tx) => tx,
                 Err(e) => {
                     log::error!(
@@ -512,13 +513,14 @@ impl TokenSubscription {
         let states = FuturesUnordered::new();
 
         for transaction in account_block.transactions().iter() {
-            let (hash, transaction) = match transaction.and_then(|(_, value)| {
+            let result = transaction.and_then(|(_, value)| {
                 let cell = value.into_cell().reference(0)?;
                 let hash = cell.repr_hash();
 
                 ton_block::Transaction::construct_from_cell(cell)
                     .map(|transaction| (hash, transaction))
-            }) {
+            });
+            let (hash, transaction) = match result {
                 Ok(tx) => tx,
                 Err(e) => {
                     log::error!(

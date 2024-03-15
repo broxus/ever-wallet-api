@@ -1097,7 +1097,7 @@ impl TonService {
     ) -> Result<String, Error> {
         let id = Uuid::new_v4();
 
-        let _ = self
+        self
             .sqlx_client
             .set_callback(ApiServiceCallbackDb::new(
                 id,

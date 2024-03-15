@@ -3,11 +3,11 @@ use bigdecimal::BigDecimal;
 use nekoton::core::models::{
     RootTokenContractDetails, TokenWalletDetails, TokenWalletVersion, TransferRecipient,
 };
-use nekoton::core::token_wallet::{RootTokenContractState, TokenWalletContractState};
 use nekoton::core::InternalMessage;
 use nekoton::transport::models::ExistingContract;
-use nekoton_abi::{BigUint128, BigUint256, MessageBuilder};
+use nekoton_abi::{BigUint128, BigUint256, ExecutionContext, MessageBuilder};
 use nekoton_contracts::{old_tip3, tip3_1};
+use nekoton_contracts::tip3_any::{RootTokenContractState, TokenWalletContractState};
 use nekoton_utils::SimpleClock;
 use num_bigint::BigUint;
 use ton_block::MsgAddressInt;
@@ -167,23 +167,29 @@ pub fn get_token_wallet_address(
     root_contract: &ExistingContract,
     owner: &MsgAddressInt,
 ) -> Result<MsgAddressInt> {
-    let root_contract_state = RootTokenContractState(root_contract);
+    let root_contract_state = RootTokenContractState(ExecutionContext{
+        clock: &SimpleClock,
+        account_stuff: &root_contract.account,
+    });
     let RootTokenContractDetails { version, .. } =
-        root_contract_state.guess_details(&SimpleClock)?;
+        root_contract_state.guess_details()?;
 
-    root_contract_state.get_wallet_address(&SimpleClock, version, owner)
+    root_contract_state.get_wallet_address(version, owner)
 }
 
 pub fn get_token_wallet_account(
     root_contract: &ExistingContract,
     owner: &MsgAddressInt,
 ) -> Result<UInt256> {
-    let root_contract_state = RootTokenContractState(root_contract);
+    let root_contract_state = RootTokenContractState(ExecutionContext{
+        clock: &SimpleClock,
+        account_stuff: &root_contract.account,
+    });
     let RootTokenContractDetails { version, .. } =
-        root_contract_state.guess_details(&SimpleClock)?;
+        root_contract_state.guess_details()?;
 
     let token_wallet_address =
-        root_contract_state.get_wallet_address(&SimpleClock, version, owner)?;
+        root_contract_state.get_wallet_address(version, owner)?;
     let token_wallet_account =
         UInt256::from_be_bytes(&token_wallet_address.address().get_bytestring(0));
 
@@ -193,12 +199,15 @@ pub fn get_token_wallet_account(
 pub fn get_token_wallet_basic_info(
     token_contract: &ExistingContract,
 ) -> Result<(TokenWalletVersion, BigDecimal)> {
-    let token_wallet_state = TokenWalletContractState(token_contract);
+    let token_wallet_state = TokenWalletContractState(ExecutionContext{
+        clock: &SimpleClock,
+        account_stuff: &token_contract.account,
+    });
 
-    let version = token_wallet_state.get_version(&SimpleClock)?;
+    let version = token_wallet_state.get_version()?;
     let balance = BigDecimal::new(
         token_wallet_state
-            .get_balance(&SimpleClock, version)?
+            .get_balance(version)?
             .into(),
         0,
     );
@@ -209,19 +218,25 @@ pub fn get_token_wallet_basic_info(
 pub fn get_token_wallet_details(
     token_contract: &ExistingContract,
 ) -> Result<(TokenWalletDetails, TokenWalletVersion, [u8; 32])> {
-    let contract_state = TokenWalletContractState(token_contract);
+    let contract_state = TokenWalletContractState(ExecutionContext{
+        clock: &SimpleClock,
+        account_stuff: &token_contract.account,
+    });
 
     let hash = *contract_state.get_code_hash()?.as_slice();
-    let version = contract_state.get_version(&SimpleClock)?;
-    let details = contract_state.get_details(&SimpleClock, version)?;
+    let version = contract_state.get_version()?;
+    let details = contract_state.get_details(version)?;
 
     Ok((details, version, hash))
 }
 
 pub fn get_root_token_version(root_contract: &ExistingContract) -> Result<TokenWalletVersion> {
-    let root_contract_state = RootTokenContractState(root_contract);
+    let root_contract_state = RootTokenContractState(ExecutionContext{
+        clock: &SimpleClock,
+        account_stuff: &root_contract.account,
+    });
     let RootTokenContractDetails { version, .. } =
-        root_contract_state.guess_details(&SimpleClock)?;
+        root_contract_state.guess_details()?;
 
     Ok(version)
 }

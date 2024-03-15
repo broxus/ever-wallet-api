@@ -66,7 +66,7 @@ ton_abi = { git = "https://github.com/broxus/ton-labs-abi" }
 ton_types = { git = "https://github.com/broxus/ton-labs-types" }
 
 # Nekoton SDK
-nekoton = { git = "https://github.com/broxus/nekoton.git", default-features = false }
+nekoton = { git = "https://github.com/broxus/nekoton.git", default-features = true }
 nekoton-abi = { git = "https://github.com/broxus/nekoton.git", features = ["derive"] }
 nekoton-utils = { git = "https://github.com/broxus/nekoton.git" }
 nekoton-contracts = { git = "https://github.com/broxus/nekoton.git" }
