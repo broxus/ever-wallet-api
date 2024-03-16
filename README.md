@@ -123,6 +123,11 @@ NOTE: scripts are prepared and tested on **Ubuntu 20.04**. You may need to modif
 
    DATABASE_URL - Postgres connection url (example: postgresql://postgres:postgres@127.0.0.1/ton_wallet_api)
 
+   Important to add sometimes:
+   -f  -> Clear "/var/db/ton-wallet-api" on update'
+   -s  -> Restart "timesyncd" service'
+
+   ./scripts/update.sh -t native --database-url ${DATABASE_URL} -f -s
 
 ### Let's start using Wallet API
 
@@ -136,6 +141,9 @@ NOTE: scripts are prepared and tested on **Ubuntu 20.04**. You may need to modif
    API_KEY=${API_KEY} SECRET=${API_SECRET} HOST=${HOST} \
    ./scripts/wallet.sh -m create_account
    ```
+
+   ### VIA JS API, start a project, and call /create/wallet route
+   https://github.com/....
 
 2. #### Callbacks
    In the table `api_service_callback` we enter the address of our backend, which will deal with payment processing.
@@ -188,6 +196,9 @@ NOTE: scripts are prepared and tested on **Ubuntu 20.04**. You may need to modif
    --src-addr {sender} --dst-addr {recipient} --amount {amount}
    ```
    
+   ### Or via JS API, call 'transferNative' function
+   https://github.com/....
+
    You can track the status of a transaction with:
    1) (Recommended way) via callback `AccountTransactionEvent`, which has transactionStatus field:
       * `expired` - end state for failed transactions,
