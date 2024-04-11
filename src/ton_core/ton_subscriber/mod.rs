@@ -297,7 +297,7 @@ impl TonSubscriber {
 
     fn handle_full_state(
         &self,
-        state: &ShardStateStuff,
+        state: Arc<ShardStateStuff>,
     ) -> Result<Option<HandleTransactionStatusRx>> {
         let shard_accounts = state.state().read_accounts()?;
         let state_handle = state.ref_mc_state_handle().clone();
@@ -371,7 +371,7 @@ impl ton_indexer::Subscriber for TonSubscriber {
         Ok(())
     }
 
-    async fn process_full_state(&self, state: &ShardStateStuff) -> Result<()> {
+    async fn process_full_state(&self, state: Arc<ShardStateStuff>) -> Result<()> {
         if state.block_id().shard_id.is_masterchain() {
             return Ok(());
         }
@@ -620,7 +620,7 @@ struct FullStateSubscription {
 impl FullStateSubscription {
     fn handle_full_state(
         &self,
-        shard_state: &ShardStateStuff,
+        shard_state: Arc<ShardStateStuff>,
     ) -> Result<Option<HandleTransactionStatusRx>> {
         let mut res = None;
 

@@ -85,7 +85,7 @@ impl NodeConfig {
                     enable_for_sync: true,
                     ..Default::default()
                 }),
-            shard_state_cache_options: None,
+            shard_state_cache_options: None, // self.shard_state_cache_options,
             db_options: self.db_options,
             archive_options: Some(Default::default()),
             sync_options: ton_indexer::SyncOptions {
@@ -93,17 +93,12 @@ impl NodeConfig {
                 parallel_archive_downloads: self.parallel_archive_downloads,
                 ..Default::default()
             },
-            adnl_options: Default::default(),
-            rldp_options: rldp::NodeOptions {
-                force_compression: true,
-                ..Default::default()
-            },
-            dht_options: Default::default(),
-            overlay_shard_options: overlay::OverlayOptions {
-                force_compression: true,
-                ..Default::default()
-            },
-            neighbours_options: Default::default(),
+            adnl_options: self.adnl_options,
+            rldp_options: self.rldp_options,
+            dht_options: self.dht_options,
+            neighbours_options: self.neighbours_options,
+            overlay_shard_options: self.overlay_shard_options,
+            persistent_state_options: Default::default(),
         })
     }
 }

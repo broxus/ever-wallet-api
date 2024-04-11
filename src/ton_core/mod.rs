@@ -152,7 +152,7 @@ impl TonCoreContext {
         let ton_engine = ton_indexer::Engine::new(
             node_config,
             global_config,
-            vec![ton_subscriber.clone() as Arc<dyn ton_indexer::Subscriber>],
+            ton_subscriber.clone() as Arc<dyn ton_indexer::Subscriber>,
         )
         .await?;
 
