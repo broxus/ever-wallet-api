@@ -4732,7 +4732,8 @@
                 "Enum": [
                   "HighloadWallet",
                   "Wallet",
-                  "SafeMultisig"
+                  "SafeMultisig",
+                  "EverWallet"
                 ]
               },
               "name": "twa_account_type"
@@ -5359,7 +5360,8 @@
                 "Enum": [
                   "HighloadWallet",
                   "Wallet",
-                  "SafeMultisig"
+                  "SafeMultisig",
+                  "EverWallet"
                 ]
               },
               "name": "twa_account_type"
@@ -5469,7 +5471,8 @@
                 "Enum": [
                   "HighloadWallet",
                   "Wallet",
-                  "SafeMultisig"
+                  "SafeMultisig",
+                  "EverWallet"
                 ]
               },
               "name": "twa_account_type"
@@ -5538,7 +5541,8 @@
                 "Enum": [
                   "HighloadWallet",
                   "Wallet",
-                  "SafeMultisig"
+                  "SafeMultisig",
+                  "EverWallet"
                 ]
               },
               "name": "twa_account_type"
@@ -5803,7 +5807,8 @@
                 "Enum": [
                   "HighloadWallet",
                   "Wallet",
-                  "SafeMultisig"
+                  "SafeMultisig",
+                  "EverWallet"
                 ]
               },
               "name": "twa_account_type"

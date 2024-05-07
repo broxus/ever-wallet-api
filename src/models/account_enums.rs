@@ -18,6 +18,7 @@ pub enum AccountType {
     HighloadWallet,
     Wallet,
     SafeMultisig,
+    EverWallet,
 }
 
 #[derive(Debug, Deserialize, Serialize, Clone, opg::OpgModel, sqlx::Type, Eq, PartialEq)]

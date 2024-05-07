@@ -93,6 +93,12 @@ impl TonClient {
                     workchain_id as i8,
                 )
             }
+            AccountType::EverWallet => {
+                nekoton::core::ton_wallet::ever_wallet::compute_contract_address(
+                    &public,
+                    workchain_id as i8,
+                )
+            }
         };
 
         let (custodians, confirmations) = match account_type {
@@ -100,7 +106,7 @@ impl TonClient {
                 Some(payload.custodians.unwrap_or(1)),
                 Some(payload.confirmations.unwrap_or(1)),
             ),
-            AccountType::HighloadWallet | AccountType::Wallet => (None, None),
+            AccountType::HighloadWallet | AccountType::Wallet | AccountType::EverWallet => (None, None),
         };
 
         if let (Some(custodians), Some(confirmations)) = (custodians, confirmations) {
@@ -137,7 +143,7 @@ impl TonClient {
 
                 Some(custodians)
             }
-            AccountType::HighloadWallet | AccountType::Wallet => None,
+            AccountType::HighloadWallet | AccountType::Wallet | AccountType::EverWallet => None,
         };
 
         // Subscribe to accounts
@@ -215,6 +221,14 @@ impl TonClient {
                         req_confirms: address.confirmations.trust_me() as u8,
                         expiration_time: None,
                     },
+                )?
+            }
+            AccountType::EverWallet => {
+                nekoton::core::ton_wallet::ever_wallet::prepare_deploy(
+                    &SimpleClock,
+                    &public_key,
+                    address.workchain_id as i8,
+                    Expiration::Timeout(DEFAULT_EXPIRATION_TIMEOUT),
                 )?
             }
             AccountType::HighloadWallet | AccountType::Wallet => {
@@ -387,6 +401,39 @@ impl TonClient {
                     has_multiple_owners,
                     address.clone(),
                     gift,
+                    expiration,
+                )?
+            }
+            AccountType::EverWallet => {
+                let account = UInt256::from_be_bytes(&address.address().get_bytestring(0));
+                let current_state = self.ton_core.get_contract_state(&account)?.account;
+
+                let mut gifts: Vec<nekoton::core::ton_wallet::Gift> = vec![];
+                for item in transaction.outputs {
+                    let flags = item.output_type.unwrap_or_default();
+                    let destination = nekoton_utils::repack_address(&item.recipient_address.0)?;
+                    let amount = item.value.to_u64().ok_or(TonClientError::ParseBigDecimal)?;
+                    let body = payload_cell
+                        .as_ref()
+                        .map(|c| SliceData::load_cell(c.clone()))
+                        .transpose()?;
+
+                    gifts.push(nekoton::core::ton_wallet::Gift {
+                        flags: flags.into(),
+                        bounce,
+                        destination,
+                        amount,
+                        body,
+                        state_init: None,
+                    });
+                }
+
+                nekoton::core::ton_wallet::ever_wallet::prepare_transfer(
+                    &SimpleClock,
+                    &public_key,
+                    &current_state,
+                    address.clone(),
+                    gifts,
                     expiration,
                 )?
             }
@@ -909,6 +956,28 @@ impl TonClient {
                     expiration,
                 )?
             }
+            AccountType::EverWallet => {
+                let account = UInt256::from_be_bytes(&address.address().get_bytestring(0));
+                let current_state = self.ton_core.get_contract_state(&account)?.account;
+
+                let gift = nekoton::core::ton_wallet::Gift {
+                    flags: execution_flag,
+                    bounce,
+                    destination,
+                    amount,
+                    body,
+                    state_init: None,
+                };
+
+                nekoton::core::ton_wallet::ever_wallet::prepare_transfer(
+                    &SimpleClock,
+                    &public_key,
+                    &current_state,
+                    address,
+                    vec![gift],
+                    expiration,
+                )?
+            }
         };
 
         let unsigned_message = match transfer_action {
@@ -1045,6 +1114,28 @@ fn build_token_transaction(
                 has_multiple_owners,
                 owner.clone(),
                 gift,
+                expiration,
+            )?
+        }
+        AccountType::EverWallet => {
+            let account = UInt256::from_be_bytes(&owner.address().get_bytestring(0));
+            let current_state = ton_core.get_contract_state(&account)?.account;
+
+            let gift = nekoton::core::ton_wallet::Gift {
+                flags: flags.into(),
+                bounce,
+                destination,
+                amount,
+                body,
+                state_init: None,
+            };
+
+            nekoton::core::ton_wallet::ever_wallet::prepare_transfer(
+                &SimpleClock,
+                &public_key,
+                &current_state,
+                owner.clone(),
+                vec![gift],
                 expiration,
             )?
         }
