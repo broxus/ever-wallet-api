@@ -7,7 +7,9 @@ function print_help() {
   echo '  -h,--help         Print this help message and exit'
   echo '  -m, --method      Wallet actions:'
   echo ''
-  echo '                      - create_account - create HighWallet account.'
+  echo '                      - create_account - create account.'
+  echo '                        Options:'
+  echo '                          --account-type  Account type'
   echo ''
   echo '                      - create_transaction - create TON transaction.'
   echo '                        Options:'
@@ -85,6 +87,17 @@ while [[ $# -gt 0 ]]; do
           exit 1
         fi
       ;;
+      --account-type)
+        account_type="$2"
+        shift # past argument
+        if [ "$#" -gt 0 ]; then shift;
+        else
+          echo 'ERROR: Expected account type'
+          echo ''
+          print_help
+          exit 1
+        fi
+      ;;
       *) # unknown option
         echo 'ERROR: Unknown option'
         echo ''
@@ -122,8 +135,9 @@ function create_signature() {
 
 function create_account() {
   timestamp=$1
+  account_type=$2
   uri="/ton/v3/address/create"
-  body="{}"
+  body=$(printf '{"accountType": "%s"}' "$account_type")
 
   stringToSign="$timestamp$uri$body"
   signature=$(create_signature "$stringToSign")
@@ -188,8 +202,15 @@ function create_token_transaction() {
 
 case $method in
   create_account)
+    if [ -z "$account_type" ]; then
+      echo 'ERROR: Skipped account type'
+      echo ''
+      print_help
+      exit 1
+    fi
+
     timestamp=$(timestamp_ms)
-    create_account "$timestamp" | jq .
+    create_account "$timestamp" "$account_type" | jq .
   ;;
   create_transaction)
     if [ -z "$sender" ]; then
