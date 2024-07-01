@@ -16,6 +16,7 @@ in stdenv.mkDerivation rec {
     libclang
     glibc.dev
     pkg-config
+    rocksdb
   ];
 
   shellHook = ''
@@ -30,6 +31,8 @@ in stdenv.mkDerivation rec {
     export CFLAGS="-O2"
     export CXXFLAGS="-O2"
     export RUSTFLAGS="-C opt-level=2"
+    export ROCKSDB_INCLUDE_DIR="${rocksdb_8_11}/include"
+    export ROCKSDB_LIB_DIR="${rocksdb_8_11}/lib"
   '';
 }
     #export LD_LIBRARY_PATH="${libclang.lib}/lib:$LD_LIBRARY_PATH"
