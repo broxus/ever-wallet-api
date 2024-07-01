@@ -21,7 +21,6 @@ in stdenv.mkDerivation rec {
   shellHook = ''
     export OPENSSL_DIR="${merged-openssl}"
     export LIBCLANG_PATH="${libclang.lib}/lib"
-    export LD_LIBRARY_PATH="${libclang.lib}/lib:$LD_LIBRARY_PATH"
     export NIX_CFLAGS_COMPILE="-I${glibc.dev}/include"
     export NIX_LDFLAGS="-L${glibc.dev}/lib"
     export C_INCLUDE_PATH="${glibc.dev}/include"
@@ -33,3 +32,4 @@ in stdenv.mkDerivation rec {
     export RUSTFLAGS="-C opt-level=2"
   '';
 }
+    #export LD_LIBRARY_PATH="${libclang.lib}/lib:$LD_LIBRARY_PATH"
