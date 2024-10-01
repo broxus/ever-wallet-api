@@ -29,7 +29,7 @@ Both the ton-wallet-api and callback requests use HMAC signatures in the headers
 - Network: 100 MBit/s
 - Postgres: 11 or higher
 
-### How to run
+### How to run natively
 
 To simplify the build and create some semblance of standardization in this repository
 there is a set of scripts for configuring the ton-wallet-api.
@@ -314,3 +314,79 @@ logger_settings:
         - stdout
       additive: false
 ```
+
+### How to Run via Docker/Podman
+
+This guide explains how to build and run the project using Podman (or Docker as an alternative). 
+There are two Dockerfiles: one for building an intermediate image for setting and compiling the Rust project and 
+another for deploying it. With that user may replace configuration files and start parameters and promptly rebuild
+deployment image.
+
+#### Prerequisites
+
+User must provide a link to running Postgres instance with user and password. It will be used for migrations and for 
+deployment as well.
+
+#### Building Images
+
+To build the images, two Dockerfiles are used: `builder.dockerfile` for compiling the project and `deploy.dockerfile` 
+for setting up the deployment environment.
+
+1. **Build the builder image**:
+   The `builder.dockerfile` is responsible for compiling the project using Rust. It builds the project based on the 
+   specified network (either `everscale` or `venom`) and prepares the database for the application using SQLx.
+
+   Use the following command to build the builder image:
+
+   ```bash
+   podman build --layers --network=host -f builder.dockerfile -t builder --build-arg DATABASE_URL="postgresql://everscale:everscale@localhost:5432/everscale"
+   ```
+
+2. **Build the deployment image**:
+   The `deploy.dockerfile` is used to create the runtime environment and copy the necessary binaries and configuration 
+   files from the `builder` stage.
+
+   Build the deployment image using the following command:
+
+   ```bash
+   podman build --layers -f deploy.dockerfile -t ever-wallet
+   ```
+
+#### Running the Container
+
+Once the images are built, you can run the container using Podman or Docker.
+
+1. **Running the application**:
+
+   To run the application, use the following command:
+
+   ```bash
+   podman run --network=host ever-wallet
+   ```
+
+   This will run the `ton-wallet-api` server using the default configuration files already existing in the container.
+   Errors shall be expected at this step.
+
+   ```bash
+   WARN: Environment variable DB_USER was not set
+   WARN: Environment variable DB_PASSWORD was not set
+   WARN: Environment variable DB_HOST was not set
+   WARN: Environment variable DB_NAME was not set
+   ```
+
+   To avoid these errors, the database connection and other settings (such as secrets) shall be provided. 
+   Alternatively, they may be added into `deploy.dockerfile`. For example:
+
+   ```bash
+   podman run --network=host \
+     -e DB_USER=everscale \
+     -e DB_PASSWORD=everscale \
+     -e DB_HOST=localhost \
+     -e DB_NAME=everscale \
+     -e SECRET=0xAAAAA \
+     -e SALT=OreOYYe5nHWTHnOPSvsmMQ \
+     ever-wallet
+   ```
+
+   It generally allows dynamically setting environment variables for database credentials, secrets, and other 
+   configurations.
