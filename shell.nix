@@ -1,4 +1,4 @@
-with import <nixpkgs> {};
+with import ./nix/pkgs.nix {};
 let 
   merged-openssl = symlinkJoin { name = "merged-openssl"; paths = [ openssl.out openssl.dev ]; };
   clang = pkgs.llvmPackages_14.clang;
@@ -35,4 +35,3 @@ in stdenv.mkDerivation rec {
     export ROCKSDB_LIB_DIR="${rocksdb_8_11}/lib"
   '';
 }
-    #export LD_LIBRARY_PATH="${libclang.lib}/lib:$LD_LIBRARY_PATH"

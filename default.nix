@@ -1,41 +1,27 @@
-with import <nixpkgs> {};
-
-stdenv.mkDerivation rec {
-  pname = "rocksdb";
-  version = "6.22.1";
-
-  src = fetchFromGitHub {
-    owner = "facebook";
-    repo = "rocksdb";
-    rev = "v${version}";
-    sha256 = "0lpw0xbr4lggxfs0fgz01kzaj2mpav7bcya1ih98wz7g8bqg0bz8";
+let
+  sources = import ./nix/sources.nix;
+  nixpkgs-mozilla = import sources.nixpkgs-mozilla;
+  pkgs = import sources.nixpkgs {
+    overlays =
+      [
+        nixpkgs-mozilla
+        (self: super:
+            let chan = self.rustChannelOf { rustToolchain = ./rust-toolchain.toml; };
+            in {
+              rustc = chan.rust;
+              cargo = chan.rust;
+            }
+        )
+      ];
   };
-
-  nativeBuildInputs = [ cmake pkg-config ];
-
-  buildInputs = [ zlib snappy gflags libgtest ];
-
-  cmakeFlags = [
-    "-DCMAKE_BUILD_TYPE=Release"
-    "-DWITH_TESTS=OFF"
-    "-DWITH_TOOLS=OFF"
-    "-DWITH_BENCHMARK_TOOLS=OFF"
-    "-DWITH_SNAPPY=ON"
-    "-DWITH_ZLIB=ON"
-  ];
-
-  installPhase = ''
-    mkdir -p $out/bin
-    mkdir -p $out/lib
-    mkdir -p $out/include
-    cp -r librocksdb.* $out/lib/
-    cp -r include/* $out/include/
-  '';
-
-  meta = with lib; {
-    description = "A persistent key-value store for fast storage environments";
-    homepage = "https://rocksdb.org/";
-    license = licenses.apache20;
-    platforms = platforms.linux;
-  };
+  naersk = pkgs.callPackage sources.naersk {};
+  merged-openssl = pkgs.symlinkJoin { name = "merged-openssl"; paths = [ pkgs.openssl.out pkgs.openssl.dev ]; };
+in
+naersk.buildPackage {
+  name = "ever-wallet-api";
+  root = pkgs.lib.sourceFilesBySuffices ./. [".rs" ".toml" ".lock" ".html" ".css" ".png" ".sh" ".sql" ".proto" ".json"];
+  buildInputs = with pkgs; [ sqlx-cli openssl pkgconfig clang llvm llvmPackages.libclang zlib cacert curl postgresql pkg-config ];
+  LIBCLANG_PATH = "${pkgs.llvmPackages.libclang.lib}/lib";
+  OPENSSL_DIR = "${merged-openssl}";
+  PKG_CONFIG_PATH = "${pkgs.libgpg-error.dev}/lib/pkgconfig";
 }
