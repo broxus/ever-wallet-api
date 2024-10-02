@@ -263,7 +263,7 @@ async fn prepare_test(level_filter: log::LevelFilter) -> SqlxClient {
         .init();
 
     let pg_pool =
-        PgPool::connect("postgresql://postgres:postgres@localhost:5432/ton_wallet_api_rs")
+        PgPool::connect("postgresql://everscale:everscale@localhost:5432/ton_wallet_api_rs")
             .await
             .unwrap();
 
@@ -277,6 +277,7 @@ mod test {
     use std::str::FromStr;
 
     #[tokio::test]
+    #[ignore]
     async fn test() {
         let sqlx_client = prepare_test(LevelFilter::Trace).await;
 

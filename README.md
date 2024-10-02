@@ -379,6 +379,7 @@ Once the images are built, you can run the container using Podman or Docker.
 
    ```bash
    podman run --network=host \
+     -v /tmp/everscale-data:/var/db/ton-wallet-api
      -e DB_USER=everscale \
      -e DB_PASSWORD=everscale \
      -e DB_HOST=localhost \
@@ -390,3 +391,10 @@ Once the images are built, you can run the container using Podman or Docker.
 
    It generally allows dynamically setting environment variables for database credentials, secrets, and other 
    configurations.
+
+### Troubleshooting
+
+When the node is out of sync, which especially applies for Venom, removing database and re-syncing node may help to
+restore service operations.
+
+`rm -rf /var/db/ton-wallet-api`
