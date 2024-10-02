@@ -12,7 +12,7 @@ pub fn router() -> Router {
             get(controllers::get_token_address_balance),
         )
         .route(
-            "/transactions/id/:id",
+            "/transactions/id/:internal_id",
             get(controllers::get_tokens_transactions_id),
         )
         .route(

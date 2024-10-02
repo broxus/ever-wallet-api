@@ -115,13 +115,13 @@ pub async fn get_transactions_id(
 }
 
 pub async fn get_tokens_transactions_id(
-    Path(id): Path<Uuid>,
+    Path(internal_id): Path<Uuid>,
     Extension(ctx): Extension<Arc<ApiContext>>,
     IdExtractor(service_id): IdExtractor,
 ) -> Result<Json<TokenTransactionResponse>> {
     let transaction = ctx
         .ton_service
-        .get_tokens_transaction_by_id(&service_id, &id)
+        .get_tokens_transaction_by_id(&service_id, &internal_id)
         .await
         .map(From::from);
 

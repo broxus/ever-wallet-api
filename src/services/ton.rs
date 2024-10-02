@@ -487,11 +487,11 @@ impl TonService {
     pub async fn get_tokens_transaction_by_id(
         &self,
         service_id: &ServiceId,
-        id: &Uuid,
+        internal_id: &Uuid,
     ) -> Result<TokenTransactionFromDb, Error> {
         let transaction = self
             .sqlx_client
-            .get_token_transaction_by_id(*service_id, id)
+            .get_token_transaction_by_id(*service_id, internal_id)
             .await?;
 
         Ok(transaction)
