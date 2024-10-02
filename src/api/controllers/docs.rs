@@ -223,7 +223,7 @@ pub fn swagger(prod_url: &str) -> String {
                 GET: {
                     tags: { transactions },
                     summary: "Get transaction",
-                    description: "Get transaction by id.",
+                    description: "Get transaction by internal id (uuid).",
                     parameters: {
                         (header "api-key"): {
                             description: "API Key",
