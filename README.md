@@ -256,8 +256,23 @@ NOTE: scripts are prepared and tested on **Ubuntu 20.04**. You may need to modif
 
 
 ### Postman
-[pre-request-script.js](scripts/pre-request-script.js) is javascript for using with Postman's pre-request script feature. It generates HTTP request headers for HMAC authentication.
-Copy the contents of [pre-request-script.js](scripts/pre-request-script.js) into the "Pre-request Script" tab in Postman to send signed request.
+[pre-request-script.js](scripts/pre-request-script.js) is javascript for using with Postman's pre-request script 
+feature. It generates HTTP request headers for HMAC authentication. Copy the contents of 
+[pre-request-script.js](scripts/pre-request-script.js) into the "Pre-request Script" tab in Postman to send signed 
+request.
+
+### Authorization signatures
+
+A request must undergo an authorization step, which involves verifying the request payload, URI, and timestamp 
+against a known secret specific to each service. For GET requests, the body is empty, while for POST requests, 
+the body is a string representing the serialized JSON payload. The payload must be pretty-printed (stored) with an 
+indentation of 4 spaces. An example of the string to be signed is provided below. This setup generally applies to POST 
+requests.
+
+```bash
+stringToSign="$timestamp$uri$body"
+echo -en "$stringToSign" | openssl sha256 -hmac "$secret" -binary | base64
+```
 
 ### Example config
 
