@@ -22,7 +22,7 @@ pub async fn parse_ton_transaction(
             .map_err(|_| TransactionError::InvalidStructure)?,
         None => return Err(TransactionError::Unsupported.into()),
     };
-
+    println!("{transaction:?}");
     let address = MsgAddressInt::with_standart(
         None,
         ton_block::BASE_WORKCHAIN_ID as i8,
@@ -258,4 +258,50 @@ struct OutputsRecipient {
     pub hex: String,
     pub base64url: String,
     pub workchain_id: i64,
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use ton_block::{Transaction, MsgAddressInt, Deserializable};
+
+    fn mock_transaction_with_message() -> Transaction {
+        let transaction = Transaction::construct_from_base64(
+            "te6ccgECEAEAAwgAA7d+QDCcWfS7Pd3OhqYgoQVempmo2OKQO5sOYx6EZBcyIbAAAuGThxKAhf1hAS\
+            h02tBmYeWRHurQLFdhsiPgWeGNTbabaiPlZZ9gAALhk4cSgGZnCjIwADSAIfqQaAUEAQIXBAkFUFwjGIAhHJARA\
+            wIAb8mKaBBMG8AMAAAAAAAEAAIAAAADVRiS8otLi359fajChkMh4j7YPNNVzsOUbNa9QsXWtVZBkDxsAJ5IegwV\
+            xAgAAAAAAAAAAPsAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA\
+            AAAAAAAAAAAAAAIJy/7wuPdhy+h+DbYjvFbvGj3Bwqn3MOq5Y6hyrRTksTai0G7FEgWicR7eyflDhYqBuU4lk7Q\
+            1nHs+PMBzAFRlACQIB4AwGAQHfBwGxSAHIBhOLPpdnu7nQ1MQUIKvTUzUbHFIHc2HMY9CMguZENwA4xAzS7nDkX\
+            YkSKBG9Qn9FPKIp7rRePfQI63hB5LPI2tBQju+wBhvAOgAAXDJw4lASzOFGRsAIAWtw2J/JgAad35GR9lY9G036\
+            2Q2Dq3ncMSd3A6aWdBC8YD5fdRqzgAAAAAAAAAAABHDeTfggABAJAUOAEFrRCE4/VsotLmBJtwSPkA/qwQuTKk2\
+            yy6l1zSsQvy0wCgFDgB+vlzVCE32J+nPncYdENsw5VZeCw1GMZjfNdxFJz/7kEAsBQ4AQWtEITj9Wyi0uYEm3BI\
+            +QD+rBC5MqTbLLqXXNKxC/LTAPAbFoAfr5c1QhN9ifpz53GHRDbMOVWXgsNRjGY3zXcRSc/+5BADkAwnFn0uz3d\
+            zoamIKEFXpqZqNjikDubDmMehGQXMiG0FUFwjAGFEtcAABcMnDiUArM4UZGwA0Ba2eguV8AAAAAAAAAAAAjhvJv\
+            wQAAgBBa0QhOP1bKLS5gSbcEj5AP6sELkypNssupdc0rEL8tMA4BQ4AQWtEITj9Wyi0uYEm3BI+QD+rBC5MqTbL\
+            LqXXNKxC/LTgPAAA=").unwrap();
+        transaction
+    }
+
+    fn mock_transaction_without_message() -> Transaction {
+        let mut transaction = Transaction::default();
+        transaction.in_msg = None;
+        transaction
+    }
+
+    #[test]
+    fn test_get_sender_address_with_message() {
+        let transaction = mock_transaction_with_message();
+        let result = get_sender_address(&transaction);
+        assert!(result.is_ok());
+        assert_eq!(result.unwrap(), Some(MsgAddressInt::from_str("0:fd7cb9aa109bec4fd39f3b8c3a21b661caacbc161a8c6331be6bb88a4e7ff720").unwrap()));
+    }
+
+    #[test]
+    fn test_get_sender_address_without_message() {
+        // Simulate a transaction without an incoming message
+        let transaction = mock_transaction_without_message();
+        let result = get_sender_address(&transaction);
+        assert!(result.is_err());  // Expect an error
+    }
 }
