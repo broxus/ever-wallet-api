@@ -286,8 +286,18 @@ mod tests {
     }
 
     fn mock_transaction_without_message() -> Transaction {
-        let mut transaction = Transaction::default();
-        transaction.in_msg = None;
+        Transaction::default()
+    }
+
+    fn mock_native_transaction() -> Transaction {
+        let transaction = Transaction::construct_from_base64(
+            "te6ccgECBQEAAQ8AA7VxLMcNYtT0Y0vHvF0Y6p6uYuZ3ru6E15MPbdMAiDOW+TAAAxF6kJyoOBX6Ew\
+            /7kDzBL0X5vbiyJUQxs8oqMCx81lJVpHEGWGhQAALk17a3eDZv7sCQAABgJyfoAwIBABUMwE5PyQF9eEABIACCc\
+            qeMvpds7qXtp0X7fcfK29e715cYDMD4djDoZFaoV2+IniF4UEqnl0mRBkkJUofiHH0OEnxt4bqWdhOvrktU02MB\
+            AaAEALFIAQWtEITj9Wyi0uYEm3BI+QD+rBC5MqTbLLqXXNKxC/LTAASzHDWLU9GNLx7xdGOqermLmd67uhNeTD2\
+            3TAIgzlvk0BfXhAAGCiwwAABiL1ITlQTN/dgSQA==",
+        )
+            .unwrap();
         transaction
     }
 
@@ -339,6 +349,23 @@ mod tests {
             )
         );
     }
+
+    #[test]
+    fn test_get_sender_address_native() {
+        let transaction = mock_native_transaction();
+        let result = get_sender_address(&transaction);
+        assert!(result.is_ok());
+        assert_eq!(
+            result.unwrap(),
+            Some(
+                MsgAddressInt::from_str(
+                    "0:82d6884271fab6516973024db8247c807f56085c99526d965d4bae695885f969"
+                )
+                    .unwrap()
+            )
+        );
+    }
+
 
     #[test]
     fn test_get_sender_address_without_message() {
