@@ -263,7 +263,7 @@ struct OutputsRecipient {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use ton_block::{Transaction, MsgAddressInt, Deserializable};
+    use ton_block::{Deserializable, MsgAddressInt, Transaction};
 
     fn mock_transaction_with_message() -> Transaction {
         let transaction = Transaction::construct_from_base64(
@@ -279,7 +279,9 @@ mod tests {
             +QD+rBC5MqTbLLqXXNKxC/LTAPAbFoAfr5c1QhN9ifpz53GHRDbMOVWXgsNRjGY3zXcRSc/+5BADkAwnFn0uz3d\
             zoamIKEFXpqZqNjikDubDmMehGQXMiG0FUFwjAGFEtcAABcMnDiUArM4UZGwA0Ba2eguV8AAAAAAAAAAAAjhvJv\
             wQAAgBBa0QhOP1bKLS5gSbcEj5AP6sELkypNssupdc0rEL8tMA4BQ4AQWtEITj9Wyi0uYEm3BI+QD+rBC5MqTbL\
-            LqXXNKxC/LTgPAAA=").unwrap();
+            LqXXNKxC/LTgPAAA=",
+        )
+        .unwrap();
         transaction
     }
 
@@ -289,12 +291,53 @@ mod tests {
         transaction
     }
 
+    fn mock_tip3_transaction() -> Transaction {
+        let transaction = Transaction::construct_from_base64(
+            "te6ccgECDAEAAl0AA7V/QK7VX0Cd/1ZlF9CjnQU/zjx5R/+gPcjjC/w75jghPeAAAxF68tckc9Q9f/\
+            cDtEaGB89WcFPg7Kg/ufjqtloFybIORllBjolwAAMRevLXJGZv7tMQADR8gi0IBQQBAhUECQT+XD4YfDDMEQMCA\
+            G/Jg9CQTAosIAAAAAAABAACAAAAA/Sl/SUL5ko0FMc/s2rL0MTaDiZjYIA0X+j0FcjV3p3wQFAWDACeRzeMFHQo\
+            AAAAAAAAAADgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA\
+            AAAAAAAAAAACCcrofb9K77QB9Tu1i5S14jFHdFKo+C9REe8ROzOFr3AD7+kENKYFeCMxeVlP1W39Y9BCLCOLd3w\
+            ZnvtGPEpk1yl8CAeAIBgEB3wcAsUgB6BXaq+gTv+rMovoUc6Cn+cePKP/0B7kcYX+HfMcEJ70AILWiEJx+rZRaX\
+            MCTbgkfIB/VghcmVJtll1LrmlYhflpQR3xSoAYKLDAAAGIvXlrkkM392mJAAbFoAfr5c1QhN9ifpz53GHRDbMOV\
+            WXgsNRjGY3zXcRSc/+5BAD0Cu1V9Anf9WZRfQo50FP848eUf/oD3I4wv8O+Y4IT3kE/lw+AGFEtcAABiL15a5Ir\
+            N/dpiwAkBa2eguV8AAAAAAAAAAAAACRhOcqAAgBBa0QhOP1bKLS5gSbcEj5AP6sELkypNssupdc0rEL8tMAoBQ4\
+            AQWtEITj9Wyi0uYEm3BI+QD+rBC5MqTbLLqXXNKxC/LSgLAAA=",
+        )
+        .unwrap();
+        transaction
+    }
+
     #[test]
     fn test_get_sender_address_with_message() {
         let transaction = mock_transaction_with_message();
         let result = get_sender_address(&transaction);
         assert!(result.is_ok());
-        assert_eq!(result.unwrap(), Some(MsgAddressInt::from_str("0:fd7cb9aa109bec4fd39f3b8c3a21b661caacbc161a8c6331be6bb88a4e7ff720").unwrap()));
+        assert_eq!(
+            result.unwrap(),
+            Some(
+                MsgAddressInt::from_str(
+                    "0:fd7cb9aa109bec4fd39f3b8c3a21b661caacbc161a8c6331be6bb88a4e7ff720"
+                )
+                .unwrap()
+            )
+        );
+    }
+
+    #[test]
+    fn test_get_sender_address_tip3() {
+        let transaction = mock_tip3_transaction();
+        let result = get_sender_address(&transaction);
+        assert!(result.is_ok());
+        assert_eq!(
+            result.unwrap(),
+            Some(
+                MsgAddressInt::from_str(
+                    "0:fd7cb9aa109bec4fd39f3b8c3a21b661caacbc161a8c6331be6bb88a4e7ff720"
+                )
+                .unwrap()
+            )
+        );
     }
 
     #[test]
@@ -302,6 +345,6 @@ mod tests {
         // Simulate a transaction without an incoming message
         let transaction = mock_transaction_without_message();
         let result = get_sender_address(&transaction);
-        assert!(result.is_err());  // Expect an error
+        assert!(result.is_err()); // Expect an error
     }
 }
