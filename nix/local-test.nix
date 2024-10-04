@@ -14,6 +14,7 @@
         dbPasswordFile = "/var/everwalletapidb"; # fill it with password
         everSecretFile = "/var/everwalletapisecret";
         everSaltFile = "/var/everwalletapisalt";
+        metricsHost = "0.0.0.0";
       };
     systemd.services = {
       everwalletapidb-key = {

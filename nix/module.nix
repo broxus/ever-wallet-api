@@ -148,6 +148,9 @@ in {
                 # NOTE: Will be generated if it was not there.
                 # Default: "./adnl-keys.json"
                 keys_path: "${cfg.datadir}/adnl-keys.json"
+                recover_indexer: true
+            # Or metrics server won't start
+            api_metrics_addr: "0.0.0.0:10000" 
             metrics_settings:
                 # Listen address of metrics. Used by the client to gather prometheus metrics.
                 # Default: "127.0.0.1:10000"
@@ -160,26 +163,37 @@ in {
             # log4rs settings.
             # See https://docs.rs/log4rs/1.0.0/log4rs/ for more details
             logger_settings:
-                appenders:
-                    stdout:
-                        kind: console
-                        encoder:
-                            pattern: "{d(%Y-%m-%d %H:%M:%S %Z)(utc)} - {h({l})} {M} = {m} {n}"
-            root:
+              appenders:
+                stdout:
+                  kind: console
+                  encoder:
+                    pattern: "{h({l})} {M} = {m} {n}"
+              root:
                 level: error
                 appenders:
-                    - stdout
-            loggers:
+                  - stdout
+              loggers:
                 ton_wallet_api:
-                    level: info
-                    appenders:
-                        - stdout
-                    additive: false
+                  level: debug
+                  appenders:
+                    - stdout
+                  additive: false
+                tower_http:
+                  level: debug
+                  appenders:
+                    - stdout
+                  additive: false
                 ton_indexer:
-                    level: error
-                    appenders:
-                        - stdout
-                    additive: false
+                  level: warn
+                  appenders:
+                    - stdout
+                  additive: false
+                tiny_adnl:
+                  level: debug
+                  appenders:
+                    - stdout
+                  additive: false
+
         '';
       };
 
