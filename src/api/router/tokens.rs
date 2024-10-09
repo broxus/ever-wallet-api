@@ -33,4 +33,5 @@ pub fn router() -> Router {
         )
         .route("/events", post(controllers::post_tokens_events))
         .route("/events/mark", post(controllers::post_tokens_events_mark))
+        .route("/whitelist", get(controllers::get_token_whitelist))
 }

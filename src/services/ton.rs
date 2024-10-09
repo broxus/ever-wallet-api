@@ -1200,6 +1200,17 @@ impl TonService {
         Ok(())
     }
 
+    pub async fn token_whitelist(
+        &self,
+    ) -> Result<Vec<TokenWhitelistFromDb>, Error> {
+        let whitelist = self
+            .sqlx_client
+            .get_token_whitelist()
+            .await?;
+
+        Ok(whitelist)
+    }
+
     /// Waits future in background. In case of error does nothing but logging
     fn spawn_background_task<F>(self: &Arc<Self>, name: &'static str, fut: F)
     where
