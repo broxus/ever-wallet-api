@@ -782,6 +782,11 @@ impl TonClient {
         Ok(Metrics { gen_utime })
     }
 
+    pub async fn get_blockchain_info(&self) -> Result<BlockchainInfo, Error> {
+        let gen_utime = self.ton_core.current_utime();
+        Ok(BlockchainInfo { gen_utime })
+    }
+
     pub async fn run_local(
         &self,
         contract_address: UInt256,

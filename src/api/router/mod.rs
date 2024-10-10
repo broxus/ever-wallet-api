@@ -12,6 +12,7 @@ use tower_http::metrics::InFlightRequestsLayer;
 use crate::api::*;
 use crate::services::*;
 
+mod network;
 mod address;
 mod events;
 mod misc;
@@ -68,6 +69,7 @@ fn api_router(
     memory_storage: Arc<StorageHandler>,
 ) -> Router {
     Router::new()
+        .nest("/network", network::router())
         .nest("/address", address::router())
         .nest("/events", events::router())
         .nest("/tokens", tokens::router())

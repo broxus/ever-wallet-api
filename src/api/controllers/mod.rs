@@ -1,6 +1,7 @@
 use axum::response::IntoResponse;
 use http::StatusCode;
 
+pub use self::network::*;
 pub use self::address::*;
 pub use self::authorization::*;
 pub use self::docs::*;
@@ -9,6 +10,7 @@ pub use self::misc::*;
 pub use self::ton_metrics::*;
 pub use self::transactions::*;
 
+mod network;
 mod address;
 mod authorization;
 mod docs;
