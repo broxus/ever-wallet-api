@@ -28,6 +28,9 @@ use crate::ton_core::*;
 use crate::utils::*;
 
 mod utils;
+mod constants;
+
+use crate::client::ton::constants::get_network_id;
 
 #[derive(Clone)]
 pub struct TonClient {
@@ -786,19 +789,9 @@ impl TonClient {
 
     pub async fn get_blockchain_info(&self) -> Result<BlockchainInfo, Error> {
         let gen_utime = self.ton_core.current_utime();
-        let root_hash = self.ton_core.global_config.zero_state.root_hash.clone();
-        let ever_id = UInt256::from_str("WP/KGheNr/cF3lQhblQzyb0ufYUAcNM004mXhHq56EU=")?;
-        let venom_id = UInt256::from_str("YLICYJzBkBm9C7RjszRzr7sUv/VsDkdaibI+baqLahA=")?;
+        let root_hash = self.ton_core.global_config.zero_state.root_hash;
 
-        let network_id = if root_hash == ever_id {
-            1
-        }
-        else if root_hash == venom_id {
-            2
-        }
-        else {
-            3
-        };
+        let network_id = get_network_id(root_hash);
 
         let subscriber_metrics = self.ton_core.context.ton_subscriber.metrics();
         let indexer_metrics = self.ton_core.context.ton_engine.metrics();
