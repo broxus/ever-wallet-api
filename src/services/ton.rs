@@ -1207,7 +1207,7 @@ impl TonService {
 
     pub async fn token_whitelist(
         &self,
-    ) -> Result<Vec<TokenWhitelistFromDb>, Error> {
+    ) -> Result<Vec<WhitelistedTokenFromDb>, Error> {
         let whitelist = self
             .sqlx_client
             .get_token_whitelist()

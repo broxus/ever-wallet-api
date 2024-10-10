@@ -180,7 +180,7 @@ pub struct TokenOwnerFromDb {
 }
 
 #[derive(Clone, Debug, serde::Serialize, serde::Deserialize, Eq, PartialEq)]
-pub struct TokenWhitelistFromDb {
+pub struct WhitelistedTokenFromDb {
     pub name: String,
     pub address: String,
     pub version: TokenWalletVersionDb,

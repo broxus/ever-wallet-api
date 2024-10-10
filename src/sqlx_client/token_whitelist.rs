@@ -6,9 +6,9 @@ impl SqlxClient {
     pub async fn get_root_token(
         &self,
         address: &str,
-    ) -> Result<TokenWhitelistFromDb> {
+    ) -> Result<WhitelistedTokenFromDb> {
         let res = sqlx::query_as!(
-            TokenWhitelistFromDb,
+            WhitelistedTokenFromDb,
             r#"SELECT name, address, version as "version: _"
                 FROM token_whitelist
                 WHERE address = $1"#,
@@ -21,10 +21,10 @@ impl SqlxClient {
 
     pub async fn create_root_token(
         &self,
-        root_token: TokenWhitelistFromDb,
-    ) -> Result<TokenWhitelistFromDb> {
+        root_token: WhitelistedTokenFromDb,
+    ) -> Result<WhitelistedTokenFromDb> {
         sqlx::query_as!(
-            TokenWhitelistFromDb,
+            WhitelistedTokenFromDb,
             r#"INSERT INTO token_whitelist
                 (name, address, version)
                 VALUES ($1, $2, $3::twa_token_wallet_version)
@@ -41,9 +41,9 @@ impl SqlxClient {
 
     pub async fn get_token_whitelist(
         &self,
-    ) -> Result<Vec<TokenWhitelistFromDb>> {
+    ) -> Result<Vec<WhitelistedTokenFromDb>> {
         sqlx::query_as!(
-            TokenWhitelistFromDb,
+            WhitelistedTokenFromDb,
             r#"SELECT name, address, version as "version: _"
                 FROM token_whitelist"#
         )

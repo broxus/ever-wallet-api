@@ -208,13 +208,23 @@ pub async fn post_set_callback(
 
 pub async fn get_token_whitelist(
     Extension(ctx): Extension<Arc<ApiContext>>,
-) -> Result<Json<Vec<TokenWhitelistFromDb>>> {
+) -> Result<Json<TokenWhitelistResponse>> {
     let start = Instant::now();
 
     let whitelist = ctx
         .ton_service
         .token_whitelist()
-        .await?;
+        .await
+        .map(|tokens| {
+            let tokens: Vec<_> = tokens
+                .into_iter()
+                .map(WhitelistedTokenResponse::from)
+                .collect();
+            TokenWhitelistResponse {
+                count: tokens.len() as i32,
+                items: tokens,
+            }
+        })?;
 
     let elapsed = start.elapsed();
     histogram!("execution_time_seconds", elapsed, "method" => "getTokenWhitelist");

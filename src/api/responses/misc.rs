@@ -1,5 +1,7 @@
+use nekoton_contracts::tip3_any::TokenWalletVersion;
 use opg::OpgModel;
 use serde::Serialize;
+use crate::models::WhitelistedTokenFromDb;
 
 #[derive(Serialize, OpgModel)]
 #[serde(rename_all = "camelCase")]
@@ -30,4 +32,31 @@ pub struct SignedMessageHashResponse {
 #[serde(rename_all = "camelCase")]
 pub struct SetCallbackResponse {
     pub callback: String,
+}
+
+
+#[derive(Serialize, OpgModel)]
+#[serde(rename_all = "camelCase")]
+pub struct WhitelistedTokenResponse {
+    pub name: String,
+    pub address: String,
+    pub version: String,
+}
+
+impl From<WhitelistedTokenFromDb> for WhitelistedTokenResponse {
+    fn from(t: WhitelistedTokenFromDb) -> Self {
+        Self {
+            name: t.name,
+            address: t.address,
+            version: TokenWalletVersion::from(t.version).to_string(),
+        }
+    }
+}
+
+#[derive(Serialize, OpgModel)]
+#[serde(rename_all = "camelCase")]
+#[opg("TokenWhitelistResponse")]
+pub struct TokenWhitelistResponse {
+    pub count: i32,
+    pub items: Vec<WhitelistedTokenResponse>,
 }

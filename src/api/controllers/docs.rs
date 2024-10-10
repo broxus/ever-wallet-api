@@ -605,6 +605,28 @@ pub fn swagger(prod_url: &str) -> String {
                     }
                 }
             },
+            ("tokens" / "whitelist"): {
+                GET: {
+                    tags: { tokens },
+                    summary: "Get list of allowed non-native tokens",
+                    description: "It provides tokenRoots of TIP3 tokens which may be accepted by wallets.",
+                    parameters: {
+                        (header "api-key"): {
+                            description: "API Key",
+                        },
+                        (header "sign"): {
+                            description: "Signature",
+                        },
+                        (header "timestamp"): {
+                            description: "Timestamp in ms",
+                        },
+                        (header "x-real-ip"): {
+                            required: false
+                        },
+                    },
+                    200: responses::TokenWhitelistResponse,
+                }
+            },
             ("read-contract"): {
                 POST: {
                     tags: { misc  },
