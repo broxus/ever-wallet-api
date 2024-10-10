@@ -11,3 +11,4 @@ secret.toml
 /packer/gcp/variables.json
 
 *.pem
+result
