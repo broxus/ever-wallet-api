@@ -1269,6 +1269,8 @@ async fn send_notification(
         None => return Err(TonServiceError::ServiceUnavailable.into()),
     };
 
+    let info = ton_service.get_blockchain_info().await?;
+
     let sqlx_client = &ton_service.sqlx_client;
     let callback_client = &ton_service.callback_client;
 
@@ -1278,7 +1280,7 @@ async fn send_notification(
         .await
         .map(|k| k.secret)?;
 
-    let event_status = match callback_client.send(url, payload.clone(), secret).await {
+    let event_status = match callback_client.send(info.network_id, url, payload.clone(), secret).await {
         Err(_) => TonEventStatus::Error,
         Ok(_) => TonEventStatus::Notified,
     };
