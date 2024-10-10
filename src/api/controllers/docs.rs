@@ -13,7 +13,7 @@ pub fn swagger(prod_url: &str) -> String {
         info: {
             title: "Everscale API",
             version: "4.0.0",
-            description: r##"This API allows you to use Everscale Wallet API"##,
+            description: r##"Everscale Wallet API Specification"##,
         },
         servers: {
             prod_url
@@ -24,6 +24,7 @@ pub fn swagger(prod_url: &str) -> String {
             tokens,
             misc,
             metrics,
+            blockchain,
         },
         paths: {
             ("address" / "check"): {
@@ -719,6 +720,29 @@ pub fn swagger(prod_url: &str) -> String {
                     200: responses::SignedMessageHashResponse,
                 }
             },
+            ("callback"): {
+                POST: {
+                    tags: { misc  },
+                    summary: "Set service callback endpoint",
+                    description: "Provides Everwallet API with webhook to call on each network event",
+                    parameters: {
+                        (header "api-key"): {
+                            description: "API Key",
+                        },
+                        (header "sign"): {
+                            description: "Signature",
+                        },
+                        (header "timestamp"): {
+                            description: "Timestamp in ms",
+                        },
+                        (header "x-real-ip"): {
+                            required: false
+                        },
+                    },
+                    body: requests::SetCallbackRequest,
+                    200: responses::SetCallbackResponse,
+                }
+            },
             ("metrics"): {
                 GET: {
                     tags: { metrics  },
@@ -739,6 +763,28 @@ pub fn swagger(prod_url: &str) -> String {
                         },
                     },
                     200: responses::MetricsResponse,
+                }
+            },
+            ("blockchain"): {
+                GET: {
+                    tags: { blockchain  },
+                    summary: "Get network status of the Wallet API node",
+                    description: "Provides blockchain-related information and node syncronization status.",
+                    parameters: {
+                        (header "api-key"): {
+                            description: "API Key",
+                        },
+                        (header "sign"): {
+                            description: "Signature",
+                        },
+                        (header "timestamp"): {
+                            description: "Timestamp in ms",
+                        },
+                        (header "x-real-ip"): {
+                            required: false
+                        },
+                    },
+                    200: responses::BlockchainInfoResponse,
                 }
             },
         }
