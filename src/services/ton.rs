@@ -845,6 +845,11 @@ impl TonService {
         Ok(metrics)
     }
 
+    pub async fn get_blockchain_info(&self) -> Result<BlockchainInfo, Error> {
+        let info = self.ton_api_client.get_blockchain_info().await?;
+        Ok(info)
+    }
+
     pub async fn execute_contract_function(
         self: &Arc<Self>,
         account_addr: &str,

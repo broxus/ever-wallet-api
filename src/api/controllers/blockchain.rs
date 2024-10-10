@@ -5,8 +5,8 @@ use crate::api::*;
 
 pub async fn get_blockchain_info(
     Extension(ctx): Extension<Arc<ApiContext>>,
-) -> Result<Json<MetricsResponse>> {
-    let metrics = ctx.ton_service.get_metrics().await?;
+) -> Result<Json<BlockchainInfoResponse>> {
+    let info = ctx.ton_service.get_blockchain_info().await?;
 
-    Ok(Json(MetricsResponse::from(metrics)))
+    Ok(Json(BlockchainInfoResponse::from(info)))
 }

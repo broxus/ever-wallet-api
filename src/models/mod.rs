@@ -1,3 +1,4 @@
+pub use self::blockchain::*;
 pub use self::account_enums::*;
 pub use self::account_transaction_event::*;
 pub use self::address::*;
@@ -13,6 +14,7 @@ pub use self::token_transactions::*;
 pub use self::transaction_events::*;
 pub use self::transactions::*;
 
+mod blockchain;
 mod account_enums;
 mod account_transaction_event;
 mod address;
