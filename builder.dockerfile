@@ -40,11 +40,10 @@ RUN cargo sqlx database create --database-url "$DATABASE_URL" && \
 
 # Build the project based on the network variable
 RUN if [ "$NETWORK" = "everscale" ]; then \
-      RUSTFLAGS="-C target_cpu=native" cargo build --release; \
+      RUSTFLAGS="-C target_cpu=native" SQLX_OFFLINE=true cargo build --release; \
     elif [ "$NETWORK" = "venom" ]; then \
-      RUSTFLAGS="-C target_cpu=native" cargo build --release --features venom; \
+      RUSTFLAGS="-C target_cpu=native" SQLX_OFFLINE=true cargo build --release --features venom; \
     else \
       echo 'ERROR: Unexpected network'; \
       exit 1; \
     fi
-
