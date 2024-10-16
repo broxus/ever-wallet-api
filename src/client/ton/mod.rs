@@ -1,6 +1,5 @@
-
-use std::sync::Arc;
 use std::sync::atomic::Ordering;
+use std::sync::Arc;
 
 use bigdecimal::{BigDecimal, ToPrimitive};
 use ed25519_dalek::{Keypair, PublicKey, SecretKey, Signer};
@@ -28,9 +27,6 @@ use crate::ton_core::*;
 use crate::utils::*;
 
 mod utils;
-mod constants;
-
-use crate::client::ton::constants::get_network_id;
 
 #[derive(Clone)]
 pub struct TonClient {
@@ -111,7 +107,9 @@ impl TonClient {
                 Some(payload.custodians.unwrap_or(1)),
                 Some(payload.confirmations.unwrap_or(1)),
             ),
-            AccountType::HighloadWallet | AccountType::Wallet | AccountType::EverWallet => (None, None),
+            AccountType::HighloadWallet | AccountType::Wallet | AccountType::EverWallet => {
+                (None, None)
+            }
         };
 
         if let (Some(custodians), Some(confirmations)) = (custodians, confirmations) {
@@ -228,14 +226,12 @@ impl TonClient {
                     },
                 )?
             }
-            AccountType::EverWallet => {
-                nekoton::core::ton_wallet::ever_wallet::prepare_deploy(
-                    &SimpleClock,
-                    &public_key,
-                    address.workchain_id as i8,
-                    Expiration::Timeout(DEFAULT_EXPIRATION_TIMEOUT),
-                )?
-            }
+            AccountType::EverWallet => nekoton::core::ton_wallet::ever_wallet::prepare_deploy(
+                &SimpleClock,
+                &public_key,
+                address.workchain_id as i8,
+                Expiration::Timeout(DEFAULT_EXPIRATION_TIMEOUT),
+            )?,
             AccountType::HighloadWallet | AccountType::Wallet => {
                 return Ok(None);
             }
@@ -789,9 +785,12 @@ impl TonClient {
 
     pub async fn get_blockchain_info(&self) -> Result<BlockchainInfo, Error> {
         let gen_utime = self.ton_core.current_utime();
-        let root_hash = self.ton_core.global_config.zero_state.root_hash;
 
-        let network_id = get_network_id(root_hash);
+        let network_id = match () {
+            _ if cfg!(feature = "venom") => VENOM_CHAIN_ID,
+            _ if cfg!(feature = "ton") => TON_CHAIN_ID,
+            _ => EVER_CHAIN_ID,
+        };
 
         let subscriber_metrics = self.ton_core.context.ton_subscriber.metrics();
         let indexer_metrics = self.ton_core.context.ton_engine.metrics();
@@ -1198,3 +1197,7 @@ fn build_token_transaction(
 
     Ok((sent_transaction, signed_message))
 }
+
+const EVER_CHAIN_ID: i32 = 42;
+const VENOM_CHAIN_ID: i32 = 1;
+const TON_CHAIN_ID: i32 = -239;

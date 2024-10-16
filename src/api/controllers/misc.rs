@@ -186,45 +186,40 @@ pub async fn post_send_generic_message(
 }
 
 pub async fn post_set_callback(
-    Json(req): Json<String>,
+    Json(req): Json<SetCallbackRequest>,
     Extension(ctx): Extension<Arc<ApiContext>>,
     IdExtractor(service_id): IdExtractor,
-) -> Result<Json<String>> {
+) -> Result<Json<SetCallbackResponse>> {
     let start = Instant::now();
     let callback = req;
 
-    let _ = ctx
+    let response = ctx
         .ton_service
-        .set_callback(&service_id, callback.clone())
+        .set_callback(&service_id, callback.callback)
         .await?;
 
     let elapsed = start.elapsed();
     histogram!("execution_time_seconds", elapsed, "method" => "setCallback");
     increment_counter!("requests_processed", "method" => "setCallback");
 
-    Ok(Json(callback))
+    Ok(Json(SetCallbackResponse { callback: response }))
 }
-
 
 pub async fn get_token_whitelist(
     Extension(ctx): Extension<Arc<ApiContext>>,
 ) -> Result<Json<TokenWhitelistResponse>> {
     let start = Instant::now();
 
-    let whitelist = ctx
-        .ton_service
-        .token_whitelist()
-        .await
-        .map(|tokens| {
-            let tokens: Vec<_> = tokens
-                .into_iter()
-                .map(WhitelistedTokenResponse::from)
-                .collect();
-            TokenWhitelistResponse {
-                count: tokens.len() as i32,
-                items: tokens,
-            }
-        })?;
+    let whitelist = ctx.ton_service.token_whitelist().await.map(|tokens| {
+        let tokens: Vec<_> = tokens
+            .into_iter()
+            .map(WhitelistedTokenResponse::from)
+            .collect();
+        TokenWhitelistResponse {
+            count: tokens.len() as i32,
+            items: tokens,
+        }
+    })?;
 
     let elapsed = start.elapsed();
     histogram!("execution_time_seconds", elapsed, "method" => "getTokenWhitelist");

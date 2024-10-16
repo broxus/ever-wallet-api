@@ -22,7 +22,6 @@ pub async fn parse_ton_transaction(
             .map_err(|_| TransactionError::InvalidStructure)?,
         None => return Err(TransactionError::Unsupported.into()),
     };
-    println!("{transaction:?}");
     let address = MsgAddressInt::with_standart(
         None,
         ton_block::BASE_WORKCHAIN_ID as i8,
@@ -297,7 +296,7 @@ mod tests {
             AaAEALFIAQWtEITj9Wyi0uYEm3BI+QD+rBC5MqTbLLqXXNKxC/LTAASzHDWLU9GNLx7xdGOqermLmd67uhNeTD2\
             3TAIgzlvk0BfXhAAGCiwwAABiL1ITlQTN/dgSQA==",
         )
-            .unwrap();
+        .unwrap();
         transaction
     }
 
@@ -361,11 +360,10 @@ mod tests {
                 MsgAddressInt::from_str(
                     "0:82d6884271fab6516973024db8247c807f56085c99526d965d4bae695885f969"
                 )
-                    .unwrap()
+                .unwrap()
             )
         );
     }
-
 
     #[test]
     fn test_get_sender_address_without_message() {

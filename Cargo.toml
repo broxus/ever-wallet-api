@@ -15,7 +15,7 @@ async-trait = "0.1"
 base64 = "0.13"
 bigdecimal = { version = "0.3.0", features = ["serde"] }
 chacha20poly1305 = "0.10.1"
-chrono = { version = "0.4", features = ["serde"]}
+chrono = { version = "0.4", features = ["serde"] }
 config = { version = "0.13.2", default-features = false, features = ["yaml"] }
 dashmap = "5.3.4"
 derive_more = "*"
@@ -79,4 +79,5 @@ ton-indexer = { git = "https://github.com/broxus/ton-indexer.git" }
 
 [features]
 default = []
+ton = ["ton_block/ton", "ton-indexer/ton"]
 venom = ["ton_block/venom", "ton-indexer/venom"]

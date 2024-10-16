@@ -24,7 +24,6 @@ mod ton_subscriber;
 pub use self::settings::*;
 
 pub struct TonCore {
-    pub global_config: Arc<GlobalConfig>,
     pub context: Arc<TonCoreContext>,
     pub full_state: Mutex<Arc<FullState>>,
     pub ton_transaction: Mutex<Arc<TonTransaction>>,
@@ -41,7 +40,7 @@ impl TonCore {
         token_transaction_producer: TokenTransactionTx,
     ) -> Result<Arc<Self>> {
         let context =
-            TonCoreContext::new(node_config, global_config.clone(), sqlx_client, owners_cache).await?;
+            TonCoreContext::new(node_config, global_config, sqlx_client, owners_cache).await?;
 
         let full_state = FullState::new(context.clone()).await?;
 
@@ -52,7 +51,6 @@ impl TonCore {
             TokenTransaction::new(context.clone(), token_transaction_producer).await?;
 
         Ok(Arc::new(Self {
-            global_config: Arc::new(global_config),
             context,
             full_state: Mutex::new(full_state),
             ton_transaction: Mutex::new(ton_transaction),
@@ -128,7 +126,7 @@ impl Drop for TonCoreContext {
 impl TonCoreContext {
     async fn new(
         node_config: NodeConfig,
-        global_config: ton_indexer::GlobalConfig,
+        global_config: GlobalConfig,
         sqlx_client: SqlxClient,
         owners_cache: OwnersCache,
     ) -> Result<Arc<Self>> {

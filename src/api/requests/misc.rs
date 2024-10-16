@@ -89,7 +89,6 @@ pub struct SendMessageRequest {
 
 #[derive(Deserialize, OpgModel)]
 #[serde(rename_all = "camelCase")]
-#[opg("SetCallbackRequest")]
 pub struct SetCallbackRequest {
     pub callback: String,
 }
