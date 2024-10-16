@@ -35,8 +35,8 @@ ARG NETWORK="everscale"
 ARG DATABASE_URL=postgres://everscale:everscale@localhost:5432/everscale
 
 # Migrations first, otherwise it may not compile
-RUN cargo sqlx database create --database-url "$DATABASE_URL" && \
-    cargo sqlx migrate run --database-url "$DATABASE_URL"
+RUN cargo sqlx database create --database-url "$DATABASE_URL"
+RUN cargo sqlx migrate run --database-url "$DATABASE_URL"
 
 # Build the project based on the network variable
 RUN if [ "$NETWORK" = "everscale" ]; then \
