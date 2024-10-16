@@ -20,7 +20,7 @@ config = { version = "0.13.2", default-features = false, features = ["yaml"] }
 dashmap = "5.3.4"
 derive_more = "*"
 env_logger = "0.10.0"
-everscale-network = "0.5"
+everscale-network = "^0.5.4"
 futures = "0.3"
 hex = "0.4"
 hmac-sha256 = "1.1.4"
@@ -75,7 +75,10 @@ nekoton-contracts = { git = "https://github.com/broxus/nekoton.git" }
 broxus-util = { version = "0.2", features = ["alloc", "public-ip", "config", "log4rs"] }
 
 # Indexer engine
-ton-indexer = { git = "https://github.com/broxus/ton-indexer.git" }
+ton-indexer = { git = "https://github.com/broxus/ton-indexer.git", rev="72f9e63" }
+sysinfo = "0.30.12" # Обновите до последней версии, если она существует
+
+librocksdb-sys = "^0.16.0"
 
 [features]
 default = []
