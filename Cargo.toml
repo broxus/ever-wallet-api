@@ -61,15 +61,15 @@ uuid = { version = "1.1", features = ["v4", "serde"] }
 ed25519-dalek = { git = "https://github.com/broxus/ed25519-dalek.git" }
 
 # TON specific dependencies
-ton_block = { git = "https://github.com/broxus/ton-labs-block" }
-ton_abi = { git = "https://github.com/broxus/ton-labs-abi" }
-ton_types = { git = "https://github.com/broxus/ton-labs-types" }
+ton_block = { git = "https://github.com/broxus/ton-labs-block", rev = "b8834529" }
+ton_abi = { git = "https://github.com/broxus/ton-labs-abi", rev = "44824b29" }
+ton_types = { git = "https://github.com/broxus/ton-labs-types", rev = "3324562d" }
 
 # Nekoton SDK
-nekoton = { git = "https://github.com/broxus/nekoton.git", default-features = true }
-nekoton-abi = { git = "https://github.com/broxus/nekoton.git", features = ["derive"] }
-nekoton-utils = { git = "https://github.com/broxus/nekoton.git" }
-nekoton-contracts = { git = "https://github.com/broxus/nekoton.git" }
+nekoton = { git = "https://github.com/broxus/nekoton.git", default-features = true, rev = "9b4d401c" }
+nekoton-abi = { git = "https://github.com/broxus/nekoton.git", features = ["derive"], rev = "9b4d401c" }
+nekoton-utils = { git = "https://github.com/broxus/nekoton.git", rev = "9b4d401c" }
+nekoton-contracts = { git = "https://github.com/broxus/nekoton.git", rev = "9b4d401c" }
 
 # Broxus utils
 broxus-util = { version = "0.2", features = ["alloc", "public-ip", "config", "log4rs"] }
