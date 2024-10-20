@@ -61,8 +61,8 @@ uuid = { version = "1.1", features = ["v4", "serde"] }
 ed25519-dalek = { git = "https://github.com/broxus/ed25519-dalek.git" }
 
 # TON specific dependencies
-ton_block = { git = "https://github.com/broxus/ton-labs-block", rev = "b8834529" }
-ton_abi = { git = "https://github.com/broxus/ton-labs-abi", rev = "44824b29" }
+ton_block = { git = "https://github.com/broxus/ton-labs-block", rev = "44824b29" }
+ton_abi = { git = "https://github.com/broxus/ton-labs-abi", rev = "b8834529" }
 ton_types = { git = "https://github.com/broxus/ton-labs-types", rev = "3324562d" }
 
 # Nekoton SDK

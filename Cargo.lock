@@ -1226,7 +1226,7 @@ dependencies = [
  "everscale-network",
  "serde",
  "serde_json",
- "ton_block",
+ "ton_block 1.9.73 (git+https://github.com/broxus/ton-labs-block)",
 ]
 
 [[package]]
@@ -2020,10 +2020,10 @@ dependencies = [
  "tiny-bip39",
  "tiny-hderive",
  "tokio",
- "ton_abi",
- "ton_block",
+ "ton_abi 2.1.0 (git+https://github.com/broxus/ton-labs-abi)",
+ "ton_block 1.9.73 (git+https://github.com/broxus/ton-labs-block)",
  "ton_executor",
- "ton_types",
+ "ton_types 1.10.2 (git+https://github.com/broxus/ton-labs-types)",
  "zeroize",
 ]
 
@@ -2047,10 +2047,10 @@ dependencies = [
  "serde_json",
  "smallvec",
  "thiserror",
- "ton_abi",
- "ton_block",
+ "ton_abi 2.1.0 (git+https://github.com/broxus/ton-labs-abi)",
+ "ton_block 1.9.73 (git+https://github.com/broxus/ton-labs-block)",
  "ton_executor",
- "ton_types",
+ "ton_types 1.10.2 (git+https://github.com/broxus/ton-labs-types)",
  "ton_vm",
 ]
 
@@ -2065,9 +2065,9 @@ dependencies = [
  "once_cell",
  "serde",
  "thiserror",
- "ton_abi",
- "ton_block",
- "ton_types",
+ "ton_abi 2.1.0 (git+https://github.com/broxus/ton-labs-abi)",
+ "ton_block 1.9.73 (git+https://github.com/broxus/ton-labs-block)",
+ "ton_types 1.10.2 (git+https://github.com/broxus/ton-labs-types)",
 ]
 
 [[package]]
@@ -2097,8 +2097,8 @@ dependencies = [
  "serde",
  "sha2 0.9.9",
  "thiserror",
- "ton_block",
- "ton_types",
+ "ton_block 1.9.73 (git+https://github.com/broxus/ton-labs-block)",
+ "ton_types 1.10.2 (git+https://github.com/broxus/ton-labs-types)",
  "zeroize",
 ]
 
@@ -3733,8 +3733,8 @@ dependencies = [
  "tl-proto",
  "tokio",
  "tokio-util",
- "ton_block",
- "ton_types",
+ "ton_block 1.9.73 (git+https://github.com/broxus/ton-labs-block)",
+ "ton_types 1.10.2 (git+https://github.com/broxus/ton-labs-types)",
  "tracing",
  "triomphe",
  "weedb",
@@ -3798,13 +3798,35 @@ dependencies = [
  "tokio",
  "tokio-util",
  "ton-indexer",
- "ton_abi",
- "ton_block",
- "ton_types",
+ "ton_abi 2.1.0 (git+https://github.com/broxus/ton-labs-abi?rev=b8834529)",
+ "ton_block 1.9.73 (git+https://github.com/broxus/ton-labs-block?rev=44824b29)",
+ "ton_types 1.10.2 (git+https://github.com/broxus/ton-labs-types?rev=3324562d)",
  "tower",
  "tower-http",
  "tracing",
  "uuid",
+]
+
+[[package]]
+name = "ton_abi"
+version = "2.1.0"
+source = "git+https://github.com/broxus/ton-labs-abi?rev=b8834529#b8834529ef8fa121d534fca6554c0e95d4019998"
+dependencies = [
+ "anyhow",
+ "base64 0.13.1",
+ "byteorder",
+ "ed25519",
+ "ed25519-dalek",
+ "hex",
+ "num-bigint",
+ "num-traits",
+ "serde",
+ "serde_json",
+ "sha2 0.9.9",
+ "smallvec",
+ "thiserror",
+ "ton_block 1.9.73 (git+https://github.com/broxus/ton-labs-block)",
+ "ton_types 1.10.2 (git+https://github.com/broxus/ton-labs-types)",
 ]
 
 [[package]]
@@ -3825,8 +3847,30 @@ dependencies = [
  "sha2 0.9.9",
  "smallvec",
  "thiserror",
- "ton_block",
- "ton_types",
+ "ton_block 1.9.73 (git+https://github.com/broxus/ton-labs-block)",
+ "ton_types 1.10.2 (git+https://github.com/broxus/ton-labs-types)",
+]
+
+[[package]]
+name = "ton_block"
+version = "1.9.73"
+source = "git+https://github.com/broxus/ton-labs-block?rev=44824b29#44824b29903dfd556332e720fa932eabe1917f39"
+dependencies = [
+ "anyhow",
+ "base64 0.13.1",
+ "crc",
+ "ed25519",
+ "ed25519-dalek",
+ "hex",
+ "log",
+ "num",
+ "num-traits",
+ "rand",
+ "rustc-hash",
+ "sha2 0.9.9",
+ "smallvec",
+ "thiserror",
+ "ton_types 1.10.2 (git+https://github.com/broxus/ton-labs-types)",
 ]
 
 [[package]]
@@ -3848,7 +3892,7 @@ dependencies = [
  "sha2 0.9.9",
  "smallvec",
  "thiserror",
- "ton_types",
+ "ton_types 1.10.2 (git+https://github.com/broxus/ton-labs-types)",
 ]
 
 [[package]]
@@ -3859,9 +3903,31 @@ dependencies = [
  "anyhow",
  "log",
  "thiserror",
- "ton_block",
- "ton_types",
+ "ton_block 1.9.73 (git+https://github.com/broxus/ton-labs-block)",
+ "ton_types 1.10.2 (git+https://github.com/broxus/ton-labs-types)",
  "ton_vm",
+]
+
+[[package]]
+name = "ton_types"
+version = "1.10.2"
+source = "git+https://github.com/broxus/ton-labs-types?rev=3324562d#3324562d7ff1ebec66d996128573966c1b53862b"
+dependencies = [
+ "anyhow",
+ "base64 0.13.1",
+ "countme",
+ "crc",
+ "dashmap",
+ "hex",
+ "log",
+ "num",
+ "num-derive",
+ "num-traits",
+ "rand",
+ "rustc-hash",
+ "sha2 0.9.9",
+ "smallvec",
+ "thiserror",
 ]
 
 [[package]]
@@ -3903,8 +3969,8 @@ dependencies = [
  "sha2 0.9.9",
  "smallvec",
  "thiserror",
- "ton_block",
- "ton_types",
+ "ton_block 1.9.73 (git+https://github.com/broxus/ton-labs-block)",
+ "ton_types 1.10.2 (git+https://github.com/broxus/ton-labs-types)",
 ]
 
 [[package]]
