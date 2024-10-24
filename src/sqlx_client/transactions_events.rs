@@ -128,12 +128,12 @@ impl SqlxClient {
         event_status: TonEventStatus,
     ) -> Result<Vec<TransactionEventDb>> {
         let mut args = PgArguments::default();
-        args.add(event_status);
-        args.add(service_id.inner());
+        args.add(event_status).expect("Failed to add query");
+        args.add(service_id.inner()).expect("Failed to add query");
 
         let old = old_event_status
             .map(|old| {
-                args.add(old);
+                args.add(old).expect("Failed to add query");
                 "AND te.event_status = $3"
             })
             .unwrap_or_default();
@@ -227,7 +227,8 @@ impl SqlxClient {
         input: &TransactionsEventsSearch,
     ) -> Result<Vec<TransactionEventDb>> {
         let mut args = PgArguments::default();
-        args.add(service_id.inner());
+        args.add(service_id.inner()).expect("Failed to add query");
+
         let mut args_len = 1;
 
         let updates = filter_transaction_query(&mut args, &mut args_len, input);
@@ -258,8 +259,9 @@ impl SqlxClient {
             args_len + 2
         );
 
-        args.add(input.offset);
-        args.add(input.limit);
+        args.add(input.offset).expect("Failed to add query");
+        args.add(input.limit).expect("Failed to add query");
+
         let transactions = sqlx::query_with(&query, args).fetch_all(&self.pool).await?;
 
         let res = transactions
@@ -309,13 +311,13 @@ pub fn filter_transaction_query(
     if let Some(transaction_id) = transaction_id {
         updates.push(format!(" AND te.transaction_id = ${} ", *args_len + 1,));
         *args_len += 1;
-        args.add(transaction_id)
+        args.add(transaction_id).expect("Failed to add query")
     }
 
     if let Some(message_hash) = message_hash {
         updates.push(format!(" AND te.message_hash = ${} ", *args_len + 1,));
         *args_len += 1;
-        args.add(message_hash)
+        args.add(message_hash).expect("Failed to add query")
     }
 
     if let Some(account_workchain_id) = account_workchain_id {
@@ -324,13 +326,13 @@ pub fn filter_transaction_query(
             *args_len + 1,
         ));
         *args_len += 1;
-        args.add(account_workchain_id)
+        args.add(account_workchain_id).expect("Failed to add query")
     }
 
     if let Some(account_hex) = account_hex {
         updates.push(format!(" AND te.account_hex = ${} ", *args_len + 1,));
         *args_len += 1;
-        args.add(account_hex)
+        args.add(account_hex).expect("Failed to add query")
     }
 
     if let Some(transaction_direction) = transaction_direction {
@@ -340,30 +342,31 @@ pub fn filter_transaction_query(
         ));
         *args_len += 1;
         args.add(transaction_direction)
+            .expect("Failed to add query")
     }
 
     if let Some(transaction_status) = transaction_status {
         updates.push(format!(" AND te.transaction_status = ${} ", *args_len + 1,));
         *args_len += 1;
-        args.add(transaction_status)
+        args.add(transaction_status).expect("Failed to add query")
     }
 
     if let Some(event_status) = event_status {
         updates.push(format!(" AND te.event_status = ${} ", *args_len + 1,));
         *args_len += 1;
-        args.add(event_status)
+        args.add(event_status).expect("Failed to add query")
     }
 
     if let Some(created_at_ge) = created_at_ge {
         updates.push(format!(" AND te.created_at >= ${} ", *args_len + 1,));
         *args_len += 1;
-        args.add(created_at_ge)
+        args.add(created_at_ge).expect("Failed to add query")
     }
 
     if let Some(created_at_le) = created_at_le {
         updates.push(format!(" AND te.created_at <= ${} ", *args_len + 1,));
         *args_len += 1;
-        args.add(created_at_le)
+        args.add(created_at_le).expect("Failed to add query")
     }
 
     updates

@@ -12,8 +12,8 @@ use tower_http::metrics::InFlightRequestsLayer;
 use crate::api::*;
 use crate::services::*;
 
-mod blockchain;
 mod address;
+mod blockchain;
 mod events;
 mod misc;
 mod tokens;

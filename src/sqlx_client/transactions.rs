@@ -38,7 +38,7 @@ impl SqlxClient {
                 payload.aborted,
                 payload.bounce,
             )
-            .fetch_one(&mut tx)
+            .fetch_one(&mut *tx)
             .await?;
 
         let payload = CreateSendTransactionEvent::new(transaction.clone());
@@ -74,7 +74,7 @@ impl SqlxClient {
                 payload.event_status as TonEventStatus,
                 &transaction.transaction_hash as &Option<String>,
             )
-            .fetch_one(&mut tx)
+            .fetch_one(&mut *tx)
             .await?;
 
         tx.commit().await?;
@@ -116,7 +116,7 @@ impl SqlxClient {
                 account_workchain_id,
                 account_hex,
             )
-            .fetch_optional(&mut tx)
+            .fetch_optional(&mut *tx)
             .await? {
             Some(_) => {
                 let transaction = sqlx::query_as!(TransactionDb,
@@ -149,7 +149,7 @@ impl SqlxClient {
                     account_workchain_id,
                     account_hex,
                 )
-                    .fetch_one(&mut tx)
+                    .fetch_one(&mut *tx)
                     .await?;
 
                 let payload = CreateSendTransactionEvent::new(transaction.clone());
@@ -190,7 +190,7 @@ impl SqlxClient {
                     updated_at,
                     &transaction.transaction_hash as &Option<String>,
                 )
-                    .fetch_one(&mut tx)
+                    .fetch_one(&mut *tx)
                     .await?;
 
                 (transaction, event)
@@ -230,7 +230,7 @@ impl SqlxClient {
                     false,
                     payload.multisig_transaction_id,
                 )
-                    .fetch_one(&mut tx)
+                    .fetch_one(&mut *tx)
                     .await?;
 
                 let payload = UpdateSendTransactionEvent::new(transaction.clone());
@@ -271,7 +271,7 @@ impl SqlxClient {
                     updated_at,
                     &transaction.transaction_hash as &Option<String>,
                 )
-                    .fetch_one(&mut tx)
+                    .fetch_one(&mut *tx)
                     .await?;
 
                 (transaction, event)
@@ -329,7 +329,7 @@ impl SqlxClient {
                 false,
                 payload.multisig_transaction_id,
             )
-            .fetch_one(&mut tx)
+            .fetch_one(&mut *tx)
             .await?;
 
         let payload = UpdateSendTransactionEvent::new(transaction.clone());
@@ -368,7 +368,7 @@ impl SqlxClient {
                 payload.multisig_transaction_id,
                 &transaction.transaction_hash as &Option<String>,
         )
-        .fetch_one(&mut tx)
+        .fetch_one(&mut *tx)
         .await?;
 
         tx.commit().await?;
@@ -421,7 +421,7 @@ impl SqlxClient {
                 payload.aborted,
                 payload.bounce
             )
-            .fetch_one(&mut tx)
+            .fetch_one(&mut *tx)
             .await?;
 
         let payload = CreateReceiveTransactionEvent::new(transaction.clone());
@@ -459,7 +459,7 @@ impl SqlxClient {
                 payload.event_status as TonEventStatus,
                 &transaction.transaction_hash as &Option<String>,
             )
-            .fetch_one(&mut tx)
+            .fetch_one(&mut *tx)
             .await?;
 
         tx.commit().await?;
@@ -597,7 +597,7 @@ impl SqlxClient {
         input: &TransactionsSearch,
     ) -> Result<Vec<TransactionDb>> {
         let mut args = PgArguments::default();
-        args.add(service_id.inner());
+        args.add(service_id.inner()).expect("Failed to add query");
         let mut args_len = 1;
 
         let order_by = match input.ordering {
@@ -630,8 +630,8 @@ impl SqlxClient {
             limit = args_len + 2
         );
 
-        args.add(input.offset);
-        args.add(input.limit);
+        args.add(input.offset).expect("Failed to add query");
+        args.add(input.limit).expect("Failed to add query");
         let transactions = sqlx::query_with(&query, args).fetch_all(&self.pool).await?;
 
         let res = transactions
@@ -692,42 +692,44 @@ pub fn filter_transaction_query(
     if let Some(id) = id {
         updates.push(format!(" AND id = ${} ", *args_len + 1,));
         *args_len += 1;
-        args.add(id)
+        args.add(id).expect("Failed to add query")
     }
 
     if let Some(transaction_hash) = transaction_hash {
         updates.push(format!(" AND transaction_hash = ${} ", *args_len + 1,));
         *args_len += 1;
-        args.add(transaction_hash)
+        args.add(transaction_hash).expect("Failed to add query")
     }
 
     if let Some(message_hash) = message_hash {
         updates.push(format!(" AND message_hash = ${} ", *args_len + 1,));
         *args_len += 1;
-        args.add(message_hash)
+        args.add(message_hash).expect("Failed to add query")
     }
 
     if let Some(account) = account {
         if let Ok(account) = repack_address(&account) {
             updates.push(format!(" AND account_workchain_id = ${} ", *args_len + 1,));
             *args_len += 1;
-            args.add(account.workchain_id());
+            args.add(account.workchain_id())
+                .expect("Failed to add query");
             updates.push(format!(" AND account_hex = ${} ", *args_len + 1,));
             *args_len += 1;
-            args.add(account.address().to_hex_string());
+            args.add(account.address().to_hex_string())
+                .expect("Failed to add query")
         }
     }
 
     if let Some(status) = status {
         updates.push(format!(" AND status = ${} ", *args_len + 1,));
         *args_len += 1;
-        args.add(status)
+        args.add(status).expect("Failed to add query")
     }
 
     if let Some(direction) = direction {
         updates.push(format!(" AND direction = ${} ", *args_len + 1,));
         *args_len += 1;
-        args.add(direction)
+        args.add(direction).expect("Failed to add query")
     }
 
     if let Some(created_at_min) = created_at_min {
@@ -740,6 +742,7 @@ pub fn filter_transaction_query(
             )
             .expect("Shouldn't fail"),
         )
+        .expect("Failed to add query");
     }
 
     if let Some(created_at_max) = created_at_max {
@@ -752,6 +755,7 @@ pub fn filter_transaction_query(
             )
             .expect("Shouldn't fail"),
         )
+        .expect("Failed to add query");
     }
 
     updates

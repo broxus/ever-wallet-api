@@ -1102,13 +1102,8 @@ impl TonService {
     ) -> Result<String, Error> {
         let id = Uuid::new_v4();
 
-        self
-            .sqlx_client
-            .set_callback(ApiServiceCallbackDb::new(
-                id,
-                *service_id,
-                callback.clone(),
-            ))
+        self.sqlx_client
+            .set_callback(ApiServiceCallbackDb::new(id, *service_id, callback.clone()))
             .await?;
 
         Ok(callback)
@@ -1205,13 +1200,8 @@ impl TonService {
         Ok(())
     }
 
-    pub async fn token_whitelist(
-        &self,
-    ) -> Result<Vec<WhitelistedTokenFromDb>, Error> {
-        let whitelist = self
-            .sqlx_client
-            .get_token_whitelist()
-            .await?;
+    pub async fn token_whitelist(&self) -> Result<Vec<WhitelistedTokenFromDb>, Error> {
+        let whitelist = self.sqlx_client.get_token_whitelist().await?;
 
         Ok(whitelist)
     }
@@ -1280,7 +1270,10 @@ async fn send_notification(
         .await
         .map(|k| k.secret)?;
 
-    let event_status = match callback_client.send(info.network_id, url, payload.clone(), secret).await {
+    let event_status = match callback_client
+        .send(info.network_id, url, payload.clone(), secret)
+        .await
+    {
         Err(_) => TonEventStatus::Error,
         Ok(_) => TonEventStatus::Notified,
     };

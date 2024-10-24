@@ -1,7 +1,7 @@
+use crate::models::WhitelistedTokenFromDb;
 use nekoton_contracts::tip3_any::TokenWalletVersion;
 use opg::OpgModel;
 use serde::Serialize;
-use crate::models::WhitelistedTokenFromDb;
 
 #[derive(Serialize, OpgModel)]
 #[serde(rename_all = "camelCase")]
@@ -33,7 +33,6 @@ pub struct SignedMessageHashResponse {
 pub struct SetCallbackResponse {
     pub callback: String,
 }
-
 
 #[derive(Serialize, OpgModel)]
 #[serde(rename_all = "camelCase")]

@@ -1,12 +1,9 @@
-use anyhow::Result;
 use crate::models::*;
 use crate::sqlx_client::*;
+use anyhow::Result;
 
 impl SqlxClient {
-    pub async fn get_root_token(
-        &self,
-        address: &str,
-    ) -> Result<WhitelistedTokenFromDb> {
+    pub async fn get_root_token(&self, address: &str) -> Result<WhitelistedTokenFromDb> {
         let res = sqlx::query_as!(
             WhitelistedTokenFromDb,
             r#"SELECT name, address, version as "version: _"
@@ -39,16 +36,14 @@ impl SqlxClient {
         .map_err(From::from)
     }
 
-    pub async fn get_token_whitelist(
-        &self,
-    ) -> Result<Vec<WhitelistedTokenFromDb>> {
+    pub async fn get_token_whitelist(&self) -> Result<Vec<WhitelistedTokenFromDb>> {
         sqlx::query_as!(
             WhitelistedTokenFromDb,
             r#"SELECT name, address, version as "version: _"
                 FROM token_whitelist"#
         )
-            .fetch_all(&self.pool)
-            .await
-            .map_err(From::from)
+        .fetch_all(&self.pool)
+        .await
+        .map_err(From::from)
     }
 }
