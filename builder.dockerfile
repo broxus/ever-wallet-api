@@ -40,8 +40,10 @@ RUN cargo sqlx migrate run --database-url "$DATABASE_URL"
 
 # Build the project based on the network variable
 RUN if [ "$NETWORK" = "everscale" ]; then \
+      cargo sqlx prepare && \
       RUSTFLAGS="-C target_cpu=native" SQLX_OFFLINE=true cargo build --release; \
     elif [ "$NETWORK" = "venom" ]; then \
+      cargo sqlx prepare && \
       RUSTFLAGS="-C target_cpu=native" SQLX_OFFLINE=true cargo build --release --features venom; \
     else \
       echo 'ERROR: Unexpected network'; \
