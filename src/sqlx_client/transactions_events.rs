@@ -128,12 +128,12 @@ impl SqlxClient {
         event_status: TonEventStatus,
     ) -> Result<Vec<TransactionEventDb>> {
         let mut args = PgArguments::default();
-        args.add(event_status).expect("Failed to add query");
-        args.add(service_id.inner()).expect("Failed to add query");
+        args.add(event_status).map_err(sqlx::Error::Encode)?;
+        args.add(service_id.inner()).map_err(sqlx::Error::Encode)?;
 
         let old = old_event_status
             .map(|old| {
-                args.add(old).expect("Failed to add query");
+                args.add(old).map_err(sqlx::Error::Encode);
                 "AND te.event_status = $3"
             })
             .unwrap_or_default();
@@ -227,7 +227,7 @@ impl SqlxClient {
         input: &TransactionsEventsSearch,
     ) -> Result<Vec<TransactionEventDb>> {
         let mut args = PgArguments::default();
-        args.add(service_id.inner()).expect("Failed to add query");
+        args.add(service_id.inner()).map_err(sqlx::Error::Encode)?;
 
         let mut args_len = 1;
 
@@ -259,8 +259,8 @@ impl SqlxClient {
             args_len + 2
         );
 
-        args.add(input.offset).expect("Failed to add query");
-        args.add(input.limit).expect("Failed to add query");
+        args.add(input.offset).map_err(sqlx::Error::Encode)?;
+        args.add(input.limit).map_err(sqlx::Error::Encode)?;
 
         let transactions = sqlx::query_with(&query, args).fetch_all(&self.pool).await?;
 

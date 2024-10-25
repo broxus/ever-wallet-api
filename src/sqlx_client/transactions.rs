@@ -597,7 +597,7 @@ impl SqlxClient {
         input: &TransactionsSearch,
     ) -> Result<Vec<TransactionDb>> {
         let mut args = PgArguments::default();
-        args.add(service_id.inner()).expect("Failed to add query");
+        args.add(service_id.inner()).map_err(sqlx::Error::Encode)?;
         let mut args_len = 1;
 
         let order_by = match input.ordering {
@@ -630,8 +630,8 @@ impl SqlxClient {
             limit = args_len + 2
         );
 
-        args.add(input.offset).expect("Failed to add query");
-        args.add(input.limit).expect("Failed to add query");
+        args.add(input.offset).map_err(sqlx::Error::Encode)?;
+        args.add(input.limit).map_err(sqlx::Error::Encode)?;
         let transactions = sqlx::query_with(&query, args).fetch_all(&self.pool).await?;
 
         let res = transactions
@@ -712,7 +712,7 @@ pub fn filter_transaction_query(
             updates.push(format!(" AND account_workchain_id = ${} ", *args_len + 1,));
             *args_len += 1;
             args.add(account.workchain_id())
-                .expect("Failed to add query");
+                .map_err(sqlx::Error::Encode);
             updates.push(format!(" AND account_hex = ${} ", *args_len + 1,));
             *args_len += 1;
             args.add(account.address().to_hex_string())
@@ -742,7 +742,7 @@ pub fn filter_transaction_query(
             )
             .expect("Shouldn't fail"),
         )
-        .expect("Failed to add query");
+        .map_err(sqlx::Error::Encode);
     }
 
     if let Some(created_at_max) = created_at_max {
@@ -755,7 +755,7 @@ pub fn filter_transaction_query(
             )
             .expect("Shouldn't fail"),
         )
-        .expect("Failed to add query");
+        .map_err(sqlx::Error::Encode);
     }
 
     updates

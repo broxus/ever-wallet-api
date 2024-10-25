@@ -265,7 +265,7 @@ mod tests {
     use ton_block::{Deserializable, MsgAddressInt, Transaction};
 
     fn mock_transaction_with_message() -> Transaction {
-        let transaction = Transaction::construct_from_base64(
+        Transaction::construct_from_base64(
             "te6ccgECEAEAAwgAA7d+QDCcWfS7Pd3OhqYgoQVempmo2OKQO5sOYx6EZBcyIbAAAuGThxKAhf1hAS\
             h02tBmYeWRHurQLFdhsiPgWeGNTbabaiPlZZ9gAALhk4cSgGZnCjIwADSAIfqQaAUEAQIXBAkFUFwjGIAhHJARA\
             wIAb8mKaBBMG8AMAAAAAAAEAAIAAAADVRiS8otLi359fajChkMh4j7YPNNVzsOUbNa9QsXWtVZBkDxsAJ5IegwV\
@@ -280,8 +280,7 @@ mod tests {
             wQAAgBBa0QhOP1bKLS5gSbcEj5AP6sELkypNssupdc0rEL8tMA4BQ4AQWtEITj9Wyi0uYEm3BI+QD+rBC5MqTbL\
             LqXXNKxC/LTgPAAA=",
         )
-        .unwrap();
-        transaction
+        .unwrap()
     }
 
     fn mock_transaction_without_message() -> Transaction {
@@ -289,19 +288,18 @@ mod tests {
     }
 
     fn mock_native_transaction() -> Transaction {
-        let transaction = Transaction::construct_from_base64(
+        Transaction::construct_from_base64(
             "te6ccgECBQEAAQ8AA7VxLMcNYtT0Y0vHvF0Y6p6uYuZ3ru6E15MPbdMAiDOW+TAAAxF6kJyoOBX6Ew\
             /7kDzBL0X5vbiyJUQxs8oqMCx81lJVpHEGWGhQAALk17a3eDZv7sCQAABgJyfoAwIBABUMwE5PyQF9eEABIACCc\
             qeMvpds7qXtp0X7fcfK29e715cYDMD4djDoZFaoV2+IniF4UEqnl0mRBkkJUofiHH0OEnxt4bqWdhOvrktU02MB\
             AaAEALFIAQWtEITj9Wyi0uYEm3BI+QD+rBC5MqTbLLqXXNKxC/LTAASzHDWLU9GNLx7xdGOqermLmd67uhNeTD2\
             3TAIgzlvk0BfXhAAGCiwwAABiL1ITlQTN/dgSQA==",
         )
-        .unwrap();
-        transaction
+        .unwrap()
     }
 
     fn mock_tip3_transaction() -> Transaction {
-        let transaction = Transaction::construct_from_base64(
+        Transaction::construct_from_base64(
             "te6ccgECDAEAAl0AA7V/QK7VX0Cd/1ZlF9CjnQU/zjx5R/+gPcjjC/w75jghPeAAAxF68tckc9Q9f/\
             cDtEaGB89WcFPg7Kg/ufjqtloFybIORllBjolwAAMRevLXJGZv7tMQADR8gi0IBQQBAhUECQT+XD4YfDDMEQMCA\
             G/Jg9CQTAosIAAAAAAABAACAAAAA/Sl/SUL5ko0FMc/s2rL0MTaDiZjYIA0X+j0FcjV3p3wQFAWDACeRzeMFHQo\
@@ -313,8 +311,7 @@ mod tests {
             N/dpiwAkBa2eguV8AAAAAAAAAAAAACRhOcqAAgBBa0QhOP1bKLS5gSbcEj5AP6sELkypNssupdc0rEL8tMAoBQ4\
             AQWtEITj9Wyi0uYEm3BI+QD+rBC5MqTbLLqXXNKxC/LSgLAAA=",
         )
-        .unwrap();
-        transaction
+        .unwrap()
     }
 
     #[test]

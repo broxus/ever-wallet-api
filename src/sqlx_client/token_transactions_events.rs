@@ -169,7 +169,7 @@ impl SqlxClient {
         input: &TokenTransactionsEventsSearch,
     ) -> Result<Vec<TokenTransactionEventDb>> {
         let mut args = PgArguments::default();
-        args.add(service_id.inner()).expect("Failed to add query");
+        args.add(service_id.inner()).map_err(sqlx::Error::Encode)?;
         let mut args_len = 1;
 
         let updates = filter_token_transaction_query(&mut args, &mut args_len, input);
@@ -201,8 +201,8 @@ impl SqlxClient {
             args_len + 2
         );
 
-        args.add(input.offset).expect("Failed to add query");
-        args.add(input.limit).expect("Failed to add query");
+        args.add(input.offset).map_err(sqlx::Error::Encode)?;
+        args.add(input.limit).map_err(sqlx::Error::Encode)?;
         let transactions = sqlx::query_with(&query, args).fetch_all(&self.pool).await?;
 
         let res = transactions
