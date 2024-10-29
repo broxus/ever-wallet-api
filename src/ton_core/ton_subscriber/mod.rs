@@ -22,6 +22,7 @@ use crate::ton_core::*;
 pub struct TonSubscriber {
     ready: AtomicBool,
     ready_signal: Notify,
+    // tip block timestamp
     current_utime: AtomicU32,
     signature_id: SignatureId,
     state_subscriptions: RwLock<FxHashMap<UInt256, StateSubscription>>,

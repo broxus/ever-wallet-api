@@ -8,6 +8,7 @@ use nekoton_abi::*;
 use parking_lot::Mutex;
 use tokio::sync::{mpsc, oneshot};
 use ton_block::{GetRepresentationHash, MsgAddressInt, Serializable};
+use ton_indexer::GlobalConfig;
 use ton_types::UInt256;
 
 use self::monitoring::*;
@@ -125,7 +126,7 @@ impl Drop for TonCoreContext {
 impl TonCoreContext {
     async fn new(
         node_config: NodeConfig,
-        global_config: ton_indexer::GlobalConfig,
+        global_config: GlobalConfig,
         sqlx_client: SqlxClient,
         owners_cache: OwnersCache,
     ) -> Result<Arc<Self>> {

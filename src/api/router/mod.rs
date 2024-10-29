@@ -13,6 +13,7 @@ use crate::api::*;
 use crate::services::*;
 
 mod address;
+mod blockchain;
 mod events;
 mod misc;
 mod tokens;
@@ -68,6 +69,7 @@ fn api_router(
     memory_storage: Arc<StorageHandler>,
 ) -> Router {
     Router::new()
+        .nest("/blockchain", blockchain::router())
         .nest("/address", address::router())
         .nest("/events", events::router())
         .nest("/tokens", tokens::router())

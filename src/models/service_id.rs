@@ -19,7 +19,7 @@ use uuid::Uuid;
 )]
 #[opg("Service UUID (v4)")]
 #[sqlx(transparent)]
-pub struct ServiceId(Uuid);
+pub struct ServiceId(pub Uuid);
 
 impl ServiceId {
     pub fn new(id: Uuid) -> Self {

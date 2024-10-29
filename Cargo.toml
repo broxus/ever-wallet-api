@@ -13,14 +13,14 @@ argh = "0.1"
 argon2 = "0.4.1"
 async-trait = "0.1"
 base64 = "0.13"
-bigdecimal = { version = "0.3.0", features = ["serde"] }
+bigdecimal = { version = "0.4.5", features = ["serde"] }
 chacha20poly1305 = "0.10.1"
-chrono = { version = "0.4", features = ["serde"]}
+chrono = { version = "0.4", features = ["serde"] }
 config = { version = "0.13.2", default-features = false, features = ["yaml"] }
 dashmap = "5.3.4"
-derive_more = "*"
+derive_more = { version = "1.0.0", features = ["full"] }
 env_logger = "0.10.0"
-everscale-network = "0.5"
+everscale-network = "^0.5.4"
 futures = "0.3"
 hex = "0.4"
 hmac-sha256 = "1.1.4"
@@ -32,7 +32,7 @@ log = { version = "0.4", features = ["std", "serde"] }
 log4rs = "1.0"
 lru = "0.8"
 metrics = "0.20.1"
-metrics-exporter-prometheus = { version = "0.11.0", default-features = false, features = ["http-listener"] }
+metrics-exporter-prometheus = { version = "0.16.0", default-features = false, features = ["http-listener"] }
 num-bigint = "0.4"
 num-traits = "0.2"
 opg = { version = "0.2", features = ["uuid"] }
@@ -40,18 +40,18 @@ parking_lot = "0.12.0"
 pomfrit = "0.1"
 rand = "0.8"
 regex = "1.5"
-reqwest = { version = "0.11", features = ["json"] }
+reqwest = { version = "0.11.27", features = ["json"] }
 rustc-hash = "1.1.0"
 sentry = { version = "0.27.0", features = ["log", "debug-logs"] }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 serde_yaml = "0.9.4"
-sqlx = { version = "0.6", features = ["runtime-tokio-native-tls", "postgres", "uuid", "bigdecimal", "offline", "chrono", "json"] }
+sqlx = { version = "0.8.2", features = ["runtime-tokio-native-tls", "postgres", "uuid", "bigdecimal", "chrono", "json"] }
 strum = "0.24.1"
 strum_macros = "0.24.1"
 thiserror = "1.0"
-tokio = { version = "1.16.1", features = ["sync", "fs", "rt-multi-thread", "macros", "signal", "parking_lot"] }
-tokio-util = "0.7.1"
+tokio = { version = "1.41", features = ["sync", "fs", "rt-multi-thread", "macros", "signal", "parking_lot"] }
+tokio-util = "0.7.12"
 tower = { version = "0.4.13", features = ["limit"] }
 tower-http = { version = "0.3.4", features = ["trace", "cors", "limit", "set-header", "metrics"] }
 tracing = "0.1.34"
@@ -66,17 +66,21 @@ ton_abi = { git = "https://github.com/broxus/ton-labs-abi" }
 ton_types = { git = "https://github.com/broxus/ton-labs-types" }
 
 # Nekoton SDK
-nekoton = { git = "https://github.com/broxus/nekoton.git", default-features = true }
-nekoton-abi = { git = "https://github.com/broxus/nekoton.git", features = ["derive"] }
-nekoton-utils = { git = "https://github.com/broxus/nekoton.git" }
-nekoton-contracts = { git = "https://github.com/broxus/nekoton.git" }
+nekoton = { git = "https://github.com/broxus/nekoton.git", default-features = true, rev="561b60e7a47e994500dce9f25933dd8d8fb2987a" }
+nekoton-abi = { git = "https://github.com/broxus/nekoton.git", features = ["derive"], rev="561b60e7a47e994500dce9f25933dd8d8fb2987a" }
+nekoton-utils = { git = "https://github.com/broxus/nekoton.git", rev="561b60e7a47e994500dce9f25933dd8d8fb2987a" }
+nekoton-contracts = { git = "https://github.com/broxus/nekoton.git", rev="561b60e7a47e994500dce9f25933dd8d8fb2987a" }
 
 # Broxus utils
 broxus-util = { version = "0.2", features = ["alloc", "public-ip", "config", "log4rs"] }
 
 # Indexer engine
 ton-indexer = { git = "https://github.com/broxus/ton-indexer.git" }
+sysinfo = "0.30.13"
+
+librocksdb-sys = "^0.16.0"
 
 [features]
 default = []
+ton = ["ton_block/ton", "ton-indexer/ton"]
 venom = ["ton_block/venom", "ton-indexer/venom"]

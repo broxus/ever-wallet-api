@@ -133,6 +133,8 @@ pub struct TokenTransactionFromDb {
     pub account_workchain_id: i32,
     pub account_hex: String,
     pub value: BigDecimal,
+    pub sender_workchain_id: Option<i32>,
+    pub sender_hex: Option<String>,
     pub root_address: String,
     pub payload: Option<Vec<u8>>,
     pub error: Option<String>,
@@ -156,6 +158,8 @@ pub struct TokenTransactionEventDb {
     pub account_hex: String,
     pub owner_message_hash: Option<String>,
     pub value: BigDecimal,
+    pub sender_workchain_id: Option<i32>,
+    pub sender_hex: Option<String>,
     pub root_address: String,
     pub transaction_direction: TonTransactionDirection,
     pub transaction_status: TonTokenTransactionStatus,
@@ -176,7 +180,7 @@ pub struct TokenOwnerFromDb {
 }
 
 #[derive(Clone, Debug, serde::Serialize, serde::Deserialize, Eq, PartialEq)]
-pub struct TokenWhitelistFromDb {
+pub struct WhitelistedTokenFromDb {
     pub name: String,
     pub address: String,
     pub version: TokenWalletVersionDb,

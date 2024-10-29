@@ -3,6 +3,7 @@ use http::StatusCode;
 
 pub use self::address::*;
 pub use self::authorization::*;
+pub use self::blockchain::*;
 pub use self::docs::*;
 pub use self::events::*;
 pub use self::misc::*;
@@ -11,6 +12,7 @@ pub use self::transactions::*;
 
 mod address;
 mod authorization;
+mod blockchain;
 mod docs;
 mod events;
 mod misc;

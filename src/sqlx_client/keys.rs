@@ -30,7 +30,7 @@ impl SqlxClient {
                     whitelist,
                     created_at
                     FROM api_service_key WHERE service_id = $1"#,
-            service_id: ServiceId,
+            service_id.0
         )
         .fetch_one(&self.pool)
         .await

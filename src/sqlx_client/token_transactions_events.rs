@@ -29,6 +29,8 @@ impl SqlxClient {
                 tte.account_hex,
                 tte.owner_message_hash,
                 tte.value,
+                tte.sender_workchain_id,
+                tte.sender_hex,
                 tte.root_address,
                 tte.transaction_direction as "transaction_direction: _",
                 tte.transaction_status as "transaction_status: _",
@@ -70,6 +72,8 @@ impl SqlxClient {
                 tte.account_hex,
                 tte.owner_message_hash,
                 tte.value,
+                tte.sender_workchain_id,
+                tte.sender_hex,
                 tte.root_address,
                 tte.transaction_direction as "transaction_direction: _",
                 tte.transaction_status as "transaction_status: _",
@@ -103,6 +107,8 @@ impl SqlxClient {
                 tte.account_hex,
                 tte.owner_message_hash,
                 tte.value,
+                tte.sender_workchain_id,
+                tte.sender_hex,
                 tte.root_address,
                 tte.transaction_direction as "transaction_direction: _",
                 tte.transaction_status as "transaction_status: _",
@@ -141,6 +147,8 @@ impl SqlxClient {
                 tte.account_hex,
                 tte.owner_message_hash,
                 tte.value,
+                tte.sender_workchain_id,
+                tte.sender_hex,
                 tte.root_address,
                 tte.transaction_direction as "transaction_direction: _",
                 tte.transaction_status as "transaction_status: _",
@@ -161,7 +169,7 @@ impl SqlxClient {
         input: &TokenTransactionsEventsSearch,
     ) -> Result<Vec<TokenTransactionEventDb>> {
         let mut args = PgArguments::default();
-        args.add(service_id.inner());
+        args.add(service_id.inner()).map_err(sqlx::Error::Encode)?;
         let mut args_len = 1;
 
         let updates = filter_token_transaction_query(&mut args, &mut args_len, input);
@@ -176,6 +184,8 @@ impl SqlxClient {
                 tte.account_hex,
                 tte.owner_message_hash,
                 tte.value,
+                tte.sender_workchain_id,
+                tte.sender_hex,
                 tte.root_address,
                 tte.transaction_direction as "transaction_direction: _",
                 tte.transaction_status as "transaction_status: _",
@@ -191,8 +201,8 @@ impl SqlxClient {
             args_len + 2
         );
 
-        args.add(input.offset);
-        args.add(input.limit);
+        args.add(input.offset).map_err(sqlx::Error::Encode)?;
+        args.add(input.limit).map_err(sqlx::Error::Encode)?;
         let transactions = sqlx::query_with(&query, args).fetch_all(&self.pool).await?;
 
         let res = transactions
@@ -206,13 +216,15 @@ impl SqlxClient {
                 account_hex: x.get(5),
                 owner_message_hash: x.get(6),
                 value: x.get(7),
-                root_address: x.get(8),
-                transaction_direction: x.get(9),
-                transaction_status: x.get(10),
-                event_status: x.get(11),
-                created_at: x.get(12),
-                updated_at: x.get(13),
-                token_transaction_hash: x.get(14),
+                sender_workchain_id: x.get(8),
+                sender_hex: x.get(9),
+                root_address: x.get(10),
+                transaction_direction: x.get(11),
+                transaction_status: x.get(12),
+                event_status: x.get(13),
+                created_at: x.get(14),
+                updated_at: x.get(15),
+                token_transaction_hash: x.get(16),
             })
             .collect::<Vec<_>>();
         Ok(res)
@@ -246,19 +258,19 @@ pub fn filter_token_transaction_query(
             *args_len + 1,
         ));
         *args_len += 1;
-        args.add(token_transaction_id)
+        args.add(token_transaction_id).expect("Failed to add query")
     }
 
     if let Some(root_address) = root_address {
         updates.push(format!(" AND tte.root_address = ${} ", *args_len + 1,));
         *args_len += 1;
-        args.add(root_address)
+        args.add(root_address).expect("Failed to add query")
     }
 
     if let Some(message_hash) = message_hash {
         updates.push(format!(" AND tte.message_hash = ${} ", *args_len + 1,));
         *args_len += 1;
-        args.add(message_hash)
+        args.add(message_hash).expect("Failed to add query")
     }
 
     if let Some(account_workchain_id) = account_workchain_id {
@@ -267,19 +279,19 @@ pub fn filter_token_transaction_query(
             *args_len + 1,
         ));
         *args_len += 1;
-        args.add(account_workchain_id)
+        args.add(account_workchain_id).expect("Failed to add query")
     }
 
     if let Some(account_hex) = account_hex {
         updates.push(format!(" AND tte.account_hex = ${} ", *args_len + 1,));
         *args_len += 1;
-        args.add(account_hex)
+        args.add(account_hex).expect("Failed to add query")
     }
 
     if let Some(owner_message_hash) = owner_message_hash {
         updates.push(format!(" AND tte.owner_message_hash = ${} ", *args_len + 1,));
         *args_len += 1;
-        args.add(owner_message_hash)
+        args.add(owner_message_hash).expect("Failed to add query")
     }
 
     if let Some(transaction_direction) = transaction_direction {
@@ -289,30 +301,31 @@ pub fn filter_token_transaction_query(
         ));
         *args_len += 1;
         args.add(transaction_direction)
+            .expect("Failed to add query")
     }
 
     if let Some(transaction_status) = transaction_status {
         updates.push(format!(" AND tte.transaction_status = ${} ", *args_len + 1,));
         *args_len += 1;
-        args.add(transaction_status)
+        args.add(transaction_status).expect("Failed to add query")
     }
 
     if let Some(event_status) = event_status {
         updates.push(format!(" AND tte.event_status = ${} ", *args_len + 1,));
         *args_len += 1;
-        args.add(event_status)
+        args.add(event_status).expect("Failed to add query")
     }
 
     if let Some(created_at_ge) = created_at_ge {
         updates.push(format!(" AND tte.created_at >= ${} ", *args_len + 1,));
         *args_len += 1;
-        args.add(created_at_ge)
+        args.add(created_at_ge).expect("Failed to add query")
     }
 
     if let Some(created_at_le) = created_at_le {
         updates.push(format!(" AND tte.created_at <= ${} ", *args_len + 1,));
         *args_len += 1;
-        args.add(created_at_le)
+        args.add(created_at_le).expect("Failed to add query")
     }
 
     updates

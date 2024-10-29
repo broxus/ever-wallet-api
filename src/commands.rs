@@ -25,7 +25,7 @@ pub async fn add_root_token(
 
     let sqlx_client = SqlxClient::new(pool);
     let root_token = sqlx_client
-        .create_root_token(TokenWhitelistFromDb {
+        .create_root_token(WhitelistedTokenFromDb {
             name: token_name,
             address: token_address,
             version: TokenWalletVersionDb::from_str(&token_version)?,

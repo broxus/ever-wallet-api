@@ -37,6 +37,22 @@ impl From<TokenTransactionEventDb> for AccountTransactionEvent {
                 .unwrap();
         let base64url = Address(pack_std_smc_addr(true, &account, true).unwrap());
 
+        let sender = if let (Some(sender_workchain_id), Some(sender_hex)) =
+            (t.sender_workchain_id, t.sender_hex)
+        {
+            let sender =
+                MsgAddressInt::from_str(&format!("{}:{}", sender_workchain_id, sender_hex))
+                    .unwrap();
+            let base64url = Address(pack_std_smc_addr(true, &sender, true).unwrap());
+            Some(Account {
+                workchain_id: sender_workchain_id,
+                hex: Address(sender_hex),
+                base64url,
+            })
+        } else {
+            None
+        };
+
         Self {
             id: t.id,
             transaction_id: t.token_transaction_id,
@@ -48,7 +64,7 @@ impl From<TokenTransactionEventDb> for AccountTransactionEvent {
                 hex: Address(t.account_hex),
                 base64url,
             },
-            sender: None,
+            sender,
             balance_change: Some(t.value),
             root_address: Some(t.root_address),
             transaction_direction: t.transaction_direction,

@@ -1,3 +1,4 @@
+use std::sync::atomic::Ordering;
 use std::sync::Arc;
 
 use bigdecimal::{BigDecimal, ToPrimitive};
@@ -106,7 +107,9 @@ impl TonClient {
                 Some(payload.custodians.unwrap_or(1)),
                 Some(payload.confirmations.unwrap_or(1)),
             ),
-            AccountType::HighloadWallet | AccountType::Wallet | AccountType::EverWallet => (None, None),
+            AccountType::HighloadWallet | AccountType::Wallet | AccountType::EverWallet => {
+                (None, None)
+            }
         };
 
         if let (Some(custodians), Some(confirmations)) = (custodians, confirmations) {
@@ -223,14 +226,12 @@ impl TonClient {
                     },
                 )?
             }
-            AccountType::EverWallet => {
-                nekoton::core::ton_wallet::ever_wallet::prepare_deploy(
-                    &SimpleClock,
-                    &public_key,
-                    address.workchain_id as i8,
-                    Expiration::Timeout(DEFAULT_EXPIRATION_TIMEOUT),
-                )?
-            }
+            AccountType::EverWallet => nekoton::core::ton_wallet::ever_wallet::prepare_deploy(
+                &SimpleClock,
+                &public_key,
+                address.workchain_id as i8,
+                Expiration::Timeout(DEFAULT_EXPIRATION_TIMEOUT),
+            )?,
             AccountType::HighloadWallet | AccountType::Wallet => {
                 return Ok(None);
             }
@@ -782,6 +783,31 @@ impl TonClient {
         Ok(Metrics { gen_utime })
     }
 
+    pub async fn get_blockchain_info(&self) -> Result<BlockchainInfo, Error> {
+        let gen_utime = self.ton_core.current_utime();
+
+        let network_id = match () {
+            _ if cfg!(feature = "venom") => VENOM_CHAIN_ID,
+            _ if cfg!(feature = "ton") => TON_CHAIN_ID,
+            _ => EVER_CHAIN_ID,
+        };
+
+        let subscriber_metrics = self.ton_core.context.ton_subscriber.metrics();
+        let indexer_metrics = self.ton_core.context.ton_engine.metrics();
+
+        let last_mc_block_seqno = indexer_metrics.last_mc_block_seqno.load(Ordering::Acquire);
+        let mc_time_diff = indexer_metrics.mc_time_diff.load(Ordering::Acquire);
+
+        Ok(BlockchainInfo {
+            network_id,
+            synced: subscriber_metrics.ready,
+            subscriber_pending_messages: subscriber_metrics.pending_message_count,
+            tip_block_ts: gen_utime,
+            masterchain_height: last_mc_block_seqno,
+            masterchain_last_updated: mc_time_diff,
+        })
+    }
+
     pub async fn run_local(
         &self,
         contract_address: UInt256,
@@ -1171,3 +1197,7 @@ fn build_token_transaction(
 
     Ok((sent_transaction, signed_message))
 }
+
+const EVER_CHAIN_ID: i32 = 42;
+const VENOM_CHAIN_ID: i32 = 1;
+const TON_CHAIN_ID: i32 = -239;

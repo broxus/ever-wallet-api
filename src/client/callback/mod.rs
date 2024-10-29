@@ -28,6 +28,7 @@ impl Default for CallbackClient {
 impl CallbackClient {
     pub async fn send(
         &self,
+        network_id: i32,
         url: String,
         payload: AccountTransactionEvent,
         secret: String,
@@ -45,6 +46,7 @@ impl CallbackClient {
             .request(Method::POST, &url)
             .header("SIGN", sign)
             .header("TIMESTAMP", nonce.to_string())
+            .header("NETWORK_ID", network_id.to_string())
             .json(&payload)
             .send()
             .await?;

@@ -845,6 +845,11 @@ impl TonService {
         Ok(metrics)
     }
 
+    pub async fn get_blockchain_info(&self) -> Result<BlockchainInfo, Error> {
+        let info = self.ton_api_client.get_blockchain_info().await?;
+        Ok(info)
+    }
+
     pub async fn execute_contract_function(
         self: &Arc<Self>,
         account_addr: &str,
@@ -1097,13 +1102,8 @@ impl TonService {
     ) -> Result<String, Error> {
         let id = Uuid::new_v4();
 
-        self
-            .sqlx_client
-            .set_callback(ApiServiceCallbackDb::new(
-                id,
-                *service_id,
-                callback.clone(),
-            ))
+        self.sqlx_client
+            .set_callback(ApiServiceCallbackDb::new(id, *service_id, callback.clone()))
             .await?;
 
         Ok(callback)
@@ -1200,6 +1200,12 @@ impl TonService {
         Ok(())
     }
 
+    pub async fn token_whitelist(&self) -> Result<Vec<WhitelistedTokenFromDb>, Error> {
+        let whitelist = self.sqlx_client.get_token_whitelist().await?;
+
+        Ok(whitelist)
+    }
+
     /// Waits future in background. In case of error does nothing but logging
     fn spawn_background_task<F>(self: &Arc<Self>, name: &'static str, fut: F)
     where
@@ -1253,6 +1259,8 @@ async fn send_notification(
         None => return Err(TonServiceError::ServiceUnavailable.into()),
     };
 
+    let info = ton_service.get_blockchain_info().await?;
+
     let sqlx_client = &ton_service.sqlx_client;
     let callback_client = &ton_service.callback_client;
 
@@ -1262,7 +1270,10 @@ async fn send_notification(
         .await
         .map(|k| k.secret)?;
 
-    let event_status = match callback_client.send(url, payload.clone(), secret).await {
+    let event_status = match callback_client
+        .send(info.network_id, url, payload.clone(), secret)
+        .await
+    {
         Err(_) => TonEventStatus::Error,
         Ok(_) => TonEventStatus::Notified,
     };

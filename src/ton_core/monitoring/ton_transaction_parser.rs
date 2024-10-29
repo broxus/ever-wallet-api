@@ -22,7 +22,6 @@ pub async fn parse_ton_transaction(
             .map_err(|_| TransactionError::InvalidStructure)?,
         None => return Err(TransactionError::Unsupported.into()),
     };
-
     let address = MsgAddressInt::with_standart(
         None,
         ton_block::BASE_WORKCHAIN_ID as i8,
@@ -258,4 +257,116 @@ struct OutputsRecipient {
     pub hex: String,
     pub base64url: String,
     pub workchain_id: i64,
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use ton_block::{Deserializable, MsgAddressInt, Transaction};
+
+    fn mock_transaction_with_message() -> Transaction {
+        Transaction::construct_from_base64(
+            "te6ccgECEAEAAwgAA7d+QDCcWfS7Pd3OhqYgoQVempmo2OKQO5sOYx6EZBcyIbAAAuGThxKAhf1hAS\
+            h02tBmYeWRHurQLFdhsiPgWeGNTbabaiPlZZ9gAALhk4cSgGZnCjIwADSAIfqQaAUEAQIXBAkFUFwjGIAhHJARA\
+            wIAb8mKaBBMG8AMAAAAAAAEAAIAAAADVRiS8otLi359fajChkMh4j7YPNNVzsOUbNa9QsXWtVZBkDxsAJ5IegwV\
+            xAgAAAAAAAAAAPsAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA\
+            AAAAAAAAAAAAAAIJy/7wuPdhy+h+DbYjvFbvGj3Bwqn3MOq5Y6hyrRTksTai0G7FEgWicR7eyflDhYqBuU4lk7Q\
+            1nHs+PMBzAFRlACQIB4AwGAQHfBwGxSAHIBhOLPpdnu7nQ1MQUIKvTUzUbHFIHc2HMY9CMguZENwA4xAzS7nDkX\
+            YkSKBG9Qn9FPKIp7rRePfQI63hB5LPI2tBQju+wBhvAOgAAXDJw4lASzOFGRsAIAWtw2J/JgAad35GR9lY9G036\
+            2Q2Dq3ncMSd3A6aWdBC8YD5fdRqzgAAAAAAAAAAABHDeTfggABAJAUOAEFrRCE4/VsotLmBJtwSPkA/qwQuTKk2\
+            yy6l1zSsQvy0wCgFDgB+vlzVCE32J+nPncYdENsw5VZeCw1GMZjfNdxFJz/7kEAsBQ4AQWtEITj9Wyi0uYEm3BI\
+            +QD+rBC5MqTbLLqXXNKxC/LTAPAbFoAfr5c1QhN9ifpz53GHRDbMOVWXgsNRjGY3zXcRSc/+5BADkAwnFn0uz3d\
+            zoamIKEFXpqZqNjikDubDmMehGQXMiG0FUFwjAGFEtcAABcMnDiUArM4UZGwA0Ba2eguV8AAAAAAAAAAAAjhvJv\
+            wQAAgBBa0QhOP1bKLS5gSbcEj5AP6sELkypNssupdc0rEL8tMA4BQ4AQWtEITj9Wyi0uYEm3BI+QD+rBC5MqTbL\
+            LqXXNKxC/LTgPAAA=",
+        )
+        .unwrap()
+    }
+
+    fn mock_transaction_without_message() -> Transaction {
+        Transaction::default()
+    }
+
+    fn mock_native_transaction() -> Transaction {
+        Transaction::construct_from_base64(
+            "te6ccgECBQEAAQ8AA7VxLMcNYtT0Y0vHvF0Y6p6uYuZ3ru6E15MPbdMAiDOW+TAAAxF6kJyoOBX6Ew\
+            /7kDzBL0X5vbiyJUQxs8oqMCx81lJVpHEGWGhQAALk17a3eDZv7sCQAABgJyfoAwIBABUMwE5PyQF9eEABIACCc\
+            qeMvpds7qXtp0X7fcfK29e715cYDMD4djDoZFaoV2+IniF4UEqnl0mRBkkJUofiHH0OEnxt4bqWdhOvrktU02MB\
+            AaAEALFIAQWtEITj9Wyi0uYEm3BI+QD+rBC5MqTbLLqXXNKxC/LTAASzHDWLU9GNLx7xdGOqermLmd67uhNeTD2\
+            3TAIgzlvk0BfXhAAGCiwwAABiL1ITlQTN/dgSQA==",
+        )
+        .unwrap()
+    }
+
+    fn mock_tip3_transaction() -> Transaction {
+        Transaction::construct_from_base64(
+            "te6ccgECDAEAAl0AA7V/QK7VX0Cd/1ZlF9CjnQU/zjx5R/+gPcjjC/w75jghPeAAAxF68tckc9Q9f/\
+            cDtEaGB89WcFPg7Kg/ufjqtloFybIORllBjolwAAMRevLXJGZv7tMQADR8gi0IBQQBAhUECQT+XD4YfDDMEQMCA\
+            G/Jg9CQTAosIAAAAAAABAACAAAAA/Sl/SUL5ko0FMc/s2rL0MTaDiZjYIA0X+j0FcjV3p3wQFAWDACeRzeMFHQo\
+            AAAAAAAAAADgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA\
+            AAAAAAAAAAACCcrofb9K77QB9Tu1i5S14jFHdFKo+C9REe8ROzOFr3AD7+kENKYFeCMxeVlP1W39Y9BCLCOLd3w\
+            ZnvtGPEpk1yl8CAeAIBgEB3wcAsUgB6BXaq+gTv+rMovoUc6Cn+cePKP/0B7kcYX+HfMcEJ70AILWiEJx+rZRaX\
+            MCTbgkfIB/VghcmVJtll1LrmlYhflpQR3xSoAYKLDAAAGIvXlrkkM392mJAAbFoAfr5c1QhN9ifpz53GHRDbMOV\
+            WXgsNRjGY3zXcRSc/+5BAD0Cu1V9Anf9WZRfQo50FP848eUf/oD3I4wv8O+Y4IT3kE/lw+AGFEtcAABiL15a5Ir\
+            N/dpiwAkBa2eguV8AAAAAAAAAAAAACRhOcqAAgBBa0QhOP1bKLS5gSbcEj5AP6sELkypNssupdc0rEL8tMAoBQ4\
+            AQWtEITj9Wyi0uYEm3BI+QD+rBC5MqTbLLqXXNKxC/LSgLAAA=",
+        )
+        .unwrap()
+    }
+
+    #[test]
+    fn test_get_sender_address_with_message() {
+        let transaction = mock_transaction_with_message();
+        let result = get_sender_address(&transaction);
+        assert!(result.is_ok());
+        assert_eq!(
+            result.unwrap(),
+            Some(
+                MsgAddressInt::from_str(
+                    "0:fd7cb9aa109bec4fd39f3b8c3a21b661caacbc161a8c6331be6bb88a4e7ff720"
+                )
+                .unwrap()
+            )
+        );
+    }
+
+    #[test]
+    fn test_get_sender_address_tip3() {
+        let transaction = mock_tip3_transaction();
+        let result = get_sender_address(&transaction);
+        assert!(result.is_ok());
+        assert_eq!(
+            result.unwrap(),
+            Some(
+                MsgAddressInt::from_str(
+                    "0:fd7cb9aa109bec4fd39f3b8c3a21b661caacbc161a8c6331be6bb88a4e7ff720"
+                )
+                .unwrap()
+            )
+        );
+    }
+
+    #[test]
+    fn test_get_sender_address_native() {
+        let transaction = mock_native_transaction();
+        let result = get_sender_address(&transaction);
+        assert!(result.is_ok());
+        assert_eq!(
+            result.unwrap(),
+            Some(
+                MsgAddressInt::from_str(
+                    "0:82d6884271fab6516973024db8247c807f56085c99526d965d4bae695885f969"
+                )
+                .unwrap()
+            )
+        );
+    }
+
+    #[test]
+    fn test_get_sender_address_without_message() {
+        // Simulate a transaction without an incoming message
+        let transaction = mock_transaction_without_message();
+        let result = get_sender_address(&transaction);
+        assert!(result.is_err()); // Expect an error
+    }
 }
