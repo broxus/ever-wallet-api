@@ -158,18 +158,12 @@ impl Cmd {
         // Start API
         let api_fut = JoinTask::new(api.serve());
 
-        let engine = Engine::new(config, global_config, shutdown_requests_tx)
-            .await
-            .context("Failed to create engine")?;
-
-        engine.start().await.context("Failed to start engine")?;
-
         // Start the node.
         node.run(
             archive_block_provider.chain((blockchain_block_provider, storage_block_provider)),
             LightSubscriber {
                 storage: node.storage().clone(),
-                proofs,
+                context,
             },
         )
         .await?;
@@ -179,103 +173,66 @@ impl Cmd {
     }
 }
 
+pub struct TempTransaction {
+    hash: Vec<u8>,
+    transaction: Transaction,
+    timestamp: u32,
+}
+
 pub struct LightSubscriber {
     storage: Storage,
-    proofs: ProofStorage,
+    context: Arc<EngineContext>,
 }
 
 impl LightSubscriber {
-    async fn get_block_handle(
-        &self,
-        mc_block_id: &BlockId,
-        block: &BlockStuff,
-        archive_data: &ArchiveData,
-    ) -> Result<BlockHandle> {
-        let block_storage = self.storage.block_storage();
+    async fn parse_transaction(&self, cx: &TempTransaction) -> Result<()> {
+        
 
-        let info = block.load_info()?;
-        let res = block_storage
-            .store_block_data(block, archive_data, NewBlockMeta {
-                is_key_block: info.key_block,
-                gen_utime: info.gen_utime,
-                ref_by_mc_seqno: mc_block_id.seqno,
-            })
-            .await?;
-
-        Ok(res.handle)
     }
-
     async fn prepare_block_impl(&self, cx: &BlockSubscriberContext) -> Result<BlockHandle> {
-        tracing::info!(
-            mc_block_id = %cx.mc_block_id.as_short_id(),
-            id = %cx.block.id(),
-            "preparing block",
-        );
+        let block_stuff = cx.block;
+        let block_id = block_stuff.id();
 
-        // Load handle
-        let handle = self
-            .get_block_handle(&cx.mc_block_id, &cx.block, &cx.archive_data)
-            .await?;
+        let extra = block_stuff.load_extra()?;
+        let account_blocks = extra.account_blocks.load()?;
 
-        let (prev_id, prev_id_alt) = cx
-            .block
-            .construct_prev_id()
-            .context("failed to construct prev id")?;
+        let transactions: anyhow::Result<Vec<Vec<_>>> = tokio::task::spawn_blocking(move || {
+            let mut transactions = Vec::new();
 
-        // Update block connections
-        let block_handles = self.storage.block_handle_storage();
-        let connections = self.storage.block_connection_storage();
+            for account_block in account_blocks.iter() {
+                let (addr, _, block) = account_block?;
+                for transaction in block.transactions.iter() {
+                    let (_, _, transaction) = transaction?;
+                    let hash = transaction.inner().repr_hash().0.to_vec();
+                    let transaction = transaction.load()?;
+                    let timestamp = transaction.now;
 
-        let block_id = cx.block.id();
-
-        let prev_handle = block_handles.load_handle(&prev_id);
-
-        match prev_id_alt {
-            None => {
-                if let Some(handle) = prev_handle {
-                    let direction = if block_id.shard != prev_id.shard
-                        && prev_id.shard.split().unwrap().1 == block_id.shard
-                    {
-                        // Special case for the right child after split
-                        BlockConnection::Next2
+                    let partition = if block_id.is_masterchain() {
+                        0
                     } else {
-                        BlockConnection::Next1
+                        // first 3 bits of the account id
+                        1 + (addr[0] >> 5)
                     };
-                    connections.store_connection(&handle, direction, block_id);
-                }
-                connections.store_connection(&handle, BlockConnection::Prev1, &prev_id);
-            }
-            Some(ref prev_id_alt) => {
-                if let Some(handle) = prev_handle {
-                    connections.store_connection(&handle, BlockConnection::Next1, block_id);
-                }
-                if let Some(handle) = block_handles.load_handle(prev_id_alt) {
-                    connections.store_connection(&handle, BlockConnection::Next1, block_id);
-                }
-                connections.store_connection(&handle, BlockConnection::Prev1, &prev_id);
-                connections.store_connection(&handle, BlockConnection::Prev2, prev_id_alt);
-            }
-        }
 
-        // Get block signatures for masterchain block.
-        let signatures = if cx.block.id().is_masterchain() {
-            let proof = self
-                .storage
-                .block_storage()
-                .load_block_proof(&handle)
-                .await?;
-            let Some(signatures) = &proof.as_ref().signatures else {
-                anyhow::bail!("masterchain block proof without signatures: {block_id}");
-            };
-            signatures.signatures.clone()
-        } else {
-            Dict::new()
-        };
+                    transactions.push(TempTransaction {
+                        hash,
+                        transaction,
+                        timestamp,
+                    });
+                }
+            }
+            Ok(transactions)
+        })
+        .await?;
+        let transactions = transactions?;
 
-        // Store proof.
-        self.proofs
-            .store_block(cx.block.clone(), signatures, cx.mc_block_id.seqno)
-            .await?;
+        let mut futures: FuturesOrdered<_> = transactions
+            .into_iter()
+            .flatten()
+            .map(move |tx| self.parse_transaction(tx))
+            .collect();
+
+        while futures.next().await.is_some() {}
 
         Ok(handle)
     }
@@ -290,33 +247,6 @@ impl LightSubscriber {
             mc_block_id = %cx.mc_block_id,
             "handling block"
         );
-
-        // Save block to archive.
-        if self.storage.config().archives_gc.is_some() {
-            tracing::debug!(block_id = %handle.id(), "saving block into archive");
-            self.storage
-                .block_storage()
-                .move_into_archive(&handle, cx.mc_is_key_block)
-                .await?;
-        }
-
-        // Update proofs storage snapshot on masterchain blocks.
-        if cx.block.id().is_masterchain() {
-            self.proofs.update_snapshot();
-        }
-
-        // Update current vset on key blocks.
-        if cx.is_key_block {
-            let custom = cx.block.load_custom()?;
-            let config = custom.config.as_ref().context("key block without config")?;
-
-            let current_vset = config
-                .get_current_validator_set()
-                .context("failed to get current validator set")
-                .map(Arc::new)?;
-
-            self.proofs.set_current_vset(current_vset);
-        }
 
         // Done
         Ok(())

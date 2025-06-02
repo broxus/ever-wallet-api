@@ -1,11 +1,13 @@
-use std::fs;
+use std::str::FromStr;
 use std::sync::Arc;
 
 use anyhow::{Context, Result};
 use nekoton::transport::models::*;
 use nekoton_abi::*;
 use parking_lot::Mutex;
-use tokio::sync::{mpsc, oneshot};
+use tokio::sync::{mpsc, oneshot}; 
+use everscale_types::models::*;
+use tycho_storage::Storage;
 
 use self::monitoring::*;
 use self::ton_subscriber::*;
@@ -34,7 +36,7 @@ impl TonCore {
         token_transaction_producer: TokenTransactionTx,
     ) -> Result<Arc<Self>> {
         let context =
-            TonCoreContext::new(node_config, global_config, sqlx_client, owners_cache).await?;
+            TonCoreContext::new( sqlx_client, owners_cache).await?;
 
         let full_state = FullState::new(context.clone()).await?;
 
@@ -108,72 +110,40 @@ pub struct TonCoreContext {
     pub owners_cache: OwnersCache,
     pub messages_queue: Arc<PendingMessagesQueue>,
     pub ton_subscriber: Arc<TonSubscriber>,
-    pub ton_engine: Arc<ton_indexer::Engine>,
-}
-
-impl Drop for TonCoreContext {
-    fn drop(&mut self) {
-        self.ton_engine.shutdown();
-    }
+    pub storage: Storage,
 }
 
 impl TonCoreContext {
     async fn new(
-        node_config: NodeConfig,
-        global_config: GlobalConfig,
         sqlx_client: SqlxClient,
         owners_cache: OwnersCache,
+        storage: Storage,
     ) -> Result<Arc<Self>> {
-        let recover_indexer = node_config.recover_indexer;
-
-        let node_config = node_config
-            .build_indexer_config()
-            .await
-            .context("Failed to build node config")?;
-
-        if recover_indexer {
-            if let Err(e) = fs::remove_dir_all(&node_config.rocks_db_path) {
-                log::error!("Error on remove rocks db - {}", e.to_string());
-            }
-            if let Err(e) = fs::remove_dir_all(&node_config.file_db_path) {
-                log::error!("Error on remove file db - {}", e.to_string());
-            }
-        }
-
         let messages_queue = PendingMessagesQueue::new(512);
 
         let ton_subscriber = TonSubscriber::new(messages_queue.clone());
-
-        let ton_engine = ton_indexer::Engine::new(
-            node_config,
-            global_config,
-            ton_subscriber.clone() as Arc<dyn ton_indexer::Subscriber>,
-        )
-        .await?;
 
         Ok(Arc::new(Self {
             sqlx_client,
             owners_cache,
             messages_queue,
             ton_subscriber,
-            ton_engine,
+            storage,
         }))
     }
 
     async fn start(&self) -> Result<()> {
-        self.ton_engine.start().await?;
-
         // Load last states if exists
         let block_ids = self.sqlx_client.get_last_key_blocks().await?;
         for block_id in block_ids {
-            let block_id = ton_block::BlockIdExt::from_str(&block_id.block_id)?;
-            if let Ok(state) = self.ton_engine.load_state(&block_id).await {
+            let block_id = BlockId::from_str(&block_id.block_id)?;
+            if let Ok(state) = self.storage.shard_state_storage().load_state(&block_id).await {
                 self.ton_subscriber
-                    .update_shards_accounts_cache(block_id.shard_id, state)?;
+                    .update_shards_accounts_cache(block_id.shard, state)?;
             }
         }
 
-        self.ton_subscriber.start(&self.ton_engine).await?;
+        self.ton_subscriber.start(&self.storage.block_handle_storage().find_last_key_block()).await?;
         Ok(())
     }
 

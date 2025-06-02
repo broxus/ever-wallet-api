@@ -5565,6 +5565,7 @@ dependencies = [
  "ed25519-dalek",
  "env_logger",
  "everscale-network",
+ "everscale-types",
  "futures",
  "futures-util",
  "hex",
