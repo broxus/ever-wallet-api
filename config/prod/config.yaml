@@ -4,8 +4,8 @@ database_url: "postgresql://${DB_USER}:${DB_PASSWORD}@${DB_HOST}/${DB_NAME}"
 db_pool_size: 5
 ton_core:
   adnl_port: 30310
-  db_path: "/var/ton/ton-wallet-api/data"
-  keys_path: "/var/ton/ton-wallet-api/data/adnl-keys.json"
+  db_path: "/var/ton/tycho-wallet-api/data"
+  keys_path: "/var/ton/tycho-wallet-api/data/adnl-keys.json"
   recover_indexer: true
   start_from: 23051378
 api_metrics_addr: "0.0.0.0:9999"
@@ -24,7 +24,7 @@ logger_settings:
     appenders:
       - stdout
   loggers:
-    ton_wallet_api:
+    tycho_wallet_api:
       level: info
       appenders:
         - stdout

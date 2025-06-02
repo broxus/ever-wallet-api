@@ -8,8 +8,8 @@
       "project_id": "{{user `gcp_project_id`}}",
       "source_image_family": "ubuntu-2004-lts",
       "zone": "{{user `gcp_zone`}}",
-      "image_family": "ton-wallet-api",
-      "image_name": "ton-wallet-api-{{isotime \"20060102t030405\"}}",
+      "image_family": "tycho-wallet-api",
+      "image_name": "tycho-wallet-api-{{isotime \"20060102t030405\"}}",
       "preemptible": true,
       "ssh_username": "packer",
       "disk_size": "50",
@@ -20,7 +20,7 @@
     {
       "type": "shell",
       "inline": [
-        "mkdir -p /tmp/build/ton-wallet-api"
+        "mkdir -p /tmp/build/tycho-wallet-api"
       ],
       "inline_shebang": "/bin/bash -e"
     },
@@ -28,12 +28,12 @@
     {
       "type": "file",
       "source": "build.sh",
-      "destination": "/tmp/build/ton-wallet-api/build.sh"
+      "destination": "/tmp/build/tycho-wallet-api/build.sh"
     },
     {
       "type": "file",
       "source": "scripts",
-      "destination": "/tmp/build/ton-wallet-api"
+      "destination": "/tmp/build/tycho-wallet-api"
     },
 
     {
@@ -44,7 +44,7 @@
     {
       "type": "shell",
       "inline": [
-        "sudo /tmp/build/ton-wallet-api/build.sh"
+        "sudo /tmp/build/tycho-wallet-api/build.sh"
       ]
     }
   ]

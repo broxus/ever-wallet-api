@@ -1,0 +1,13 @@
+[Unit]
+Description=tycho-wallet-api
+After=network.target
+StartLimitIntervalSec=0
+
+[Service]
+Type=simple
+Restart=no
+WorkingDirectory=/etc/tycho-wallet-api
+ExecStart=/usr/local/bin/tycho-wallet-api server --config /etc/tycho-wallet-api/config.yaml --global-config /etc/tycho-wallet-api/ton-global.config.json
+
+[Install]
+WantedBy=multi-user.target

@@ -6,8 +6,6 @@ use argon2::password_hash::PasswordHasher;
 use nekoton_utils::TrustMe;
 use serde::{Deserialize, Serialize};
 
-use crate::ton_core::*;
-
 #[derive(Serialize, Deserialize)]
 pub struct AppConfig {
     /// Listen address of service.
@@ -24,10 +22,6 @@ pub struct AppConfig {
     #[serde(default = "default_key")]
     pub key: Vec<u8>,
 
-    /// TON node settings
-    #[serde(default)]
-    pub ton_core: NodeConfig,
-
     /// API prometheus metrics exporter settings.
     /// Completely disable when not specified
     #[serde(default)]
@@ -41,19 +35,7 @@ pub struct AppConfig {
     /// log4rs settings.
     /// See [docs](https://docs.rs/log4rs/1.0.0/log4rs/) for more details
     #[serde(default = "default_logger_settings")]
-    pub logger_settings: serde_yaml::Value,
-}
-
-impl ConfigExt for ton_indexer::GlobalConfig {
-    fn from_file<P>(path: &P) -> Result<Self>
-    where
-        P: AsRef<Path>,
-    {
-        let file = std::fs::File::open(path)?;
-        let reader = std::io::BufReader::new(file);
-        let config = serde_json::from_reader(reader)?;
-        Ok(config)
-    }
+    pub logger_settings: serde_json::Value,
 }
 
 pub trait ConfigExt: Sized {
@@ -97,23 +79,33 @@ fn default_key() -> Vec<u8> {
     }
 }
 
-fn default_logger_settings() -> serde_yaml::Value {
+fn default_logger_settings() -> serde_json::Value {
     const DEFAULT_LOG4RS_SETTINGS: &str = r##"
-    appenders:
-      stdout:
-        kind: console
-        encoder:
-          pattern: "{d(%Y-%m-%d %H:%M:%S %Z)(utc)} - {h({l})} {M} = {m} {n}"
-    root:
-      level: info
-      appenders:
-        - stdout
-    loggers:
-      ton_wallet_api:
-        level: info
-        appenders:
-          - stdout
-        additive: false
+{
+  "appenders": {
+    "stdout": {
+      "kind": "console",
+      "encoder": {
+        "pattern": "{d(%Y-%m-%d %H:%M:%S %Z)(utc)} - {h({l})} {M} = {m} {n}"
+      }
+    }
+  },
+  "root": {
+    "level": "info",
+    "appenders": [
+      "stdout"
+    ]
+  },
+  "loggers": {
+    "tycho_wallet_api": {
+      "level": "info",
+      "appenders": [
+        "stdout"
+      ],
+      "additive": false
+    }
+  }
+}
     "##;
-    serde_yaml::from_str(DEFAULT_LOG4RS_SETTINGS).trust_me()
+    serde_json::from_str(DEFAULT_LOG4RS_SETTINGS).trust_me()
 }

@@ -7,7 +7,7 @@
     nixpkgs.overlays = [ 
         (import ./overlay.nix) 
     ];
-    services.ever-wallet-api = {
+    services.tycho-wallet-api = {
         enable = true;
         port = 7354;
         chain = "Everscale";

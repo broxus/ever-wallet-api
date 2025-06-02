@@ -289,7 +289,7 @@ async fn prepare_test(level_filter: log::LevelFilter) -> SqlxClient {
         .init();
 
     let pg_pool =
-        PgPool::connect("postgresql://everscale:everscale@localhost:5432/ton_wallet_api_rs")
+        PgPool::connect("postgresql://everscale:everscale@localhost:5432/tycho_wallet_api_rs")
             .await
             .unwrap();
 

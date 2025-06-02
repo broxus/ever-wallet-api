@@ -5,7 +5,7 @@ let
   libclang = pkgs.llvmPackages_14.libclang;
   stdenv = pkgs.stdenv;
 in stdenv.mkDerivation rec {
-  name = "ever-wallet-api";
+  name = "tycho-wallet-api";
   env = buildEnv { name = name; paths = buildInputs; };
 
   buildInputs = [

@@ -8,7 +8,7 @@ function print_help() {
   echo '  -h,--help         Print this help message and exit'
   echo '  -t,--type TYPE    Installation type: native'
   echo '  --database-url    Postgres connection url which is needed to create'
-  echo '                    database and make migration before running ton-wallet-api.'
+  echo '                    database and make migration before running tycho-wallet-api.'
   echo '                    example: "postgresql://${DB_USER}:${DB_PASSWORD}@${DB_HOST}/${DB_NAME}"'
   echo '  --id              Service id (UUID)'
   echo '  --name            Service name'
@@ -97,11 +97,11 @@ while [[ $# -gt 0 ]]; do
 done
 
 if [[ "$setup_type" == "native" ]]; then
-  ton_wallet_api_binary="/usr/local/bin/ton-wallet-api api_service"
+  tycho_wallet_api_binary="/usr/local/bin/tycho-wallet-api api_service"
 else
   echo 'ERROR: Unexpected'
   exit 1
 fi
 
 echo "Exporting keys from $path"
-sudo -E bash -c "DATABASE_URL=$database_url $ton_wallet_api_binary --id $service_id --name $service_name --key $service_key --secret $service_secret"
+sudo -E bash -c "DATABASE_URL=$database_url $tycho_wallet_api_binary --id $service_id --name $service_name --key $service_key --secret $service_secret"

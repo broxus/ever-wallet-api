@@ -2,25 +2,25 @@
 with lib;  # use the functions from lib, such as mkIf
 let
   # the values of the options set for the service by the user of the service
-  cfg = config.services.ever-wallet-api;
+  cfg = config.services.tycho-wallet-api;
 in {
   ##### interface. here we define the options that users of our service can specify
   options = {
-    # the options for our service will be located under services.ever-wallet-api
-    services.ever-wallet-api = {
+    # the options for our service will be located under services.tycho-wallet-api
+    services.tycho-wallet-api = {
       enable = mkOption {
         type = types.bool;
         default = true;
         description = ''
-          Whether to enable ever-wallet-api node by default.
+          Whether to enable tycho-wallet-api node by default.
         '';
       };
       package = mkOption {
         type = types.package;
-        default = pkgs.ever-wallet-api;
-        defaultText = "pkgs.ever-wallet-api";
+        default = pkgs.tycho-wallet-api;
+        defaultText = "pkgs.tycho-wallet-api";
         description = ''
-          Which ever-wallet-api package to use with the service.
+          Which tycho-wallet-api package to use with the service.
         '';
       };
 
@@ -48,14 +48,14 @@ in {
 
       datadir = mkOption {
         type = types.str;
-        default = "/var/lib/ever-wallet-api";
+        default = "/var/lib/tycho-wallet-api";
         description = ''
           Path to service state on filesystem.
         '';
       };
       configdir = mkOption {
         type = types.str;
-        default = "ever-wallet-api";
+        default = "tycho-wallet-api";
         description = ''
           Path to service configs and keys on filesystem. The /etc/ prefix is appended automatically.
         '';
@@ -77,14 +77,14 @@ in {
       };
       dbUser = mkOption {
         type = types.str;
-        default = "ever-wallet-api";
+        default = "tycho-wallet-api";
         description = ''
           Which username to use in PostgreSQL.
         '';
       };
       dbDatabase = mkOption {
         type = types.str;
-        default = "ever-wallet-api";
+        default = "tycho-wallet-api";
         description = ''
           Which database name to use in PostgreSQL.
         '';
@@ -142,7 +142,7 @@ in {
             ton_core:
                 # UDP port, used for ADNL node. Default: 30303
                 adnl_port: ${builtins.toString cfg.adnlPort}
-                # Root directory for ton-wallet-api DB. Default: "./db"
+                # Root directory for tycho-wallet-api DB. Default: "./db"
                 db_path: "${cfg.datadir}/db"
                 # Path to ADNL keys.
                 # NOTE: Will be generated if it was not there.
@@ -173,7 +173,7 @@ in {
                 appenders:
                   - stdout
               loggers:
-                ton_wallet_api:
+                tycho_wallet_api:
                   level: debug
                   appenders:
                     - stdout
@@ -245,15 +245,15 @@ in {
   ##### implementation
   config = mkIf cfg.enable { # only apply the following settings if enabled
     # User to run the node
-    users.users.ever-wallet-api = {
-      name = "ever-wallet-api";
-      group = "ever-wallet-api";
+    users.users.tycho-wallet-api = {
+      name = "tycho-wallet-api";
+      group = "tycho-wallet-api";
       extraGroups = [ ];
-      description = "ever-wallet-api daemon user";
+      description = "tycho-wallet-api daemon user";
       home = cfg.datadir;
       isSystemUser = true;
     };
-    users.groups.ever-wallet-api = {};
+    users.groups.tycho-wallet-api = {};
     environment.etc."${cfg.configdir}/config.yaml" = {
       text = cfg.config;
     };
@@ -261,7 +261,7 @@ in {
       text = builtins.readFile ./ton-global.config.json;
     };
     # Create systemd service
-    systemd.services.ever-wallet-api = {
+    systemd.services.tycho-wallet-api = {
       enable = true;
       description = "Service that indexes transactions for Ever or Venom";
       after = ["network.target" cfg.dbPasswordFileService cfg.everSecretFileService cfg.everSaltFileService];
@@ -272,14 +272,14 @@ in {
         export SECRET=$(cat ${cfg.everSecretFile} | xargs echo -n)
         export SALT=$(cat ${cfg.everSaltFile} | xargs echo -n)
 
-        ${cfg.package}/bin/ton-wallet-api server \
+        ${cfg.package}/bin/tycho-wallet-api server \
           --config /etc/${cfg.configdir}/config.yaml \
           --global-config /etc/${cfg.configdir}/ton-global.config.json
       '';
       serviceConfig = {
           Restart = "always";
           RestartSec = 30;
-          User = "ever-wallet-api";
+          User = "tycho-wallet-api";
           WorkingDirectory = "${cfg.datadir}";
         };
       wantedBy = ["multi-user.target"];
@@ -295,18 +295,18 @@ in {
             }
         ];
     };
-    # Init folder for ever-wallet-api data
+    # Init folder for tycho-wallet-api data
     system.activationScripts = {
-      intever-wallet-api = {
+      inttycho-wallet-api = {
         text = ''
           if [ ! -d "${cfg.datadir}" ]; then
             mkdir -p ${cfg.datadir}
-            chown ever-wallet-api ${cfg.datadir}
+            chown tycho-wallet-api ${cfg.datadir}
           fi
           if [ ! -d "${cfg.configdir}" ]; then
             mkdir -p ${cfg.configdir}
           fi
-          chown ton-wallet-api ${cfg.configdir}
+          chown tycho-wallet-api ${cfg.configdir}
 
           DB_PASSWORD=$(cat ${cfg.dbPasswordFile} | xargs echo -n)
           DATABASE_URL="postgresql://${cfg.dbUser}:''${DB_PASSWORD}@${cfg.dbHost}/${cfg.dbDatabase}"

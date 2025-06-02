@@ -1,5 +1,4 @@
 use std::fs;
-use std::str::FromStr;
 use std::sync::Arc;
 
 use anyhow::{Context, Result};
@@ -7,9 +6,6 @@ use nekoton::transport::models::*;
 use nekoton_abi::*;
 use parking_lot::Mutex;
 use tokio::sync::{mpsc, oneshot};
-use ton_block::{GetRepresentationHash, MsgAddressInt, Serializable};
-use ton_indexer::GlobalConfig;
-use ton_types::UInt256;
 
 use self::monitoring::*;
 use self::ton_subscriber::*;
@@ -32,8 +28,6 @@ pub struct TonCore {
 
 impl TonCore {
     pub async fn new(
-        node_config: NodeConfig,
-        global_config: ton_indexer::GlobalConfig,
         sqlx_client: SqlxClient,
         owners_cache: OwnersCache,
         ton_transaction_producer: TonTransactionTx,

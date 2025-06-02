@@ -20,7 +20,7 @@ tracked, and there is a whitelist of root token addresses to be tracked in the s
 in the database, where you can specify the url of your backend to which callbacks will come for all transactions.
 
 It takes about 20 minutes to synchronize the node.
-Both the ton-wallet-api and callback requests use HMAC signatures in the headers.
+Both the tycho-wallet-api and callback requests use HMAC signatures in the headers.
 
 ### Runtime requirements
 - CPU: 4 cores, 2 GHz
@@ -32,25 +32,25 @@ Both the ton-wallet-api and callback requests use HMAC signatures in the headers
 ### How to run natively
 
 To simplify the build and create some semblance of standardization in this repository
-there is a set of scripts for configuring the ton-wallet-api.
+there is a set of scripts for configuring the tycho-wallet-api.
 
 NOTE: scripts are prepared and tested on **Ubuntu 20.04**. You may need to modify them a little for other distros.
 
-1. ##### Setup ton-wallet-api service
+1. ##### Setup tycho-wallet-api service
    ```bash
    ./scripts/setup.sh -t native --database-url ${DATABASE_URL}
    ```
 
-   DATABASE_URL - Postgres connection url (example: postgresql://postgres:postgres@127.0.0.1/ton_wallet_api)
+   DATABASE_URL - Postgres connection url (example: postgresql://postgres:postgres@127.0.0.1/tycho_wallet_api)
 
-   > At this stage, a systemd service `ton-wallet-api` is created. Configs and keys will be in `/etc/ton-wallet-api`
-   > and TON node DB will be in `/var/db/ton-wallet-api`.
+   > At this stage, a systemd service `tycho-wallet-api` is created. Configs and keys will be in `/etc/tycho-wallet-api`
+   > and TON node DB will be in `/var/db/tycho-wallet-api`.
 
    **Do not start this service yet!**
 
 2. ##### Prepare config
    Either add the environment variables to the `[Service]` section of unit file.
-   It is located at `/etc/systemd/system/ton-wallet-api.service`.
+   It is located at `/etc/systemd/system/tycho-wallet-api.service`.
 
    ```unit file (systemd)
    [Service]
@@ -58,7 +58,7 @@ NOTE: scripts are prepared and tested on **Ubuntu 20.04**. You may need to modif
    Environment=DB_HOST=db_host
    Environment=DB_USER=db_user
    Environment=DB_PASSWORD=db_password
-   Environment=DB_NAME=ton_wallet_api
+   Environment=DB_NAME=tycho_wallet_api
    Environment=SECRET=secret
    Environment=SALT=salt
    ...
@@ -71,7 +71,7 @@ NOTE: scripts are prepared and tested on **Ubuntu 20.04**. You may need to modif
    ###### How to gen SALT
    ```bash
    cargo build --release
-   ./target/release/ton-wallet-api salt
+   ./target/release/tycho-wallet-api salt
    ```
 
 3. ##### Create api service
@@ -79,20 +79,20 @@ NOTE: scripts are prepared and tested on **Ubuntu 20.04**. You may need to modif
      ./scripts/api_service.sh -t native --database-url ${DATABASE_URL} --id ${SERVICE_ID} --name ${SERVICE_NAME} --key ${SERVICE_KEY} --secret ${SERVICE_SECRET}
    ```
 
-   DATABASE_URL - Postgres connection url (example: postgresql://postgres:postgres@127.0.0.1/ton_wallet_api) \
+   DATABASE_URL - Postgres connection url (example: postgresql://postgres:postgres@127.0.0.1/tycho_wallet_api) \
    SERVICE_ID - Service id (UUID4) (example: 1fa337bd-2947-4809-9a7a-f04b4f9b738a) \
    SERVICE_NAME - Service name (example: test) \
    SERVICE_KEY - Public key (example: apiKey) \
    SERVICE_SECRET - Secret key (example: apiSecret)
 
-4. ##### Enable and start ton-wallet-api service
+4. ##### Enable and start tycho-wallet-api service
    ```bash
-   systemctl enable ton-wallet-api
-   systemctl start ton-wallet-api
+   systemctl enable tycho-wallet-api
+   systemctl start tycho-wallet-api
 
    # Optionally check if it is running normally. It will take some time to start.
-   # ton-wallet-api is fully operational when it prints `listening on ${your_listen_address}`
-   journalctl -fu ton-wallet-api
+   # tycho-wallet-api is fully operational when it prints `listening on ${your_listen_address}`
+   journalctl -fu tycho-wallet-api
    ```
 
    > Wallet API has a two built-in Prometheus metrics exporters: API and Node.
@@ -121,7 +121,7 @@ NOTE: scripts are prepared and tested on **Ubuntu 20.04**. You may need to modif
      ./scripts/update.sh -t native --database-url ${DATABASE_URL}
    ```
 
-   DATABASE_URL - Postgres connection url (example: postgresql://postgres:postgres@127.0.0.1/ton_wallet_api)
+   DATABASE_URL - Postgres connection url (example: postgresql://postgres:postgres@127.0.0.1/tycho_wallet_api)
 
 
 ### Let's start using Wallet API
@@ -151,7 +151,7 @@ NOTE: scripts are prepared and tested on **Ubuntu 20.04**. You may need to modif
      ./scripts/root_token.sh -t native --database-url ${DATABASE_URL} --name ${TOKEN_NAME} --address ${TOKEN_ADDRESS} --version ${TOKEN_CONTRACT_VERSION}
    ```
    
-   DATABASE_URL - Postgres connection url (example: postgresql://postgres:postgres@127.0.0.1/ton_wallet_api) \
+   DATABASE_URL - Postgres connection url (example: postgresql://postgres:postgres@127.0.0.1/tycho_wallet_api) \
    TOKEN_NAME - Token name (example: WTON) \
    TOKEN_ADDRESS - Token address (example: 0:0ee39330eddb680ce731cd6a443c71d9069db06d149a9bec9569d1eb8d04eb37)
    TOKEN_CONTRACT_VERSION - "Tip3" or "OldTip3v4"
@@ -290,12 +290,12 @@ db_pool_size: 5
 ton_core:
   # UDP port, used for ADNL node. Default: 30303
   adnl_port: 30303
-  # Root directory for ton-wallet-api DB. Default: "./db"
-  db_path: "/var/ton-wallet-api/db"
+  # Root directory for tycho-wallet-api DB. Default: "./db"
+  db_path: "/var/tycho-wallet-api/db"
   # Path to ADNL keys.
   # NOTE: Will be generated if it was not there.
   # Default: "./adnl-keys.json"
-  keys_path: "/var/ton-wallet-api/adnl-keys.json"
+  keys_path: "/var/tycho-wallet-api/adnl-keys.json"
 metrics_settings:
   # Listen address of metrics. Used by the client to gather prometheus metrics.
   # Default: "127.0.0.1:10000"
@@ -318,7 +318,7 @@ logger_settings:
     appenders:
       - stdout
   loggers:
-    ton_wallet_api:
+    tycho_wallet_api:
       level: info
       appenders:
         - stdout
@@ -379,7 +379,7 @@ Once the images are built, you can run the container using Podman or Docker.
    podman run --network=host ever-wallet
    ```
 
-   This will run the `ton-wallet-api` server using the default configuration files already existing in the container.
+   This will run the `tycho-wallet-api` server using the default configuration files already existing in the container.
    Errors shall be expected at this step.
 
    ```bash
@@ -394,7 +394,7 @@ Once the images are built, you can run the container using Podman or Docker.
 
    ```bash
    podman run --network=host \
-     -v /tmp/everscale-data:/var/db/ton-wallet-api
+     -v /tmp/everscale-data:/var/db/tycho-wallet-api
      -e DB_USER=everscale \
      -e DB_PASSWORD=everscale \
      -e DB_HOST=localhost \
@@ -412,4 +412,4 @@ Once the images are built, you can run the container using Podman or Docker.
 When the node is out of sync, which especially applies for Venom, removing database and re-syncing node may help to
 restore service operations.
 
-`rm -rf /var/db/ton-wallet-api`
+`rm -rf /var/db/tycho-wallet-api`

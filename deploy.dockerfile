@@ -9,18 +9,18 @@ RUN apt-get update && \
 
 WORKDIR /app
 
-RUN mkdir -p /etc/ton-wallet-api && mkdir -p /var/db/ton-wallet-api
+RUN mkdir -p /etc/tycho-wallet-api && mkdir -p /var/db/tycho-wallet-api
 
-COPY --from=builder /app/target/release/ton-wallet-api /usr/local/bin/ton-wallet-api
-COPY --from=builder /app/scripts/contrib/config.yaml /etc/ton-wallet-api/config.yaml
+COPY --from=builder /app/target/release/tycho-wallet-api /usr/local/bin/tycho-wallet-api
+COPY --from=builder /app/scripts/contrib/config.json /etc/tycho-wallet-api/config.json
 
 # Download external configuration file
-RUN curl -so /etc/ton-wallet-api/ton-global.config.json \
-    https://raw.githubusercontent.com/tonlabs/main.ton.dev/master/configs/ton-global.config.json
+RUN curl -so /etc/tycho-wallet-api/global-config.json \
+     https://testnet.tychoprotocol.com/global-config.json
 
 # Restart systemd-timesyncd service
 RUN systemctl enable systemd-timesyncd.service
-WORKDIR /etc/ton-wallet-api
+WORKDIR /etc/tycho-wallet-api
 
 # Default command for the container (optional)
-CMD ["/usr/local/bin/ton-wallet-api", "server", "--config", "/etc/ton-wallet-api/config.yaml", "--global-config", "/etc/ton-wallet-api/ton-global.config.json"]
+CMD ["/usr/local/bin/tycho-wallet-api", "server", "--config", "/etc/tycho-wallet-api/config.json", "--global-config", "/etc/tycho-wallet-api/global-config.json", "--keys", "/etc/tycho-wallet-api/keys.json"]

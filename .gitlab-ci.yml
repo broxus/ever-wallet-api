@@ -7,10 +7,10 @@ cloudbuild:rust-artifact:
     - master
   variables:
     CONFIG_BUILDER: gcr.io/dexpa-175115/rust/rust-builder:v1.64.0
-    BINARY_NAME: ton-wallet-api
-    CONFIG_APPLICATION: ton-wallet-api
+    BINARY_NAME: tycho-wallet-api
+    CONFIG_APPLICATION: tycho-wallet-api
     CONFIG_GROUP: ton
-    IMAGE_NAME: gcr.io/broxus/ton/ton-wallet-api/ton-wallet-api
+    IMAGE_NAME: gcr.io/broxus/ton/tycho-wallet-api/tycho-wallet-api
     BUILD: test
   before_script:
     - export COMMIT_TIME=$(git show -s --format=%ct $CI_COMMIT_SHA)
@@ -25,10 +25,10 @@ cloudbuild:rust-artifact-prod:
     - prod
   variables:
     CONFIG_BUILDER: gcr.io/dexpa-175115/rust/rust-builder:v1.64.0
-    BINARY_NAME: ton-wallet-api
-    CONFIG_APPLICATION: ton-wallet-api
+    BINARY_NAME: tycho-wallet-api
+    CONFIG_APPLICATION: tycho-wallet-api
     CONFIG_GROUP: ton
-    IMAGE_NAME: gcr.io/broxus/ton/ton-wallet-api/ton-wallet-api
+    IMAGE_NAME: gcr.io/broxus/ton/tycho-wallet-api/tycho-wallet-api
     BUILD: prod
   before_script:
     - export COMMIT_TIME=$(git show -s --format=%ct $CI_COMMIT_SHA)

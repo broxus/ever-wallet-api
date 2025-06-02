@@ -6,7 +6,6 @@ use sqlx::postgres::PgPoolOptions;
 use tokio::sync::mpsc;
 use tokio::sync::Mutex;
 
-use crate::api::*;
 use crate::client::*;
 use crate::models::*;
 use crate::prelude::*;
@@ -16,60 +15,7 @@ use crate::sqlx_client::*;
 use crate::ton_core::*;
 use crate::utils::*;
 
-pub struct Engine {
-    context: Arc<EngineContext>,
-    _node_metrics_exporter: Arc<pomfrit::MetricsExporter>,
-}
-
-impl Engine {
-    pub async fn new(
-        config: AppConfig,
-        global_config: ton_indexer::GlobalConfig,
-        shutdown_requests_tx: ShutdownRequestsTx,
-    ) -> Result<Arc<Self>> {
-        let (metrics_exporter, metrics_writer) =
-            pomfrit::create_exporter(config.node_metrics_settings.clone()).await?;
-
-        let context = EngineContext::new(config, global_config, shutdown_requests_tx).await?;
-
-        let engine = Arc::new(Self {
-            context,
-            _node_metrics_exporter: metrics_exporter,
-        });
-
-        metrics_writer.spawn({
-            let engine = Arc::downgrade(&engine);
-            move |buffer| {
-                let engine = match engine.upgrade() {
-                    Some(engine) => engine,
-                    None => return,
-                };
-
-                buffer.write(LabeledTonSubscriberMetrics(&engine.context));
-            }
-        });
-
-        Ok(engine)
-    }
-
-    pub async fn start(self: &Arc<Self>) -> Result<()> {
-        self.context.start().await?;
-
-        tokio::spawn(http_service(
-            self.context.config.server_addr,
-            self.context.config.api_metrics_addr,
-            self.context.auth_service.clone(),
-            self.context.ton_service.clone(),
-            self.context.memory_storage.clone(),
-        ));
-
-        // Done
-        Ok(())
-    }
-}
-
 pub struct EngineContext {
-    pub shutdown_requests_tx: ShutdownRequestsTx,
     pub auth_service: Arc<AuthService>,
     pub ton_core: Arc<TonCore>,
     pub ton_client: Arc<TonClient>,
@@ -80,10 +26,8 @@ pub struct EngineContext {
 }
 
 impl EngineContext {
-    async fn new(
+    pub async fn new(
         config: AppConfig,
-        global_config: ton_indexer::GlobalConfig,
-        shutdown_requests_tx: ShutdownRequestsTx,
     ) -> Result<Arc<Self>> {
         let pool = PgPoolOptions::new()
             .max_connections(config.db_pool_size)
@@ -101,10 +45,7 @@ impl EngineContext {
         let (ton_transaction_tx, ton_transaction_rx) = mpsc::unbounded_channel();
         let (token_transaction_tx, token_transaction_rx) = mpsc::unbounded_channel();
 
-        let node_config = config.ton_core.clone();
         let ton_core = TonCore::new(
-            node_config,
-            global_config,
             sqlx_client.clone(),
             owners_cache,
             ton_transaction_tx,
@@ -126,7 +67,6 @@ impl EngineContext {
         let memory_storage = Arc::new(StorageHandler::default());
 
         let engine_context = Arc::new(Self {
-            shutdown_requests_tx,
             auth_service,
             ton_core,
             ton_client,
@@ -142,7 +82,7 @@ impl EngineContext {
         Ok(engine_context)
     }
 
-    async fn start(&self) -> Result<()> {
+    pub async fn start(&self) -> Result<()> {
         self.ton_client.start().await?;
         self.ton_service.start().await?;
         self.ton_core.start().await?;
