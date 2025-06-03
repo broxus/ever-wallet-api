@@ -2,11 +2,13 @@ use std::str::FromStr;
 use std::sync::Arc;
 
 use anyhow::{Context, Result};
+use everscale_types::cell::HashBytes;
 use nekoton::transport::models::*;
 use nekoton_abi::*;
 use parking_lot::Mutex;
 use tokio::sync::{mpsc, oneshot}; 
 use everscale_types::models::*;
+use tycho_storage::KeyBlocksDirection;
 use tycho_storage::Storage;
 
 use self::monitoring::*;
@@ -64,20 +66,20 @@ impl TonCore {
 
     pub fn add_ton_account_subscription<I>(&self, accounts: I)
     where
-        I: IntoIterator<Item = UInt256>,
+        I: IntoIterator<Item = HashBytes>,
     {
         self.ton_transaction
             .lock()
             .add_account_subscription(accounts);
     }
 
-    pub fn get_contract_state(&self, account: &UInt256) -> Result<ExistingContract> {
+    pub fn get_contract_state(&self, account: &HashBytes) -> Result<ExistingContract> {
         self.context.get_contract_state(account)
     }
 
     pub async fn send_ton_message(
         &self,
-        account: &UInt256,
+        account: &HashBytes,
         message: &ton_block::Message,
         expire_at: u32,
     ) -> Result<MessageStatus> {
@@ -88,8 +90,8 @@ impl TonCore {
 
     pub fn add_pending_message(
         &self,
-        account: UInt256,
-        message_hash: UInt256,
+        account: HashBytes,
+        message_hash: HashBytes,
         expire_at: u32,
     ) -> Result<oneshot::Receiver<MessageStatus>> {
         self.context
@@ -143,29 +145,50 @@ impl TonCoreContext {
             }
         }
 
-        self.ton_subscriber.start(&self.storage.block_handle_storage().find_last_key_block()).await?;
+         let block_handle_storage = self.storage.block_handle_storage();
+
+        // Find the key block with max seqno which was preduced not later than `utime`
+        let handle = 'last_key_block: {
+            let iter = block_handle_storage.key_blocks_iterator(KeyBlocksDirection::Backward);
+            for key_block_id in iter {
+                let handle = block_handle_storage
+                    .load_handle(&key_block_id)
+                    .with_context(|| format!("key block not found: {key_block_id}"))?;
+                    break 'last_key_block Some(handle);
+            }
+            None
+        };
+
+        // Load block 
+        let block_stuff = match handle  {
+            Some(handle) => Some(self.storage.block_storage().load_block_data(&handle).await?.block()),
+            None => None
+        };
+
+        self.ton_subscriber.start(block_stuff).await?;
+
         Ok(())
     }
 
-    fn get_contract_state(&self, account: &UInt256) -> Result<ExistingContract> {
+    fn get_contract_state(&self, account: &HashBytes) -> Result<ExistingContract> {
         match self
             .ton_subscriber
             .get_contract_state(account)
             .and_then(make_existing_contract)?
         {
             Some(contract) => Ok(contract),
-            None => Err(TonCoreError::AccountNotExist(account.to_hex_string()).into()),
+            None => Err(TonCoreError::AccountNotExist(account.to_string()).into()),
         }
     }
 
     async fn send_ton_message(
         &self,
-        account: &UInt256,
-        message: &ton_block::Message,
+        account: &HashBytes,
+        message: &Message<'_>,
         expire_at: u32,
     ) -> Result<MessageStatus> {
-        let to = match message.header() {
-            ton_block::CommonMsgInfo::ExtInMsgInfo(header) => header.dst.workchain_id(),
+        let to = match message.info {
+            MsgInfo::ExtIn(header) => header.dst.workchain(),
             _ => return Err(TonCoreError::ExternalTonMessageExpected.into()),
         };
 
@@ -185,8 +208,8 @@ impl TonCoreContext {
 
     fn add_pending_message(
         &self,
-        account: UInt256,
-        message_hash: UInt256,
+        account: HashBytes,
+        message_hash: HashBytes,
         expire_at: u32,
     ) -> Result<oneshot::Receiver<MessageStatus>> {
         self.messages_queue

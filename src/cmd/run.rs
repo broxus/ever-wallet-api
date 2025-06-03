@@ -13,7 +13,7 @@ use tycho_block_util::archive::ArchiveData;
 use tycho_block_util::block::BlockStuff;
 use tycho_core::block_strider::{
     ArchiveBlockProvider, BlockProviderExt, BlockSubscriber, BlockSubscriberContext,
-    BlockchainBlockProvider, ColdBootType, StorageBlockProvider,
+    BlockchainBlockProvider, ColdBootType, StorageBlockProvider, StateSubscriber, StateSubscriberContext
 };
 use tycho_storage::{BlockConnection, BlockHandle, NewBlockMeta, Storage};
 use tycho_util::cli::signal;
@@ -269,6 +269,14 @@ impl BlockSubscriber for LightSubscriber {
         handle: Self::Prepared,
     ) -> Self::HandleBlockFut<'a> {
         Box::pin(self.handle_block_impl(cx, handle))
+    }
+}
+
+impl StateSubscriber for LightSubscriber {
+    type HandleStateFut<'a> = futures_util::future::Ready<Result<()>>;
+
+    fn handle_state<'a>(&'a self, cx: &'a StateSubscriberContext) -> Self::HandleStateFut<'a> {
+        futures_util::future::ready(self.inner.update_accounts_cache(&cx.block, &cx.state))
     }
 }
 
