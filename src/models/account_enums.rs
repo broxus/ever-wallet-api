@@ -1,10 +1,9 @@
 use std::str::FromStr;
 
+use everscale_types::models::{AccountState, StdAddr};
 use nekoton::core::models::TokenWalletVersion;
-use nekoton_utils::pack_std_smc_addr;
 use serde::{Deserialize, Serialize};
 use strum_macros::EnumString;
-use ton_block::{AccountState, MsgAddressInt};
 
 use crate::models::{Address, AddressDb};
 
@@ -33,9 +32,9 @@ pub enum AccountStatus {
 impl From<AccountState> for AccountStatus {
     fn from(state: AccountState) -> Self {
         match state {
-            AccountState::AccountUninit => AccountStatus::UnInit,
-            AccountState::AccountActive { .. } => AccountStatus::Active,
-            AccountState::AccountFrozen { .. } => AccountStatus::Frozen,
+            AccountState::Uninit => AccountStatus::UnInit,
+            AccountState::Active (_) => AccountStatus::Active,
+            AccountState::Frozen (_) => AccountStatus::Frozen,
         }
     }
 }
@@ -79,8 +78,8 @@ pub struct Account {
 
 impl From<AddressDb> for Account {
     fn from(a: AddressDb) -> Self {
-        let account = MsgAddressInt::from_str(&format!("{}:{}", a.workchain_id, a.hex)).unwrap();
-        let base64url = Address(pack_std_smc_addr(true, &account, true).unwrap());
+        let account = StdAddr::from_str(&format!("{}:{}", a.workchain_id, a.hex)).unwrap();
+        let base64url = Address(account.display_base64_url(true).to_string());
         Self {
             workchain_id: a.workchain_id,
             hex: Address(a.hex),

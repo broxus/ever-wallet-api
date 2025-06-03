@@ -9,9 +9,9 @@ use crate::api::*;
 use crate::models::*;
 
 pub async fn post_events(
-    Json(req): Json<TonTransactionEventsRequest>,
     Extension(ctx): Extension<Arc<ApiContext>>,
     IdExtractor(service_id): IdExtractor,
+    Json(req): Json<TonTransactionEventsRequest>,
 ) -> Result<Json<TonEventsResponse>> {
     let transactions_events = ctx
         .ton_service
@@ -32,9 +32,9 @@ pub async fn post_events(
 }
 
 pub async fn post_events_mark(
-    Json(req): Json<TonMarkEventsRequest>,
     Extension(ctx): Extension<Arc<ApiContext>>,
     IdExtractor(service_id): IdExtractor,
+    Json(req): Json<TonMarkEventsRequest>,
 ) -> Result<Json<MarkEventsResponse>> {
     let transaction = ctx.ton_service.mark_event(&service_id, &req.id).await;
 
@@ -42,9 +42,9 @@ pub async fn post_events_mark(
 }
 
 pub async fn post_events_mark_all(
-    Json(req): Json<MarkAllTransactionEventRequest>,
     Extension(ctx): Extension<Arc<ApiContext>>,
     IdExtractor(service_id): IdExtractor,
+    Json(req): Json<MarkAllTransactionEventRequest>,
 ) -> Result<Json<MarkEventsResponse>> {
     let transactions = ctx
         .ton_service
@@ -55,9 +55,9 @@ pub async fn post_events_mark_all(
 }
 
 pub async fn post_tokens_events(
-    Json(req): Json<TonTokenTransactionEventsRequest>,
     Extension(ctx): Extension<Arc<ApiContext>>,
     IdExtractor(service_id): IdExtractor,
+    Json(req): Json<TonTokenTransactionEventsRequest>,
 ) -> Result<Json<TonTokenEventsResponse>> {
     let transactions_events = ctx
         .ton_service
@@ -80,9 +80,9 @@ pub async fn post_tokens_events(
 }
 
 pub async fn post_tokens_events_mark(
-    Json(req): Json<TonTokenMarkEventsRequest>,
     Extension(ctx): Extension<Arc<ApiContext>>,
     IdExtractor(service_id): IdExtractor,
+    Json(req): Json<TonTokenMarkEventsRequest>,
 ) -> Result<Json<MarkTokenEventsResponse>> {
     let transaction = ctx.ton_service.mark_token_event(&service_id, &req.id).await;
 

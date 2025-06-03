@@ -1,9 +1,12 @@
+use std::str::FromStr;
 use std::sync::atomic::Ordering;
 use std::sync::Arc;
 
 use bigdecimal::{BigDecimal, ToPrimitive};
 use ed25519_dalek::{Keypair, PublicKey, SecretKey, Signer};
-use http::StatusCode;
+use everscale_types::cell::HashBytes;
+use everscale_types::models::StdAddr;
+use axum::http::StatusCode;
 use nekoton::core::models::Expiration;
 use nekoton::core::ton_wallet::multisig::DeployParams;
 use nekoton::core::ton_wallet::{MultisigType, TransferAction};
@@ -14,8 +17,6 @@ use nekoton_utils::{SimpleClock, TrustMe};
 use num_bigint::BigUint;
 use num_traits::FromPrimitive;
 use tokio::sync::oneshot;
-use ton_block::{GetRepresentationHash, MsgAddressInt};
-use ton_types::{deserialize_tree_of_cells, SliceData, UInt256};
 use uuid::Uuid;
 
 use crate::api::*;
@@ -49,16 +50,16 @@ impl TonClient {
             .await?
             .into_iter()
             .map(|item| {
-                nekoton_utils::repack_address(&format!("{}:{}", item.workchain_id, item.hex))
+                StdAddr::from_str(&format!("{}:{}", item.workchain_id, item.hex))
                     .trust_me()
             })
-            .collect::<Vec<MsgAddressInt>>();
+            .collect::<Vec<StdAddr>>();
 
         // Subscribe to ton accounts
         let owner_accounts = owner_addresses
             .iter()
-            .map(|item| UInt256::from_be_bytes(&item.address().get_bytestring(0)))
-            .collect::<Vec<UInt256>>();
+            .map(|item| item.address)
+            .collect::<Vec<HashBytes>>();
 
         self.ton_core.add_ton_account_subscription(owner_accounts);
 
@@ -168,7 +169,7 @@ impl TonClient {
 
     pub async fn get_address_info(
         &self,
-        owner: &MsgAddressInt,
+        owner: &StdAddr,
     ) -> Result<NetworkAddressData, Error> {
         let account = UInt256::from_be_bytes(&owner.address().get_bytestring(0));
         let contract = match self.ton_core.get_contract_state(&account) {
@@ -522,8 +523,8 @@ impl TonClient {
 
     pub async fn get_token_address_info(
         &self,
-        owner: &MsgAddressInt,
-        root_address: &MsgAddressInt,
+        owner: &StdAddr,
+        root_address: &StdAddr,
     ) -> Result<NetworkTokenAddressData, Error> {
         let root_account = UInt256::from_be_bytes(&root_address.address().get_bytestring(0));
         let root_contract = self.ton_core.get_contract_state(&root_account)?;
@@ -1050,7 +1051,7 @@ impl TonClientError {
 fn build_token_transaction(
     ton_core: &Arc<TonCore>,
     id: Uuid,
-    owner: MsgAddressInt,
+    owner: StdAddr,
     public_key: &[u8],
     private_key: &[u8],
     account_type: &AccountType,

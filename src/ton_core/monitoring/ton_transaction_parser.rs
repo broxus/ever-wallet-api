@@ -20,7 +20,7 @@ pub async fn parse_ton_transaction(
             .map_err(|_| TransactionError::InvalidStructure)?,
         None => return Err(TransactionError::Unsupported.into()),
     };
-    let address = MsgAddressInt::with_standart(
+    let address = StdAddr::with_standart(
         None,
         ton_block::BASE_WORKCHAIN_ID as i8,
         AccountId::from(account),
@@ -115,7 +115,7 @@ pub async fn parse_ton_transaction(
     Ok(parsed)
 }
 
-fn get_sender_address(transaction: &ton_block::Transaction) -> Result<Option<MsgAddressInt>> {
+fn get_sender_address(transaction: &ton_block::Transaction) -> Result<Option<StdAddr>> {
     let in_msg = transaction
         .in_msg
         .as_ref()
@@ -260,7 +260,7 @@ struct OutputsRecipient {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use ton_block::{Deserializable, MsgAddressInt, Transaction};
+    use ton_block::{Deserializable, StdAddr, Transaction};
 
     fn mock_transaction_with_message() -> Transaction {
         Transaction::construct_from_base64(
@@ -320,7 +320,7 @@ mod tests {
         assert_eq!(
             result.unwrap(),
             Some(
-                MsgAddressInt::from_str(
+                StdAddr::from_str(
                     "0:fd7cb9aa109bec4fd39f3b8c3a21b661caacbc161a8c6331be6bb88a4e7ff720"
                 )
                 .unwrap()
@@ -336,7 +336,7 @@ mod tests {
         assert_eq!(
             result.unwrap(),
             Some(
-                MsgAddressInt::from_str(
+                StdAddr::from_str(
                     "0:fd7cb9aa109bec4fd39f3b8c3a21b661caacbc161a8c6331be6bb88a4e7ff720"
                 )
                 .unwrap()
@@ -352,7 +352,7 @@ mod tests {
         assert_eq!(
             result.unwrap(),
             Some(
-                MsgAddressInt::from_str(
+                StdAddr::from_str(
                     "0:82d6884271fab6516973024db8247c807f56085c99526d965d4bae695885f969"
                 )
                 .unwrap()

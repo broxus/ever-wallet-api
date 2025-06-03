@@ -1,5 +1,5 @@
 use axum::response::IntoResponse;
-use http::StatusCode;
+use axum::http::StatusCode;
 
 pub use self::address::*;
 pub use self::authorization::*;

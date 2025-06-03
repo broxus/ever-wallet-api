@@ -10,9 +10,9 @@ use crate::api::responses::*;
 use crate::api::*;
 
 pub async fn post_transactions(
-    Json(req): Json<TonTransactionsRequest>,
     Extension(ctx): Extension<Arc<ApiContext>>,
     IdExtractor(service_id): IdExtractor,
+    Json(req): Json<TonTransactionsRequest>,
 ) -> Result<Json<TonTransactionsResponse>> {
     let transactions = ctx
         .ton_service
@@ -33,9 +33,9 @@ pub async fn post_transactions(
 }
 
 pub async fn post_transactions_create(
-    Json(req): Json<TonTransactionSendRequest>,
     Extension(ctx): Extension<Arc<ApiContext>>,
     IdExtractor(service_id): IdExtractor,
+    Json(req): Json<TonTransactionSendRequest>,
 ) -> Result<Json<TransactionResponse>> {
     let start = Instant::now();
 
@@ -53,9 +53,9 @@ pub async fn post_transactions_create(
 }
 
 pub async fn post_transactions_confirm(
-    Json(req): Json<TonTransactionConfirmRequest>,
     Extension(ctx): Extension<Arc<ApiContext>>,
     IdExtractor(service_id): IdExtractor,
+    Json(req): Json<TonTransactionConfirmRequest>,
 ) -> Result<Json<TransactionResponse>> {
     let start = Instant::now();
 
@@ -143,9 +143,9 @@ pub async fn get_tokens_transactions_mh(
 }
 
 pub async fn post_tokens_transactions_create(
-    Json(req): Json<TonTokenTransactionSendRequest>,
     Extension(ctx): Extension<Arc<ApiContext>>,
     IdExtractor(service_id): IdExtractor,
+    Json(req): Json<TonTokenTransactionSendRequest>,
 ) -> Result<Json<TransactionResponse>> {
     let start = Instant::now();
 
@@ -163,9 +163,9 @@ pub async fn post_tokens_transactions_create(
 }
 
 pub async fn post_tokens_transactions_burn(
-    Json(req): Json<TonTokenTransactionBurnRequest>,
     Extension(ctx): Extension<Arc<ApiContext>>,
     IdExtractor(service_id): IdExtractor,
+    Json(req): Json<TonTokenTransactionBurnRequest>,
 ) -> Result<Json<TransactionResponse>> {
     let start = Instant::now();
 
@@ -183,9 +183,9 @@ pub async fn post_tokens_transactions_burn(
 }
 
 pub async fn post_tokens_transactions_mint(
-    Json(req): Json<TonTokenTransactionMintRequest>,
     Extension(ctx): Extension<Arc<ApiContext>>,
     IdExtractor(service_id): IdExtractor,
+    Json(req): Json<TonTokenTransactionMintRequest>,
 ) -> Result<Json<TransactionResponse>> {
     let start = Instant::now();
 

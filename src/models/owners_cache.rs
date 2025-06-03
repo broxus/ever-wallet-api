@@ -2,11 +2,11 @@ use std::num::NonZeroUsize;
 use std::str::FromStr;
 use std::sync::Arc;
 
+use everscale_types::models::StdAddr;
 use lru::LruCache;
 use nekoton::core::models::TokenWalletVersion;
 use nekoton_utils::TrustMe;
 use parking_lot::Mutex;
-use ton_block::MsgAddressInt;
 
 use crate::models::sqlx::*;
 use crate::sqlx_client::*;
@@ -14,12 +14,12 @@ use crate::sqlx_client::*;
 #[derive(Clone)]
 /// Maps token wallet address to Owner info
 pub struct OwnersCache {
-    cache: Arc<Mutex<LruCache<MsgAddressInt, OwnerInfo>>>,
+    cache: Arc<Mutex<LruCache<StdAddr, OwnerInfo>>>,
     db: SqlxClient,
 }
 
 impl OwnersCache {
-    pub async fn get(&self, address: &MsgAddressInt) -> Option<OwnerInfo> {
+    pub async fn get(&self, address: &StdAddr) -> Option<OwnerInfo> {
         let info = {
             let mut lock = self.cache.lock();
             lock.get(address).cloned()
@@ -33,12 +33,12 @@ impl OwnersCache {
                     .await
                     .ok()?;
                 OwnerInfo {
-                    owner_address: MsgAddressInt::from_str(&format!(
+                    owner_address: StdAddr::from_str(&format!(
                         "{}:{}",
                         got.owner_account_workchain_id, got.owner_account_hex
                     ))
                     .trust_me(),
-                    root_address: nekoton_utils::repack_address(&got.root_address).trust_me(),
+                    root_address: StdAddr::from_str(&got.root_address).trust_me(),
                     code_hash: got.code_hash,
                     version: got.version.into(),
                 }
@@ -46,14 +46,14 @@ impl OwnersCache {
         };
         Some(info)
     }
-    pub async fn insert(&self, key: MsgAddressInt, value: OwnerInfo) {
+    pub async fn insert(&self, key: StdAddr, value: OwnerInfo) {
         {
             self.cache.lock().put(key.clone(), value.clone());
         }
         let owner = TokenOwnerFromDb {
             address: key.to_string(),
-            owner_account_workchain_id: value.owner_address.workchain_id(),
-            owner_account_hex: value.owner_address.address().to_hex_string(),
+            owner_account_workchain_id: value.owner_address.workchain as i32,
+            owner_account_hex: value.owner_address.address.to_string(),
             root_address: value.root_address.to_string(),
             code_hash: value.code_hash,
             created_at: chrono::Utc::now().naive_utc(), //doesn't matter
@@ -67,8 +67,8 @@ impl OwnersCache {
 
 #[derive(Clone, Debug)]
 pub struct OwnerInfo {
-    pub owner_address: MsgAddressInt,
-    pub root_address: MsgAddressInt,
+    pub owner_address: StdAddr,
+    pub root_address: StdAddr,
     pub code_hash: Vec<u8>,
     pub version: TokenWalletVersion,
 }
@@ -80,14 +80,14 @@ impl OwnersCache {
         let mut cache = LruCache::new(NonZeroUsize::new(5000).trust_me());
         balances.into_iter().for_each(|x| {
             cache.put(
-                nekoton_utils::repack_address(&x.address).trust_me(),
+                StdAddr::from_str(&x.address).trust_me(),
                 OwnerInfo {
-                    owner_address: MsgAddressInt::from_str(&format!(
+                    owner_address: StdAddr::from_str(&format!(
                         "{}:{}",
                         x.owner_account_workchain_id, x.owner_account_hex
                     ))
                     .trust_me(),
-                    root_address: nekoton_utils::repack_address(&x.root_address).trust_me(),
+                    root_address: StdAddr::from_str(&x.root_address).trust_me(),
                     code_hash: x.code_hash,
                     version: x.version.into(),
                 },

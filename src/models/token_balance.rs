@@ -26,8 +26,8 @@ pub struct NetworkTokenAddressData {
 
 impl NetworkTokenAddressData {
     pub fn uninit(
-        owner: &ton_block::MsgAddressInt,
-        root: &ton_block::MsgAddressInt,
+        owner: &ton_block::StdAddr,
+        root: &ton_block::StdAddr,
     ) -> NetworkTokenAddressData {
         NetworkTokenAddressData {
             workchain_id: owner.workchain_id(),

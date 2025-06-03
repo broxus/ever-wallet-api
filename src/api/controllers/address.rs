@@ -11,9 +11,9 @@ use crate::api::*;
 use crate::models::*;
 
 pub async fn post_address_create(
-    Json(req): Json<CreateAddressRequest>,
     Extension(ctx): Extension<Arc<ApiContext>>,
     IdExtractor(service_id): IdExtractor,
+    Json(req): Json<CreateAddressRequest>,
 ) -> Result<Json<AddressResponse>> {
     let start = Instant::now();
 
@@ -31,8 +31,8 @@ pub async fn post_address_create(
 }
 
 pub async fn post_address_check(
-    Json(req): Json<AddressCheckRequest>,
     Extension(ctx): Extension<Arc<ApiContext>>,
+    Json(req): Json<AddressCheckRequest>,
 ) -> Result<Json<CheckedAddressResponse>> {
     let address = ctx
         .ton_service

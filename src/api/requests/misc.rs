@@ -1,7 +1,6 @@
 use bigdecimal::BigDecimal;
 use opg::OpgModel;
 use serde::Deserialize;
-use ton_abi::Param;
 use uuid::Uuid;
 
 use crate::models::*;

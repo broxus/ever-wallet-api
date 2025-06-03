@@ -1,6 +1,5 @@
 use bigdecimal::BigDecimal;
 use serde::{Deserialize, Serialize};
-use ton_abi::Param;
 use uuid::Uuid;
 
 use crate::models::*;
@@ -53,11 +52,11 @@ pub struct TransactionConfirm {
 /*#[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct TokenTransactionSend {
     pub id: uuid::Uuid,
-    pub owner: MsgAddressInt,
-    pub token_wallet: MsgAddressInt,
+    pub owner: StdAddr,
+    pub token_wallet: StdAddr,
     pub version: TokenWalletVersion,
     pub destination: TransferRecipient,
-    pub send_gas_to: MsgAddressInt,
+    pub send_gas_to: StdAddr,
     pub tokens: BigDecimal,
     pub notify_receiver: bool,
     pub attached_amount: u64,

@@ -1,10 +1,10 @@
 use std::str::FromStr;
 
 use bigdecimal::BigDecimal;
+use everscale_types::models::StdAddr;
 use nekoton_utils::pack_std_smc_addr;
 use opg::OpgModel;
 use serde::{Deserialize, Serialize};
-use ton_block::MsgAddressInt;
 use uuid::Uuid;
 
 use crate::api::*;
@@ -78,9 +78,9 @@ impl From<TransactionDb> for TransactionDataResponse {
             (c.sender_hex, c.sender_workchain_id)
         {
             let sender =
-                MsgAddressInt::from_str(&format!("{}:{}", sender_workchain_id, sender_hex))
+                StdAddr::from_str(&format!("{}:{}", sender_workchain_id, sender_hex))
                     .unwrap_or_default();
-            let sender_base64url = Address(pack_std_smc_addr(true, &sender, true).unwrap());
+            let sender_base64url = Address(sender.display_base64_url(true).to_string());
             Some(Account {
                 workchain_id: sender_workchain_id,
                 hex: Address(sender_hex),
@@ -119,9 +119,9 @@ impl From<TransactionDb> for TransactionDataResponse {
         };
 
         let account =
-            MsgAddressInt::from_str(&format!("{}:{}", c.account_workchain_id, c.account_hex))
+            StdAddr::from_str(&format!("{}:{}", c.account_workchain_id, c.account_hex))
                 .unwrap();
-        let base64url = Address(pack_std_smc_addr(true, &account, true).unwrap());
+        let base64url = Address(account.display_base64_url(true).to_string());
 
         TransactionDataResponse {
             id: c.id,
@@ -261,9 +261,9 @@ pub struct TokenTransactionDataResponse {
 impl From<TokenTransactionFromDb> for TokenTransactionDataResponse {
     fn from(c: TokenTransactionFromDb) -> Self {
         let account =
-            MsgAddressInt::from_str(&format!("{}:{}", c.account_workchain_id, c.account_hex))
+            StdAddr::from_str(&format!("{}:{}", c.account_workchain_id, c.account_hex))
                 .unwrap();
-        let base64url = Address(pack_std_smc_addr(true, &account, true).unwrap());
+        let base64url = Address(account.display_base64_url(true).to_string());
         let payload = c.payload.map(base64::encode);
 
         TokenTransactionDataResponse {

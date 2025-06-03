@@ -106,11 +106,6 @@ pub async fn bind< M, S> (
 
         let listener = tokio::net::TcpListener::bind(server_addr).await.unwrap();
 
-        axum::serve(listener, app.into_make_service())
-            .await
-            .context("Failed to start HTTP server")
-            .unwrap();
-
         let serve = axum::serve(listener, app);
 
         Ok(Self {

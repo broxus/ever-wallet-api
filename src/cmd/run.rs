@@ -186,8 +186,7 @@ pub struct LightSubscriber {
 
 impl LightSubscriber {
     async fn parse_transaction(&self, cx: &TempTransaction) -> Result<()> {
-        
-
+    
     }
     async fn prepare_block_impl(&self, cx: &BlockSubscriberContext) -> Result<BlockHandle> {
         let block_stuff = cx.block;

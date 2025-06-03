@@ -10,18 +10,18 @@ use nekoton_contracts::tip3_any::{RootTokenContractState, TokenWalletContractSta
 use nekoton_contracts::{old_tip3, tip3_1};
 use nekoton_utils::SimpleClock;
 use num_bigint::BigUint;
-use ton_block::MsgAddressInt;
+use ton_block::StdAddr;
 use ton_types::{SliceData, UInt256};
 
 const INITIAL_BALANCE: u64 = 100_000_000; // 0.1 TON
 
 pub fn prepare_token_transfer(
-    owner: MsgAddressInt,
-    token_wallet: MsgAddressInt,
+    owner: StdAddr,
+    token_wallet: StdAddr,
     version: TokenWalletVersion,
     destination: TransferRecipient,
     tokens: BigUint,
-    send_gas_to: MsgAddressInt,
+    send_gas_to: StdAddr,
     notify_receiver: bool,
     attached_amount: u64,
     payload: ton_types::Cell,
@@ -83,12 +83,12 @@ pub fn prepare_token_transfer(
 }
 
 pub fn prepare_token_burn(
-    owner: MsgAddressInt,
-    token_wallet: MsgAddressInt,
+    owner: StdAddr,
+    token_wallet: StdAddr,
     version: TokenWalletVersion,
     tokens: BigUint,
-    send_gas_to: MsgAddressInt,
-    callback_to: MsgAddressInt,
+    send_gas_to: StdAddr,
+    callback_to: StdAddr,
     attached_amount: u64,
     payload: ton_types::Cell,
 ) -> Result<InternalMessage> {
@@ -126,13 +126,13 @@ pub fn prepare_token_burn(
 }
 
 pub fn prepare_token_mint(
-    owner: MsgAddressInt,
-    root_token: MsgAddressInt,
+    owner: StdAddr,
+    root_token: StdAddr,
     version: TokenWalletVersion,
     tokens: BigUint,
-    recipient: MsgAddressInt,
+    recipient: StdAddr,
     deploy_wallet_value: BigUint,
-    send_gas_to: MsgAddressInt,
+    send_gas_to: StdAddr,
     notify: bool,
     attached_amount: u64,
     payload: ton_types::Cell,
@@ -165,8 +165,8 @@ pub fn prepare_token_mint(
 
 pub fn get_token_wallet_address(
     root_contract: &ExistingContract,
-    owner: &MsgAddressInt,
-) -> Result<MsgAddressInt> {
+    owner: &StdAddr,
+) -> Result<StdAddr> {
     let root_contract_state = RootTokenContractState(ExecutionContext {
         clock: &SimpleClock,
         account_stuff: &root_contract.account,
@@ -178,7 +178,7 @@ pub fn get_token_wallet_address(
 
 pub fn get_token_wallet_account(
     root_contract: &ExistingContract,
-    owner: &MsgAddressInt,
+    owner: &StdAddr,
 ) -> Result<UInt256> {
     let root_contract_state = RootTokenContractState(ExecutionContext {
         clock: &SimpleClock,

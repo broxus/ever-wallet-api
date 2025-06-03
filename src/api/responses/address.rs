@@ -2,10 +2,10 @@ use std::str::FromStr;
 
 use bigdecimal::BigDecimal;
 use derive_more::Constructor;
-use nekoton_utils::{pack_std_smc_addr, TrustMe};
+use everscale_types::models::StdAddr;
+use nekoton_utils::TrustMe;
 use opg::OpgModel;
 use serde::Serialize;
-use ton_block::MsgAddressInt;
 use uuid::Uuid;
 
 use crate::api::*;
@@ -116,8 +116,8 @@ pub struct AddressBalanceDataResponse {
 
 impl AddressBalanceDataResponse {
     pub fn new(a: AddressDb, b: NetworkAddressData) -> Self {
-        let account = MsgAddressInt::from_str(&format!("{}:{}", a.workchain_id, a.hex)).trust_me();
-        let base64url = Address(pack_std_smc_addr(true, &account, true).trust_me());
+        let account = StdAddr::from_str(&format!("{}:{}", a.workchain_id, a.hex)).trust_me();
+        let base64url = Address(account.display_base64_url(true).to_string());
 
         Self {
             id: a.id,
@@ -185,8 +185,8 @@ pub struct AddressInfoDataResponse {
 
 impl AddressInfoDataResponse {
     pub fn new(a: AddressDb) -> Self {
-        let account = MsgAddressInt::from_str(&format!("{}:{}", a.workchain_id, a.hex)).trust_me();
-        let base64url = Address(pack_std_smc_addr(true, &account, true).trust_me());
+        let account = StdAddr::from_str(&format!("{}:{}", a.workchain_id, a.hex)).trust_me();
+        let base64url = Address(account.display_base64_url(true).to_string());
 
         Self {
             id: a.id,
@@ -255,9 +255,9 @@ pub struct TokenBalanceDataResponse {
 impl TokenBalanceDataResponse {
     pub fn new(a: TokenBalanceFromDb, b: NetworkTokenAddressData) -> Self {
         let account =
-            MsgAddressInt::from_str(&format!("{}:{}", a.account_workchain_id, a.account_hex))
+            StdAddr::from_str(&format!("{}:{}", a.account_workchain_id, a.account_hex))
                 .trust_me();
-        let base64url = Address(pack_std_smc_addr(true, &account, true).trust_me());
+        let base64url = Address(account.display_base64_url(true).to_string());
 
         Self {
             service_id: a.service_id,

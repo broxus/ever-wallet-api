@@ -3,13 +3,13 @@ use std::str::FromStr;
 use std::sync::{Arc, Weak};
 
 use bigdecimal::BigDecimal;
-use http::StatusCode;
+use axum::http::StatusCode;
 use nekoton::crypto::{SignedMessage, UnsignedMessage};
 use nekoton_utils::{repack_address, unpack_std_smc_addr};
 use serde_json::Value;
 use ton_abi::contract::ABI_VERSION_2_2;
 use ton_abi::{Param, Token, TokenValue};
-use ton_block::{GetRepresentationHash, MsgAddressInt, Serializable};
+use ton_block::{GetRepresentationHash, StdAddr, Serializable};
 use ton_types::{BuilderData, UInt256};
 use uuid::Uuid;
 
@@ -96,7 +96,7 @@ impl TonService {
     }
 
     pub async fn check_address(&self, address: Address) -> Result<bool, Error> {
-        Ok(MsgAddressInt::from_str(&address.0).is_ok()
+        Ok(StdAddr::from_str(&address.0).is_ok()
             || (unpack_std_smc_addr(&address.0, false).is_ok())
             || (unpack_std_smc_addr(&address.0, true).is_ok()))
     }
@@ -1076,7 +1076,7 @@ impl TonService {
         hash: String,
         msg: SignedMessage,
     ) -> Result<String, Error> {
-        let addr = MsgAddressInt::from_str(&sender_addr)?;
+        let addr = StdAddr::from_str(&sender_addr)?;
         self.ton_api_client
             .add_ton_account_subscription(addr.hash()?);
 

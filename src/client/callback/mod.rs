@@ -1,8 +1,7 @@
 use anyhow::Result;
 use chrono::Utc;
-use http::Method;
 use nekoton_utils::TrustMe;
-use reqwest::Url;
+use reqwest::{Method, Url, StatusCode};
 
 use crate::models::*;
 
@@ -51,7 +50,7 @@ impl CallbackClient {
             .send()
             .await?;
 
-        if res.status() != http::StatusCode::OK {
+        if res.status() != StatusCode::OK {
             anyhow::bail!(format!(
                 "Received status is not 200. Payload: {:#?}. Receive: {:?}.",
                 payload, res

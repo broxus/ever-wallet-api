@@ -1,9 +1,8 @@
 use std::str::FromStr;
 
 use bigdecimal::BigDecimal;
-use nekoton_utils::pack_std_smc_addr;
+use everscale_types::models::StdAddr;
 use serde::{Deserialize, Serialize};
-use ton_block::MsgAddressInt;
 use uuid::Uuid;
 
 use crate::models::*;
@@ -33,17 +32,17 @@ pub struct AccountTransactionEvent {
 impl From<TokenTransactionEventDb> for AccountTransactionEvent {
     fn from(t: TokenTransactionEventDb) -> Self {
         let account =
-            MsgAddressInt::from_str(&format!("{}:{}", t.account_workchain_id, t.account_hex))
+            StdAddr::from_str(&format!("{}:{}", t.account_workchain_id, t.account_hex))
                 .unwrap();
-        let base64url = Address(pack_std_smc_addr(true, &account, true).unwrap());
+        let base64url = Address(account.display_base64_url(true).to_string());
 
         let sender = if let (Some(sender_workchain_id), Some(sender_hex)) =
             (t.sender_workchain_id, t.sender_hex)
         {
             let sender =
-                MsgAddressInt::from_str(&format!("{}:{}", sender_workchain_id, sender_hex))
+                StdAddr::from_str(&format!("{}:{}", sender_workchain_id, sender_hex))
                     .unwrap();
-            let base64url = Address(pack_std_smc_addr(true, &sender, true).unwrap());
+            let base64url = Address(sender.display_base64_url(true).to_string());
             Some(Account {
                 workchain_id: sender_workchain_id,
                 hex: Address(sender_hex),
@@ -80,17 +79,17 @@ impl From<TokenTransactionEventDb> for AccountTransactionEvent {
 impl From<TransactionEventDb> for AccountTransactionEvent {
     fn from(t: TransactionEventDb) -> Self {
         let account =
-            MsgAddressInt::from_str(&format!("{}:{}", t.account_workchain_id, t.account_hex))
+            StdAddr::from_str(&format!("{}:{}", t.account_workchain_id, t.account_hex))
                 .unwrap();
-        let base64url = Address(pack_std_smc_addr(true, &account, true).unwrap());
+        let base64url = Address(account.display_base64_url(true).to_string());
 
         let sender = if let (Some(sender_workchain_id), Some(sender_hex)) =
             (t.sender_workchain_id, t.sender_hex)
         {
             let sender =
-                MsgAddressInt::from_str(&format!("{}:{}", sender_workchain_id, sender_hex))
+                StdAddr::from_str(&format!("{}:{}", sender_workchain_id, sender_hex))
                     .unwrap();
-            let base64url = Address(pack_std_smc_addr(true, &sender, true).unwrap());
+            let base64url = Address(sender.display_base64_url(true).to_string());
             Some(Account {
                 workchain_id: sender_workchain_id,
                 hex: Address(sender_hex),

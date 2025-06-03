@@ -8,7 +8,7 @@ license-file = "LICENSE"
 
 [dependencies]
 anyhow = "1.0"
-axum = { version = "0.7", features = ["multipart"] }
+axum = { version = "0.7", features = ["multipart", "macros"] }
 argh = "0.1"
 argon2 = "0.4.1"
 async-trait = "0.1"
@@ -28,7 +28,6 @@ futures-util = "0.3.31"
 hex = "0.4"
 hmac-sha256 = "1.1.4"
 http = "0.2"
-hyper = { version = "0.14" }
 itertools = "0.10.1"
 lazy_static = "1.4.0"
 log = { version = "0.4", features = ["std", "serde"] }

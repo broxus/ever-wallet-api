@@ -10,8 +10,8 @@ use crate::api::*;
 use crate::models::*;
 
 pub async fn post_read_contract(
-    Json(req): Json<ExecuteContractRequest>,
     Extension(ctx): Extension<Arc<ApiContext>>,
+    Json(req): Json<ExecuteContractRequest>,
 ) -> Result<Json<ReadContractResponse>> {
     let start = Instant::now();
 
@@ -40,8 +40,8 @@ pub async fn post_read_contract(
 }
 
 pub async fn post_encode_tvm_cell(
-    Json(req): Json<EncodeParamRequest>,
     Extension(ctx): Extension<Arc<ApiContext>>,
+    Json(req): Json<EncodeParamRequest>,
 ) -> Result<Json<EncodedCellResponse>> {
     let start = Instant::now();
 
@@ -63,8 +63,8 @@ pub async fn post_encode_tvm_cell(
 }
 
 pub async fn post_prepare_generic_message(
-    Json(req): Json<PrepareMessageRequest>,
     Extension(ctx): Extension<Arc<ApiContext>>,
+    Json(req): Json<PrepareMessageRequest>,
 ) -> Result<Json<UnsignedMessageHashResponse>> {
     let start = Instant::now();
 
@@ -106,8 +106,8 @@ pub async fn post_prepare_generic_message(
 }
 
 pub async fn post_send_signed_message(
-    Json(req): Json<SignedMessageRequest>,
     Extension(ctx): Extension<Arc<ApiContext>>,
+    Json(req): Json<SignedMessageRequest>,
 ) -> Result<Json<SignedMessageHashResponse>> {
     let start = Instant::now();
 
@@ -144,9 +144,9 @@ pub async fn post_send_signed_message(
 }
 
 pub async fn post_send_generic_message(
-    Json(req): Json<SendMessageRequest>,
     Extension(ctx): Extension<Arc<ApiContext>>,
     IdExtractor(service_id): IdExtractor,
+    Json(req): Json<SendMessageRequest>,
 ) -> Result<Json<TransactionResponse>> {
     let start = Instant::now();
 
@@ -186,9 +186,9 @@ pub async fn post_send_generic_message(
 }
 
 pub async fn post_set_callback(
-    Json(req): Json<SetCallbackRequest>,
     Extension(ctx): Extension<Arc<ApiContext>>,
     IdExtractor(service_id): IdExtractor,
+    Json(req): Json<SetCallbackRequest>,
 ) -> Result<Json<SetCallbackResponse>> {
     let start = Instant::now();
     let callback = req;

@@ -2,12 +2,15 @@ use std::str::FromStr;
 use std::sync::Arc;
 
 use anyhow::{Context, Result};
+use everscale_types::boc::BocRepr;
+use everscale_types::cell::CellBuilder;
 use everscale_types::cell::HashBytes;
 use nekoton::transport::models::*;
 use nekoton_abi::*;
 use parking_lot::Mutex;
 use tokio::sync::{mpsc, oneshot}; 
 use everscale_types::models::*;
+use tycho_core::blockchain_rpc::BlockchainRpcClient;
 use tycho_storage::KeyBlocksDirection;
 use tycho_storage::Storage;
 
@@ -80,7 +83,7 @@ impl TonCore {
     pub async fn send_ton_message(
         &self,
         account: &HashBytes,
-        message: &ton_block::Message,
+        message: &Message<'_>,
         expire_at: u32,
     ) -> Result<MessageStatus> {
         self.context
@@ -113,6 +116,7 @@ pub struct TonCoreContext {
     pub messages_queue: Arc<PendingMessagesQueue>,
     pub ton_subscriber: Arc<TonSubscriber>,
     pub storage: Storage,
+    pub blockchain_rpc_client: BlockchainRpcClient,
 }
 
 impl TonCoreContext {
@@ -120,6 +124,7 @@ impl TonCoreContext {
         sqlx_client: SqlxClient,
         owners_cache: OwnersCache,
         storage: Storage,
+        blockchain_rpc_client: BlockchainRpcClient,
     ) -> Result<Arc<Self>> {
         let messages_queue = PendingMessagesQueue::new(512);
 
@@ -131,6 +136,7 @@ impl TonCoreContext {
             messages_queue,
             ton_subscriber,
             storage,
+            blockchain_rpc_client,
         }))
     }
 
@@ -187,20 +193,20 @@ impl TonCoreContext {
         message: &Message<'_>,
         expire_at: u32,
     ) -> Result<MessageStatus> {
-        let to = match message.info {
+        match &message.info {
             MsgInfo::ExtIn(header) => header.dst.workchain(),
             _ => return Err(TonCoreError::ExternalTonMessageExpected.into()),
         };
 
-        let cells = message.write_to_new_cell()?.into_cell()?;
-        let serialized = ton_types::serialize_toc(&cells)?;
-
         let rx = self
             .messages_queue
-            .add_message(*account, cells.repr_hash(), expire_at)?;
+            .add_message(*account, *CellBuilder::build_from(message)?.repr_hash(), expire_at)?;
 
-        self.ton_engine
-            .broadcast_external_message(to, &serialized)?;
+        let serialized = BocRepr::encode(message)
+            ?;
+
+        self.blockchain_rpc_client
+            .broadcast_external_message(&*serialized).await;
 
         let status = rx.await?;
         Ok(status)

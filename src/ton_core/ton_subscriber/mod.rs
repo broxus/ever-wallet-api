@@ -149,7 +149,7 @@ impl TonSubscriber {
     pub fn update_shards_accounts_cache(
         &self,
         shard_id: ShardIdent,
-        shard_state: Arc<ShardStateStuff>,
+        shard_state: ShardStateStuff,
     ) -> Result<()> {
         let shard_accounts = shard_state.state().load_accounts()?;
         let state_handle = shard_state.ref_mc_state_handle().clone();
@@ -703,9 +703,10 @@ pub fn make_existing_contract(state: Option<ShardAccount>) -> Result<Option<Exis
         None => return Ok(None),
     };
 
-    match Account::load_from(&mut state.data.as_slice()?)? {
-        AccountNone => Ok(None),
-        Account(account) => Ok(Some(ExistingContract {
+    let account = everscale_types::models::Account::load_from(&mut state.data.as_slice()?)?;
+    match account.state {
+        AccountState::Uninit | AccountState::Frozen(_)=> Ok(None),
+        AccountState::Active(_) => Ok(Some(ExistingContract {
             account,
             timings: GenTimings::Unknown,
             last_transaction_id: state.last_transaction_id,
@@ -721,8 +722,8 @@ pub struct CachedAccounts {
 impl CachedAccounts {
     fn get(&self, account: &HashBytes) -> Result<Option<ShardAccount>> {
         match self.accounts.get(account)? {
-            Some(account) => Ok(Some(ShardAccount {
-                data: account.account_cell(),
+            Some((_,account)) => Ok(Some(ShardAccount {
+                data: account.account,
                 last_transaction_id: LastTransactionId::Exact(TransactionId {
                     lt: account.last_trans_lt(),
                     hash: *account.last_trans_hash(),
