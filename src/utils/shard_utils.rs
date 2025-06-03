@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 
 use anyhow::{Context, Result};
+use everscale_types::models::ShardIdent;
 use nekoton::transport::models::ExistingContract;
 use rustc_hash::FxHashMap;
 use ton_block::HashmapAugType;
@@ -64,7 +65,7 @@ impl ShardAccountsMapExt for ton_block::ShardAccounts {
     }
 }
 
-pub fn contains_account(shard: &ton_block::ShardIdent, account: &UInt256) -> bool {
+pub fn contains_account(shard: &ShardIdent, account: &UInt256) -> bool {
     let shard_prefix = shard.shard_prefix_with_tag();
     if shard_prefix == ton_block::SHARD_FULL {
         true

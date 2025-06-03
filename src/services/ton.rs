@@ -9,7 +9,7 @@ use nekoton_utils::{repack_address, unpack_std_smc_addr};
 use serde_json::Value;
 use ton_abi::contract::ABI_VERSION_2_2;
 use ton_abi::{Param, Token, TokenValue};
-use ton_block::{GetRepresentationHash, StdAddr, Serializable};
+use ton_block::{GetRepresentationHash, Serializable};
 use ton_types::{BuilderData, UInt256};
 use uuid::Uuid;
 

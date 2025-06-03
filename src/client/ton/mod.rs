@@ -19,6 +19,7 @@ use nekoton_utils::{SimpleClock, TrustMe};
 use num_bigint::BigUint;
 use num_traits::FromPrimitive;
 use tokio::sync::oneshot;
+use ton_types::UInt256;
 use uuid::Uuid;
 
 use crate::api::*;
@@ -765,7 +766,7 @@ impl TonClient {
 
     pub async fn send_transaction(
         &self,
-        account: HashBytes,
+        account: UInt256,
         signed_message: SignedMessage,
     ) -> Result<MessageStatus, Error> {
         let status = self
@@ -778,8 +779,8 @@ impl TonClient {
 
     pub fn add_pending_message(
         &self,
-        account: HashBytes,
-        message_hash: HashBytes,
+        account: UInt256,
+        message_hash: UInt256,
         expire_at: u32,
     ) -> Result<oneshot::Receiver<MessageStatus>, Error> {
         let status = self
