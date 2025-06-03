@@ -1,4 +1,4 @@
-use everscale_types::{cell::HashBytes, models::{BlockId, BlockInfo, Message, MsgInfo, OrdinaryTxInfo, Transaction}};
+use everscale_types::{cell::HashBytes, models::{BlockId, BlockInfo, Message, MsgInfo, OrdinaryTxInfo, Transaction}, abi::Function};
 use nekoton::transport::models::ExistingContract;
 use tokio::sync::oneshot;
 

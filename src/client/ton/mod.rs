@@ -2,8 +2,10 @@ use std::str::FromStr;
 use std::sync::atomic::Ordering;
 use std::sync::Arc;
 
+use anyhow::anyhow;
 use bigdecimal::{BigDecimal, ToPrimitive};
 use ed25519_dalek::{Keypair, PublicKey, SecretKey, Signer};
+use everscale_types::boc::Boc;
 use everscale_types::cell::HashBytes;
 use everscale_types::models::StdAddr;
 use axum::http::StatusCode;
@@ -151,7 +153,8 @@ impl TonClient {
         };
 
         // Subscribe to accounts
-        let account = UInt256::from_be_bytes(&hex::decode(address.address().to_hex_string())?);
+        let account = HashBytes::from_str(&address.address().to_hex_string())
+            .map_err(|_| anyhow!("Couldn't parse address"))?;
         self.ton_core.add_ton_account_subscription([account]);
 
         Ok(CreatedAddress {
@@ -171,7 +174,7 @@ impl TonClient {
         &self,
         owner: &StdAddr,
     ) -> Result<NetworkAddressData, Error> {
-        let account = UInt256::from_be_bytes(&owner.address().get_bytestring(0));
+        let account = owner.address;
         let contract = match self.ton_core.get_contract_state(&account) {
             Ok(contract) => contract,
             Err(_) => return Ok(NetworkAddressData::uninit(owner)),
@@ -278,7 +281,7 @@ impl TonClient {
         let bounce = transaction.bounce.unwrap_or_default();
 
         let public_key = PublicKey::from_bytes(public_key)?;
-        let address = nekoton_utils::repack_address(&transaction.from_address.0)?;
+        let address = StdAddr::from_str(&transaction.from_address.0)?;
 
         let expiration = Expiration::Timeout(DEFAULT_EXPIRATION_TIMEOUT);
 
@@ -286,16 +289,14 @@ impl TonClient {
         let payload_cell = match &transaction.payload {
             None => None,
             Some(s) => {
-                let bytes = base64::decode(s).map_err(anyhow::Error::from)?;
-                let mut slice = &bytes[..];
-                let tree_of_cells = deserialize_tree_of_cells(&mut slice)?;
-                Some(tree_of_cells)
+                let payload_cell = Boc::decode_base64(s).map_err(anyhow::Error::from)?;
+                Some(payload_cell)
             }
         };
 
         let transfer_action = match account_type {
             AccountType::HighloadWallet => {
-                let account = UInt256::from_be_bytes(&address.address().get_bytestring(0));
+                let account = address.address;
                 let current_state = self.ton_core.get_contract_state(&account)?.account;
 
                 let mut gifts: Vec<nekoton::core::ton_wallet::Gift> = vec![];
@@ -305,8 +306,9 @@ impl TonClient {
                     let amount = item.value.to_u64().ok_or(TonClientError::ParseBigDecimal)?;
                     let body = payload_cell
                         .as_ref()
-                        .map(|c| SliceData::load_cell(c.clone()))
-                        .transpose()?;
+                        .map(|c| c.as_slice())
+                        .transpose()
+                        .map_err(anyhow::Error::from)?;
 
                     gifts.push(nekoton::core::ton_wallet::Gift {
                         flags: flags.into(),
@@ -327,7 +329,7 @@ impl TonClient {
                 )?
             }
             AccountType::Wallet => {
-                let account = UInt256::from_be_bytes(&address.address().get_bytestring(0));
+                let account = address.address;
                 let current_state = self.ton_core.get_contract_state(&account)?.account;
 
                 let recipient = transaction
@@ -341,7 +343,11 @@ impl TonClient {
                     .to_u64()
                     .ok_or(TonClientError::ParseBigDecimal)?;
                 let flags = recipient.output_type.clone().unwrap_or_default();
-                let body = payload_cell.map(SliceData::load_cell).transpose()?;
+                let body = payload_cell
+                        .as_ref()
+                        .map(|c| c.as_slice())
+                        .transpose()
+                        .map_err(anyhow::Error::from)?;
 
                 let gifts = vec![nekoton::core::ton_wallet::Gift {
                     flags: flags.into(),
@@ -385,7 +391,11 @@ impl TonClient {
                     None => return Err(TonClientError::CustodiansNotFound.into()),
                 };
 
-                let body = payload_cell.map(SliceData::load_cell).transpose()?;
+                let body = payload_cell
+                        .as_ref()
+                        .map(|c| c.as_slice())
+                        .transpose()
+                        .map_err(anyhow::Error::from)?;
 
                 let gift = nekoton::core::ton_wallet::Gift {
                     flags: flags.into(),
@@ -407,7 +417,7 @@ impl TonClient {
                 )?
             }
             AccountType::EverWallet => {
-                let account = UInt256::from_be_bytes(&address.address().get_bytestring(0));
+                let account = HashBytes::from_be_bytes(&address.address().get_bytestring(0));
                 let current_state = self.ton_core.get_contract_state(&account)?.account;
 
                 let mut gifts: Vec<nekoton::core::ton_wallet::Gift> = vec![];
@@ -526,11 +536,11 @@ impl TonClient {
         owner: &StdAddr,
         root_address: &StdAddr,
     ) -> Result<NetworkTokenAddressData, Error> {
-        let root_account = UInt256::from_be_bytes(&root_address.address().get_bytestring(0));
+        let root_account = HashBytes::from_be_bytes(&root_address.address().get_bytestring(0));
         let root_contract = self.ton_core.get_contract_state(&root_account)?;
 
         let token_address = get_token_wallet_address(&root_contract, owner)?;
-        let token_account = UInt256::from_be_bytes(&token_address.address().get_bytestring(0));
+        let token_account = HashBytes::from_be_bytes(&token_address.address().get_bytestring(0));
         let token_contract = match self.ton_core.get_contract_state(&token_account) {
             Ok(contract) => contract,
             Err(_) => {
@@ -703,7 +713,7 @@ impl TonClient {
         let root_token = nekoton_utils::repack_address(&input.root_address.0)?;
         let recipient = nekoton_utils::repack_address(&input.recipient_address.0)?;
 
-        let root_account = UInt256::from_be_bytes(&root_token.address().get_bytestring(0));
+        let root_account = HashBytes::from_be_bytes(&root_token.address().get_bytestring(0));
         let root_contract = self.ton_core.get_contract_state(&root_account)?;
 
         let version = get_root_token_version(&root_contract)?;
@@ -755,7 +765,7 @@ impl TonClient {
 
     pub async fn send_transaction(
         &self,
-        account: UInt256,
+        account: HashBytes,
         signed_message: SignedMessage,
     ) -> Result<MessageStatus, Error> {
         let status = self
@@ -768,8 +778,8 @@ impl TonClient {
 
     pub fn add_pending_message(
         &self,
-        account: UInt256,
-        message_hash: UInt256,
+        account: HashBytes,
+        message_hash: HashBytes,
         expire_at: u32,
     ) -> Result<oneshot::Receiver<MessageStatus>, Error> {
         let status = self
@@ -811,7 +821,7 @@ impl TonClient {
 
     pub async fn run_local(
         &self,
-        contract_address: UInt256,
+        contract_address: HashBytes,
         function: ton_abi::Function,
         input: &[ton_abi::Token],
         responsible: bool,
@@ -910,7 +920,7 @@ impl TonClient {
         let amount = value.to_u64().ok_or(TonClientError::ParseBigDecimal)?;
         let transfer_action = match account_type {
             AccountType::Wallet => {
-                let account = UInt256::from_be_bytes(&address.address().get_bytestring(0));
+                let account = HashBytes::from_be_bytes(&address.address().get_bytestring(0));
                 let current_state = self.ton_core.get_contract_state(&account)?.account;
 
                 let gifts = vec![nekoton::core::ton_wallet::Gift {
@@ -963,7 +973,7 @@ impl TonClient {
                 )?
             }
             AccountType::HighloadWallet => {
-                let account = UInt256::from_be_bytes(&address.address().get_bytestring(0));
+                let account = HashBytes::from_be_bytes(&address.address().get_bytestring(0));
                 let current_state = self.ton_core.get_contract_state(&account)?.account;
 
                 let gift = nekoton::core::ton_wallet::Gift {
@@ -984,7 +994,7 @@ impl TonClient {
                 )?
             }
             AccountType::EverWallet => {
-                let account = UInt256::from_be_bytes(&address.address().get_bytestring(0));
+                let account = HashBytes::from_be_bytes(&address.address().get_bytestring(0));
                 let current_state = self.ton_core.get_contract_state(&account)?.account;
 
                 let gift = nekoton::core::ton_wallet::Gift {
@@ -1016,7 +1026,7 @@ impl TonClient {
         Ok(unsigned_message)
     }
 
-    pub fn add_ton_account_subscription(&self, account: UInt256) {
+    pub fn add_ton_account_subscription(&self, account: HashBytes) {
         self.ton_core.add_ton_account_subscription([account])
     }
 }
@@ -1071,7 +1081,7 @@ fn build_token_transaction(
 
     let transfer_action = match account_type {
         AccountType::HighloadWallet => {
-            let account = UInt256::from_be_bytes(&owner.address().get_bytestring(0));
+            let account = HashBytes::from_be_bytes(&owner.address().get_bytestring(0));
             let current_state = ton_core.get_contract_state(&account)?.account;
 
             let gift = nekoton::core::ton_wallet::Gift {
@@ -1092,7 +1102,7 @@ fn build_token_transaction(
             )?
         }
         AccountType::Wallet => {
-            let account = UInt256::from_be_bytes(&owner.address().get_bytestring(0));
+            let account = HashBytes::from_be_bytes(&owner.address().get_bytestring(0));
             let current_state = ton_core.get_contract_state(&account)?.account;
 
             let gifts = vec![nekoton::core::ton_wallet::Gift {
@@ -1145,7 +1155,7 @@ fn build_token_transaction(
             )?
         }
         AccountType::EverWallet => {
-            let account = UInt256::from_be_bytes(&owner.address().get_bytestring(0));
+            let account = HashBytes::from_be_bytes(&owner.address().get_bytestring(0));
             let current_state = ton_core.get_contract_state(&account)?.account;
 
             let gift = nekoton::core::ton_wallet::Gift {

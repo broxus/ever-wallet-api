@@ -22,7 +22,7 @@ dashmap = "5.3.4"
 derive_more = { version = "1.0.0", features = ["full"] }
 env_logger = "0.10.0"
 everscale-network = "^0.5.4"
-everscale-types = { version = "0.1.2", features = ["tycho"] }
+everscale-types = { version = "0.1.2", features = ["tycho", "abi"] }
 futures = "0.3"
 futures-util = "0.3.31"
 hex = "0.4"
@@ -75,6 +75,11 @@ tycho-storage = { git = "https://github.com/broxus/tycho.git", rev = "35a9a15b51
 tycho-util = { git = "https://github.com/broxus/tycho.git", rev = "35a9a15b517c8e1fb291fd5c4a1cb14a5899c834" }
 
 tycho-vm = { git = "https://github.com/broxus/tycho-vm.git", rev = "e3c1473a8749cde50cbf5c57166169de09e41000" }
+
+# TON specific dependencies
+ton_block = { git = "https://github.com/broxus/ton-labs-block" }
+ton_abi = { git = "https://github.com/broxus/ton-labs-abi" }
+ton_types = { git = "https://github.com/broxus/ton-labs-types" }
 
 # Nekoton SDK
 nekoton = { git = "https://github.com/broxus/nekoton.git", default-features = true, rev="561b60e7a47e994500dce9f25933dd8d8fb2987a" }

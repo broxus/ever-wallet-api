@@ -16,6 +16,7 @@ use tokio::sync::Notify;
 use tycho_block_util::block::BlockStuff;
 use tycho_block_util::state::{RefMcStateHandle, ShardStateStuff};
 use tycho_core::block_strider::StateSubscriberContext;
+use tycho_vm::StackValue;
 
 use crate::ton_core::*;
 
@@ -69,9 +70,9 @@ impl TonSubscriber {
         }
     }
 
-    pub async fn start(self: &Arc<Self>, last_key_block: Option<&Block>) -> Result<()> {
+    pub async fn start(self: &Arc<Self>, last_key_block: Option<BlockStuff>) -> Result<()> {
         if let Some(last_key_block) = last_key_block {
-            self.update_signature_id(last_key_block)?;
+            self.update_signature_id(last_key_block.block())?;
         }
 
         self.wait_sync().await;
@@ -694,7 +695,7 @@ where
 pub struct ShardAccount {
     data: Cell,
     last_transaction_id: LastTransactionId,
-    _state_handle: Arc<RefMcStateHandle>,
+    _state_handle: RefMcStateHandle,
 }
 
 pub fn make_existing_contract(state: Option<ShardAccount>) -> Result<Option<ExistingContract>> {
@@ -723,10 +724,10 @@ impl CachedAccounts {
     fn get(&self, account: &HashBytes) -> Result<Option<ShardAccount>> {
         match self.accounts.get(account)? {
             Some((_,account)) => Ok(Some(ShardAccount {
-                data: account.account,
+                data: *account.account.as_cell().unwrap(),
                 last_transaction_id: LastTransactionId::Exact(TransactionId {
-                    lt: account.last_trans_lt(),
-                    hash: *account.last_trans_hash(),
+                    lt: account.last_trans_lt,
+                    hash: account.last_trans_hash,
                 }),
                 _state_handle: self.state_handle.clone(),
             })),

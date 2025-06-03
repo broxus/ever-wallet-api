@@ -59,7 +59,7 @@ impl FullState {
 }
 
 pub struct FullStateEvent {
-    block_id: ton_block::BlockIdExt,
+    block_id: BlockId,
     state: HandleTransactionStatusTx,
 }
 

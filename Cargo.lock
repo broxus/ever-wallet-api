@@ -902,6 +902,7 @@ dependencies = [
  "cfg-if",
  "cpufeatures",
  "curve25519-dalek-derive",
+ "digest 0.10.7",
  "fiat-crypto",
  "rustc_version",
  "subtle",
@@ -1144,6 +1145,20 @@ dependencies = [
 ]
 
 [[package]]
+name = "ed25519-dalek"
+version = "2.1.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "4a3daa8e81a3963a60642bcc1f90a670680bd4a77535faa384e9d1c79d620871"
+dependencies = [
+ "curve25519-dalek",
+ "ed25519 2.2.3",
+ "serde",
+ "sha2 0.10.8",
+ "subtle",
+ "zeroize",
+]
+
+[[package]]
 name = "either"
 version = "1.13.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1315,13 +1330,19 @@ version = "0.1.2"
 source = "git+https://github.com/broxus/everscale-types.git?rev=82c343b2bd17ceb51db0575b6b8ee821ccda037e#82c343b2bd17ceb51db0575b6b8ee821ccda037e"
 dependencies = [
  "ahash 0.8.11",
+ "anyhow",
  "base64 0.22.1",
  "bitflags 2.6.0",
  "blake3",
+ "bytes",
  "crc32c",
+ "ed25519-dalek 2.1.1",
  "everscale-crypto 0.3.0",
+ "everscale-types-abi-proc",
  "everscale-types-proc",
  "hex",
+ "num-bigint",
+ "num-traits",
  "rand 0.8.5",
  "rayon",
  "scc",
@@ -1331,6 +1352,17 @@ dependencies = [
  "thiserror 2.0.12",
  "tl-proto 0.5.3",
  "typeid",
+]
+
+[[package]]
+name = "everscale-types-abi-proc"
+version = "0.1.0"
+source = "git+https://github.com/broxus/everscale-types.git?rev=82c343b2bd17ceb51db0575b6b8ee821ccda037e#82c343b2bd17ceb51db0575b6b8ee821ccda037e"
+dependencies = [
+ "anyhow",
+ "proc-macro2",
+ "quote",
+ "syn 2.0.87",
 ]
 
 [[package]]
@@ -2737,7 +2769,7 @@ dependencies = [
  "curve25519-dalek-ng",
  "downcast-rs",
  "dyn-clone",
- "ed25519-dalek",
+ "ed25519-dalek 1.0.1",
  "erased-serde",
  "futures-util",
  "getrandom 0.2.15",
@@ -2775,7 +2807,7 @@ source = "git+https://github.com/broxus/nekoton.git?rev=561b60e7a47e994500dce9f2
 dependencies = [
  "anyhow",
  "base64 0.13.1",
- "ed25519-dalek",
+ "ed25519-dalek 1.0.1",
  "hex",
  "log",
  "nekoton-derive",
@@ -2830,7 +2862,7 @@ dependencies = [
  "anyhow",
  "base64 0.13.1",
  "chacha20poly1305",
- "ed25519-dalek",
+ "ed25519-dalek 1.0.1",
  "hex",
  "hmac 0.11.0",
  "pbkdf2 0.12.2",
@@ -5054,7 +5086,7 @@ dependencies = [
  "base64 0.13.1",
  "byteorder",
  "ed25519 1.5.3",
- "ed25519-dalek",
+ "ed25519-dalek 1.0.1",
  "hex",
  "num-bigint",
  "num-traits",
@@ -5076,7 +5108,7 @@ dependencies = [
  "base64 0.13.1",
  "crc",
  "ed25519 1.5.3",
- "ed25519-dalek",
+ "ed25519-dalek 1.0.1",
  "hex",
  "log",
  "num",
@@ -5131,7 +5163,7 @@ source = "git+https://github.com/broxus/ton-labs-vm.git#41a85bcde18bc524c18448ff
 dependencies = [
  "anyhow",
  "ed25519 1.5.3",
- "ed25519-dalek",
+ "ed25519-dalek 1.0.1",
  "hex",
  "lazy_static",
  "log",
@@ -5574,7 +5606,7 @@ dependencies = [
  "config",
  "dashmap",
  "derive_more",
- "ed25519-dalek",
+ "ed25519-dalek 1.0.1",
  "env_logger",
  "everscale-network",
  "everscale-types",
@@ -5615,6 +5647,9 @@ dependencies = [
  "tikv-jemallocator",
  "tokio",
  "tokio-util",
+ "ton_abi",
+ "ton_block",
+ "ton_types",
  "tower",
  "tower-http",
  "tower-service",

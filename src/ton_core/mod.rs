@@ -39,9 +39,11 @@ impl TonCore {
         owners_cache: OwnersCache,
         ton_transaction_producer: TonTransactionTx,
         token_transaction_producer: TokenTransactionTx,
+        storage: Storage,
+        blockchain_rpc_client: BlockchainRpcClient,
     ) -> Result<Arc<Self>> {
         let context =
-            TonCoreContext::new( sqlx_client, owners_cache).await?;
+            TonCoreContext::new( sqlx_client, owners_cache, storage, blockchain_rpc_client).await?;
 
         let full_state = FullState::new(context.clone()).await?;
 
@@ -167,7 +169,10 @@ impl TonCoreContext {
 
         // Load block 
         let block_stuff = match handle  {
-            Some(handle) => Some(self.storage.block_storage().load_block_data(&handle).await?.block()),
+            Some(handle) => {
+                let block_stuff = self.storage.block_storage().load_block_data(&handle).await?;
+                Some(block_stuff)
+            },
             None => None
         };
 
