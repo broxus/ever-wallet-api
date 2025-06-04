@@ -1,25 +1,15 @@
-use std::sync::Arc;
-
 use anyhow::{Context, Result};
 use clap::Parser;
-use everscale_types::dict::Dict;
-use everscale_types::models::BlockId;
-use futures_util::future::BoxFuture;
 use serde::{Deserialize, Serialize};
-use tycho_block_util::archive::ArchiveData;
-use tycho_block_util::block::BlockStuff;
 use tycho_core::block_strider::ShardStateApplier;
 use tycho_core::block_strider::{
-    ArchiveBlockProvider, BlockProviderExt, BlockSubscriber, BlockSubscriberContext,
-    BlockchainBlockProvider, ColdBootType, StateSubscriber, StateSubscriberContext,
+    ArchiveBlockProvider, BlockProviderExt, BlockchainBlockProvider, ColdBootType,
     StorageBlockProvider,
 };
-use tycho_storage::{BlockConnection, BlockHandle, NewBlockMeta, Storage};
 use tycho_util::cli::signal;
 use tycho_util::futures::JoinTask;
 
 use tycho_wallet_api::api::Api;
-use tycho_wallet_api::commands::*;
 use tycho_wallet_api::server::*;
 use tycho_wallet_api::settings::*;
 
@@ -140,7 +130,7 @@ impl Cmd {
         .with_fallback(archive_block_provider.clone());
 
         // Sync node.
-        let init_block_id = node
+        let _ = node
             .init(ColdBootType::LatestPersistent, import_zerostate)
             .await?;
 
