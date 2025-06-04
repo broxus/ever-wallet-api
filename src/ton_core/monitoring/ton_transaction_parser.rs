@@ -11,15 +11,11 @@ use uuid::Uuid;
 use crate::ton_core::*;
 
 pub async fn parse_ton_transaction(
-    account: HashBytes,
+    account: UInt256,
     block_utime: u32,
-    transaction_hash: HashBytes,
-    transaction: Transaction,
+    transaction_hash: UInt256,
+    transaction: ton_block::Transaction,
 ) -> Result<CaughtTonTransaction> {
-    let account = UInt256::with_array(account.0);
-    let transaction_hash = UInt256::with_array(transaction_hash.0);
-    let transaction = conver_to_old_transaction(&transaction)?;
-
     let in_msg = match &transaction.in_msg {
         Some(message) => message
             .read_struct()

@@ -85,10 +85,10 @@ impl TonTransaction {
 
 #[derive(Debug)]
 pub struct TonTransactionEvent {
-    pub account: HashBytes,
+    pub account: UInt256,
     pub block_utime: u32,
-    pub transaction_hash: HashBytes,
-    pub transaction: Transaction,
+    pub transaction_hash: UInt256,
+    pub transaction: ton_block::Transaction,
     pub state: HandleTransactionStatusTx,
 }
 
@@ -99,7 +99,7 @@ impl ReadFromTransaction for TonTransactionEvent {
     ) -> Option<Self> {
         Some(TonTransactionEvent {
             account: *ctx.account,
-            block_utime: ctx.block_info.gen_utime,
+            block_utime: ctx.block_info_gen_utime,
             transaction_hash: *ctx.transaction_hash,
             transaction: ctx.transaction.clone(),
             state,

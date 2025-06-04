@@ -171,7 +171,10 @@ impl TonClient {
         })
     }
 
-    pub async fn get_address_info(&self, owner: &MsgAddressInt) -> Result<NetworkAddressData, Error> {
+    pub async fn get_address_info(
+        &self,
+        owner: &MsgAddressInt,
+    ) -> Result<NetworkAddressData, Error> {
         let account = UInt256::from_be_bytes(&owner.address().get_bytestring(0));
         let contract = match self.ton_core.get_contract_state(&account) {
             Ok(contract) => contract,

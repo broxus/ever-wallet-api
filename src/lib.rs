@@ -16,8 +16,8 @@ pub mod sqlx_client;
 pub mod ton_core;
 pub mod utils;
 
-pub static BIN_VERSION: &str = env!("TYCHO_WALLET_API_VERSION");
-pub static BIN_BUILD: &str = env!("TYCHO_WALLET_API_BUILD");
+pub static BIN_VERSION: &str = "TYCHO_WALLET_API_VERSION";
+pub static BIN_BUILD: &str = "TYCHO_WALLET_API_BUILD";
 
 pub fn version_string() -> &'static str {
     static STRING: OnceLock<String> = OnceLock::new();

@@ -99,7 +99,7 @@ pub struct NetworkAddressData {
 
 impl NetworkAddressData {
     pub fn uninit(owner: &MsgAddressInt) -> NetworkAddressData {
-        NetworkAddressData {            
+        NetworkAddressData {
             workchain_id: owner.workchain_id(),
             hex: owner.address().to_hex_string(),
             account_status: AccountStatus::UnInit,

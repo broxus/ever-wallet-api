@@ -104,7 +104,12 @@ impl Cmd {
         let mut node = self.base.create(node_config.clone()).await?;
         tracing::info!("created tycho node");
 
-        let context = EngineContext::new(node_config.user_config).await?;
+        let context = EngineContext::new(
+            node_config.user_config,
+            node.storage().clone(),
+            node.blockchain_rpc_client().clone(),
+        )
+        .await?;
 
         context.start().await?;
 

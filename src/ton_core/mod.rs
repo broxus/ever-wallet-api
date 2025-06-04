@@ -216,9 +216,11 @@ impl TonCoreContext {
         let cells = message.write_to_new_cell()?.into_cell()?;
         let serialized = ton_types::serialize_toc(&cells)?;
 
-        let rx = self
-            .messages_queue
-            .add_message(HashBytes::from_slice(account.as_slice()), HashBytes::from_slice(cells.repr_hash().as_slice()), expire_at)?;
+        let rx = self.messages_queue.add_message(
+            HashBytes::from_slice(account.as_slice()),
+            HashBytes::from_slice(cells.repr_hash().as_slice()),
+            expire_at,
+        )?;
 
         self.blockchain_rpc_client
             .broadcast_external_message(&*serialized)
@@ -234,8 +236,11 @@ impl TonCoreContext {
         message_hash: UInt256,
         expire_at: u32,
     ) -> Result<oneshot::Receiver<MessageStatus>> {
-        self.messages_queue
-            .add_message(HashBytes::from_slice(account.as_slice()), HashBytes::from_slice(message_hash.as_slice()), expire_at)
+        self.messages_queue.add_message(
+            HashBytes::from_slice(account.as_slice()),
+            HashBytes::from_slice(message_hash.as_slice()),
+            expire_at,
+        )
     }
 }
 

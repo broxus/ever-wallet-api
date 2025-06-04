@@ -5,6 +5,8 @@ use pomfrit::formatter::*;
 use sqlx::postgres::PgPoolOptions;
 use tokio::sync::mpsc;
 use tokio::sync::Mutex;
+use tycho_core::blockchain_rpc::BlockchainRpcClient;
+use tycho_storage::Storage;
 
 use crate::client::*;
 use crate::models::*;
@@ -26,7 +28,11 @@ pub struct EngineContext {
 }
 
 impl EngineContext {
-    pub async fn new(config: AppConfig) -> Result<Arc<Self>> {
+    pub async fn new(
+        config: AppConfig,
+        storage: Storage,
+        blockchain_rpc_client: BlockchainRpcClient,
+    ) -> Result<Arc<Self>> {
         let pool = PgPoolOptions::new()
             .max_connections(config.db_pool_size)
             .connect(&config.database_url)
@@ -48,6 +54,8 @@ impl EngineContext {
             owners_cache,
             ton_transaction_tx,
             token_transaction_tx,
+            storage,
+            blockchain_rpc_client,
         )
         .await?;
 

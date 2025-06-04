@@ -405,20 +405,28 @@ impl StateSubscription {
                     continue;
                 }
             };
+
+            let account = UInt256::with_array(account.0);
+            let transaction_hash = UInt256::with_array(hash.0);
+            let block_hash = UInt256::with_array(block_hash.0);
+            let transaction = conver_to_old_transaction(&transaction)?;
             // Skip non-ordinary transactions
-            let transaction_info = match transaction.load_info()? {
-                TxInfo::Ordinary(info) => info,
+            let transaction_info = match transaction.description.read_struct() {
+                Ok(ton_block::TransactionDescr::Ordinary(info)) => info,
                 _ => continue,
             };
 
-            let in_msg_hash = transaction
+            let in_msg = match transaction
                 .in_msg
                 .as_ref()
-                .map(|in_msg| *in_msg.repr_hash());
-            let in_msg = match transaction.load_in_msg()? {
-                Some(message) => {
-                    if matches!(message.info, MsgInfo::ExtIn(_)) {
-                        messages_queue.deliver_message(*account, in_msg_hash.unwrap());
+                .map(|message| (message, message.read_struct()))
+            {
+                Some((message_cell, Ok(message))) => {
+                    if matches!(message.header(), ton_block::CommonMsgInfo::ExtInMsgInfo(_)) {
+                        messages_queue.deliver_message(
+                            HashBytes::from_slice(account.as_slice()),
+                            HashBytes::from_slice(message_cell.hash().as_slice()),
+                        );
                     }
                     message
                 }
@@ -426,10 +434,10 @@ impl StateSubscription {
             };
 
             let ctx = TxContext {
-                block_info,
-                block_hash,
-                account,
-                transaction_hash: &hash,
+                block_info_gen_utime: block_info.gen_utime,
+                block_hash: &block_hash,
+                account: &account,
+                transaction_hash: &transaction_hash,
                 transaction_info: &transaction_info,
                 transaction: &transaction,
                 in_msg: &in_msg,
@@ -502,35 +510,32 @@ impl TokenSubscription {
                 }
             };
 
+            let account = UInt256::with_array(account.0);
+            let transaction_hash = UInt256::with_array(hash.0);
+            let block_hash = UInt256::with_array(block_hash.0);
+            let transaction = conver_to_old_transaction(&transaction)?;
             // Skip non-ordinary transactions
-            let transaction_info = match transaction.load_info()? {
-                TxInfo::Ordinary(info) => info,
-                _ => continue,
-            };
-
-            let old_transaction = conver_to_old_transaction(&transaction)?;
-
-            let old_transaction_info = match old_transaction.description.read_struct() {
+            let transaction_info = match transaction.description.read_struct() {
                 Ok(ton_block::TransactionDescr::Ordinary(info)) => info,
                 _ => continue,
             };
 
             let parsed_token_transaction = match nekoton::core::parsing::parse_token_transaction(
-                &old_transaction,
-                &old_transaction_info,
+                &transaction,
+                &transaction_info,
                 TokenWalletVersion::Tip3,
             ) {
                 Some(parsed_token_transaction) => Some(parsed_token_transaction),
                 None => nekoton::core::parsing::parse_token_transaction(
-                    &old_transaction,
-                    &old_transaction_info,
+                    &transaction,
+                    &transaction_info,
                     TokenWalletVersion::OldTip3v4,
                 ),
             };
 
             if let Some(parsed) = parsed_token_transaction {
                 let token_contract = shards_accounts_cache
-                    .find_account(account)?
+                    .find_account(&HashBytes::from_slice(account.as_slice()))?
                     .ok_or_else(|| TonCoreError::AccountNotExist(account.to_string()))?;
 
                 let (token_wallet_details, ..) = get_token_wallet_details(&token_contract)?;
@@ -545,15 +550,20 @@ impl TokenSubscription {
                     .get(&HashBytes::from_slice(owner_account.as_slice()))
                     .is_some()
                 {
-                    let in_msg = match transaction.load_in_msg()? {
-                        Some(message) => message,
+                    let in_msg = match transaction
+                        .in_msg
+                        .as_ref()
+                        .map(|message| (message, message.read_struct()))
+                    {
+                        Some((message_cell, Ok(message))) => message,
                         _ => continue,
                     };
+
                     let ctx = TxContext {
-                        block_info,
-                        block_hash,
-                        account,
-                        transaction_hash: &hash,
+                        block_info_gen_utime: block_info.gen_utime,
+                        block_hash: &block_hash,
+                        account: &account,
+                        transaction_hash: &transaction_hash,
                         transaction_info: &transaction_info,
                         transaction: &transaction,
                         in_msg: &in_msg,
