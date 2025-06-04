@@ -29,7 +29,6 @@ impl SqlxClient {
             .map_err(From::from)
     }
 
-    
     pub async fn get_address(
         &self,
         service_id: ServiceId,

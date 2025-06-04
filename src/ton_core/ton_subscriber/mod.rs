@@ -4,7 +4,7 @@ use std::sync::{Arc, Weak};
 
 use anyhow::Result;
 use everscale_types::boc::Boc;
-use everscale_types::cell::{Cell, HashBytes, Load};
+use everscale_types::cell::{Cell, CellBuilder, HashBytes, Load};
 use futures::stream::FuturesUnordered;
 use futures::StreamExt;
 use nekoton::core::models::TokenWalletVersion;
@@ -14,7 +14,8 @@ use parking_lot::{Mutex, RwLock, RwLockReadGuard};
 use rustc_hash::FxHashMap;
 
 use tokio::sync::Notify;
-use ton_block::ExtraCurrencyCollection;
+use ton_block::Deserializable;
+use ton_types::SliceData;
 use tycho_block_util::block::BlockStuff;
 use tycho_block_util::state::{RefMcStateHandle, ShardStateStuff};
 use tycho_vm::StackValue;
@@ -338,14 +339,17 @@ impl TonSubscriber {
 }
 
 impl TonSubscriber {
-    pub async fn process_block(&self, block_stuff: &BlockStuff, state: &ShardStateStuff) -> Result<()> {
+    pub async fn process_block(
+        &self,
+        block_stuff: &BlockStuff,
+        state: &ShardStateStuff,
+    ) -> Result<()> {
         let block_id = block_stuff.id();
 
         if block_id.is_masterchain() {
             self.handle_masterchain_block(&block_stuff)?;
         } else {
-            let mut states =
-                self.handle_shard_block(&block_stuff, &block_id.root_hash, &state)?;
+            let mut states = self.handle_shard_block(&block_stuff, &block_id.root_hash, &state)?;
             while let Some(status) = states.next().await {
                 if let Err(err) = status {
                     log::error!("Failed to receive transaction status: {}", err);
@@ -710,7 +714,7 @@ pub fn make_existing_contract(state: Option<ShardAccount>) -> Result<Option<Exis
         None => return Ok(None),
     };
 
-    let account = everscale_types::models::Account::load_from(&mut state.data.as_slice()?)?;
+    let account = everscale_types::models::OptionalAccount::load_from(&mut state.data.as_slice()?)?;
 
     if let Some(stuff) = convert_to_old_account(account)? {
         Ok(Some(ExistingContract {
@@ -724,57 +728,14 @@ pub fn make_existing_contract(state: Option<ShardAccount>) -> Result<Option<Exis
 }
 
 pub fn convert_to_old_account(
-    account: everscale_types::models::Account,
+    account: everscale_types::models::OptionalAccount,
 ) -> Result<Option<ton_block::AccountStuff>> {
-    match account.state {
-        AccountState::Uninit | AccountState::Frozen(_) => Ok(None),
-        AccountState::Active(state_init) => {
-            Ok(Some(ton_block::AccountStuff {
-                addr: ton_block::MsgAddressInt::from_str(&account.address.to_string())?,
-                storage_stat: ton_block::StorageInfo {
-                    used: ton_block::StorageUsed::with_values_checked(
-                        account.storage_stat.used.cells.into_inner(),
-                        account.storage_stat.used.bits.into_inner(),
-                        account.storage_stat.used.public_cells.into_inner(),
-                    )?,
-                    last_paid: account.storage_stat.last_paid,
-                    due_payment: account
-                        .storage_stat
-                        .due_payment
-                        .map(|v| (v.into_inner() as u64).into()),
-                },
-                storage: ton_block::AccountStorage {
-                    last_trans_lt: account.last_trans_lt,
-                    balance: ton_block::CurrencyCollection {
-                        grams: (account.balance.tokens.into_inner() as u64).into(),
-                        other: ExtraCurrencyCollection::default(),
-                    },
-                    state: ton_block::AccountState::AccountActive {
-                        state_init: ton_block::StateInit {
-                            split_depth: state_init
-                                .split_depth
-                                .map(|v| ton_block::Number5::new(v.into_bit_len() as u32).unwrap()),
-                            special: state_init.special.map(|v| ton_block::TickTock {
-                                tick: v.tick,
-                                tock: v.tock,
-                            }),
-                            code: state_init.code.map(|cell| {
-                                let bytes = Boc::encode(cell);
-                                ton_types::deserialize_tree_of_cells(&mut &*bytes)
-                                    .unwrap_or_default()
-                            }),
-                            data: state_init.data.map(|cell| {
-                                let bytes = Boc::encode(cell);
-                                ton_types::deserialize_tree_of_cells(&mut &*bytes)
-                                    .unwrap_or_default()
-                            }),
-                            library: Default::default(), // TODO: CHECK CONVERSION
-                        },
-                    },
-                    init_code_hash: None,
-                },
-            }))
-        }
+    let cell = CellBuilder::build_from(account)?;
+    let bytes = Boc::encode(cell);
+    let cell = ton_types::deserialize_tree_of_cells(&mut &*bytes)?;
+    match ton_block::Account::construct_from(&mut SliceData::load_cell(cell)?)? {
+        ton_block::Account::AccountNone => Ok(None),
+        ton_block::Account::Account(stuff) => Ok(Some(stuff)),
     }
 }
 
@@ -813,14 +774,13 @@ impl ShardAccountsMapExt for FxHashMap<ShardIdent, CachedAccounts> {
                         hash: UInt256::with_array(account.last_trans_hash.0),
                     });
 
-                    if let Some(account) = account.load_account()? {
-                        if let Some(stuff) = convert_to_old_account(account)? {
-                            return Ok(Some(ExistingContract {
-                                account: stuff,
-                                timings: GenTimings::Unknown,
-                                last_transaction_id,
-                            }));
-                        }
+                    let account = account.account.load()?;
+                    if let Some(stuff) = convert_to_old_account(account)? {
+                        return Ok(Some(ExistingContract {
+                            account: stuff,
+                            timings: GenTimings::Unknown,
+                            last_transaction_id,
+                        }));
                     }
                 }
                 Ok(None)

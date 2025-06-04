@@ -58,8 +58,7 @@ impl Api {
         auth_service: Arc<AuthService>,
         ton_service: Arc<TonService>,
         memory_storage: Arc<StorageHandler>,
-    ) -> std::io::Result<Self>
-    {
+    ) -> std::io::Result<Self> {
         describe_counter!("requests_processed", "number of requests processed");
         describe_histogram!(
             "execution_time_seconds",

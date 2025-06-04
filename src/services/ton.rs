@@ -56,7 +56,8 @@ impl TonService {
             let account = UInt256::from_be_bytes(&hex::decode(transaction.account_hex.clone())?);
             let message_hash =
                 UInt256::from_be_bytes(&hex::decode(transaction.message_hash.clone())?);
-            let expire_at = transaction.created_at.and_utc().timestamp() as u32 + DEFAULT_EXPIRATION_TIMEOUT;
+            let expire_at =
+                transaction.created_at.and_utc().timestamp() as u32 + DEFAULT_EXPIRATION_TIMEOUT;
 
             let rx = self
                 .ton_api_client

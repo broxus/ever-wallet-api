@@ -39,16 +39,17 @@ pub struct AppConfig {
     pub logger_settings: serde_json::Value,
 }
 
-impl Default for  AppConfig {
+impl Default for AppConfig {
     fn default() -> Self {
-        Self { 
-          server_addr: default_server_addr(),
-          database_url: "postgresql://postgres:postgres@127.0.0.1:5432/tycho_wallet_api".to_string(), 
-          db_pool_size: 8, 
-          key: default_key(), 
-          api_metrics_addr: Default::default(), 
-          node_metrics_settings: Default::default(), 
-          logger_settings: default_logger_settings() 
+        Self {
+            server_addr: default_server_addr(),
+            database_url: "postgresql://postgres:postgres@127.0.0.1:5432/tycho_wallet_api"
+                .to_string(),
+            db_pool_size: 8,
+            key: default_key(),
+            api_metrics_addr: Default::default(),
+            node_metrics_settings: Default::default(),
+            logger_settings: default_logger_settings(),
         }
     }
 }
@@ -59,8 +60,8 @@ pub trait ConfigExt: Sized {
         P: AsRef<Path>;
 }
 
-fn default_server_addr() -> SocketAddr  {
-  SocketAddr::new(IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)), 8080)
+fn default_server_addr() -> SocketAddr {
+    SocketAddr::new(IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)), 8080)
 }
 
 fn default_key() -> Vec<u8> {

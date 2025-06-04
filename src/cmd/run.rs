@@ -150,8 +150,7 @@ impl Cmd {
         // Start the node.
         node.run(
             archive_block_provider.chain((blockchain_block_provider, storage_block_provider)),
-            ShardStateApplier::new( node.storage().clone(), context)
-             ,
+            ShardStateApplier::new(node.storage().clone(), context),
         )
         .await?;
 
@@ -159,7 +158,6 @@ impl Cmd {
         api_fut.await.map_err(Into::into)
     }
 }
-
 
 type NodeConfig = tycho_light_node::NodeConfig<NodeConfigExtra>;
 

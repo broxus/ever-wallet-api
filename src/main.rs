@@ -1,9 +1,9 @@
 use std::process::ExitCode;
 
-use clap::Args;
-use tycho_wallet_api::commands::*;
-use clap::{Parser, Subcommand};
 use anyhow::Result;
+use clap::Args;
+use clap::{Parser, Subcommand};
+use tycho_wallet_api::commands::*;
 
 mod cmd {
     pub mod run;
@@ -88,10 +88,10 @@ struct CmdApiService {
     #[clap(short = 'i')]
     id: Option<String>,
     /// service name
-    #[clap( short = 'n')]
+    #[clap(short = 'n')]
     name: String,
     /// service key
-    #[clap( short = 'k')]
+    #[clap(short = 'k')]
     key: String,
     /// service secret
     #[clap(short = 's')]

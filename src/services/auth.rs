@@ -58,7 +58,9 @@ impl AuthService {
         let timestamp = timestamp_ms / 1000;
 
         let now = Utc::now().naive_utc();
-        let then = DateTime::from_timestamp(timestamp, 0).context("Invalid timestamp")?.naive_utc();
+        let then = DateTime::from_timestamp(timestamp, 0)
+            .context("Invalid timestamp")?
+            .naive_utc();
 
         let delta = (now - then).num_seconds();
         if delta > TIMESTAMP_EXPIRED_SEC {

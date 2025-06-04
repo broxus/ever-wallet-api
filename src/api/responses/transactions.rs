@@ -143,7 +143,9 @@ impl From<TransactionDb> for TransactionDataResponse {
             status: c.status,
             aborted: c.aborted,
             bounce: c.bounce,
-            transaction_timestamp: c.transaction_timestamp.map(|t| t.and_utc().timestamp_millis()),
+            transaction_timestamp: c
+                .transaction_timestamp
+                .map(|t| t.and_utc().timestamp_millis()),
             created_at: c.created_at.and_utc().timestamp_millis(),
             updated_at: c.updated_at.and_utc().timestamp_millis(),
             error: c.error,

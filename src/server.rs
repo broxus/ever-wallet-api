@@ -250,11 +250,15 @@ impl EngineContext {
 pub type ShutdownRequestsRx = mpsc::UnboundedReceiver<()>;
 pub type ShutdownRequestsTx = mpsc::UnboundedSender<()>;
 
-
 impl StateSubscriber for EngineContext {
     type HandleStateFut<'a> = BoxFuture<'a, Result<()>>;
 
     fn handle_state<'a>(&'a self, cx: &'a StateSubscriberContext) -> Self::HandleStateFut<'a> {
-        Box::pin(self.ton_core.context.ton_subscriber.process_block(&cx.block, &cx.state))
+        Box::pin(
+            self.ton_core
+                .context
+                .ton_subscriber
+                .process_block(&cx.block, &cx.state),
+        )
     }
 }

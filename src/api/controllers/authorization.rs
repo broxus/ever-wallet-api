@@ -96,7 +96,6 @@ async fn check_api_key(
 #[derive(Debug, Clone)]
 pub struct IdExtractor(pub ServiceId);
 
-
 #[async_trait]
 impl<S> FromRequestParts<S> for IdExtractor
 where

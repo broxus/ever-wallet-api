@@ -12,7 +12,8 @@ impl SqlxClient {
     ) -> Result<(TokenTransactionFromDb, TokenTransactionEventDb)> {
         let transaction_timestamp =
             DateTime::from_timestamp(payload.transaction_timestamp as i64, 0)
-                .context("Invalid transaction timestamp")?.naive_utc();
+                .context("Invalid transaction timestamp")?
+                .naive_utc();
 
         let mut tx = self.pool.begin().await?;
 
