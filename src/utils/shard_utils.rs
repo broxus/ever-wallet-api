@@ -1,13 +1,8 @@
 use std::collections::HashMap;
 
-use anyhow::{Context, Result};
-use everscale_types::models::ShardIdent;
+use anyhow::Result;
+use everscale_types::{cell::HashBytes, models::ShardIdent};
 use nekoton::transport::models::ExistingContract;
-use rustc_hash::FxHashMap;
-use ton_block::HashmapAugType;
-use ton_types::UInt256;
-
-use super::existing_contract::*;
 
 pub type ShardsMap = HashMap<ton_block::ShardIdent, ton_block::BlockIdExt>;
 
@@ -17,57 +12,24 @@ pub struct LatestShardBlocks {
     pub block_ids: ShardsMap,
 }
 
-pub type ShardAccountsMap = FxHashMap<ton_block::ShardIdent, ton_block::ShardAccounts>;
-
 /// Helper trait to reduce boilerplate for getting accounts from shards state
 pub trait ShardAccountsMapExt {
     /// Looks for a suitable shard and tries to extract information about the contract from it
-    fn find_account(&self, account: &UInt256) -> Result<Option<ExistingContract>>;
+    fn find_account(&self, account: &HashBytes) -> Result<Option<ExistingContract>>;
 }
 
 impl<T> ShardAccountsMapExt for &T
 where
     T: ShardAccountsMapExt,
 {
-    fn find_account(&self, account: &UInt256) -> Result<Option<ExistingContract>> {
+    fn find_account(&self, account: &HashBytes) -> Result<Option<ExistingContract>> {
         T::find_account(self, account)
     }
 }
 
-impl ShardAccountsMapExt for ShardAccountsMap {
-    fn find_account(&self, account: &UInt256) -> Result<Option<ExistingContract>> {
-        // Search suitable shard for account by prefix.
-        // NOTE: In **most** cases suitable shard will be found
-        let item = self
-            .iter()
-            .find(|(shard_ident, _)| contains_account(shard_ident, account));
-
-        match item {
-            // Search account in shard state
-            Some((_, shard)) => shard.find_account(account),
-            // Exceptional situation when no suitable shard was found
-            None => Err(ShardUtilsError::InvalidContractAddress).context("No suitable shard found"),
-        }
-    }
-}
-
-impl ShardAccountsMapExt for ton_block::ShardAccounts {
-    fn find_account(&self, account: &UInt256) -> Result<Option<ExistingContract>> {
-        match self
-            .get(account)
-            .and_then(|account| ExistingContract::from_shard_account_opt(&account))?
-        {
-            // Account found
-            Some(contract) => Ok(Some(contract)),
-            // Account was not found (it never had any transactions) or there is not AccountStuff in it
-            None => Ok(None),
-        }
-    }
-}
-
-pub fn contains_account(shard: &ShardIdent, account: &UInt256) -> bool {
-    let shard_prefix = shard.shard_prefix_with_tag();
-    if shard_prefix == ton_block::SHARD_FULL {
+pub fn contains_account(shard: &ShardIdent, account: &HashBytes) -> bool {
+    let shard_prefix = shard.prefix();
+    if shard_prefix == ShardIdent::PREFIX_FULL {
         true
     } else {
         let len = shard.prefix_len();
@@ -77,7 +39,7 @@ pub fn contains_account(shard: &ShardIdent, account: &UInt256) -> bool {
     }
 }
 
-pub fn account_prefix(account: &UInt256, len: usize) -> u64 {
+pub fn account_prefix(account: &HashBytes, len: usize) -> u64 {
     debug_assert!(len <= 64);
 
     let account = account.as_slice();
@@ -115,7 +77,7 @@ mod tests {
             *byte = 0xff;
         }
 
-        let account_id = UInt256::from(account_id);
+        let account_id = HashBytes::from(account_id);
         for i in 0..64 {
             let prefix = account_prefix(&account_id, i);
             assert_eq!(64 - prefix.trailing_zeros(), i as u32);
@@ -124,13 +86,12 @@ mod tests {
 
     #[test]
     fn test_contains_account() {
-        let account = ton_types::UInt256::from_be_bytes(
+        let account = HashBytes::from_slice(
             &hex::decode("459b6795bf4d4c3b930c83fe7625cfee99a762e1e114c749b62bfa751b781fa5")
                 .unwrap(),
         );
 
-        let mut shards =
-            vec![ton_block::ShardIdent::with_tagged_prefix(0, ton_block::SHARD_FULL).unwrap()];
+        let mut shards = vec![ShardIdent::new(0, ton_block::SHARD_FULL).unwrap()];
         for _ in 0..4 {
             let mut new_shards = vec![];
             for shard in &shards {
@@ -154,8 +115,6 @@ mod tests {
             target_shard = Some(shard);
         }
 
-        assert!(
-            matches!(target_shard, Some(shard) if shard.shard_prefix_with_tag() == 0x4800000000000000)
-        );
+        assert!(matches!(target_shard, Some(shard) if shard.prefix() == 0x4800000000000000));
     }
 }

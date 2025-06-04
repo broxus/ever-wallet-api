@@ -107,12 +107,17 @@ struct CmdApiService {
 }
 
 impl CmdApiService {
-     fn run(self) -> Result<()> {
+    fn run(self) -> Result<()> {
         tokio::runtime::Builder::new_multi_thread()
             .enable_all()
             .worker_threads(2)
             .build()?
-            .block_on(create_api_service(self.id, self.name, self.key, self.secret))
+            .block_on(create_api_service(
+                self.id,
+                self.name,
+                self.key,
+                self.secret,
+            ))
     }
 }
 
@@ -120,7 +125,7 @@ impl CmdApiService {
 struct CmdSalt {}
 
 impl CmdSalt {
-     fn run(self) -> Result<()> {
+    fn run(self) -> Result<()> {
         tokio::runtime::Builder::new_multi_thread()
             .enable_all()
             .worker_threads(2)

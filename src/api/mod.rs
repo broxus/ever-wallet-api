@@ -1,24 +1,24 @@
-use std::net::{Ipv4Addr, SocketAddr};
-use std::sync::Arc;
 use std::convert::Infallible;
 use std::future::IntoFuture;
+use std::net::{Ipv4Addr, SocketAddr};
+use std::sync::Arc;
 
 use anyhow::Context;
-use axum::handler::Handler;
 use axum::body::Body;
-use axum::http::{Method};
+use axum::extract::Request;
+use axum::handler::Handler;
+use axum::http::Method;
+use axum::response::Response;
+use axum::serve::IncomingStream;
+use futures_util::future::BoxFuture;
 use metrics::{describe_counter, describe_histogram};
 use metrics_exporter_prometheus::Matcher;
+use serde::{Deserialize, Serialize};
 use tower::ServiceBuilder;
 use tower_http::cors::{AllowHeaders, AllowMethods, AllowOrigin, CorsLayer};
 use tower_http::trace::TraceLayer;
-use tracing::Span;
-use axum::response::Response;
-use axum::extract::Request;
-use axum::serve::IncomingStream;
-use futures_util::future::BoxFuture;
-use serde::{Deserialize, Serialize};
 use tower_service::Service;
+use tracing::Span;
 
 use crate::services::{AuthService, StorageHandler, TonService};
 
@@ -57,20 +57,19 @@ pub struct Api {
 }
 
 impl Api {
-pub async fn bind< M, S> (
-    server_addr: SocketAddr,
-    metrics_addr: Option<SocketAddr>,
-    auth_service: Arc<AuthService>,
-    ton_service: Arc<TonService>,
-    memory_storage: Arc<StorageHandler>,
-) 
- -> std::io::Result<Self>
+    pub async fn bind<M, S>(
+        server_addr: SocketAddr,
+        metrics_addr: Option<SocketAddr>,
+        auth_service: Arc<AuthService>,
+        ton_service: Arc<TonService>,
+        memory_storage: Arc<StorageHandler>,
+    ) -> std::io::Result<Self>
     where
         M: for<'a> Service<IncomingStream<'a>, Error = Infallible, Response = S> + Send + 'static,
         S: Service<Request, Response = Response, Error = Infallible> + Clone + Send + 'static,
         for<'a> <M as Service<IncomingStream<'a>>>::Future: Send,
         S::Future: Send,
-        {
+    {
         describe_counter!("requests_processed", "number of requests processed");
         describe_histogram!(
             "execution_time_seconds",
@@ -96,13 +95,12 @@ pub async fn bind< M, S> (
                         ])),
                 ),
             )
-            .layer(
-                TraceLayer::new_for_http().on_request(|request: &Request<Body>, _span: &Span| {
+            .layer(TraceLayer::new_for_http().on_request(
+                |request: &Request<Body>, _span: &Span| {
                     tracing::info!("started {} {}", request.method(), request.uri().path())
-                }),
-            )
+                },
+            ))
             .fallback(controllers::handler_404);
-
 
         let listener = tokio::net::TcpListener::bind(server_addr).await.unwrap();
 
@@ -117,7 +115,6 @@ pub async fn bind< M, S> (
         (self.serve_fn)().await
     }
 }
-
 
 fn install_monitoring(metrics_addr: SocketAddr) -> anyhow::Result<()> {
     metrics_exporter_prometheus::PrometheusBuilder::new()

@@ -1,7 +1,7 @@
 use anyhow::Result;
 use chrono::Utc;
 use nekoton_utils::TrustMe;
-use reqwest::{Method, Url, StatusCode};
+use reqwest::{Method, StatusCode, Url};
 
 use crate::models::*;
 

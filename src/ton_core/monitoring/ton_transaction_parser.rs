@@ -4,23 +4,29 @@ use nekoton::core::models::{MultisigTransaction, TransactionError};
 use nekoton::core::ton_wallet::MultisigType;
 use num_traits::FromPrimitive;
 use serde::{Deserialize, Serialize};
+use ton_block::{CommonMsgInfo, GetRepresentationHash, MsgAddressInt};
+use ton_types::AccountId;
 use uuid::Uuid;
 
 use crate::ton_core::*;
 
 pub async fn parse_ton_transaction(
-    account: UInt256,
+    account: HashBytes,
     block_utime: u32,
-    transaction_hash: UInt256,
-    transaction: ton_block::Transaction,
+    transaction_hash: HashBytes,
+    transaction: Transaction,
 ) -> Result<CaughtTonTransaction> {
+    let account = UInt256::with_array(account.0);
+    let transaction_hash = UInt256::with_array(transaction_hash.0);
+    let transaction = conver_to_old_transaction(&transaction)?;
+
     let in_msg = match &transaction.in_msg {
         Some(message) => message
             .read_struct()
             .map_err(|_| TransactionError::InvalidStructure)?,
         None => return Err(TransactionError::Unsupported.into()),
     };
-    let address = StdAddr::with_standart(
+    let address = MsgAddressInt::with_standart(
         None,
         ton_block::BASE_WORKCHAIN_ID as i8,
         AccountId::from(account),
@@ -115,7 +121,7 @@ pub async fn parse_ton_transaction(
     Ok(parsed)
 }
 
-fn get_sender_address(transaction: &ton_block::Transaction) -> Result<Option<StdAddr>> {
+fn get_sender_address(transaction: &ton_block::Transaction) -> Result<Option<MsgAddressInt>> {
     let in_msg = transaction
         .in_msg
         .as_ref()
@@ -260,7 +266,7 @@ struct OutputsRecipient {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use ton_block::{Deserializable, StdAddr, Transaction};
+    use ton_block::{Deserializable, MsgAddressInt, Transaction};
 
     fn mock_transaction_with_message() -> Transaction {
         Transaction::construct_from_base64(
@@ -320,7 +326,7 @@ mod tests {
         assert_eq!(
             result.unwrap(),
             Some(
-                StdAddr::from_str(
+                MsgAddressInt::from_str(
                     "0:fd7cb9aa109bec4fd39f3b8c3a21b661caacbc161a8c6331be6bb88a4e7ff720"
                 )
                 .unwrap()
@@ -336,7 +342,7 @@ mod tests {
         assert_eq!(
             result.unwrap(),
             Some(
-                StdAddr::from_str(
+                MsgAddressInt::from_str(
                     "0:fd7cb9aa109bec4fd39f3b8c3a21b661caacbc161a8c6331be6bb88a4e7ff720"
                 )
                 .unwrap()
@@ -352,7 +358,7 @@ mod tests {
         assert_eq!(
             result.unwrap(),
             Some(
-                StdAddr::from_str(
+                MsgAddressInt::from_str(
                     "0:82d6884271fab6516973024db8247c807f56085c99526d965d4bae695885f969"
                 )
                 .unwrap()

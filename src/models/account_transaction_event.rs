@@ -32,16 +32,14 @@ pub struct AccountTransactionEvent {
 impl From<TokenTransactionEventDb> for AccountTransactionEvent {
     fn from(t: TokenTransactionEventDb) -> Self {
         let account =
-            StdAddr::from_str(&format!("{}:{}", t.account_workchain_id, t.account_hex))
-                .unwrap();
+            StdAddr::from_str(&format!("{}:{}", t.account_workchain_id, t.account_hex)).unwrap();
         let base64url = Address(account.display_base64_url(true).to_string());
 
         let sender = if let (Some(sender_workchain_id), Some(sender_hex)) =
             (t.sender_workchain_id, t.sender_hex)
         {
             let sender =
-                StdAddr::from_str(&format!("{}:{}", sender_workchain_id, sender_hex))
-                    .unwrap();
+                StdAddr::from_str(&format!("{}:{}", sender_workchain_id, sender_hex)).unwrap();
             let base64url = Address(sender.display_base64_url(true).to_string());
             Some(Account {
                 workchain_id: sender_workchain_id,
@@ -79,16 +77,14 @@ impl From<TokenTransactionEventDb> for AccountTransactionEvent {
 impl From<TransactionEventDb> for AccountTransactionEvent {
     fn from(t: TransactionEventDb) -> Self {
         let account =
-            StdAddr::from_str(&format!("{}:{}", t.account_workchain_id, t.account_hex))
-                .unwrap();
+            StdAddr::from_str(&format!("{}:{}", t.account_workchain_id, t.account_hex)).unwrap();
         let base64url = Address(account.display_base64_url(true).to_string());
 
         let sender = if let (Some(sender_workchain_id), Some(sender_hex)) =
             (t.sender_workchain_id, t.sender_hex)
         {
             let sender =
-                StdAddr::from_str(&format!("{}:{}", sender_workchain_id, sender_hex))
-                    .unwrap();
+                StdAddr::from_str(&format!("{}:{}", sender_workchain_id, sender_hex)).unwrap();
             let base64url = Address(sender.display_base64_url(true).to_string());
             Some(Account {
                 workchain_id: sender_workchain_id,

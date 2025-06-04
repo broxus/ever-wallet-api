@@ -255,8 +255,7 @@ pub struct TokenBalanceDataResponse {
 impl TokenBalanceDataResponse {
     pub fn new(a: TokenBalanceFromDb, b: NetworkTokenAddressData) -> Self {
         let account =
-            StdAddr::from_str(&format!("{}:{}", a.account_workchain_id, a.account_hex))
-                .trust_me();
+            StdAddr::from_str(&format!("{}:{}", a.account_workchain_id, a.account_hex)).trust_me();
         let base64url = Address(account.display_base64_url(true).to_string());
 
         Self {

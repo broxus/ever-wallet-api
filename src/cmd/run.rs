@@ -13,7 +13,8 @@ use tycho_block_util::archive::ArchiveData;
 use tycho_block_util::block::BlockStuff;
 use tycho_core::block_strider::{
     ArchiveBlockProvider, BlockProviderExt, BlockSubscriber, BlockSubscriberContext,
-    BlockchainBlockProvider, ColdBootType, StorageBlockProvider, StateSubscriber, StateSubscriberContext
+    BlockchainBlockProvider, ColdBootType, StateSubscriber, StateSubscriberContext,
+    StorageBlockProvider,
 };
 use tycho_storage::{BlockConnection, BlockHandle, NewBlockMeta, Storage};
 use tycho_util::cli::signal;
@@ -108,7 +109,8 @@ impl Cmd {
         context.start().await?;
 
         let (metrics_exporter, metrics_writer) =
-            pomfrit::create_exporter(node_config.user_config.api.node_metrics_settings.clone()).await?;
+            pomfrit::create_exporter(node_config.user_config.api.node_metrics_settings.clone())
+                .await?;
 
         metrics_writer.spawn({
             let engine = Arc::downgrade(&engine);
@@ -185,9 +187,7 @@ pub struct LightSubscriber {
 }
 
 impl LightSubscriber {
-    async fn parse_transaction(&self, cx: &TempTransaction) -> Result<()> {
-    
-    }
+    async fn parse_transaction(&self, cx: &TempTransaction) -> Result<()> {}
     async fn prepare_block_impl(&self, cx: &BlockSubscriberContext) -> Result<BlockHandle> {
         let block_stuff = cx.block;
         let block_id = block_stuff.id();

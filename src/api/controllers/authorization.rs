@@ -1,13 +1,13 @@
 use std::sync::Arc;
 
 use axum::async_trait;
-use axum::body::{Body};
+use axum::body::Body;
 use axum::extract::{FromRequest, FromRequestParts, OriginalUri};
 use axum::http::request::Parts;
 use axum::http::Request;
+use axum::http::{Method, StatusCode};
 use axum::middleware::Next;
 use axum::response::IntoResponse;
-use axum::http::{Method, StatusCode};
 
 use crate::models::*;
 use crate::services::*;
@@ -74,7 +74,6 @@ async fn check_api_key(
     let body = match method {
         Method::GET => String::new(),
         _ => {
-
             let (parts, body) = req.into_parts();
             let body_bytes = axum::body::to_bytes(body, 100000).await?;
             req = Request::from_parts(parts, Body::from(body_bytes.to_vec()));
@@ -89,15 +88,13 @@ async fn check_api_key(
     // Forward service id to request handler
     req.extensions_mut().insert(IdExtractor(service_id));
 
-    Ok(Request::from_request(req, &auth_service).await.expect("can't fail"))
+    Ok(Request::from_request(req, &auth_service)
+        .await
+        .expect("can't fail"))
 }
 
-#[derive(
-    Debug,
-    Clone,
-)]
+#[derive(Debug, Clone)]
 pub struct IdExtractor(pub ServiceId);
-
 
 #[async_trait]
 impl<S> FromRequest<S> for IdExtractor
@@ -106,7 +103,7 @@ where
 {
     type Rejection = Rejection;
 
-    async fn from_request(req: Request<Body>, _state: &S) -> Result<Self, Self::Rejection>{
+    async fn from_request(req: Request<Body>, _state: &S) -> Result<Self, Self::Rejection> {
         let extensions = req.extensions();
 
         let id: Option<&IdExtractor> = extensions.get();

@@ -77,9 +77,8 @@ impl From<TransactionDb> for TransactionDataResponse {
         let sender = if let (Some(sender_hex), Some(sender_workchain_id)) =
             (c.sender_hex, c.sender_workchain_id)
         {
-            let sender =
-                StdAddr::from_str(&format!("{}:{}", sender_workchain_id, sender_hex))
-                    .unwrap_or_default();
+            let sender = StdAddr::from_str(&format!("{}:{}", sender_workchain_id, sender_hex))
+                .unwrap_or_default();
             let sender_base64url = Address(sender.display_base64_url(true).to_string());
             Some(Account {
                 workchain_id: sender_workchain_id,
@@ -119,8 +118,7 @@ impl From<TransactionDb> for TransactionDataResponse {
         };
 
         let account =
-            StdAddr::from_str(&format!("{}:{}", c.account_workchain_id, c.account_hex))
-                .unwrap();
+            StdAddr::from_str(&format!("{}:{}", c.account_workchain_id, c.account_hex)).unwrap();
         let base64url = Address(account.display_base64_url(true).to_string());
 
         TransactionDataResponse {
@@ -261,8 +259,7 @@ pub struct TokenTransactionDataResponse {
 impl From<TokenTransactionFromDb> for TokenTransactionDataResponse {
     fn from(c: TokenTransactionFromDb) -> Self {
         let account =
-            StdAddr::from_str(&format!("{}:{}", c.account_workchain_id, c.account_hex))
-                .unwrap();
+            StdAddr::from_str(&format!("{}:{}", c.account_workchain_id, c.account_hex)).unwrap();
         let base64url = Address(account.display_base64_url(true).to_string());
         let payload = c.payload.map(base64::encode);
 

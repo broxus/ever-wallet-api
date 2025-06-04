@@ -1,5 +1,5 @@
 use bigdecimal::BigDecimal;
-use everscale_types::models::StdAddr;
+use ton_block::MsgAddressInt;
 
 use crate::models::*;
 
@@ -98,10 +98,10 @@ pub struct NetworkAddressData {
 }
 
 impl NetworkAddressData {
-    pub fn uninit(owner: &StdAddr) -> NetworkAddressData {
-        NetworkAddressData {
-            workchain_id: owner.workchain  as  i32,
-            hex: owner.address.to_string(),
+    pub fn uninit(owner: &MsgAddressInt) -> NetworkAddressData {
+        NetworkAddressData {            
+            workchain_id: owner.workchain_id(),
+            hex: owner.address().to_hex_string(),
             account_status: AccountStatus::UnInit,
             network_balance: Default::default(),
             last_transaction_hash: None,

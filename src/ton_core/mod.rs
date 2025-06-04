@@ -3,11 +3,11 @@ use std::sync::Arc;
 
 use anyhow::{Context, Result};
 use everscale_types::cell::HashBytes;
+use everscale_types::models::*;
 use nekoton::transport::models::*;
 use nekoton_abi::*;
 use parking_lot::Mutex;
-use tokio::sync::{mpsc, oneshot}; 
-use everscale_types::models::*;
+use tokio::sync::{mpsc, oneshot};
 use ton_block::Serializable;
 use ton_types::UInt256;
 use tycho_core::blockchain_rpc::BlockchainRpcClient;
@@ -43,7 +43,7 @@ impl TonCore {
         blockchain_rpc_client: BlockchainRpcClient,
     ) -> Result<Arc<Self>> {
         let context =
-            TonCoreContext::new( sqlx_client, owners_cache, storage, blockchain_rpc_client).await?;
+            TonCoreContext::new(sqlx_client, owners_cache, storage, blockchain_rpc_client).await?;
 
         let full_state = FullState::new(context.clone()).await?;
 
@@ -78,7 +78,7 @@ impl TonCore {
             .add_account_subscription(accounts);
     }
 
-    pub fn get_contract_state(&self, account: &HashBytes) -> Result<ExistingContract> {
+    pub fn get_contract_state(&self, account: &UInt256) -> Result<ExistingContract> {
         self.context.get_contract_state(account)
     }
 
@@ -147,13 +147,18 @@ impl TonCoreContext {
         let block_ids = self.sqlx_client.get_last_key_blocks().await?;
         for block_id in block_ids {
             let block_id = BlockId::from_str(&block_id.block_id)?;
-            if let Ok(state) = self.storage.shard_state_storage().load_state(&block_id).await {
+            if let Ok(state) = self
+                .storage
+                .shard_state_storage()
+                .load_state(&block_id)
+                .await
+            {
                 self.ton_subscriber
                     .update_shards_accounts_cache(block_id.shard, state)?;
             }
         }
 
-         let block_handle_storage = self.storage.block_handle_storage();
+        let block_handle_storage = self.storage.block_handle_storage();
 
         // Find the key block with max seqno which was preduced not later than `utime`
         let handle = 'last_key_block: {
@@ -162,18 +167,22 @@ impl TonCoreContext {
                 let handle = block_handle_storage
                     .load_handle(&key_block_id)
                     .with_context(|| format!("key block not found: {key_block_id}"))?;
-                    break 'last_key_block Some(handle);
+                break 'last_key_block Some(handle);
             }
             None
         };
 
-        // Load block 
-        let block_stuff = match handle  {
+        // Load block
+        let block_stuff = match handle {
             Some(handle) => {
-                let block_stuff = self.storage.block_storage().load_block_data(&handle).await?;
+                let block_stuff = self
+                    .storage
+                    .block_storage()
+                    .load_block_data(&handle)
+                    .await?;
                 Some(block_stuff)
-            },
-            None => None
+            }
+            None => None,
         };
 
         self.ton_subscriber.start(block_stuff).await?;
@@ -181,10 +190,11 @@ impl TonCoreContext {
         Ok(())
     }
 
-    fn get_contract_state(&self, account: &HashBytes) -> Result<ExistingContract> {
+    fn get_contract_state(&self, account: &UInt256) -> Result<ExistingContract> {
+        let account = HashBytes::from_slice(account.as_slice());
         match self
             .ton_subscriber
-            .get_contract_state(account)
+            .get_contract_state(&account)
             .and_then(make_existing_contract)?
         {
             Some(contract) => Ok(contract),
@@ -198,7 +208,7 @@ impl TonCoreContext {
         message: &ton_block::Message,
         expire_at: u32,
     ) -> Result<MessageStatus> {
-        let to = match message.header() {
+        match message.header() {
             ton_block::CommonMsgInfo::ExtInMsgInfo(header) => header.dst.workchain_id(),
             _ => return Err(TonCoreError::ExternalTonMessageExpected.into()),
         };
@@ -210,9 +220,9 @@ impl TonCoreContext {
             .messages_queue
             .add_message(HashBytes::from_slice(account.as_slice()), HashBytes::from_slice(cells.repr_hash().as_slice()), expire_at)?;
 
-
         self.blockchain_rpc_client
-            .broadcast_external_message(&*serialized).await;
+            .broadcast_external_message(&*serialized)
+            .await;
 
         let status = rx.await?;
         Ok(status)

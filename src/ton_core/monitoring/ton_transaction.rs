@@ -32,7 +32,7 @@ impl TonTransaction {
 
     pub fn add_account_subscription<I>(&self, accounts: I)
     where
-        I: IntoIterator<Item = UInt256>,
+        I: IntoIterator<Item = HashBytes>,
     {
         self.context
             .ton_subscriber
@@ -52,7 +52,6 @@ impl TonTransaction {
                         break;
                     }
                 };
-
                 match ton_transaction_parser::parse_ton_transaction(
                     event.account,
                     event.block_utime,
@@ -86,10 +85,10 @@ impl TonTransaction {
 
 #[derive(Debug)]
 pub struct TonTransactionEvent {
-    pub account: UInt256,
+    pub account: HashBytes,
     pub block_utime: u32,
-    pub transaction_hash: UInt256,
-    pub transaction: ton_block::Transaction,
+    pub transaction_hash: HashBytes,
+    pub transaction: Transaction,
     pub state: HandleTransactionStatusTx,
 }
 
@@ -100,7 +99,7 @@ impl ReadFromTransaction for TonTransactionEvent {
     ) -> Option<Self> {
         Some(TonTransactionEvent {
             account: *ctx.account,
-            block_utime: ctx.block_info.gen_utime().as_u32(),
+            block_utime: ctx.block_info.gen_utime,
             transaction_hash: *ctx.transaction_hash,
             transaction: ctx.transaction.clone(),
             state,

@@ -1,5 +1,6 @@
 use bigdecimal::BigDecimal;
 use serde::{Deserialize, Serialize};
+use ton_abi::Param;
 use uuid::Uuid;
 
 use crate::models::*;

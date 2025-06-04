@@ -2,7 +2,7 @@ use anyhow::Result;
 use bigdecimal::BigDecimal;
 use nekoton::core::models::{TokenIncomingTransfer, TokenWalletTransaction};
 use num_bigint::BigUint;
-use ton_block::StdAddr;
+use ton_block::{GetRepresentationHash, MsgAddressInt};
 use ton_types::{AccountId, BuilderData};
 use uuid::Uuid;
 
@@ -58,7 +58,7 @@ async fn internal_transfer_send(
     payload_cell: Option<ton_types::Cell>,
     parse_ctx: ParseContext<'_>,
 ) -> Result<CreateTokenTransaction> {
-    let address = StdAddr::with_standart(
+    let address = MsgAddressInt::with_standart(
         None,
         ton_block::BASE_WORKCHAIN_ID as i8,
         AccountId::from(token_transaction_ctx.account),
@@ -112,7 +112,7 @@ async fn internal_transfer_receive(
     token_transfer: TokenIncomingTransfer,
     parse_ctx: ParseContext<'_>,
 ) -> Result<CreateTokenTransaction> {
-    let address = StdAddr::with_standart(
+    let address = MsgAddressInt::with_standart(
         None,
         ton_block::BASE_WORKCHAIN_ID as i8,
         AccountId::from(token_transaction_ctx.account),
@@ -169,7 +169,7 @@ async fn internal_transfer_bounced(
     tokens: BigUint,
     parse_ctx: ParseContext<'_>,
 ) -> Result<CreateTokenTransaction> {
-    let address = StdAddr::with_standart(
+    let address = MsgAddressInt::with_standart(
         None,
         ton_block::BASE_WORKCHAIN_ID as i8,
         AccountId::from(token_transaction_ctx.account),
@@ -214,7 +214,7 @@ async fn internal_transfer_mint(
     tokens: BigUint,
     parse_ctx: ParseContext<'_>,
 ) -> Result<CreateTokenTransaction> {
-    let address = StdAddr::with_standart(
+    let address = MsgAddressInt::with_standart(
         None,
         ton_block::BASE_WORKCHAIN_ID as i8,
         AccountId::from(token_transaction_ctx.account),
@@ -255,7 +255,7 @@ async fn internal_transfer_mint(
 }
 
 async fn get_token_wallet_info(
-    contract_address: &StdAddr,
+    contract_address: &MsgAddressInt,
     parse_ctx: &ParseContext<'_>,
     contract: &ExistingContract,
 ) -> Result<OwnerInfo> {

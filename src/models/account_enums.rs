@@ -33,8 +33,8 @@ impl From<AccountState> for AccountStatus {
     fn from(state: AccountState) -> Self {
         match state {
             AccountState::Uninit => AccountStatus::UnInit,
-            AccountState::Active (_) => AccountStatus::Active,
-            AccountState::Frozen (_) => AccountStatus::Frozen,
+            AccountState::Active(_) => AccountStatus::Active,
+            AccountState::Frozen(_) => AccountStatus::Frozen,
         }
     }
 }
@@ -43,8 +43,8 @@ impl From<ton_block::AccountState> for AccountStatus {
     fn from(state: ton_block::AccountState) -> Self {
         match state {
             ton_block::AccountState::AccountUninit => AccountStatus::UnInit,
-            ton_block::AccountState::AccountActive (_) => AccountStatus::Active,
-            ton_block::AccountState::AccountFrozen (_) => AccountStatus::Frozen,
+            ton_block::AccountState::AccountActive{..} => AccountStatus::Active,
+            ton_block::AccountState::AccountFrozen{..} => AccountStatus::Frozen,
         }
     }
 }

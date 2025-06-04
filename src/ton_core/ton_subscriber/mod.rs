@@ -3,6 +3,7 @@ use std::sync::atomic::{AtomicBool, AtomicU32, AtomicU64, Ordering};
 use std::sync::{Arc, Weak};
 
 use anyhow::Result;
+use everscale_types::boc::Boc;
 use everscale_types::cell::{Cell, HashBytes, Load};
 use futures::stream::FuturesUnordered;
 use futures::StreamExt;
@@ -13,6 +14,7 @@ use parking_lot::{Mutex, RwLock, RwLockReadGuard};
 use rustc_hash::FxHashMap;
 
 use tokio::sync::Notify;
+use ton_block::ExtraCurrencyCollection;
 use tycho_block_util::block::BlockStuff;
 use tycho_block_util::state::{RefMcStateHandle, ShardStateStuff};
 use tycho_core::block_strider::StateSubscriberContext;
@@ -49,10 +51,7 @@ impl TonSubscriber {
             token_subscription: Default::default(),
             full_state_subscription: Default::default(),
             mc_accounts: Default::default(),
-            sc_accounts: RwLock::new(FxHashMap::with_capacity_and_hasher(
-                16,
-                Default::default(),
-            )),
+            sc_accounts: RwLock::new(FxHashMap::with_capacity_and_hasher(16, Default::default())),
             mc_block_awaiters: Mutex::new(FxHashMap::with_capacity_and_hasher(
                 4,
                 Default::default(),
@@ -167,10 +166,7 @@ impl TonSubscriber {
         Ok(())
     }
 
-    fn handle_masterchain_block(
-        &self,
-        block_stuff: &BlockStuff,
-    ) -> Result<()> {
+    fn handle_masterchain_block(&self, block_stuff: &BlockStuff) -> Result<()> {
         let block = block_stuff.block();
         let block_info = block.load_info()?;
         let gen_utime = block_info.gen_utime;
@@ -202,7 +198,7 @@ impl TonSubscriber {
         &self,
         block: &BlockStuff,
         block_hash: &HashBytes,
-        shard_state_stuff: &ShardStateStuff
+        shard_state_stuff: &ShardStateStuff,
     ) -> Result<FuturesUnordered<HandleTransactionStatusRx>> {
         let block_info = block.load_info()?;
         let extra = block.load_extra()?;
@@ -270,8 +266,8 @@ impl TonSubscriber {
         let token_subscription = self.token_subscription.read();
         let shards_accounts_cache = self.sc_accounts.read();
 
-        for account_block in  account_blocks.iter() {
-            let (account,_, account_block) = account_block?;
+        for account_block in account_blocks.iter() {
+            let (account, _, account_block) = account_block?;
             match state_subscriptions.get(&account) {
                 Some(subscription) => {
                     match subscription.handle_block(
@@ -326,12 +322,12 @@ impl TonSubscriber {
         let custom = extra
             .load_custom()?
             .context("McBlockExtra not found in the masterchain block")?;
-        let config = custom
-            .config
-            .context("Config not found in the key block")?;
+        let config = custom.config.context("Config not found in the key block")?;
 
-        self.signature_id
-            .store(config.get_global_version()?.capabilities.into_inner(), key_block.global_id);
+        self.signature_id.store(
+            config.get_global_version()?.capabilities.into_inner(),
+            key_block.global_id,
+        );
 
         Ok(())
     }
@@ -352,11 +348,8 @@ impl TonSubscriber {
         if block_id.is_masterchain() {
             self.handle_masterchain_block(&block_stuff)?;
         } else {
-            let mut states = self.handle_shard_block(
-                &block_stuff,
-                &block_id.root_hash,
-                &ctx.state,
-            )?;
+            let mut states =
+                self.handle_shard_block(&block_stuff, &block_id.root_hash, &ctx.state)?;
             while let Some(status) = states.next().await {
                 if let Err(err) = status {
                     log::error!("Failed to receive transaction status: {}", err);
@@ -398,7 +391,7 @@ impl StateSubscription {
         for transaction in account_block.transactions.iter() {
             let result = transaction.and_then(|(_, _, value)| {
                 let hash = *value.repr_hash();
-                value.load().map(|tx|(tx,hash))
+                value.load().map(|tx| (tx, hash))
             });
             let (transaction, hash) = match result {
                 Ok((tx, transaction_hash)) => (tx, transaction_hash),
@@ -414,13 +407,15 @@ impl StateSubscription {
             };
             // Skip non-ordinary transactions
             let transaction_info = match transaction.load_info()? {
-                TxInfo::Ordinary(info) =>  info,
+                TxInfo::Ordinary(info) => info,
                 _ => continue,
             };
 
-            let in_msg_hash = transaction.in_msg.as_ref().map(|in_msg|*in_msg.repr_hash());
-            let in_msg = match transaction.load_in_msg()?
-            {
+            let in_msg_hash = transaction
+                .in_msg
+                .as_ref()
+                .map(|in_msg| *in_msg.repr_hash());
+            let in_msg = match transaction.load_in_msg()? {
                 Some(message) => {
                     if matches!(message.info, MsgInfo::ExtIn(_)) {
                         messages_queue.deliver_message(*account, in_msg_hash.unwrap());
@@ -492,7 +487,7 @@ impl TokenSubscription {
         for transaction in account_block.transactions.iter() {
             let result = transaction.and_then(|(_, _, value)| {
                 let hash = *value.repr_hash();
-                value.load().map(|tx|(tx,hash))
+                value.load().map(|tx| (tx, hash))
             });
             let (transaction, hash) = match result {
                 Ok((tx, transaction_hash)) => (tx, transaction_hash),
@@ -506,21 +501,29 @@ impl TokenSubscription {
                     continue;
                 }
             };
+
             // Skip non-ordinary transactions
             let transaction_info = match transaction.load_info()? {
-                TxInfo::Ordinary(info) =>  info,
+                TxInfo::Ordinary(info) => info,
+                _ => continue,
+            };
+
+            let old_transaction = conver_to_old_transaction(&transaction)?;
+
+            let old_transaction_info = match old_transaction.description.read_struct() {
+                Ok(ton_block::TransactionDescr::Ordinary(info)) => info,
                 _ => continue,
             };
 
             let parsed_token_transaction = match nekoton::core::parsing::parse_token_transaction(
-                &transaction,
-                &transaction_info,
+                &old_transaction,
+                &old_transaction_info,
                 TokenWalletVersion::Tip3,
             ) {
                 Some(parsed_token_transaction) => Some(parsed_token_transaction),
                 None => nekoton::core::parsing::parse_token_transaction(
-                    &transaction,
-                    &transaction_info,
+                    &old_transaction,
+                    &old_transaction_info,
                     TokenWalletVersion::OldTip3v4,
                 ),
             };
@@ -538,12 +541,12 @@ impl TokenSubscription {
                         .get_bytestring(0),
                 );
 
-                if state_subscriptions.get(&owner_account).is_some() {
-                    let in_msg = match transaction.load_in_msg()?
-                    {
-                        Some(message) => {
-                            message
-                        }
+                if state_subscriptions
+                    .get(&HashBytes::from_slice(owner_account.as_slice()))
+                    .is_some()
+                {
+                    let in_msg = match transaction.load_in_msg()? {
+                        Some(message) => message,
                         _ => continue,
                     };
                     let ctx = TxContext {
@@ -615,11 +618,8 @@ impl FullStateSubscription {
 }
 
 trait BlockAwaiter: Send + Sync {
-    fn handle_block(
-        &mut self,
-        block: &Block,
-        block_info: &BlockInfo,
-    ) -> Result<BlockAwaiterAction>;
+    fn handle_block(&mut self, block: &Block, block_info: &BlockInfo)
+        -> Result<BlockAwaiterAction>;
 }
 
 #[derive(Debug, Copy, Clone, Eq, PartialEq)]
@@ -705,13 +705,70 @@ pub fn make_existing_contract(state: Option<ShardAccount>) -> Result<Option<Exis
     };
 
     let account = everscale_types::models::Account::load_from(&mut state.data.as_slice()?)?;
-    match account.state {
-        AccountState::Uninit | AccountState::Frozen(_)=> Ok(None),
-        AccountState::Active(_) => Ok(Some(ExistingContract {
-            account,
+
+    if let Some(stuff) = convert_to_old_account(account)? {
+        Ok(Some(ExistingContract {
+            account: stuff,
             timings: GenTimings::Unknown,
             last_transaction_id: state.last_transaction_id,
-        })),
+        }))
+    } else {
+        Ok(None)
+    }
+}
+
+pub fn convert_to_old_account(
+    account: everscale_types::models::Account,
+) -> Result<Option<ton_block::AccountStuff>> {
+    match account.state {
+        AccountState::Uninit | AccountState::Frozen(_) => Ok(None),
+        AccountState::Active(state_init) => {
+            Ok(Some(ton_block::AccountStuff {
+                addr: ton_block::MsgAddressInt::from_str(&account.address.to_string())?,
+                storage_stat: ton_block::StorageInfo {
+                    used: ton_block::StorageUsed::with_values_checked(
+                        account.storage_stat.used.cells.into_inner(),
+                        account.storage_stat.used.bits.into_inner(),
+                        account.storage_stat.used.public_cells.into_inner(),
+                    )?,
+                    last_paid: account.storage_stat.last_paid,
+                    due_payment: account
+                        .storage_stat
+                        .due_payment
+                        .map(|v| (v.into_inner() as u64).into()),
+                },
+                storage: ton_block::AccountStorage {
+                    last_trans_lt: account.last_trans_lt,
+                    balance: ton_block::CurrencyCollection {
+                        grams: (account.balance.tokens.into_inner() as u64).into(),
+                        other: ExtraCurrencyCollection::default(),
+                    },
+                    state: ton_block::AccountState::AccountActive {
+                        state_init: ton_block::StateInit {
+                            split_depth: state_init
+                                .split_depth
+                                .map(|v| ton_block::Number5::new(v.into_bit_len() as u32).unwrap()),
+                            special: state_init.special.map(|v| ton_block::TickTock {
+                                tick: v.tick,
+                                tock: v.tock,
+                            }),
+                            code: state_init.code.map(|cell| {
+                                let bytes = Boc::encode(cell);
+                                ton_types::deserialize_tree_of_cells(&mut &*bytes)
+                                    .unwrap_or_default()
+                            }),
+                            data: state_init.data.map(|cell| {
+                                let bytes = Boc::encode(cell);
+                                ton_types::deserialize_tree_of_cells(&mut &*bytes)
+                                    .unwrap_or_default()
+                            }),
+                            library: Default::default(), // TODO: CHECK CONVERSION
+                        },
+                    },
+                    init_code_hash: None,
+                },
+            }))
+        }
     }
 }
 
@@ -723,11 +780,11 @@ pub struct CachedAccounts {
 impl CachedAccounts {
     fn get(&self, account: &HashBytes) -> Result<Option<ShardAccount>> {
         match self.accounts.get(account)? {
-            Some((_,account)) => Ok(Some(ShardAccount {
-                data: *account.account.as_cell().unwrap(),
+            Some((_, account)) => Ok(Some(ShardAccount {
+                data: account.account.as_cell().unwrap().clone(),
                 last_transaction_id: LastTransactionId::Exact(TransactionId {
                     lt: account.last_trans_lt,
-                    hash: account.last_trans_hash,
+                    hash: UInt256::with_array(account.last_trans_hash.0),
                 }),
                 _state_handle: self.state_handle.clone(),
             })),
@@ -743,7 +800,25 @@ impl ShardAccountsMapExt for FxHashMap<ShardIdent, CachedAccounts> {
             .find(|(shard_ident, _)| contains_account(shard_ident, account));
 
         match item {
-            Some((_, shard)) => shard.accounts.get(account).context("No suitable shard found"),
+            Some((_, shard)) => {
+                if let Some((_, account)) = shard.accounts.get(account)? {
+                    let last_transaction_id = LastTransactionId::Exact(TransactionId {
+                        lt: account.last_trans_lt,
+                        hash: UInt256::with_array(account.last_trans_hash.0),
+                    });
+
+                    if let Some(account) = account.load_account()? {
+                        if let Some(stuff) = convert_to_old_account(account)? {
+                            return Ok(Some(ExistingContract {
+                                account: stuff,
+                                timings: GenTimings::Unknown,
+                                last_transaction_id,
+                            }));
+                        }
+                    }
+                }
+                Ok(None)
+            }
             None => Err(TonCoreError::InvalidContractAddress).context("No suitable shard found"),
         }
     }
