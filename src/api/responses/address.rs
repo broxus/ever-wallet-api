@@ -133,8 +133,8 @@ impl AddressBalanceDataResponse {
             last_transaction_hash: b.last_transaction_hash,
             last_transaction_lt: b.last_transaction_lt,
             sync_u_time: b.sync_u_time,
-            created_at: a.created_at.timestamp_millis(),
-            updated_at: a.updated_at.timestamp_millis(),
+            created_at: a.created_at.and_utc().timestamp_millis(),
+            updated_at: a.updated_at.and_utc().timestamp_millis(),
         }
     }
 }
@@ -202,8 +202,8 @@ impl AddressInfoDataResponse {
                 .custodians_public_keys
                 .and_then(|k| serde_json::from_value(k).unwrap_or_default()),
             balance: a.balance,
-            created_at: a.created_at.timestamp_millis(),
-            updated_at: a.updated_at.timestamp_millis(),
+            created_at: a.created_at.and_utc().timestamp_millis(),
+            updated_at: a.updated_at.and_utc().timestamp_millis(),
         }
     }
 }
@@ -269,8 +269,8 @@ impl TokenBalanceDataResponse {
             account_status: b.account_status,
             network_balance: b.network_balance,
             root_address: a.root_address,
-            created_at: a.created_at.timestamp_millis(),
-            updated_at: a.updated_at.timestamp_millis(),
+            created_at: a.created_at.and_utc().timestamp_millis(),
+            updated_at: a.updated_at.and_utc().timestamp_millis(),
         }
     }
 }

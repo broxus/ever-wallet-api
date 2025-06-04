@@ -1,12 +1,10 @@
 use std::str::FromStr;
-use std::sync::atomic::Ordering;
 use std::sync::Arc;
 
 use anyhow::anyhow;
 use axum::http::StatusCode;
 use bigdecimal::{BigDecimal, ToPrimitive};
 use ed25519_dalek::{Keypair, PublicKey, SecretKey, Signer};
-use everscale_types::boc::Boc;
 use everscale_types::cell::HashBytes;
 use everscale_types::models::StdAddr;
 use nekoton::core::models::Expiration;
@@ -777,7 +775,7 @@ impl TonClient {
         let gen_utime = self.ton_core.current_utime();
 
         let network_id = match () {
-            _ => EVER_CHAIN_ID,
+            _ => TYCHO_TESTNET_CHAIN_ID,
         };
 
         let subscriber_metrics = self.ton_core.context.ton_subscriber.metrics();
@@ -1187,6 +1185,4 @@ fn build_token_transaction(
     Ok((sent_transaction, signed_message))
 }
 
-const EVER_CHAIN_ID: i32 = 42;
-const VENOM_CHAIN_ID: i32 = 1;
-const TON_CHAIN_ID: i32 = -239;
+const TYCHO_TESTNET_CHAIN_ID: i32 = -4000;

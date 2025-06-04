@@ -143,9 +143,9 @@ impl From<TransactionDb> for TransactionDataResponse {
             status: c.status,
             aborted: c.aborted,
             bounce: c.bounce,
-            transaction_timestamp: c.transaction_timestamp.map(|t| t.timestamp_millis()),
-            created_at: c.created_at.timestamp_millis(),
-            updated_at: c.updated_at.timestamp_millis(),
+            transaction_timestamp: c.transaction_timestamp.map(|t| t.and_utc().timestamp_millis()),
+            created_at: c.created_at.and_utc().timestamp_millis(),
+            updated_at: c.updated_at.and_utc().timestamp_millis(),
             error: c.error,
             multisig_transaction_id: c.multisig_transaction_id,
         }
@@ -279,8 +279,8 @@ impl From<TokenTransactionFromDb> for TokenTransactionDataResponse {
             block_time: c.block_time,
             direction: c.direction,
             status: c.status,
-            created_at: c.created_at.timestamp_millis(),
-            updated_at: c.updated_at.timestamp_millis(),
+            created_at: c.created_at.and_utc().timestamp_millis(),
+            updated_at: c.updated_at.and_utc().timestamp_millis(),
             payload,
         }
     }

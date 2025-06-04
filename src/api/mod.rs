@@ -1,4 +1,3 @@
-use std::convert::Infallible;
 use std::future::IntoFuture;
 use std::net::{Ipv4Addr, SocketAddr};
 use std::sync::Arc;
@@ -6,10 +5,7 @@ use std::sync::Arc;
 use anyhow::Context;
 use axum::body::Body;
 use axum::extract::Request;
-use axum::handler::Handler;
 use axum::http::Method;
-use axum::response::Response;
-use axum::serve::IncomingStream;
 use futures_util::future::BoxFuture;
 use metrics::{describe_counter, describe_histogram};
 use metrics_exporter_prometheus::Matcher;
@@ -17,7 +13,6 @@ use serde::{Deserialize, Serialize};
 use tower::ServiceBuilder;
 use tower_http::cors::{AllowHeaders, AllowMethods, AllowOrigin, CorsLayer};
 use tower_http::trace::TraceLayer;
-use tower_service::Service;
 use tracing::Span;
 
 use crate::services::{AuthService, StorageHandler, TonService};
@@ -57,18 +52,13 @@ pub struct Api {
 }
 
 impl Api {
-    pub async fn bind<M, S>(
+    pub async fn bind(
         server_addr: SocketAddr,
         metrics_addr: Option<SocketAddr>,
         auth_service: Arc<AuthService>,
         ton_service: Arc<TonService>,
         memory_storage: Arc<StorageHandler>,
     ) -> std::io::Result<Self>
-    where
-        M: for<'a> Service<IncomingStream<'a>, Error = Infallible, Response = S> + Send + 'static,
-        S: Service<Request, Response = Response, Error = Infallible> + Clone + Send + 'static,
-        for<'a> <M as Service<IncomingStream<'a>>>::Future: Send,
-        S::Future: Send,
     {
         describe_counter!("requests_processed", "number of requests processed");
         describe_histogram!(

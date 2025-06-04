@@ -32,7 +32,7 @@ impl CallbackClient {
         payload: AccountTransactionEvent,
         secret: String,
     ) -> Result<()> {
-        let nonce = Utc::now().naive_utc().timestamp() * 1000;
+        let nonce = Utc::now().naive_utc().and_utc().timestamp() * 1000;
 
         let body = serde_json::to_string(&payload)?;
 

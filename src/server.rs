@@ -2,7 +2,6 @@ use std::sync::Arc;
 
 use anyhow::Result;
 use futures::future::BoxFuture;
-use pomfrit::formatter::*;
 use sqlx::postgres::PgPoolOptions;
 use tokio::sync::mpsc;
 use tokio::sync::Mutex;
@@ -245,32 +244,6 @@ impl EngineContext {
                     .clone()
             }
         }
-    }
-}
-
-struct LabeledTonSubscriberMetrics<'a>(&'a EngineContext);
-
-impl std::fmt::Display for LabeledTonSubscriberMetrics<'_> {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let metrics = self.0.ton_core.context.ton_subscriber.metrics();
-
-        f.begin_metric("ton_subscriber_ready")
-            .value(metrics.ready as u8)?;
-
-        if metrics.current_utime > 0 {
-            f.begin_metric("ton_subscriber_current_utime")
-                .value(metrics.current_utime)?;
-
-            if let Some(signature_id) = metrics.signature_id {
-                f.begin_metric("ton_subscriber_signature_id")
-                    .value(signature_id)?;
-            }
-        }
-
-        f.begin_metric("ton_subscriber_pending_message_count")
-            .value(metrics.pending_message_count)?;
-
-        Ok(())
     }
 }
 

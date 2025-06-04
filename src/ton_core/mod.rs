@@ -24,8 +24,6 @@ mod monitoring;
 mod settings;
 mod ton_subscriber;
 
-pub use self::settings::*;
-
 pub struct TonCore {
     pub context: Arc<TonCoreContext>,
     pub full_state: Mutex<Arc<FullState>>,

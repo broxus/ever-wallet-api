@@ -17,7 +17,6 @@ use tokio::sync::Notify;
 use ton_block::ExtraCurrencyCollection;
 use tycho_block_util::block::BlockStuff;
 use tycho_block_util::state::{RefMcStateHandle, ShardStateStuff};
-use tycho_core::block_strider::StateSubscriberContext;
 use tycho_vm::StackValue;
 
 use crate::ton_core::*;
@@ -31,7 +30,6 @@ pub struct TonSubscriber {
     state_subscriptions: RwLock<FxHashMap<HashBytes, StateSubscription>>,
     token_subscription: RwLock<Option<TokenSubscription>>,
     full_state_subscription: RwLock<Option<FullStateSubscription>>,
-    mc_accounts: RwLock<Option<CachedAccounts>>,
     sc_accounts: RwLock<FxHashMap<ShardIdent, CachedAccounts>>,
     mc_block_awaiters: Mutex<FxHashMap<usize, Box<dyn BlockAwaiter>>>,
     messages_queue: Arc<PendingMessagesQueue>,
@@ -50,7 +48,6 @@ impl TonSubscriber {
             )),
             token_subscription: Default::default(),
             full_state_subscription: Default::default(),
-            mc_accounts: Default::default(),
             sc_accounts: RwLock::new(FxHashMap::with_capacity_and_hasher(16, Default::default())),
             mc_block_awaiters: Mutex::new(FxHashMap::with_capacity_and_hasher(
                 4,
@@ -554,7 +551,7 @@ impl TokenSubscription {
                         .as_ref()
                         .map(|message| (message, message.read_struct()))
                     {
-                        Some((message_cell, Ok(message))) => message,
+                        Some((_, Ok(message))) => message,
                         _ => continue,
                     };
 

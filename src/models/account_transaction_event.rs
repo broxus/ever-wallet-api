@@ -68,8 +68,8 @@ impl From<TokenTransactionEventDb> for AccountTransactionEvent {
             transaction_status: t.transaction_status.into(),
             event_status: t.event_status,
             multisig_transaction_id: None,
-            created_at: t.created_at.timestamp_millis(),
-            updated_at: t.updated_at.timestamp_millis(),
+            created_at: t.created_at.and_utc().timestamp_millis(),
+            updated_at: t.updated_at.and_utc().timestamp_millis(),
         }
     }
 }
@@ -113,8 +113,8 @@ impl From<TransactionEventDb> for AccountTransactionEvent {
             transaction_status: t.transaction_status,
             event_status: t.event_status,
             multisig_transaction_id: t.multisig_transaction_id,
-            created_at: t.created_at.timestamp_millis(),
-            updated_at: t.updated_at.timestamp_millis(),
+            created_at: t.created_at.and_utc().timestamp_millis(),
+            updated_at: t.updated_at.and_utc().timestamp_millis(),
         }
     }
 }

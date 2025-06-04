@@ -60,12 +60,6 @@ pub fn account_prefix(account: &HashBytes, len: usize) -> u64 {
     value
 }
 
-#[derive(thiserror::Error, Debug)]
-enum ShardUtilsError {
-    #[error("Invalid contract address")]
-    InvalidContractAddress,
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
