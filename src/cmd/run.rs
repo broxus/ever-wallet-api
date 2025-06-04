@@ -5,12 +5,10 @@ use clap::Parser;
 use everscale_types::dict::Dict;
 use everscale_types::models::BlockId;
 use futures_util::future::BoxFuture;
-use proof_api_l2::api::ApiConfig;
-use proof_api_l2::storage::{ProofStorage, ProofStorageConfig};
-use proof_api_util::api::Api;
 use serde::{Deserialize, Serialize};
 use tycho_block_util::archive::ArchiveData;
 use tycho_block_util::block::BlockStuff;
+use tycho_core::block_strider::ShardStateApplier;
 use tycho_core::block_strider::{
     ArchiveBlockProvider, BlockProviderExt, BlockSubscriber, BlockSubscriberContext,
     BlockchainBlockProvider, ColdBootType, StateSubscriber, StateSubscriberContext,
@@ -105,29 +103,13 @@ impl Cmd {
         tracing::info!("created tycho node");
 
         let context = EngineContext::new(
-            node_config.user_config,
+            node_config.user_config.api,
             node.storage().clone(),
             node.blockchain_rpc_client().clone(),
         )
         .await?;
 
         context.start().await?;
-
-        let (metrics_exporter, metrics_writer) =
-            pomfrit::create_exporter(node_config.user_config.api.node_metrics_settings.clone())
-                .await?;
-
-        metrics_writer.spawn({
-            let engine = Arc::downgrade(&engine);
-            move |buffer| {
-                let engine = match engine.upgrade() {
-                    Some(engine) => engine,
-                    None => return,
-                };
-
-                buffer.write(LabeledTonSubscriberMetrics(&engine.context));
-            }
-        });
 
         // Bind API.
         let api = Api::bind(
@@ -168,10 +150,8 @@ impl Cmd {
         // Start the node.
         node.run(
             archive_block_provider.chain((blockchain_block_provider, storage_block_provider)),
-            LightSubscriber {
-                storage: node.storage().clone(),
-                context,
-            },
+            ShardStateApplier::new( node.storage().clone(), context)
+             ,
         )
         .await?;
 
@@ -180,109 +160,6 @@ impl Cmd {
     }
 }
 
-pub struct TempTransaction {
-    hash: Vec<u8>,
-    transaction: Transaction,
-    timestamp: u32,
-}
-
-pub struct LightSubscriber {
-    storage: Storage,
-    context: Arc<EngineContext>,
-}
-
-impl LightSubscriber {
-    async fn parse_transaction(&self, cx: &TempTransaction) -> Result<()> {}
-    async fn prepare_block_impl(&self, cx: &BlockSubscriberContext) -> Result<BlockHandle> {
-        let block_stuff = cx.block;
-        let block_id = block_stuff.id();
-
-        let extra = block_stuff.load_extra()?;
-        let account_blocks = extra.account_blocks.load()?;
-
-        let transactions: anyhow::Result<Vec<Vec<_>>> = tokio::task::spawn_blocking(move || {
-            let mut transactions = Vec::new();
-
-            for account_block in account_blocks.iter() {
-                let (addr, _, block) = account_block?;
-                for transaction in block.transactions.iter() {
-                    let (_, _, transaction) = transaction?;
-                    let hash = transaction.inner().repr_hash().0.to_vec();
-                    let transaction = transaction.load()?;
-                    let timestamp = transaction.now;
-
-                    let partition = if block_id.is_masterchain() {
-                        0
-                    } else {
-                        // first 3 bits of the account id
-                        1 + (addr[0] >> 5)
-                    };
-
-                    transactions.push(TempTransaction {
-                        hash,
-                        transaction,
-                        timestamp,
-                    });
-                }
-            }
-            Ok(transactions)
-        })
-        .await?;
-        let transactions = transactions?;
-
-        let mut futures: FuturesOrdered<_> = transactions
-            .into_iter()
-            .flatten()
-            .map(move |tx| self.parse_transaction(tx))
-            .collect();
-
-        while futures.next().await.is_some() {}
-
-        Ok(handle)
-    }
-
-    async fn handle_block_impl(
-        &self,
-        cx: &BlockSubscriberContext,
-        handle: BlockHandle,
-    ) -> Result<()> {
-        tracing::info!(
-            block_id = %cx.block.id(),
-            mc_block_id = %cx.mc_block_id,
-            "handling block"
-        );
-
-        // Done
-        Ok(())
-    }
-}
-
-impl BlockSubscriber for LightSubscriber {
-    type Prepared = BlockHandle;
-
-    type PrepareBlockFut<'a> = BoxFuture<'a, Result<Self::Prepared>>;
-    type HandleBlockFut<'a> = BoxFuture<'a, Result<()>>;
-
-    fn prepare_block<'a>(&'a self, cx: &'a BlockSubscriberContext) -> Self::PrepareBlockFut<'a> {
-        Box::pin(self.prepare_block_impl(cx))
-    }
-
-    fn handle_block<'a>(
-        &'a self,
-        cx: &'a BlockSubscriberContext,
-        handle: Self::Prepared,
-    ) -> Self::HandleBlockFut<'a> {
-        Box::pin(self.handle_block_impl(cx, handle))
-    }
-}
-
-impl StateSubscriber for LightSubscriber {
-    type HandleStateFut<'a> = futures_util::future::Ready<Result<()>>;
-
-    fn handle_state<'a>(&'a self, cx: &'a StateSubscriberContext) -> Self::HandleStateFut<'a> {
-        futures_util::future::ready(self.inner.update_accounts_cache(&cx.block, &cx.state))
-    }
-}
 
 type NodeConfig = tycho_light_node::NodeConfig<NodeConfigExtra>;
 

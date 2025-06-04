@@ -1,17 +1,9 @@
-use std::sync::Arc;
-
-use anyhow::{Context, Result};
-use argh::FromArgs;
-use tokio::sync::mpsc;
-
-use tycho_wallet_api::commands::*;
-use tycho_wallet_api::server::*;
-use tycho_wallet_api::settings::*;
-
 use std::process::ExitCode;
 
-use anyhow::Result;
+use clap::Args;
+use tycho_wallet_api::commands::*;
 use clap::{Parser, Subcommand};
+use anyhow::Result;
 
 mod cmd {
     pub mod run;
@@ -93,16 +85,16 @@ impl CmdRootToken {
 #[derive(Args, Clone)]
 struct CmdApiService {
     /// service id
-    #[clap(option, short = 'i')]
+    #[clap(short = 'i')]
     id: Option<String>,
     /// service name
-    #[clap(option, short = 'n')]
+    #[clap( short = 'n')]
     name: String,
     /// service key
-    #[clap(option, short = 'k')]
+    #[clap( short = 'k')]
     key: String,
     /// service secret
-    #[clap(option, short = 's')]
+    #[clap(short = 's')]
     secret: String,
 }
 

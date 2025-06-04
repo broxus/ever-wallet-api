@@ -1,10 +1,13 @@
 use std::sync::Arc;
 
 use anyhow::Result;
+use futures::future::BoxFuture;
 use pomfrit::formatter::*;
 use sqlx::postgres::PgPoolOptions;
 use tokio::sync::mpsc;
 use tokio::sync::Mutex;
+use tycho_core::block_strider::StateSubscriber;
+use tycho_core::block_strider::StateSubscriberContext;
 use tycho_core::blockchain_rpc::BlockchainRpcClient;
 use tycho_storage::Storage;
 
@@ -273,3 +276,12 @@ impl std::fmt::Display for LabeledTonSubscriberMetrics<'_> {
 
 pub type ShutdownRequestsRx = mpsc::UnboundedReceiver<()>;
 pub type ShutdownRequestsTx = mpsc::UnboundedSender<()>;
+
+
+impl StateSubscriber for EngineContext {
+    type HandleStateFut<'a> = BoxFuture<'a, Result<()>>;
+
+    fn handle_state<'a>(&'a self, cx: &'a StateSubscriberContext) -> Self::HandleStateFut<'a> {
+        Box::pin(self.ton_core.context.ton_subscriber.process_block(&cx.block, &cx.state))
+    }
+}

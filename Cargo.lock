@@ -5632,6 +5632,7 @@ dependencies = [
  "parking_lot",
  "pomfrit",
  "rand 0.8.5",
+ "rayon",
  "regex",
  "reqwest 0.12.9",
  "rustc-hash 1.1.0",

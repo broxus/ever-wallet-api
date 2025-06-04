@@ -1,0 +1,29 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO token_owners (address, owner_account_workchain_id, owner_account_hex, root_address, code_hash, version)\n            VALUES ($1, $2, $3, $4, $5, $6::twa_token_wallet_version)\n            ON CONFLICT DO NOTHING",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Varchar",
+        "Int4",
+        "Varchar",
+        "Varchar",
+        "Bytea",
+        {
+          "Custom": {
+            "name": "twa_token_wallet_version",
+            "kind": {
+              "Enum": [
+                "OldTip3v4",
+                "Tip3"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "1a40bb0bbfb663962fee164dd62d2fec1bfd6be6f60ba95d44426cc6c1ec3480"
+}

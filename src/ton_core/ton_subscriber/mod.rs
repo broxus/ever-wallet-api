@@ -341,15 +341,14 @@ impl TonSubscriber {
 }
 
 impl TonSubscriber {
-    async fn process_block(&self, ctx: StateSubscriberContext) -> Result<()> {
-        let block_stuff = ctx.block;
+    pub async fn process_block(&self, block_stuff: &BlockStuff, state: &ShardStateStuff) -> Result<()> {
         let block_id = block_stuff.id();
 
         if block_id.is_masterchain() {
             self.handle_masterchain_block(&block_stuff)?;
         } else {
             let mut states =
-                self.handle_shard_block(&block_stuff, &block_id.root_hash, &ctx.state)?;
+                self.handle_shard_block(&block_stuff, &block_id.root_hash, &state)?;
             while let Some(status) = states.next().await {
                 if let Err(err) = status {
                     log::error!("Failed to receive transaction status: {}", err);

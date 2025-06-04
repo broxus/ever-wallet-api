@@ -96,26 +96,6 @@ async fn check_api_key(
 #[derive(Debug, Clone)]
 pub struct IdExtractor(pub ServiceId);
 
-#[async_trait]
-impl<S> FromRequest<S> for IdExtractor
-where
-    S: Send, // required by `async_trait`
-{
-    type Rejection = Rejection;
-
-    async fn from_request(req: Request<Body>, _state: &S) -> Result<Self, Self::Rejection> {
-        let extensions = req.extensions();
-
-        let id: Option<&IdExtractor> = extensions.get();
-        match id {
-            Some(service_id) => Ok(IdExtractor(service_id.0)),
-            None => Err(Rejection(
-                "Service id not found".to_string(),
-                StatusCode::UNAUTHORIZED,
-            )),
-        }
-    }
-}
 
 #[async_trait]
 impl<S> FromRequestParts<S> for IdExtractor

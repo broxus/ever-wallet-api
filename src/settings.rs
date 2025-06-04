@@ -1,4 +1,4 @@
-use std::net::SocketAddr;
+use std::net::{IpAddr, Ipv4Addr, SocketAddr};
 use std::path::Path;
 
 use anyhow::{Context, Result};
@@ -6,9 +6,10 @@ use argon2::password_hash::PasswordHasher;
 use nekoton_utils::TrustMe;
 use serde::{Deserialize, Serialize};
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct AppConfig {
     /// Listen address of service.
+    #[serde(default = "default_server_addr")]
     pub server_addr: SocketAddr,
 
     /// Postgres database url.
@@ -38,10 +39,28 @@ pub struct AppConfig {
     pub logger_settings: serde_json::Value,
 }
 
+impl Default for  AppConfig {
+    fn default() -> Self {
+        Self { 
+          server_addr: default_server_addr(),
+          database_url: "postgresql://postgres:postgres@127.0.0.1:5432/tycho_wallet_api".to_string(), 
+          db_pool_size: 8, 
+          key: default_key(), 
+          api_metrics_addr: Default::default(), 
+          node_metrics_settings: Default::default(), 
+          logger_settings: default_logger_settings() 
+        }
+    }
+}
+
 pub trait ConfigExt: Sized {
     fn from_file<P>(path: &P) -> Result<Self>
     where
         P: AsRef<Path>;
+}
+
+fn default_server_addr() -> SocketAddr  {
+  SocketAddr::new(IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)), 8080)
 }
 
 fn default_key() -> Vec<u8> {

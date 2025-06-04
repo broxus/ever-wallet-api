@@ -1,0 +1,70 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT address, owner_account_workchain_id, owner_account_hex, root_address, code_hash, created_at, version as \"version: _\"\n            FROM token_owners\n            WHERE owner_account_workchain_id = $1 AND owner_account_hex = $2 AND root_address = $3",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "address",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 1,
+        "name": "owner_account_workchain_id",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 2,
+        "name": "owner_account_hex",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 3,
+        "name": "root_address",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 4,
+        "name": "code_hash",
+        "type_info": "Bytea"
+      },
+      {
+        "ordinal": 5,
+        "name": "created_at",
+        "type_info": "Timestamp"
+      },
+      {
+        "ordinal": 6,
+        "name": "version: _",
+        "type_info": {
+          "Custom": {
+            "name": "twa_token_wallet_version",
+            "kind": {
+              "Enum": [
+                "OldTip3v4",
+                "Tip3"
+              ]
+            }
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int4",
+        "Text",
+        "Text"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "f5eb1778f8d89e57ae3320cd1595de9825a42d9642374494b2795d080897b2ef"
+}
