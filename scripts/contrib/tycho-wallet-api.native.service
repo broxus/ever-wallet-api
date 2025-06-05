@@ -7,7 +7,7 @@ StartLimitIntervalSec=0
 Type=simple
 Restart=no
 WorkingDirectory=/etc/tycho-wallet-api
-ExecStart=/usr/local/bin/tycho-wallet-api server --config /etc/tycho-wallet-api/config.yaml --global-config /etc/tycho-wallet-api/ton-global.config.json
+ExecStart=/usr/local/bin/tycho-wallet-api server --config /etc/tycho-wallet-api/config.json --global-config /etc/tycho-wallet-api/global-config.json --keys /etc/tycho-wallet-api/keys.json
 
 [Install]
 WantedBy=multi-user.target

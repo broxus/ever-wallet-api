@@ -15,4 +15,4 @@ cd ..
 
 echo "INFO: start tycho-wallet-api server..."
 
-app/tycho-wallet-api server --config app/config/config.yaml --global-config app/config/ton-global.config.json
+app/tycho-wallet-api server --config app/config/config.json --global-config app/config/global-config.json --keys app/config/keys.json

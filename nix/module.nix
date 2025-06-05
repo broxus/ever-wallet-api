@@ -254,11 +254,11 @@ in {
       isSystemUser = true;
     };
     users.groups.tycho-wallet-api = {};
-    environment.etc."${cfg.configdir}/config.yaml" = {
+    environment.etc."${cfg.configdir}/config.json" = {
       text = cfg.config;
     };
-    environment.etc."${cfg.configdir}/ton-global.config.json" = {
-      text = builtins.readFile ./ton-global.config.json;
+    environment.etc."${cfg.configdir}/global-config.json" = {
+      text = builtins.readFile ./global-config.json;
     };
     # Create systemd service
     systemd.services.tycho-wallet-api = {
@@ -273,8 +273,9 @@ in {
         export SALT=$(cat ${cfg.everSaltFile} | xargs echo -n)
 
         ${cfg.package}/bin/tycho-wallet-api server \
-          --config /etc/${cfg.configdir}/config.yaml \
-          --global-config /etc/${cfg.configdir}/ton-global.config.json
+          --config /etc/${cfg.configdir}/config.json \
+          --global-config /etc/${cfg.configdir}/global-config.json \
+          --keys /etc/${cfg.configdir}/keys.json
       '';
       serviceConfig = {
           Restart = "always";
