@@ -331,10 +331,11 @@ impl TonSubscriber {
     }
 
     async fn wait_sync(&self) {
+        let notified = self.ready_signal.notified();
         if self.ready.load(Ordering::Acquire) {
             return;
         }
-        self.ready_signal.notified().await;
+        notified.await;
     }
 }
 

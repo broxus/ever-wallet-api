@@ -70,13 +70,13 @@ tikv-jemallocator = { version = "0.6.0", features = [
     "background_threads",
 ] }
 
-tycho-block-util = { git = "https://github.com/broxus/tycho.git", rev = "35a9a15b517c8e1fb291fd5c4a1cb14a5899c834" }
-tycho-core = { git = "https://github.com/broxus/tycho.git", rev = "35a9a15b517c8e1fb291fd5c4a1cb14a5899c834" }
-tycho-light-node = { git = "https://github.com/broxus/tycho.git", rev = "35a9a15b517c8e1fb291fd5c4a1cb14a5899c834" }
-tycho-storage = { git = "https://github.com/broxus/tycho.git", rev = "35a9a15b517c8e1fb291fd5c4a1cb14a5899c834" }
-tycho-util = { git = "https://github.com/broxus/tycho.git", rev = "35a9a15b517c8e1fb291fd5c4a1cb14a5899c834" }
+tycho-block-util = { git = "https://github.com/broxus/tycho.git", rev = "d5a481a8319688ef843ba09976e146ab70579382" }
+tycho-core = { git = "https://github.com/broxus/tycho.git", rev = "d5a481a8319688ef843ba09976e146ab70579382" }
+tycho-light-node = { git = "https://github.com/broxus/tycho.git", rev = "d5a481a8319688ef843ba09976e146ab70579382" }
+tycho-storage = { git = "https://github.com/broxus/tycho.git", rev = "d5a481a8319688ef843ba09976e146ab70579382" }
+tycho-util = { git = "https://github.com/broxus/tycho.git", rev = "d5a481a8319688ef843ba09976e146ab70579382" }
 
-tycho-vm = { git = "https://github.com/broxus/tycho-vm.git", rev = "e3c1473a8749cde50cbf5c57166169de09e41000" }
+tycho-vm = { git = "https://github.com/broxus/tycho-vm.git", rev = "f45e047044f6dd054ea8e27905b1b7485fbf3227" }
 
 # TON specific dependencies
 ton_block = { git = "https://github.com/broxus/ton-labs-block" }
@@ -92,7 +92,7 @@ nekoton-contracts = { git = "https://github.com/broxus/nekoton.git", rev="561b60
 sysinfo = "0.30.13"
 
 [patch.crates-io]
-everscale-types = { git = "https://github.com/broxus/everscale-types.git", rev = "82c343b2bd17ceb51db0575b6b8ee821ccda037e" }
+everscale-types = { git = "https://github.com/broxus/everscale-types.git", rev = "3c23f629b5b2144d5be596dcb93fd1a146484468" }
 
 [features]
 default = []

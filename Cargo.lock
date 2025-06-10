@@ -504,6 +504,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "79296716171880943b8470b5f8d03aa55eb2e645a4874bdbb28adb49162e012c"
 
 [[package]]
+name = "bumpalo-herd"
+version = "0.1.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c51ab7ee02d3459317cc16fec045966c9120733a10229541acaf3cc81b137c95"
+dependencies = [
+ "bumpalo",
+]
+
+[[package]]
 name = "byteorder"
 version = "1.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1327,7 +1336,7 @@ checksum = "719e7eca52068b4712789379ef850e5c08b3316bccab5be12d1cb9fcb323a57c"
 [[package]]
 name = "everscale-types"
 version = "0.1.2"
-source = "git+https://github.com/broxus/everscale-types.git?rev=82c343b2bd17ceb51db0575b6b8ee821ccda037e#82c343b2bd17ceb51db0575b6b8ee821ccda037e"
+source = "git+https://github.com/broxus/everscale-types.git?rev=3c23f629b5b2144d5be596dcb93fd1a146484468#3c23f629b5b2144d5be596dcb93fd1a146484468"
 dependencies = [
  "ahash 0.8.11",
  "anyhow",
@@ -1357,7 +1366,7 @@ dependencies = [
 [[package]]
 name = "everscale-types-abi-proc"
 version = "0.1.0"
-source = "git+https://github.com/broxus/everscale-types.git?rev=82c343b2bd17ceb51db0575b6b8ee821ccda037e#82c343b2bd17ceb51db0575b6b8ee821ccda037e"
+source = "git+https://github.com/broxus/everscale-types.git?rev=3c23f629b5b2144d5be596dcb93fd1a146484468#3c23f629b5b2144d5be596dcb93fd1a146484468"
 dependencies = [
  "anyhow",
  "proc-macro2",
@@ -1368,7 +1377,7 @@ dependencies = [
 [[package]]
 name = "everscale-types-proc"
 version = "0.1.5"
-source = "git+https://github.com/broxus/everscale-types.git?rev=82c343b2bd17ceb51db0575b6b8ee821ccda037e#82c343b2bd17ceb51db0575b6b8ee821ccda037e"
+source = "git+https://github.com/broxus/everscale-types.git?rev=3c23f629b5b2144d5be596dcb93fd1a146484468#3c23f629b5b2144d5be596dcb93fd1a146484468"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -5344,8 +5353,8 @@ checksum = "e421abadd41a4225275504ea4d6566923418b7f05506fbc9c0fe86ba7396114b"
 
 [[package]]
 name = "tycho-block-util"
-version = "0.2.7"
-source = "git+https://github.com/broxus/tycho.git?rev=35a9a15b517c8e1fb291fd5c4a1cb14a5899c834#35a9a15b517c8e1fb291fd5c4a1cb14a5899c834"
+version = "0.2.10"
+source = "git+https://github.com/broxus/tycho.git?rev=d5a481a8319688ef843ba09976e146ab70579382#d5a481a8319688ef843ba09976e146ab70579382"
 dependencies = [
  "anyhow",
  "arc-swap",
@@ -5361,8 +5370,8 @@ dependencies = [
 
 [[package]]
 name = "tycho-core"
-version = "0.2.7"
-source = "git+https://github.com/broxus/tycho.git?rev=35a9a15b517c8e1fb291fd5c4a1cb14a5899c834#35a9a15b517c8e1fb291fd5c4a1cb14a5899c834"
+version = "0.2.10"
+source = "git+https://github.com/broxus/tycho.git?rev=d5a481a8319688ef843ba09976e146ab70579382#d5a481a8319688ef843ba09976e146ab70579382"
 dependencies = [
  "anyhow",
  "arc-swap",
@@ -5390,8 +5399,8 @@ dependencies = [
 
 [[package]]
 name = "tycho-light-node"
-version = "0.2.7"
-source = "git+https://github.com/broxus/tycho.git?rev=35a9a15b517c8e1fb291fd5c4a1cb14a5899c834#35a9a15b517c8e1fb291fd5c4a1cb14a5899c834"
+version = "0.2.10"
+source = "git+https://github.com/broxus/tycho.git?rev=d5a481a8319688ef843ba09976e146ab70579382#d5a481a8319688ef843ba09976e146ab70579382"
 dependencies = [
  "anyhow",
  "clap",
@@ -5412,8 +5421,8 @@ dependencies = [
 
 [[package]]
 name = "tycho-network"
-version = "0.2.7"
-source = "git+https://github.com/broxus/tycho.git?rev=35a9a15b517c8e1fb291fd5c4a1cb14a5899c834#35a9a15b517c8e1fb291fd5c4a1cb14a5899c834"
+version = "0.2.10"
+source = "git+https://github.com/broxus/tycho.git?rev=d5a481a8319688ef843ba09976e146ab70579382#d5a481a8319688ef843ba09976e146ab70579382"
 dependencies = [
  "ahash 0.8.11",
  "anyhow",
@@ -5451,8 +5460,8 @@ dependencies = [
 
 [[package]]
 name = "tycho-rpc"
-version = "0.2.7"
-source = "git+https://github.com/broxus/tycho.git?rev=35a9a15b517c8e1fb291fd5c4a1cb14a5899c834#35a9a15b517c8e1fb291fd5c4a1cb14a5899c834"
+version = "0.2.10"
+source = "git+https://github.com/broxus/tycho.git?rev=d5a481a8319688ef843ba09976e146ab70579382#d5a481a8319688ef843ba09976e146ab70579382"
 dependencies = [
  "anyhow",
  "arc-swap",
@@ -5484,14 +5493,15 @@ dependencies = [
 
 [[package]]
 name = "tycho-storage"
-version = "0.2.7"
-source = "git+https://github.com/broxus/tycho.git?rev=35a9a15b517c8e1fb291fd5c4a1cb14a5899c834#35a9a15b517c8e1fb291fd5c4a1cb14a5899c834"
+version = "0.2.10"
+source = "git+https://github.com/broxus/tycho.git?rev=d5a481a8319688ef843ba09976e146ab70579382#d5a481a8319688ef843ba09976e146ab70579382"
 dependencies = [
  "ahash 0.8.11",
  "anyhow",
  "arc-swap",
  "bitflags 2.6.0",
  "bumpalo",
+ "bumpalo-herd",
  "bytes",
  "bytesize",
  "crc32c",
@@ -5525,8 +5535,8 @@ dependencies = [
 
 [[package]]
 name = "tycho-util"
-version = "0.2.7"
-source = "git+https://github.com/broxus/tycho.git?rev=35a9a15b517c8e1fb291fd5c4a1cb14a5899c834#35a9a15b517c8e1fb291fd5c4a1cb14a5899c834"
+version = "0.2.10"
+source = "git+https://github.com/broxus/tycho.git?rev=d5a481a8319688ef843ba09976e146ab70579382#d5a481a8319688ef843ba09976e146ab70579382"
 dependencies = [
  "ahash 0.8.11",
  "anyhow",
@@ -5560,7 +5570,7 @@ dependencies = [
 [[package]]
 name = "tycho-vm"
 version = "0.1.0"
-source = "git+https://github.com/broxus/tycho-vm.git?rev=e3c1473a8749cde50cbf5c57166169de09e41000#e3c1473a8749cde50cbf5c57166169de09e41000"
+source = "git+https://github.com/broxus/tycho-vm.git?rev=f45e047044f6dd054ea8e27905b1b7485fbf3227#f45e047044f6dd054ea8e27905b1b7485fbf3227"
 dependencies = [
  "ahash 0.8.11",
  "anyhow",
@@ -5581,7 +5591,7 @@ dependencies = [
 [[package]]
 name = "tycho-vm-proc"
 version = "0.1.0"
-source = "git+https://github.com/broxus/tycho-vm.git?rev=e3c1473a8749cde50cbf5c57166169de09e41000#e3c1473a8749cde50cbf5c57166169de09e41000"
+source = "git+https://github.com/broxus/tycho-vm.git?rev=f45e047044f6dd054ea8e27905b1b7485fbf3227#f45e047044f6dd054ea8e27905b1b7485fbf3227"
 dependencies = [
  "darling",
  "proc-macro2",
