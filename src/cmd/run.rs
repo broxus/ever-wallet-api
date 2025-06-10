@@ -99,8 +99,6 @@ impl Cmd {
         )
         .await?;
 
-        context.start().await?;
-
         // Bind API.
         let api = Api::bind(
             context.config.server_addr,
@@ -140,9 +138,11 @@ impl Cmd {
         // Start the node.
         node.run(
             archive_block_provider.chain((blockchain_block_provider, storage_block_provider)),
-            ShardStateApplier::new(node.storage().clone(), context),
+            ShardStateApplier::new(node.storage().clone(), context.clone()),
         )
         .await?;
+
+        context.start().await?;
 
         // Serve API for the reset of the lifetime
         api_fut.await.map_err(Into::into)

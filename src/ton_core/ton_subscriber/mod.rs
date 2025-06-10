@@ -1,5 +1,5 @@
 use std::collections::hash_map;
-use std::sync::atomic::{AtomicBool, AtomicU32, AtomicU64, Ordering};
+use std::sync::atomic::{AtomicU32, AtomicU64, Ordering};
 use std::sync::{Arc, Weak};
 
 use anyhow::Result;
@@ -13,7 +13,6 @@ use nekoton_utils::TrustMe;
 use parking_lot::{Mutex, RwLock, RwLockReadGuard};
 use rustc_hash::FxHashMap;
 
-use tokio::sync::Notify;
 use ton_block::Deserializable;
 use ton_types::SliceData;
 use tycho_block_util::block::BlockStuff;
@@ -23,8 +22,6 @@ use tycho_vm::StackValue;
 use crate::ton_core::*;
 
 pub struct TonSubscriber {
-    ready: AtomicBool,
-    ready_signal: Notify,
     // tip block timestamp
     current_utime: AtomicU32,
     signature_id: SignatureId,
@@ -39,8 +36,6 @@ pub struct TonSubscriber {
 impl TonSubscriber {
     pub fn new(messages_queue: Arc<PendingMessagesQueue>) -> Arc<Self> {
         Arc::new(Self {
-            ready: AtomicBool::new(false),
-            ready_signal: Notify::new(),
             current_utime: AtomicU32::new(0),
             signature_id: SignatureId::default(),
             state_subscriptions: RwLock::new(FxHashMap::with_capacity_and_hasher(
@@ -60,7 +55,7 @@ impl TonSubscriber {
 
     pub fn metrics(&self) -> TonSubscriberMetrics {
         TonSubscriberMetrics {
-            ready: self.ready.load(Ordering::Acquire),
+            ready: true,
             current_utime: self.current_utime(),
             signature_id: self.signature_id(),
             pending_message_count: self.messages_queue.len(),
@@ -72,7 +67,6 @@ impl TonSubscriber {
             self.update_signature_id(last_key_block.block())?;
         }
 
-        self.wait_sync().await;
         Ok(())
     }
 
@@ -172,10 +166,6 @@ impl TonSubscriber {
         if block_info.key_block {
             let key_block = block_stuff.block();
             self.update_signature_id(key_block)?;
-        }
-
-        if !self.ready.load(Ordering::Acquire) {
-            return Ok(());
         }
 
         let mut mc_block_awaiters = self.mc_block_awaiters.lock();
@@ -328,14 +318,6 @@ impl TonSubscriber {
         );
 
         Ok(())
-    }
-
-    async fn wait_sync(&self) {
-        let notified = self.ready_signal.notified();
-        if self.ready.load(Ordering::Acquire) {
-            return;
-        }
-        notified.await;
     }
 }
 
