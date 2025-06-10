@@ -269,25 +269,9 @@ impl SqlxClient {
 }
 
 #[cfg(test)]
-async fn prepare_test(level_filter: log::LevelFilter) -> SqlxClient {
+async fn prepare_test() -> SqlxClient {
     use env_logger::Builder;
     use std::io::Write;
-
-    Builder::new()
-        .format(|buf, record| {
-            writeln!(
-                buf,
-                "{} {}/{} {} [{}] - {}",
-                Local::now().format("%Y-%m-%dT%H:%M:%S"),
-                record.module_path().unwrap_or_default(),
-                record.file().unwrap_or_default(),
-                record.line().unwrap_or_default(),
-                record.level(),
-                record.args(),
-            )
-        })
-        .filter(None, level_filter)
-        .init();
 
     let pg_pool =
         PgPool::connect("postgresql://everscale:everscale@localhost:5432/tycho_wallet_api_rs")
@@ -300,13 +284,12 @@ async fn prepare_test(level_filter: log::LevelFilter) -> SqlxClient {
 #[cfg(test)]
 mod test {
     use super::*;
-    use log::LevelFilter;
     use std::str::FromStr;
 
     #[tokio::test]
     #[ignore]
     async fn test() {
-        let sqlx_client = prepare_test(LevelFilter::Trace).await;
+        let sqlx_client = prepare_test().await;
 
         let service_id =
             ServiceId::new(uuid::Uuid::from_str("5b30733f-e1cc-44e2-91f3-0ab7128e4534").unwrap());

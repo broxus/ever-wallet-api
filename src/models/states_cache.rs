@@ -63,7 +63,7 @@ impl StatesCache {
             .update_root_token_state(&key.to_string(), serde_json::json!(value))
             .await
         {
-            log::error!("Failed inserting root token state: {}", e)
+            tracing::error!("Failed inserting root token state: {}", e)
         }
     }
 }

@@ -106,7 +106,7 @@ impl EngineContext {
                 let engine_context = match engine_context.upgrade() {
                     Some(engine_context) => engine_context,
                     None => {
-                        log::error!("Engine is already dropped");
+                        tracing::error!("Engine is already dropped");
                         return;
                     }
                 };
@@ -124,7 +124,7 @@ impl EngineContext {
                             }
                             Err(err) => {
                                 state.send(HandleTransactionStatus::Fail).ok();
-                                log::error!("Failed to create receive transaction with message hash '{}': {:?}", message_hash, err)
+                                tracing::error!("Failed to create receive transaction with message hash '{}': {:?}", message_hash, err)
                             }
                         }
                     }
@@ -158,7 +158,7 @@ impl EngineContext {
                                     }
                                     Err(err) => {
                                         state.send(HandleTransactionStatus::Fail).ok();
-                                        log::error!(
+                                        tracing::error!(
                                             "Failed to update token transaction with message hash '{}': {:?}",
                                             transaction.message_hash,
                                             err
@@ -168,7 +168,7 @@ impl EngineContext {
                             }
                             Err(err) => {
                                 state.send(HandleTransactionStatus::Fail).ok();
-                                log::error!(
+                                tracing::error!(
                                     "Failed to upsert sent transaction with message hash '{}': {:?}",
                                     transaction.message_hash,
                                     err
@@ -192,7 +192,7 @@ impl EngineContext {
                 let engine_context = match engine_context.upgrade() {
                     Some(engine_context) => engine_context,
                     None => {
-                        log::error!("Engine is already dropped");
+                        tracing::error!("Engine is already dropped");
                         return;
                     }
                 };
@@ -211,7 +211,7 @@ impl EngineContext {
                     }
                     Err(e) => {
                         state.send(HandleTransactionStatus::Fail).ok();
-                        log::error!(
+                        tracing::error!(
                             "Failed to create token transaction with message hash '{}': {:?}",
                             message_hash,
                             e

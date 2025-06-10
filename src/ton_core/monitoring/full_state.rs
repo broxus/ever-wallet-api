@@ -37,7 +37,9 @@ impl FullState {
                     Some(engine) => engine,
                     None => {
                         event.state.send(HandleTransactionStatus::Fail).ok();
-                        log::error!("Failed to handle full state: Full state handler was dropped");
+                        tracing::error!(
+                            "Failed to handle full state: Full state handler was dropped"
+                        );
                         break;
                     }
                 };

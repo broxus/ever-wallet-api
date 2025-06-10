@@ -20,7 +20,7 @@ pub async fn verify_auth(
     match check_api_key(req, auth_service).await {
         Ok(req) => next.run(req).await,
         Err(err) => {
-            log::error!("Failed to check auth. Err: {:?}", &err);
+            tracing::error!("Failed to check auth. Err: {:?}", &err);
             Rejection("Failed to authorize".to_string(), StatusCode::UNAUTHORIZED).into_response()
         }
     }

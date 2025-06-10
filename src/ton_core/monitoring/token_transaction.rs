@@ -46,7 +46,7 @@ impl TokenTransaction {
                     Some(engine) => engine,
                     None => {
                         event.state.send(HandleTransactionStatus::Fail).ok();
-                        log::error!("Failed to handle received token transaction: Token transaction handler was dropped");
+                        tracing::error!("Failed to handle received token transaction: Token transaction handler was dropped");
                         break;
                     }
                 };
@@ -67,7 +67,7 @@ impl TokenTransaction {
                     }
                     Err(e) => {
                         event.state.send(HandleTransactionStatus::Fail).ok();
-                        log::error!("Failed to handle received token transaction: {}", e);
+                        tracing::error!("Failed to handle received token transaction: {}", e);
                     }
                 }
             }

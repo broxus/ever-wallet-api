@@ -579,7 +579,7 @@ impl TonService {
             .await?;
 
         if address_db.balance < input.fee {
-            log::error!(
+            tracing::error!(
                 "Address balance is not enough to pay fee for token transfer. Balance: {}. Fee: {}",
                 address_db.balance,
                 input.fee
@@ -598,7 +598,7 @@ impl TonService {
             .await?;
 
         if token_balance.balance < input.value {
-            log::error!(
+            tracing::error!(
                 "Token balance is not enough to make request; Balance: {}. Sent amount: {}",
                 token_balance.balance,
                 input.value
@@ -671,7 +671,7 @@ impl TonService {
             .await?;
 
         if address_db.balance < input.fee {
-            log::error!(
+            tracing::error!(
                 "Address balance is not enough to pay fee for token transfer. Balance: {}. Fee: {}",
                 address_db.balance,
                 input.fee
@@ -690,7 +690,7 @@ impl TonService {
             .await?;
 
         if token_balance.balance < input.value {
-            log::error!(
+            tracing::error!(
                 "Token balance is not enough to make request; Balance: {}. Sent amount: {}",
                 token_balance.balance,
                 input.value
@@ -768,7 +768,7 @@ impl TonService {
             .await?;
 
         if address_db.balance < input.fee {
-            log::error!(
+            tracing::error!(
                 "Address balance is not enough to pay fee for token transfer. Balance: {}. Fee: {}",
                 address_db.balance,
                 input.fee
@@ -884,7 +884,7 @@ impl TonService {
         let tokens = match output.tokens {
             Some(tokens) => {
                 if tokens.is_empty() {
-                    log::warn!("No response tokens in execution output")
+                    tracing::warn!("No response tokens in execution output")
                 }
                 tokens
             }
@@ -1214,7 +1214,7 @@ impl TonService {
     {
         tokio::spawn(async move {
             if let Err(e) = fut.await {
-                log::error!("Failed to {}: {:?}", name, e);
+                tracing::error!("Failed to {}: {:?}", name, e);
             }
         });
     }
@@ -1227,7 +1227,7 @@ async fn wait_message(
 ) -> Result<(), Error> {
     match rx.await? {
         MessageStatus::Delivered => {
-            log::info!("Successfully sent message `{}`", transaction.message_hash)
+            tracing::info!("Successfully sent message `{}`", transaction.message_hash)
         }
         MessageStatus::Expired => {
             let ton_service = match ton_service.upgrade() {

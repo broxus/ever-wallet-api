@@ -67,7 +67,7 @@ impl Api {
         );
         if let Some(metrics_addr) = metrics_addr {
             if let Err(e) = install_monitoring(metrics_addr) {
-                log::error!("Failed to install monitoring: {e:?}");
+                tracing::error!("Failed to install monitoring: {e:?}");
             }
         }
 

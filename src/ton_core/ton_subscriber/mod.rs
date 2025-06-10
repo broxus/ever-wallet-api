@@ -183,7 +183,7 @@ impl TonSubscriber {
             |_, awaiter| match awaiter.handle_block(block, &block_info) {
                 Ok(action) => action == BlockAwaiterAction::Retain,
                 Err(e) => {
-                    log::error!("Failed to handle masterchain block: {:?}", e);
+                    tracing::error!("Failed to handle masterchain block: {:?}", e);
                     true
                 }
             },
@@ -281,7 +281,7 @@ impl TonSubscriber {
                             }
                         }
                         Err(e) => {
-                            log::error!("Failed to handle block: {:?}", e);
+                            tracing::error!("Failed to handle block: {:?}", e);
                         }
                     };
                 }
@@ -302,7 +302,7 @@ impl TonSubscriber {
                             }
                         }
                         Err(e) => {
-                            log::error!("Failed to handle block: {:?}", e);
+                            tracing::error!("Failed to handle block: {:?}", e);
                         }
                     }
                 }
@@ -352,7 +352,7 @@ impl TonSubscriber {
             let mut states = self.handle_shard_block(&block_stuff, &block_id.root_hash, &state)?;
             while let Some(status) = states.next().await {
                 if let Err(err) = status {
-                    log::error!("Failed to receive transaction status: {}", err);
+                    tracing::error!("Failed to receive transaction status: {}", err);
                 }
             }
         }
@@ -396,7 +396,7 @@ impl StateSubscription {
             let (transaction, hash) = match result {
                 Ok((tx, transaction_hash)) => (tx, transaction_hash),
                 Err(e) => {
-                    log::error!(
+                    tracing::error!(
                         "Failed to parse transaction in block {} for account {}: {:?}",
                         block_info.seqno,
                         account.to_string(),
@@ -453,7 +453,7 @@ impl StateSubscription {
                         states.push(rx);
                     }
                     Err(e) => {
-                        log::error!(
+                        tracing::error!(
                             "Failed to handle transaction {} for account {}: {:?}",
                             hash.to_string(),
                             account.to_string(),
@@ -500,7 +500,7 @@ impl TokenSubscription {
             let (transaction, hash) = match result {
                 Ok((tx, transaction_hash)) => (tx, transaction_hash),
                 Err(e) => {
-                    log::error!(
+                    tracing::error!(
                         "Failed to parse transaction in block {} for account {}: {:?}",
                         block_info.seqno,
                         account.to_string(),
@@ -580,7 +580,7 @@ impl TokenSubscription {
                                 states.push(rx);
                             }
                             Err(e) => {
-                                log::error!(
+                                tracing::error!(
                                     "Failed to handle token transaction {} for account {}: {:?}",
                                     hash.to_string(),
                                     account.to_string(),
@@ -618,7 +618,7 @@ impl FullStateSubscription {
             match full_state_subscription.handle_full_state(ctx, tx) {
                 Ok(_) => res = Some(rx),
                 Err(e) => {
-                    log::error!("Failed to handle full state: {:?}", e);
+                    tracing::error!("Failed to handle full state: {:?}", e);
                 }
             };
         }
@@ -676,7 +676,7 @@ where
         // Send event to event manager if it exist
         if let Some(event) = event {
             if self.0.send(event).is_err() {
-                log::error!("Failed to send event: channel is dropped");
+                tracing::error!("Failed to send event: channel is dropped");
             }
         }
 
@@ -694,7 +694,7 @@ where
 
         // Send event to event manager if it exist
         if self.0.send(event).is_err() {
-            log::error!("Failed to send event: channel is dropped");
+            tracing::error!("Failed to send event: channel is dropped");
         }
 
         // Done

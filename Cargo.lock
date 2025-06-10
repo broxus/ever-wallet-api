@@ -5655,6 +5655,7 @@ dependencies = [
  "tower-http",
  "tower-service",
  "tracing",
+ "tracing-subscriber",
  "tycho-block-util",
  "tycho-core",
  "tycho-light-node",

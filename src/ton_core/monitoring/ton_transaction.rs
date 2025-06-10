@@ -48,7 +48,7 @@ impl TonTransaction {
                     Some(engine) => engine,
                     None => {
                         event.state.send(HandleTransactionStatus::Fail).ok();
-                        log::error!("Failed to handle received ton transaction: Ton transaction handler was dropped");
+                        tracing::error!("Failed to handle received ton transaction: Ton transaction handler was dropped");
                         break;
                     }
                 };
@@ -68,7 +68,7 @@ impl TonTransaction {
                     }
                     Err(e) => {
                         event.state.send(HandleTransactionStatus::Fail).ok();
-                        log::error!(
+                        tracing::error!(
                             "Failed to handle received ton transaction `{}`: {}",
                             event.transaction_hash,
                             e

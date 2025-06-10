@@ -60,7 +60,7 @@ impl OwnersCache {
             version: value.version.into(),
         };
         if let Err(e) = self.db.new_token_owner(&owner).await {
-            log::error!("Failed inserting owner info: {}", e)
+            tracing::error!("Failed inserting owner info: {}", e)
         }
     }
 }

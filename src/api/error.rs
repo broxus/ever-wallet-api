@@ -4,7 +4,6 @@ use axum::{
     Json,
 };
 use tokio::sync::oneshot;
-use tracing::log;
 
 use crate::api::controllers::ControllersError;
 use crate::client::TonClientError;
@@ -119,63 +118,63 @@ impl Error {
             Self::Sqlx(ref e) => {
                 // TODO: we probably want to use `tracing` instead
                 // so that this gets linked to the HTTP request by `TraceLayer`.
-                log::error!("SQLx error: {:?}", e);
+                tracing::error!("SQLx error: {:?}", e);
             }
 
             Self::Serde(ref e) => {
                 // TODO: we probably want to use `tracing` instead
                 // so that this gets linked to the HTTP request by `TraceLayer`.
-                log::error!("Serde error: {:?}", e);
+                tracing::error!("Serde error: {:?}", e);
             }
 
             Self::Ed25519(ref e) => {
                 // TODO: we probably want to use `tracing` instead
                 // so that this gets linked to the HTTP request by `TraceLayer`.
-                log::error!("Ed25519 error: {:?}", e);
+                tracing::error!("Ed25519 error: {:?}", e);
             }
 
             Self::RecvError(ref e) => {
                 // TODO: we probably want to use `tracing` instead
                 // so that this gets linked to the HTTP request by `TraceLayer`.
-                log::error!("RecvError error: {:?}", e);
+                tracing::error!("RecvError error: {:?}", e);
             }
 
             Self::TokensJson(ref e) => {
                 // TODO: we probably want to use `tracing` instead
                 // so that this gets linked to the HTTP request by `TraceLayer`.
-                log::error!("TokensJson error: {:?}", e);
+                tracing::error!("TokensJson error: {:?}", e);
             }
 
             Self::FromHexError(ref e) => {
                 // TODO: we probably want to use `tracing` instead
                 // so that this gets linked to the HTTP request by `TraceLayer`.
-                log::error!("FromHexError error: {:?}", e);
+                tracing::error!("FromHexError error: {:?}", e);
             }
 
             Self::TryFromSliceError(ref e) => {
                 // TODO: we probably want to use `tracing` instead
                 // so that this gets linked to the HTTP request by `TraceLayer`.
-                log::error!("TryFromSliceError error: {:?}", e);
+                tracing::error!("TryFromSliceError error: {:?}", e);
             }
 
             Self::Anyhow(ref e) => {
                 // TODO: we probably want to use `tracing` instead
                 // so that this gets linked to the HTTP request by `TraceLayer`.
-                log::error!("Generic error: {:?}", e);
+                tracing::error!("Generic error: {:?}", e);
             }
 
             // Other errors get mapped normally.
             Self::TonService(ref e) => {
-                log::error!("Ton service error: {:?}", e);
+                tracing::error!("Ton service error: {:?}", e);
             }
 
             // Other errors get mapped normally.
             Self::TonClient(ref e) => {
-                log::error!("Ton client error: {:?}", e);
+                tracing::error!("Ton client error: {:?}", e);
             }
 
             Self::Controllers(ref e) => {
-                log::error!("Controllers error: {:?}", e);
+                tracing::error!("Controllers error: {:?}", e);
             }
         }
 
