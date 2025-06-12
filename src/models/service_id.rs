@@ -2,6 +2,7 @@ use std::fmt;
 use std::fmt::Display;
 use std::str::FromStr;
 
+use schemars::JsonSchema;
 use uuid::Uuid;
 
 #[derive(
@@ -14,10 +15,9 @@ use uuid::Uuid;
     PartialEq,
     Eq,
     Hash,
-    opg::OpgModel,
     sqlx::Type,
+    JsonSchema,
 )]
-#[opg("Service UUID (v4)")]
 #[sqlx(transparent)]
 pub struct ServiceId(pub Uuid);
 

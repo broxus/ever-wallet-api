@@ -1,7 +1,14 @@
-use axum::{routing::get, Router};
+use aide::axum::{routing::get_with, ApiRouter};
+use axum::Json;
 
-use crate::api::controllers;
+use crate::api::{controllers, responses::MetricsResponse, taged, ApiContext};
 
-pub fn router() -> Router {
-    Router::new().route("/", get(controllers::get_ton_metrics))
+pub fn router() -> ApiRouter<ApiContext> {
+    ApiRouter::new().api_route_with(
+        "/",
+        get_with(controllers::get_ton_metrics, |op| {
+            op.response::<200, Json<MetricsResponse>>()
+        }),
+        taged("metrics"),
+    )
 }

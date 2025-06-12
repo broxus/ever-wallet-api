@@ -1,12 +1,8 @@
-use std::convert::Infallible;
 use std::sync::Arc;
 use std::time::Duration;
 
-use axum::response::IntoResponse;
-use axum::routing::get_service;
-use axum::{Extension, Router};
+use aide::axum::ApiRouter;
 use metrics::{describe_gauge, gauge};
-use tower::service_fn;
 use tower_http::metrics::InFlightRequestsLayer;
 
 use crate::api::*;
@@ -26,7 +22,7 @@ pub fn router(
     auth_service: Arc<AuthService>,
     ton_service: Arc<TonService>,
     memory_storage: Arc<StorageHandler>,
-) -> Router {
+) -> ApiRouter {
     describe_gauge!("in_flight_requests", "number of inflight requests");
     let (in_flight_requests_layer, counter) = InFlightRequestsLayer::pair();
     tokio::spawn(async {
@@ -37,28 +33,11 @@ pub fn router(
             .await;
     });
 
-    Router::new()
-        .nest(
+    aide::axum::ApiRouter::new()
+        .nest_api_service("/docs", docs::route())
+        .nest_api_service(
             API_PREFIX,
             api_router(auth_service, ton_service, memory_storage),
-        )
-        .route(
-            "/",
-            get_service(service_fn(|_: _| async move {
-                Ok::<_, Infallible>(
-                    controllers::swagger(&format!("https://tonapi.broxus.com{}", API_PREFIX))
-                        .into_response(),
-                )
-            })),
-        )
-        .route(
-            "/swagger.yaml",
-            get_service(service_fn(|_: _| async move {
-                Ok::<_, Infallible>(
-                    controllers::swagger(&format!("https://tonapi.broxus.com{}", API_PREFIX))
-                        .into_response(),
-                )
-            })),
         )
         .layer(in_flight_requests_layer)
 }
@@ -67,8 +46,8 @@ fn api_router(
     auth_service: Arc<AuthService>,
     ton_service: Arc<TonService>,
     memory_storage: Arc<StorageHandler>,
-) -> Router {
-    Router::new()
+) -> ApiRouter {
+    aide::axum::ApiRouter::new()
         .nest("/blockchain", blockchain::router())
         .nest("/address", address::router())
         .nest("/events", events::router())
@@ -79,8 +58,8 @@ fn api_router(
         .layer(axum::middleware::from_fn(move |req, next| {
             controllers::verify_auth(req, next, auth_service.clone())
         }))
-        .layer(Extension(Arc::new(ApiContext {
+        .with_state(ApiContext {
             ton_service,
             memory_storage,
-        })))
+        })
 }

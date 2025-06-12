@@ -1,7 +1,9 @@
 use std::future::IntoFuture;
-use std::net::{Ipv4Addr, SocketAddr};
+use std::net::SocketAddr;
 use std::sync::Arc;
 
+use aide::openapi::{Info, OpenApi, Server};
+use aide::transform::{TransformOpenApi, TransformPathItem};
 use anyhow::Context;
 use axum::body::Body;
 use axum::extract::Request;
@@ -9,7 +11,7 @@ use axum::http::Method;
 use futures_util::future::BoxFuture;
 use metrics::{describe_counter, describe_histogram};
 use metrics_exporter_prometheus::Matcher;
-use serde::{Deserialize, Serialize};
+use schemars::schema::{InstanceType, SchemaObject};
 use tower::ServiceBuilder;
 use tower_http::cors::{AllowHeaders, AllowMethods, AllowOrigin, CorsLayer};
 use tower_http::trace::TraceLayer;
@@ -20,6 +22,7 @@ use crate::services::{AuthService, StorageHandler, TonService};
 pub use self::error::*;
 
 mod controllers;
+mod docs;
 mod error;
 mod requests;
 mod responses;
@@ -31,22 +34,6 @@ const EXPONENTIAL_SECONDS: &[f64] = &[
 
 type Result<T, E = Error> = std::result::Result<T, E>;
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct ApiConfig {
-    pub listen_addr: SocketAddr,
-    pub public_url: Option<String>,
-}
-
-impl Default for ApiConfig {
-    #[inline]
-    fn default() -> Self {
-        Self {
-            listen_addr: (Ipv4Addr::LOCALHOST, 8080).into(),
-            public_url: None,
-        }
-    }
-}
-
 pub struct Api {
     serve_fn: Box<dyn FnOnce() -> BoxFuture<'static, std::io::Result<()>> + Send>,
 }
@@ -54,6 +41,7 @@ pub struct Api {
 impl Api {
     pub async fn bind(
         server_addr: SocketAddr,
+        public_url: Option<String>,
         metrics_addr: Option<SocketAddr>,
         auth_service: Arc<AuthService>,
         ton_service: Arc<TonService>,
@@ -70,8 +58,11 @@ impl Api {
                 tracing::error!("Failed to install monitoring: {e:?}");
             }
         }
+        let mut api =
+            get_open_api(public_url.unwrap_or_else(|| "http://localhost:8080".to_string()));
 
         let app = router::router(auth_service, ton_service, memory_storage)
+            .finish_api_with(&mut api, api_docs)
             .layer(
                 ServiceBuilder::new().layer(
                     CorsLayer::new()
@@ -117,7 +108,42 @@ fn install_monitoring(metrics_addr: SocketAddr) -> anyhow::Result<()> {
         .context("Failed installing metrics exporter")
 }
 
+#[derive(Clone)]
 pub struct ApiContext {
     ton_service: Arc<TonService>,
     memory_storage: Arc<StorageHandler>,
+}
+
+fn taged(tag: &'static str) -> impl FnOnce(TransformPathItem) -> TransformPathItem {
+    |item| item.tag(tag)
+}
+
+fn get_open_api(url: String) -> OpenApi {
+    OpenApi {
+        info: Info {
+            description: Some("Tycho Wallet API".to_string()),
+            ..Info::default()
+        },
+        servers: vec![Server {
+            url,
+            description: Some("Production".to_string()),
+            variables: Default::default(),
+            extensions: Default::default(),
+        }],
+        ..OpenApi::default()
+    }
+}
+
+fn api_docs(api: TransformOpenApi) -> TransformOpenApi {
+    api.title("Tycho Wallet API")
+        .summary("Tycho Wallet indexer")
+}
+
+pub(super) fn int_schema(_: &mut schemars::SchemaGenerator) -> schemars::schema::Schema {
+    let object_schema = schemars::schema::SchemaObject { instance_type: Some(InstanceType::Number.into()), ..Default::default() };
+    object_schema.into()
+}
+pub(super) fn any_schema(_: &mut schemars::SchemaGenerator) -> schemars::schema::Schema {
+    let object_schema = SchemaObject::default();
+    object_schema.into()
 }

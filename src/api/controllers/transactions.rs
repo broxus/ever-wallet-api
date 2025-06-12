@@ -1,5 +1,5 @@
-use axum::extract::Path;
-use axum::{Extension, Json};
+use axum::extract::{Path, State};
+use axum::Json;
 use metrics::{histogram, increment_counter};
 use tokio::time::Instant;
 use uuid::Uuid;
@@ -10,7 +10,7 @@ use crate::api::responses::*;
 use crate::api::*;
 
 pub async fn post_transactions(
-    Extension(ctx): Extension<Arc<ApiContext>>,
+    State(ctx): State<ApiContext>,
     IdExtractor(service_id): IdExtractor,
     Json(req): Json<TonTransactionsRequest>,
 ) -> Result<Json<TonTransactionsResponse>> {
@@ -33,7 +33,7 @@ pub async fn post_transactions(
 }
 
 pub async fn post_transactions_create(
-    Extension(ctx): Extension<Arc<ApiContext>>,
+    State(ctx): State<ApiContext>,
     IdExtractor(service_id): IdExtractor,
     Json(req): Json<TonTransactionSendRequest>,
 ) -> Result<Json<TransactionResponse>> {
@@ -53,7 +53,7 @@ pub async fn post_transactions_create(
 }
 
 pub async fn post_transactions_confirm(
-    Extension(ctx): Extension<Arc<ApiContext>>,
+    State(ctx): State<ApiContext>,
     IdExtractor(service_id): IdExtractor,
     Json(req): Json<TonTransactionConfirmRequest>,
 ) -> Result<Json<TransactionResponse>> {
@@ -74,7 +74,7 @@ pub async fn post_transactions_confirm(
 
 pub async fn get_transactions_mh(
     Path(message_hash): Path<String>,
-    Extension(ctx): Extension<Arc<ApiContext>>,
+    State(ctx): State<ApiContext>,
     IdExtractor(service_id): IdExtractor,
 ) -> Result<Json<TransactionResponse>> {
     let transaction = ctx
@@ -88,7 +88,7 @@ pub async fn get_transactions_mh(
 
 pub async fn get_transactions_h(
     Path(hash): Path<String>,
-    Extension(ctx): Extension<Arc<ApiContext>>,
+    State(ctx): State<ApiContext>,
     IdExtractor(service_id): IdExtractor,
 ) -> Result<Json<TransactionResponse>> {
     let transaction = ctx
@@ -102,7 +102,7 @@ pub async fn get_transactions_h(
 
 pub async fn get_transactions_id(
     Path(id): Path<Uuid>,
-    Extension(ctx): Extension<Arc<ApiContext>>,
+    State(ctx): State<ApiContext>,
     IdExtractor(service_id): IdExtractor,
 ) -> Result<Json<TransactionResponse>> {
     let transaction = ctx
@@ -116,7 +116,7 @@ pub async fn get_transactions_id(
 
 pub async fn get_tokens_transactions_id(
     Path(internal_id): Path<Uuid>,
-    Extension(ctx): Extension<Arc<ApiContext>>,
+    State(ctx): State<ApiContext>,
     IdExtractor(service_id): IdExtractor,
 ) -> Result<Json<TokenTransactionResponse>> {
     let transaction = ctx
@@ -130,7 +130,7 @@ pub async fn get_tokens_transactions_id(
 
 pub async fn get_tokens_transactions_mh(
     Path(message_hash): Path<String>,
-    Extension(ctx): Extension<Arc<ApiContext>>,
+    State(ctx): State<ApiContext>,
     IdExtractor(service_id): IdExtractor,
 ) -> Result<Json<TokenTransactionResponse>> {
     let transaction = ctx
@@ -143,7 +143,7 @@ pub async fn get_tokens_transactions_mh(
 }
 
 pub async fn post_tokens_transactions_create(
-    Extension(ctx): Extension<Arc<ApiContext>>,
+    State(ctx): State<ApiContext>,
     IdExtractor(service_id): IdExtractor,
     Json(req): Json<TonTokenTransactionSendRequest>,
 ) -> Result<Json<TransactionResponse>> {
@@ -163,7 +163,7 @@ pub async fn post_tokens_transactions_create(
 }
 
 pub async fn post_tokens_transactions_burn(
-    Extension(ctx): Extension<Arc<ApiContext>>,
+    State(ctx): State<ApiContext>,
     IdExtractor(service_id): IdExtractor,
     Json(req): Json<TonTokenTransactionBurnRequest>,
 ) -> Result<Json<TransactionResponse>> {
@@ -183,7 +183,7 @@ pub async fn post_tokens_transactions_burn(
 }
 
 pub async fn post_tokens_transactions_mint(
-    Extension(ctx): Extension<Arc<ApiContext>>,
+    State(ctx): State<ApiContext>,
     IdExtractor(service_id): IdExtractor,
     Json(req): Json<TonTokenTransactionMintRequest>,
 ) -> Result<Json<TransactionResponse>> {

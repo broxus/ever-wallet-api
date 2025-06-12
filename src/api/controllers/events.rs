@@ -1,5 +1,5 @@
-use axum::extract::Path;
-use axum::{Extension, Json};
+use axum::extract::{Path, State};
+use axum::Json;
 use uuid::Uuid;
 
 use crate::api::controllers::*;
@@ -9,7 +9,7 @@ use crate::api::*;
 use crate::models::*;
 
 pub async fn post_events(
-    Extension(ctx): Extension<Arc<ApiContext>>,
+    State(ctx): State<ApiContext>,
     IdExtractor(service_id): IdExtractor,
     Json(req): Json<TonTransactionEventsRequest>,
 ) -> Result<Json<TonEventsResponse>> {
@@ -32,7 +32,7 @@ pub async fn post_events(
 }
 
 pub async fn post_events_mark(
-    Extension(ctx): Extension<Arc<ApiContext>>,
+    State(ctx): State<ApiContext>,
     IdExtractor(service_id): IdExtractor,
     Json(req): Json<TonMarkEventsRequest>,
 ) -> Result<Json<MarkEventsResponse>> {
@@ -42,7 +42,7 @@ pub async fn post_events_mark(
 }
 
 pub async fn post_events_mark_all(
-    Extension(ctx): Extension<Arc<ApiContext>>,
+    State(ctx): State<ApiContext>,
     IdExtractor(service_id): IdExtractor,
     Json(req): Json<MarkAllTransactionEventRequest>,
 ) -> Result<Json<MarkEventsResponse>> {
@@ -55,7 +55,7 @@ pub async fn post_events_mark_all(
 }
 
 pub async fn post_tokens_events(
-    Extension(ctx): Extension<Arc<ApiContext>>,
+    State(ctx): State<ApiContext>,
     IdExtractor(service_id): IdExtractor,
     Json(req): Json<TonTokenTransactionEventsRequest>,
 ) -> Result<Json<TonTokenEventsResponse>> {
@@ -80,7 +80,7 @@ pub async fn post_tokens_events(
 }
 
 pub async fn post_tokens_events_mark(
-    Extension(ctx): Extension<Arc<ApiContext>>,
+    State(ctx): State<ApiContext>,
     IdExtractor(service_id): IdExtractor,
     Json(req): Json<TonTokenMarkEventsRequest>,
 ) -> Result<Json<MarkTokenEventsResponse>> {
@@ -91,7 +91,7 @@ pub async fn post_tokens_events_mark(
 
 pub async fn get_events_id(
     Path(id): Path<Uuid>,
-    Extension(ctx): Extension<Arc<ApiContext>>,
+    State(ctx): State<ApiContext>,
     IdExtractor(service_id): IdExtractor,
 ) -> Result<Json<TransactionEventResponse>> {
     let event = ctx

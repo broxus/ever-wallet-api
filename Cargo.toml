@@ -7,9 +7,9 @@ publish = false
 license-file = "LICENSE"
 
 [dependencies]
+aide = { version = "0.13.5", features = ["axum", "axum-extra", "scalar", "macros"] }
 anyhow = "1.0"
 axum = { version = "0.7", features = ["multipart", "macros"] }
-argh = "0.1"
 argon2 = "0.4.1"
 async-trait = "0.1"
 base64 = "0.13"
@@ -17,11 +17,8 @@ bigdecimal = { version = "0.4.5", features = ["serde"] }
 chacha20poly1305 = "0.10.1"
 chrono = { version = "0.4", features = ["serde"] }
 clap = { version = "4.5.3", features = ["derive"] }
-config = { version = "0.13.2", default-features = false, features = ["yaml"] }
 dashmap = "5.3.4"
 derive_more = { version = "1.0.0", features = ["full"] }
-env_logger = "0.10.0"
-everscale-network = "^0.5.4"
 everscale-types = { version = "0.1.2", features = ["tycho", "abi"] }
 futures = "0.3"
 futures-util = "0.3.31"
@@ -31,7 +28,6 @@ http = "0.2"
 itertools = "0.10.1"
 lazy_static = "1.4.0"
 log = { version = "0.4", features = ["std", "serde"] }
-log4rs = "1.0"
 lru = "0.8"
 metrics = "0.20.1"
 metrics-exporter-prometheus = { version = "0.16.0", default-features = false, features = ["http-listener"] }
@@ -45,7 +41,7 @@ rayon = "1.10"
 regex = "1.5"
 reqwest = { version = "0.12", features = ["json"] }
 rustc-hash = "1.1.0"
-sentry = { version = "0.27.0", features = ["log", "debug-logs"] }
+schemars = { version = "0.8.13", features = ["chrono", "bigdecimal04", "uuid1"] }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 serde_yaml = "0.9.4"

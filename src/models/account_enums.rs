@@ -2,15 +2,15 @@ use std::str::FromStr;
 
 use everscale_types::models::{AccountState, StdAddr};
 use nekoton::core::models::TokenWalletVersion;
+use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use strum_macros::EnumString;
 
 use crate::models::{Address, AddressDb};
 
 #[derive(
-    Debug, Default, Deserialize, Serialize, Clone, opg::OpgModel, Eq, PartialEq, sqlx::Type, Copy,
+    Debug, Default, Deserialize, Serialize, Clone, JsonSchema, Eq, PartialEq, sqlx::Type, Copy,
 )]
-#[opg("AccountType")]
 #[sqlx(type_name = "twa_account_type", rename_all = "PascalCase")]
 pub enum AccountType {
     #[default]
@@ -20,8 +20,7 @@ pub enum AccountType {
     EverWallet,
 }
 
-#[derive(Debug, Deserialize, Serialize, Clone, opg::OpgModel, sqlx::Type, Eq, PartialEq)]
-#[opg("AccountStatus")]
+#[derive(Debug, Deserialize, Serialize, Clone, JsonSchema, sqlx::Type, Eq, PartialEq)]
 #[sqlx(type_name = "twa_account_status", rename_all = "PascalCase")]
 pub enum AccountStatus {
     Active,
@@ -50,9 +49,8 @@ impl From<ton_block::AccountState> for AccountStatus {
 }
 
 #[derive(
-    Debug, Deserialize, Serialize, Clone, opg::OpgModel, Eq, PartialEq, sqlx::Type, Copy, EnumString,
+    Debug, Deserialize, Serialize, Clone, JsonSchema, Eq, PartialEq, sqlx::Type, Copy, EnumString,
 )]
-#[opg("TokenWalletVersion")]
 #[sqlx(type_name = "twa_token_wallet_version", rename_all = "PascalCase")]
 pub enum TokenWalletVersionDb {
     OldTip3v4,
@@ -77,9 +75,8 @@ impl From<TokenWalletVersionDb> for TokenWalletVersion {
     }
 }
 
-#[derive(Debug, Deserialize, Serialize, Clone, opg::OpgModel)]
+#[derive(Debug, Deserialize, Serialize, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
-#[opg("Account")]
 pub struct Account {
     pub workchain_id: i32,
     pub hex: Address,
@@ -98,15 +95,13 @@ impl From<AddressDb> for Account {
     }
 }
 
-#[derive(Debug, Deserialize, Serialize, Clone, opg::OpgModel, PartialEq, Eq)]
-#[opg("TonStatus")]
+#[derive(Debug, Deserialize, Serialize, Clone, JsonSchema, PartialEq, Eq)]
 pub enum TonStatus {
     Ok,
     Error,
 }
 
-#[derive(Debug, Deserialize, Serialize, Clone, opg::OpgModel, PartialEq, Eq, sqlx::Type)]
-#[opg("TonTransactionStatus")]
+#[derive(Debug, Deserialize, Serialize, Clone, JsonSchema, PartialEq, Eq, sqlx::Type)]
 #[sqlx(type_name = "twa_transaction_status", rename_all = "PascalCase")]
 pub enum TonTransactionStatus {
     New,
@@ -115,8 +110,7 @@ pub enum TonTransactionStatus {
     Error,
 }
 
-#[derive(Debug, Deserialize, Serialize, Clone, opg::OpgModel, PartialEq, Eq, sqlx::Type)]
-#[opg("TonTransactionStatus")]
+#[derive(Debug, Deserialize, Serialize, Clone, JsonSchema, PartialEq, Eq, sqlx::Type)]
 #[sqlx(type_name = "twa_token_transaction_status", rename_all = "PascalCase")]
 pub enum TonTokenTransactionStatus {
     New,
@@ -134,8 +128,7 @@ impl From<TonTokenTransactionStatus> for TonTransactionStatus {
     }
 }
 
-#[derive(Debug, Deserialize, Serialize, Clone, opg::OpgModel, PartialEq, Eq, sqlx::Type, Copy)]
-#[opg("TonEventStatus")]
+#[derive(Debug, Deserialize, Serialize, Clone, JsonSchema, PartialEq, Eq, sqlx::Type, Copy)]
 #[sqlx(type_name = "twa_transaction_event_status", rename_all = "PascalCase")]
 pub enum TonEventStatus {
     New,
@@ -143,24 +136,21 @@ pub enum TonEventStatus {
     Error,
 }
 
-#[derive(Debug, Deserialize, Serialize, Clone, opg::OpgModel, PartialEq, Eq, sqlx::Type)]
-#[opg("TonTransactionDirection")]
+#[derive(Debug, Deserialize, Serialize, Clone, JsonSchema, PartialEq, Eq, sqlx::Type)]
 #[sqlx(type_name = "twa_transaction_direction", rename_all = "PascalCase")]
 pub enum TonTransactionDirection {
     Send,
     Receive,
 }
 
-#[derive(Debug, Deserialize, Serialize, Clone, opg::OpgModel)]
+#[derive(Debug, Deserialize, Serialize, Clone, JsonSchema)]
 #[serde(rename_all = "lowercase")]
-#[opg("AccountAddressType")]
 pub enum AccountAddressType {
     Internal,
     External,
 }
 
-#[derive(Debug, Deserialize, Serialize, Clone, opg::OpgModel)]
-#[opg("TransactionSendOutputType")]
+#[derive(Debug, Deserialize, Serialize, Clone, JsonSchema)]
 pub enum TransactionsSearchOrdering {
     CreatedAtAsc,
     CreatedAtDesc,
@@ -170,8 +160,7 @@ pub enum TransactionsSearchOrdering {
     TransactionTimestampDesc,
 }
 
-#[derive(Debug, Default, Deserialize, Serialize, Clone, Eq, PartialEq, opg::OpgModel)]
-#[opg("TransactionSendOutputType")]
+#[derive(Debug, Default, Deserialize, Serialize, Clone, Eq, PartialEq, JsonSchema)]
 pub enum TransactionSendOutputType {
     #[default]
     Normal,

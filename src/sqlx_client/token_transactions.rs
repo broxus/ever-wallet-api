@@ -270,9 +270,6 @@ impl SqlxClient {
 
 #[cfg(test)]
 async fn prepare_test() -> SqlxClient {
-    use env_logger::Builder;
-    use std::io::Write;
-
     let pg_pool =
         PgPool::connect("postgresql://everscale:everscale@localhost:5432/tycho_wallet_api_rs")
             .await

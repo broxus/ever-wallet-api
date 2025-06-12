@@ -1,20 +1,18 @@
-use opg::OpgModel;
+use schemars::JsonSchema;
 use serde::Serialize;
 
 use crate::api::*;
 use crate::models::*;
 
-#[derive(Serialize, OpgModel)]
+#[derive(Serialize, JsonSchema)]
 #[serde(rename_all = "camelCase")]
-#[opg("EventsResponse")]
 pub struct EventsResponse {
     pub count: i32,
     pub items: Vec<AccountTransactionEvent>,
 }
 
-#[derive(Serialize, OpgModel)]
+#[derive(Serialize, JsonSchema)]
 #[serde(rename_all = "camelCase")]
-#[opg("TonEventsResponse")]
 pub struct TonEventsResponse {
     pub status: TonStatus,
     pub data: Option<EventsResponse>,
@@ -38,9 +36,8 @@ impl From<Result<EventsResponse, Error>> for TonEventsResponse {
     }
 }
 
-#[derive(Serialize, OpgModel)]
+#[derive(Serialize, JsonSchema)]
 #[serde(rename_all = "camelCase")]
-#[opg("MarkEventsResponse")]
 pub struct MarkEventsResponse {
     pub status: TonStatus,
     pub error_message: Option<String>,
@@ -76,9 +73,8 @@ impl From<Result<Vec<TransactionEventDb>, Error>> for MarkEventsResponse {
     }
 }
 
-#[derive(Serialize, OpgModel)]
+#[derive(Serialize, JsonSchema)]
 #[serde(rename_all = "camelCase")]
-#[opg("TonEventsResponse")]
 pub struct TonTokenEventsResponse {
     pub status: TonStatus,
     pub data: Option<TokenEventsResponse>,
@@ -102,17 +98,15 @@ impl From<Result<TokenEventsResponse, Error>> for TonTokenEventsResponse {
     }
 }
 
-#[derive(Serialize, OpgModel)]
+#[derive(Serialize, JsonSchema)]
 #[serde(rename_all = "camelCase")]
-#[opg("TokenEventsResponse")]
 pub struct TokenEventsResponse {
     pub count: i32,
     pub items: Vec<AccountTransactionEvent>,
 }
 
-#[derive(Serialize, OpgModel)]
+#[derive(Serialize, JsonSchema)]
 #[serde(rename_all = "camelCase")]
-#[opg("MarkTokenEventsResponse")]
 pub struct MarkTokenEventsResponse {
     pub status: TonStatus,
     pub error_message: Option<String>,
@@ -133,9 +127,8 @@ impl From<Result<TokenTransactionEventDb, Error>> for MarkTokenEventsResponse {
     }
 }
 
-#[derive(Serialize, OpgModel)]
+#[derive(Serialize, JsonSchema)]
 #[serde(rename_all = "camelCase")]
-#[opg("TransactionEventResponse")]
 pub struct TransactionEventResponse {
     pub status: TonStatus,
     pub data: Option<AccountTransactionEvent>,

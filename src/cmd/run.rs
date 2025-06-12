@@ -102,6 +102,7 @@ impl Cmd {
         // Bind API.
         let api = Api::bind(
             context.config.server_addr,
+            context.config.public_url.clone(),
             context.config.api_metrics_addr,
             context.auth_service.clone(),
             context.ton_service.clone(),

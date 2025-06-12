@@ -1,5 +1,6 @@
 use std::sync::Arc;
 
+use aide::{OperationInput, OperationOutput};
 use axum::async_trait;
 use axum::body::Body;
 use axum::extract::{FromRequest, FromRequestParts, OriginalUri};
@@ -8,7 +9,9 @@ use axum::http::Request;
 use axum::http::{Method, StatusCode};
 use axum::middleware::Next;
 use axum::response::IntoResponse;
+use schemars::JsonSchema;
 
+use crate::api::int_schema;
 use crate::models::*;
 use crate::services::*;
 
@@ -21,7 +24,11 @@ pub async fn verify_auth(
         Ok(req) => next.run(req).await,
         Err(err) => {
             tracing::error!("Failed to check auth. Err: {:?}", &err);
-            Rejection("Failed to authorize".to_string(), StatusCode::UNAUTHORIZED).into_response()
+            Rejection {
+                reason: "Failed to authorize".to_string(),
+                status_code: StatusCode::UNAUTHORIZED,
+            }
+            .into_response()
         }
     }
 }
@@ -110,18 +117,29 @@ where
         let id: Option<&IdExtractor> = parts.extensions.get();
         match id {
             Some(service_id) => Ok(IdExtractor(service_id.0)),
-            None => Err(Rejection(
-                "Service id not found".to_string(),
-                StatusCode::UNAUTHORIZED,
-            )),
+            None => Err(Rejection {
+                reason: "Service id not found".to_string(),
+                status_code: StatusCode::UNAUTHORIZED,
+            }),
         }
     }
 }
 
-pub struct Rejection(String, StatusCode);
+#[derive(Debug, Clone, JsonSchema)]
+pub struct Rejection {
+    pub reason: String,
+    #[schemars(schema_with = "int_schema")]
+    pub status_code: StatusCode,
+}
 
 impl IntoResponse for Rejection {
     fn into_response(self) -> axum::response::Response {
-        (self.1, self.0).into_response()
+        (self.status_code, self.reason).into_response()
     }
 }
+
+impl OperationOutput for Rejection {
+    type Inner = Self;
+}
+
+impl OperationInput for IdExtractor {}

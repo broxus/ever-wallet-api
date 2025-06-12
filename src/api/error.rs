@@ -1,3 +1,4 @@
+use aide::OperationOutput;
 use axum::{
     http::StatusCode,
     response::{IntoResponse, Response},
@@ -180,4 +181,8 @@ impl Error {
 
         self.to_string()
     }
+}
+
+impl OperationOutput for Error {
+    type Inner = Self;
 }

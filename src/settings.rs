@@ -33,10 +33,8 @@ pub struct AppConfig {
     #[serde(default)]
     pub node_metrics_settings: Option<pomfrit::Config>,
 
-    /// log4rs settings.
-    /// See [docs](https://docs.rs/log4rs/1.0.0/log4rs/) for more details
-    #[serde(default = "default_logger_settings")]
-    pub logger_settings: serde_json::Value,
+    /// Public url of service
+    pub public_url: Option<String>,
 }
 
 impl Default for AppConfig {
@@ -49,7 +47,7 @@ impl Default for AppConfig {
             key: default_key(),
             api_metrics_addr: Default::default(),
             node_metrics_settings: Default::default(),
-            logger_settings: default_logger_settings(),
+            public_url: Default::default(),
         }
     }
 }
@@ -97,35 +95,4 @@ fn default_key() -> Vec<u8> {
             err
         ),
     }
-}
-
-fn default_logger_settings() -> serde_json::Value {
-    const DEFAULT_LOG4RS_SETTINGS: &str = r##"
-{
-  "appenders": {
-    "stdout": {
-      "kind": "console",
-      "encoder": {
-        "pattern": "{d(%Y-%m-%d %H:%M:%S %Z)(utc)} - {h({l})} {M} = {m} {n}"
-      }
-    }
-  },
-  "root": {
-    "level": "info",
-    "appenders": [
-      "stdout"
-    ]
-  },
-  "loggers": {
-    "tycho_wallet_api": {
-      "level": "info",
-      "appenders": [
-        "stdout"
-      ],
-      "additive": false
-    }
-  }
-}
-    "##;
-    serde_json::from_str(DEFAULT_LOG4RS_SETTINGS).trust_me()
 }

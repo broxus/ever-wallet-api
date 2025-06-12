@@ -779,10 +779,6 @@ impl TonClient {
         };
 
         let subscriber_metrics = self.ton_core.context.ton_subscriber.metrics();
-        // let indexer_metrics = self.ton_core.context.ton_engine.metrics();
-
-        // let last_mc_block_seqno = indexer_metrics.last_mc_block_seqno.load(Ordering::Acquire);
-        // let mc_time_diff = indexer_metrics.mc_time_diff.load(Ordering::Acquire);
 
         Ok(BlockchainInfo {
             network_id,

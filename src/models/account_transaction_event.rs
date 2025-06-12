@@ -2,14 +2,14 @@ use std::str::FromStr;
 
 use bigdecimal::BigDecimal;
 use everscale_types::models::StdAddr;
+use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
 use crate::models::*;
 
-#[derive(Debug, Serialize, Deserialize, Clone, derive_more::Constructor, opg::OpgModel)]
+#[derive(Debug, Serialize, Deserialize, Clone, derive_more::Constructor, JsonSchema)]
 #[serde(rename_all = "camelCase")]
-#[opg("AccountTokenTransactionEventResponse")]
 pub struct AccountTransactionEvent {
     pub id: Uuid,
     pub transaction_id: Uuid,
@@ -18,7 +18,6 @@ pub struct AccountTransactionEvent {
     pub owner_message_hash: Option<String>,
     pub account: Account,
     pub sender: Option<Account>,
-    #[opg("balanceChange", string, optional)]
     pub balance_change: Option<BigDecimal>,
     pub root_address: Option<String>,
     pub transaction_direction: TonTransactionDirection,

@@ -1,18 +1,16 @@
-use opg::OpgModel;
+use schemars::JsonSchema;
 use serde::Deserialize;
 
 use crate::models::*;
 
-#[derive(Deserialize, OpgModel)]
+#[derive(Deserialize, JsonSchema)]
 #[serde(rename_all = "camelCase")]
-#[opg("AddressCheckRequest")]
 pub struct AddressCheckRequest {
     pub address: Address,
 }
 
-#[derive(Deserialize, OpgModel)]
+#[derive(Deserialize, JsonSchema)]
 #[serde(rename_all = "camelCase")]
-#[opg("CreateAddressRequest")]
 pub struct CreateAddressRequest {
     pub account_type: Option<AccountType>,
     pub workchain_id: Option<i32>,

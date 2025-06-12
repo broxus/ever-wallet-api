@@ -4,23 +4,22 @@ use bigdecimal::BigDecimal;
 use derive_more::Constructor;
 use everscale_types::models::StdAddr;
 use nekoton_utils::TrustMe;
-use opg::OpgModel;
+
+use schemars::JsonSchema;
 use serde::Serialize;
 use uuid::Uuid;
 
 use crate::api::*;
 use crate::models::*;
 
-#[derive(Serialize, OpgModel, Constructor)]
+#[derive(Serialize, JsonSchema, Constructor)]
 #[serde(rename_all = "camelCase")]
-#[opg("AddressValidResponse")]
 pub struct AddressValidResponse {
     pub valid: bool,
 }
 
-#[derive(Serialize, OpgModel)]
+#[derive(Serialize, JsonSchema)]
 #[serde(rename_all = "camelCase")]
-#[opg("AddressResponse")]
 pub struct AddressResponse {
     pub status: TonStatus,
     pub data: Option<Account>,
@@ -44,9 +43,8 @@ impl From<Result<Account, Error>> for AddressResponse {
     }
 }
 
-#[derive(Serialize, opg::OpgModel)]
+#[derive(Serialize, JsonSchema)]
 #[serde(rename_all = "camelCase")]
-#[opg("CheckedAddressResponse")]
 pub struct CheckedAddressResponse {
     pub status: TonStatus,
     pub data: Option<AddressValidResponse>,
@@ -67,9 +65,8 @@ impl From<Result<AddressValidResponse, Error>> for CheckedAddressResponse {
     }
 }
 
-#[derive(Serialize, OpgModel)]
+#[derive(Serialize, JsonSchema)]
 #[serde(rename_all = "camelCase")]
-#[opg("AddressBalanceResponse")]
 pub struct AddressBalanceResponse {
     pub status: TonStatus,
     pub data: Option<AddressBalanceDataResponse>,
@@ -93,24 +90,19 @@ impl From<Result<AddressBalanceDataResponse, Error>> for AddressBalanceResponse 
     }
 }
 
-#[derive(Serialize, OpgModel)]
+#[derive(Serialize, JsonSchema)]
 #[serde(rename_all = "camelCase")]
-#[opg("AddressBalanceDataResponse")]
 pub struct AddressBalanceDataResponse {
     pub id: Uuid,
     pub address: Account,
     pub account_type: AccountType,
     pub account_status: AccountStatus,
-    #[opg("balance", string)]
     pub balance: BigDecimal,
-    #[opg("networkBalance", string)]
     pub network_balance: BigDecimal,
     pub last_transaction_hash: Option<String>,
     pub last_transaction_lt: Option<String>,
     pub sync_u_time: i64,
-    #[opg("UTC timestamp in milliseconds", integer, format = "int64")]
     pub created_at: i64,
-    #[opg("UTC timestamp in milliseconds", integer, format = "int64")]
     pub updated_at: i64,
 }
 
@@ -139,9 +131,8 @@ impl AddressBalanceDataResponse {
     }
 }
 
-#[derive(Serialize, OpgModel)]
+#[derive(Serialize, JsonSchema)]
 #[serde(rename_all = "camelCase")]
-#[opg("AddressInfoResponse")]
 pub struct AddressInfoResponse {
     pub status: TonStatus,
     pub data: Option<AddressInfoDataResponse>,
@@ -165,21 +156,17 @@ impl From<Result<AddressInfoDataResponse, Error>> for AddressInfoResponse {
     }
 }
 
-#[derive(Serialize, OpgModel)]
+#[derive(Serialize, JsonSchema)]
 #[serde(rename_all = "camelCase")]
-#[opg("AddressInfoDataResponse")]
 pub struct AddressInfoDataResponse {
     pub id: Uuid,
     pub address: Account,
     pub account_type: AccountType,
-    #[opg("balance", string)]
     pub balance: BigDecimal,
     pub custodians: Option<i32>,
     pub confirmations: Option<i32>,
     pub custodians_public_keys: Option<Vec<String>>,
-    #[opg("UTC timestamp in milliseconds", integer, format = "int64")]
     pub created_at: i64,
-    #[opg("UTC timestamp in milliseconds", integer, format = "int64")]
     pub updated_at: i64,
 }
 
@@ -208,9 +195,8 @@ impl AddressInfoDataResponse {
     }
 }
 
-#[derive(Serialize, OpgModel)]
+#[derive(Serialize, JsonSchema)]
 #[serde(rename_all = "camelCase")]
-#[opg("TokenBalanceResponse")]
 pub struct TokenBalanceResponse {
     pub status: TonStatus,
     pub data: Option<Vec<TokenBalanceDataResponse>>,
@@ -234,21 +220,16 @@ impl From<Result<Vec<TokenBalanceDataResponse>, Error>> for TokenBalanceResponse
     }
 }
 
-#[derive(Serialize, OpgModel)]
+#[derive(Serialize, JsonSchema)]
 #[serde(rename_all = "camelCase")]
-#[opg("TokenBalanceDataResponse")]
 pub struct TokenBalanceDataResponse {
     pub service_id: ServiceId,
     pub address: Account,
-    #[opg("balance", string)]
     pub balance: BigDecimal,
-    #[opg("networkBalance", string)]
     pub network_balance: BigDecimal,
     pub account_status: AccountStatus,
     pub root_address: String,
-    #[opg("UTC timestamp in milliseconds", integer, format = "int64")]
     pub created_at: i64,
-    #[opg("UTC timestamp in milliseconds", integer, format = "int64")]
     pub updated_at: i64,
 }
 

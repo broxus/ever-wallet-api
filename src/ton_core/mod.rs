@@ -11,7 +11,6 @@ use tokio::sync::{mpsc, oneshot};
 use ton_block::Serializable;
 use ton_types::UInt256;
 use tycho_core::blockchain_rpc::BlockchainRpcClient;
-use tycho_storage::KeyBlocksDirection;
 use tycho_storage::Storage;
 
 use self::monitoring::*;
@@ -26,7 +25,6 @@ mod ton_subscriber;
 
 pub struct TonCore {
     pub context: Arc<TonCoreContext>,
-    pub full_state: Mutex<Arc<FullState>>,
     pub ton_transaction: Mutex<Arc<TonTransaction>>,
     pub token_transaction: Mutex<Arc<TokenTransaction>>,
 }
@@ -43,8 +41,6 @@ impl TonCore {
         let context =
             TonCoreContext::new(sqlx_client, owners_cache, storage, blockchain_rpc_client).await?;
 
-        let full_state = FullState::new(context.clone()).await?;
-
         let ton_transaction =
             TonTransaction::new(context.clone(), ton_transaction_producer).await?;
 
@@ -53,7 +49,6 @@ impl TonCore {
 
         Ok(Arc::new(Self {
             context,
-            full_state: Mutex::new(full_state),
             ton_transaction: Mutex::new(ton_transaction),
             token_transaction: Mutex::new(token_transaction),
         }))
@@ -156,22 +151,8 @@ impl TonCoreContext {
             }
         }
 
-        let block_handle_storage = self.storage.block_handle_storage();
-
-        // Find the key block with max seqno which was preduced not later than `utime`
-        let handle = 'last_key_block: {
-            let iter = block_handle_storage.key_blocks_iterator(KeyBlocksDirection::Backward);
-            for key_block_id in iter {
-                let handle = block_handle_storage
-                    .load_handle(&key_block_id)
-                    .with_context(|| format!("key block not found: {key_block_id}"))?;
-                break 'last_key_block Some(handle);
-            }
-            None
-        };
-
-        // Load block
-        let block_stuff = match handle {
+        // Load last key block
+        let block_stuff = match self.storage.block_handle_storage().find_last_key_block() {
             Some(handle) => {
                 let block_stuff = self
                     .storage
@@ -221,7 +202,7 @@ impl TonCoreContext {
         )?;
 
         self.blockchain_rpc_client
-            .broadcast_external_message(&*serialized)
+            .broadcast_external_message(&serialized)
             .await;
 
         let status = rx.await?;

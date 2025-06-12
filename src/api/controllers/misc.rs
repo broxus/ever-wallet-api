@@ -1,4 +1,5 @@
-use axum::{Extension, Json};
+use axum::extract::State;
+use axum::Json;
 use metrics::{histogram, increment_counter};
 use tokio::time::Instant;
 use uuid::Uuid;
@@ -10,7 +11,7 @@ use crate::api::*;
 use crate::models::*;
 
 pub async fn post_read_contract(
-    Extension(ctx): Extension<Arc<ApiContext>>,
+    State(ctx): State<ApiContext>,
     Json(req): Json<ExecuteContractRequest>,
 ) -> Result<Json<ReadContractResponse>> {
     let start = Instant::now();
@@ -40,7 +41,7 @@ pub async fn post_read_contract(
 }
 
 pub async fn post_encode_tvm_cell(
-    Extension(ctx): Extension<Arc<ApiContext>>,
+    State(ctx): State<ApiContext>,
     Json(req): Json<EncodeParamRequest>,
 ) -> Result<Json<EncodedCellResponse>> {
     let start = Instant::now();
@@ -63,7 +64,7 @@ pub async fn post_encode_tvm_cell(
 }
 
 pub async fn post_prepare_generic_message(
-    Extension(ctx): Extension<Arc<ApiContext>>,
+    State(ctx): State<ApiContext>,
     Json(req): Json<PrepareMessageRequest>,
 ) -> Result<Json<UnsignedMessageHashResponse>> {
     let start = Instant::now();
@@ -106,7 +107,7 @@ pub async fn post_prepare_generic_message(
 }
 
 pub async fn post_send_signed_message(
-    Extension(ctx): Extension<Arc<ApiContext>>,
+    State(ctx): State<ApiContext>,
     Json(req): Json<SignedMessageRequest>,
 ) -> Result<Json<SignedMessageHashResponse>> {
     let start = Instant::now();
@@ -144,7 +145,7 @@ pub async fn post_send_signed_message(
 }
 
 pub async fn post_send_generic_message(
-    Extension(ctx): Extension<Arc<ApiContext>>,
+    State(ctx): State<ApiContext>,
     IdExtractor(service_id): IdExtractor,
     Json(req): Json<SendMessageRequest>,
 ) -> Result<Json<TransactionResponse>> {
@@ -186,7 +187,7 @@ pub async fn post_send_generic_message(
 }
 
 pub async fn post_set_callback(
-    Extension(ctx): Extension<Arc<ApiContext>>,
+    State(ctx): State<ApiContext>,
     IdExtractor(service_id): IdExtractor,
     Json(req): Json<SetCallbackRequest>,
 ) -> Result<Json<SetCallbackResponse>> {
@@ -206,7 +207,7 @@ pub async fn post_set_callback(
 }
 
 pub async fn get_token_whitelist(
-    Extension(ctx): Extension<Arc<ApiContext>>,
+    State(ctx): State<ApiContext>,
 ) -> Result<Json<TokenWhitelistResponse>> {
     let start = Instant::now();
 
