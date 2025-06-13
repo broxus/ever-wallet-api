@@ -73,6 +73,7 @@ tycho-storage = { git = "https://github.com/broxus/tycho.git", rev = "d5a481a831
 tycho-util = { git = "https://github.com/broxus/tycho.git", rev = "d5a481a8319688ef843ba09976e146ab70579382" }
 
 tycho-vm = { git = "https://github.com/broxus/tycho-vm.git", rev = "f45e047044f6dd054ea8e27905b1b7485fbf3227" }
+tycho-executor = { git = "https://github.com/broxus/tycho-vm.git", rev = "f45e047044f6dd054ea8e27905b1b7485fbf3227" }
 
 # TON specific dependencies
 ton_block = { git = "https://github.com/broxus/ton-labs-block" }

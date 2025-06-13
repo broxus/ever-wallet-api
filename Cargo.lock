@@ -2142,7 +2142,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "4979f22fdb869068da03c9f7528f8297c6fd2606bc3a4affe42e6a823fdb8da4"
 dependencies = [
  "cfg-if",
- "windows-targets 0.52.6",
+ "windows-targets 0.48.5",
 ]
 
 [[package]]
@@ -4968,6 +4968,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "tycho-executor"
+version = "0.1.0"
+source = "git+https://github.com/broxus/tycho-vm.git?rev=f45e047044f6dd054ea8e27905b1b7485fbf3227#f45e047044f6dd054ea8e27905b1b7485fbf3227"
+dependencies = [
+ "ahash 0.8.11",
+ "anyhow",
+ "everscale-types",
+ "num-bigint",
+ "thiserror 2.0.12",
+ "tycho-vm",
+]
+
+[[package]]
 name = "tycho-light-node"
 version = "0.2.10"
 source = "git+https://github.com/broxus/tycho.git?rev=d5a481a8319688ef843ba09976e146ab70579382#d5a481a8319688ef843ba09976e146ab70579382"
@@ -5234,6 +5247,7 @@ dependencies = [
  "tracing-subscriber",
  "tycho-block-util",
  "tycho-core",
+ "tycho-executor",
  "tycho-light-node",
  "tycho-storage",
  "tycho-util",

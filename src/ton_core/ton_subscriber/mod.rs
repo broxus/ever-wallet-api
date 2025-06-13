@@ -625,8 +625,8 @@ where
 }
 
 pub struct ShardAccount {
-    data: Cell,
-    last_transaction_id: LastTransactionId,
+    pub(crate) data: Cell,
+    pub(crate) last_transaction_id: LastTransactionId,
     _state_handle: RefMcStateHandle,
 }
 
