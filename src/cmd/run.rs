@@ -57,12 +57,7 @@ impl Cmd {
         // Always disable RPC by default.
         // TODO: Remove from light nodes.
         node_config.rpc = None;
-
-        tycho_util::cli::logger::init_logger(
-            &node_config.logger_config,
-            self.base.logger_config.clone(),
-        )?;
-
+        
         let try_make_filter = {
             let logger_targets = self.base.logger_config.clone();
             move || {
