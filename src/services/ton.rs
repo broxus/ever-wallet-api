@@ -147,8 +147,6 @@ impl TonService {
         let address = repack_address(&input.from_address.0)?;
         let network = self.ton_api_client.get_address_info(&address).await?;
 
-        tracing::info!("address network info: {:?}", network);
-
         for transaction_output in input.outputs.iter() {
             let (_, scale) = transaction_output.value.as_bigint_and_exponent();
             if scale != 0 {

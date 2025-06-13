@@ -202,43 +202,11 @@ impl TonCoreContext {
         let cells = message.write_to_new_cell()?.into_cell()?;
         let serialized = ton_types::serialize_toc(&cells)?;
 
-        let message_base64: String = base64::encode(&serialized);
-
-        tracing::info!(
-            "Sending message {} to account {}",
-            message_base64,
-            account.to_string()
-        );
-
         let rx = self.messages_queue.add_message(
             HashBytes::from_slice(account.as_slice()),
             HashBytes::from_slice(cells.repr_hash().as_slice()),
             expire_at,
         )?;
-
-        match self.send_local(account, &*message_base64, expire_at) {
-            Ok(None) => {
-                tracing::info!("transaction send local - no account ");
-            }
-            Ok(Some(t)) => {
-                tracing::info!(
-                    "transaction send local ok - {:?}, info - {:?}",
-                    t,
-                    t.load_info()?
-                );
-            }
-            Err(e) => {
-                tracing::error!("transaction send local error: {:?}", e);
-            }
-        }
-
-        tracing::info!(
-            "transaction get_broadcast_targets len - {}",
-            self.blockchain_rpc_client
-                .overlay_client()
-                .get_broadcast_targets()
-                .len()
-        );
 
         self.blockchain_rpc_client
             .broadcast_external_message(&serialized)
@@ -248,6 +216,7 @@ impl TonCoreContext {
         Ok(status)
     }
 
+    #[allow(unused)]
     fn send_local(
         &self,
         account: &UInt256,
