@@ -212,7 +212,7 @@ impl TonCoreContext {
             expire_at,
         )?;
         
-        match self.send_local(account, &*message_base64){
+        match self.send_local(account, &*message_base64, expire_at){
             Ok(_) =>
             {
                 tracing::info!("transaction send local ok");
@@ -230,7 +230,7 @@ impl TonCoreContext {
         Ok(status)
     }
 
-    fn send_local(&self, account: &UInt256, message_base64: &str) -> Result<()> {
+    fn send_local(&self, account: &UInt256, message_base64: &str, expire_at: u32) -> Result<()> {
         let account = HashBytes::from_slice(account.as_slice());
 
          let account_state = self.ton_subscriber.get_contract_state(&account)?;
@@ -269,7 +269,10 @@ impl TonCoreContext {
         };
         let address = account.address.as_std().unwrap();
 
-        let executor_params = ExecutorParams::default();
+        let executor_params = ExecutorParams{
+            block_unixtime: expire_at - 10,
+            ..Default::default()
+        };
         let executor = tycho_executor::Executor::new(&executor_params, &config);
         let uncommited = executor.begin_ordinary(address, is_external, message, &shard_account)?;
         
