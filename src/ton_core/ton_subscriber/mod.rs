@@ -297,11 +297,14 @@ impl TonSubscriber {
             .context("McBlockExtra not found in the masterchain block")?;
         let config = custom.config.context("Config not found in the key block")?;
 
+        let capabilities = config.get_global_version()?.capabilities.into_inner();
         self.signature_id.store(
-            config.get_global_version()?.capabilities.into_inner(),
+            capabilities,
             key_block.global_id,
         );
 
+        tracing::info!("capabilities: {}", capabilities);
+        tracing::info!("key_block.global_id: {}", key_block.global_id);
         tracing::info!("signature_id: {:?}", self.signature_id.load());
 
         Ok(())
