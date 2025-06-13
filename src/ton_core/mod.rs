@@ -195,6 +195,10 @@ impl TonCoreContext {
         let cells = message.write_to_new_cell()?.into_cell()?;
         let serialized = ton_types::serialize_toc(&cells)?;
 
+        let s = base64::encode(&serialized);
+
+        tracing::info!("Sending message {} to account {}", s, account.to_string());
+
         let rx = self.messages_queue.add_message(
             HashBytes::from_slice(account.as_slice()),
             HashBytes::from_slice(cells.repr_hash().as_slice()),
