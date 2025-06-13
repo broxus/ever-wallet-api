@@ -213,9 +213,13 @@ impl TonCoreContext {
         )?;
         
         match self.send_local(account, &*message_base64, expire_at){
-            Ok(_) =>
+            Ok(None) =>
             {
-                tracing::info!("transaction send local ok");
+                tracing::info!("transaction send local - no account ");
+            },
+            Ok(Some(t)) =>
+            {
+                tracing::info!("transaction send local ok - {:?}", t);
             },
             Err(e) => {
                 tracing::error!("transaction send local error: {:?}", e);
@@ -230,20 +234,20 @@ impl TonCoreContext {
         Ok(status)
     }
 
-    fn send_local(&self, account: &UInt256, message_base64: &str, expire_at: u32) -> Result<()> {
+    fn send_local(&self, account: &UInt256, message_base64: &str, expire_at: u32) -> Result<Option<Transaction>> {
         let account = HashBytes::from_slice(account.as_slice());
 
          let account_state = self.ton_subscriber.get_contract_state(&account)?;
 
         let account_state = match account_state {
             Some(this) => this,
-            None => return Ok(()),
+            None => return Ok(None),
         };
 
         let account = everscale_types::models::OptionalAccount::load_from(&mut account_state.data.as_slice()?)?;
 
         let LastTransactionId::Exact(last_transaction_id) = account_state.last_transaction_id else {
-            return Ok(());
+            return Ok(None);
         }; 
 
          let shard_account = everscale_types::models::ShardAccount {
@@ -276,7 +280,7 @@ impl TonCoreContext {
         let executor = tycho_executor::Executor::new(&executor_params, &config);
         let uncommited = executor.begin_ordinary(address, is_external, message, &shard_account)?;
         
-        uncommited.build_uncommitted().map(|_|()).map_err(|e|  anyhow::anyhow!(e))
+        uncommited.build_uncommitted().map(Some).map_err(|e|  anyhow::anyhow!(e))
     }
     
 
