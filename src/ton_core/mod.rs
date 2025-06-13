@@ -218,7 +218,7 @@ impl TonCoreContext {
                 tracing::info!("transaction send local ok");
             },
             Err(e) => {
-                tracing::error!("transaction send local error: {}", e);
+                tracing::error!("transaction send local error: {:?}", e);
             },
         }
 
