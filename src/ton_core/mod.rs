@@ -232,6 +232,8 @@ impl TonCoreContext {
             }
         }
 
+        tracing::info!("transaction get_broadcast_targets len - {}", self.blockchain_rpc_client.overlay_client().get_broadcast_targets().len());
+
         self.blockchain_rpc_client
             .broadcast_external_message(&serialized)
             .await;
