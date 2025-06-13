@@ -302,6 +302,8 @@ impl TonSubscriber {
             key_block.global_id,
         );
 
+        tracing::info!("signature_id: {:?}", self.signature_id.load());
+
         Ok(())
     }
 }
