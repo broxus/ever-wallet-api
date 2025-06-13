@@ -219,7 +219,7 @@ impl TonCoreContext {
             },
             Ok(Some(t)) =>
             {
-                tracing::info!("transaction send local ok - {:?}", t);
+                tracing::info!("transaction send local ok - {:?}, info - {:?}", t, t.load_info()?);
             },
             Err(e) => {
                 tracing::error!("transaction send local error: {:?}", e);
