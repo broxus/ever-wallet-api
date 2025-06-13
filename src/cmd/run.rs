@@ -159,23 +159,7 @@ impl Cmd {
             .init(ColdBootType::LatestPersistent, import_zerostate)
             .await?;
 
-        let mc_state = node
-            .storage()
-            .shard_state_storage()
-            .load_state(&last_block_id)
-            .await?;
-
-        let validator_subscriber = node
-            .blockchain_rpc_client()
-            .overlay_client()
-            .validators_resolver()
-            .clone();
-
-        {
-            let config = mc_state.config_params()?;
-            let current_validator_set = config.get_current_validator_set()?;
-            validator_subscriber.update_validator_set(&current_validator_set);
-        }
+        node.update_validator_set(&last_block_id).await?;
 
         // Start API
         let api_fut = JoinTask::new(api.serve());
