@@ -302,10 +302,7 @@ impl TonSubscriber {
             tracing::info!("capability: {}", i);
         }
         let capabilities = global_capabilities.into_inner();
-        self.signature_id.store(
-            capabilities,
-            key_block.global_id,
-        );
+        self.signature_id.store(capabilities, key_block.global_id);
 
         tracing::info!("capabilities: {}", capabilities);
         tracing::info!("key_block.global_id: {}", key_block.global_id);

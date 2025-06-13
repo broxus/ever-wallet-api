@@ -140,7 +140,10 @@ fn api_docs(api: TransformOpenApi) -> TransformOpenApi {
 }
 
 pub(super) fn int_schema(_: &mut schemars::SchemaGenerator) -> schemars::schema::Schema {
-    let object_schema = schemars::schema::SchemaObject { instance_type: Some(InstanceType::Number.into()), ..Default::default() };
+    let object_schema = schemars::schema::SchemaObject {
+        instance_type: Some(InstanceType::Number.into()),
+        ..Default::default()
+    };
     object_schema.into()
 }
 pub(super) fn any_schema(_: &mut schemars::SchemaGenerator) -> schemars::schema::Schema {

@@ -1,11 +1,16 @@
 use anyhow::{Context, Result};
 use clap::Parser;
 use serde::{Deserialize, Serialize};
+use tracing_subscriber::EnvFilter;
 use tycho_core::block_strider::ShardStateApplier;
+
+use tracing_subscriber::layer::SubscriberExt;
+use tracing_subscriber::reload;
 use tycho_core::block_strider::{
     ArchiveBlockProvider, BlockProviderExt, BlockchainBlockProvider, ColdBootType,
     StorageBlockProvider,
 };
+use tycho_util::cli::logger::LoggerTargets;
 use tycho_util::cli::signal;
 use tycho_util::futures::JoinTask;
 
@@ -57,6 +62,32 @@ impl Cmd {
             &node_config.logger_config,
             self.base.logger_config.clone(),
         )?;
+
+        let try_make_filter = {
+            let logger_targets = self.base.logger_config.clone();
+            move || {
+                Ok::<_, anyhow::Error>(match &logger_targets {
+                    None => EnvFilter::builder()
+                        .with_default_directive(tracing::Level::INFO.into())
+                        .from_env_lossy(),
+                    Some(path) => LoggerTargets::load_from(path)
+                        .context("failed to load logger config")?
+                        .build_subscriber(),
+                })
+            }
+        };
+
+        let (layer, _) = reload::Layer::new(try_make_filter()?);
+
+        let subscriber = tracing_subscriber::registry().with(layer).with(
+            node_config
+                .logger_config
+                .outputs
+                .iter()
+                .map(|o| o.as_layer())
+                .collect::<anyhow::Result<Vec<_>>>()?,
+        );
+        tracing::subscriber::set_global_default(subscriber).unwrap();
 
         rayon::ThreadPoolBuilder::new()
             .stack_size(8 * 1024 * 1024)
