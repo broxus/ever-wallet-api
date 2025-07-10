@@ -99,7 +99,15 @@ impl Cmd {
                 let run_fut = tokio::spawn(self.run_impl(node_config));
                 let stop_fut = signal::any_signal(signal::TERMINATION_SIGNALS);
                 tokio::select! {
-                    res = run_fut => res.unwrap(),
+                    res = run_fut => {
+                        match res {
+                            Ok(_) => Ok(()),
+                            Err(e) => {
+                                tracing::error!(?e, "failed to run node");
+                                panic!("failed to run node: {e:?}");
+                            }
+                        }
+                    },
                     signal = stop_fut => match signal {
                         Ok(signal) => {
                             tracing::info!(?signal, "received termination signal");
