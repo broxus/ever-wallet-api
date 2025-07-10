@@ -61,9 +61,9 @@ impl TonCore {
         }))
     }
 
-    pub async fn start(&self) -> Result<()> {
+    pub async fn start(&self, last_block_id: &BlockId) -> Result<()> {
         // Sync node and subscribers
-        self.context.start().await?;
+        self.context.start(last_block_id).await?;
 
         // Done
         Ok(())
@@ -142,7 +142,7 @@ impl TonCoreContext {
         }))
     }
 
-    async fn start(&self) -> Result<()> {
+    async fn start(&self, last_block_id: &BlockId) -> Result<()> {
         // Load last states if exists
         let block_ids = self.sqlx_client.get_last_key_blocks().await?;
         for block_id in block_ids {
@@ -158,22 +158,20 @@ impl TonCoreContext {
             }
         }
 
-        // Load last key block
-        let block_stuff = match self.storage.block_handle_storage().find_last_key_block() {
-            Some(handle) => {
-                let block_stuff = self
-                    .storage
-                    .block_storage()
-                    .load_block_data(&handle)
-                    .await
-                    .context("Failed to load last key block")?;
-                Some(block_stuff)
-            }
-            None => None,
-        };
+        let mc_state = self
+            .storage
+            .shard_state_storage()
+            .load_state(last_block_id)
+            .await?;
+
+        let config = mc_state.config_params()?;
+        let global_version = config.get_global_version()?;
 
         self.ton_subscriber
-            .start(block_stuff)
+            .start(
+                global_version.capabilities.into_inner(),
+                mc_state.state().global_id,
+            )
             .await
             .context("Failed to start ton_subscriber")?;
 

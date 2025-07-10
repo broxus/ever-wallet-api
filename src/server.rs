@@ -2,6 +2,7 @@ use std::sync::Arc;
 
 use anyhow::Context;
 use anyhow::Result;
+use everscale_types::models::BlockId;
 use futures::future::BoxFuture;
 use sqlx::postgres::PgPoolOptions;
 use tokio::sync::mpsc;
@@ -91,7 +92,7 @@ impl EngineContext {
         Ok(engine_context)
     }
 
-    pub async fn start(&self) -> Result<()> {
+    pub async fn start(&self, last_block_id: &BlockId) -> Result<()> {
         self.ton_client
             .start()
             .await
@@ -101,7 +102,7 @@ impl EngineContext {
             .await
             .context("failed to start ton_service")?;
         self.ton_core
-            .start()
+            .start(last_block_id)
             .await
             .context("failed to start ton_core")?;
 

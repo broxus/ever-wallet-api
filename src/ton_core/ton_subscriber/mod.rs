@@ -60,11 +60,8 @@ impl TonSubscriber {
         }
     }
 
-    pub async fn start(self: &Arc<Self>, last_key_block: Option<BlockStuff>) -> Result<()> {
-        if let Some(last_key_block) = last_key_block {
-            self.update_signature_id(last_key_block.block())?;
-        }
-
+    pub async fn start(self: &Arc<Self>, capabilities: u64, global_id: i32) -> Result<()> {
+        self.update_signature_id(capabilities, global_id)?;
         Ok(())
     }
 
@@ -148,10 +145,6 @@ impl TonSubscriber {
         let block_info = block.load_info()?;
         let gen_utime = block_info.gen_utime;
         self.current_utime.store(gen_utime, Ordering::Release);
-        if block_info.key_block {
-            let key_block = block_stuff.block();
-            self.update_signature_id(key_block)?;
-        }
 
         let mut mc_block_awaiters = self.mc_block_awaiters.lock();
         mc_block_awaiters.retain(
@@ -290,17 +283,8 @@ impl TonSubscriber {
         Ok(states)
     }
 
-    fn update_signature_id(&self, key_block: &Block) -> Result<()> {
-        let extra = key_block.load_extra()?;
-        let custom = extra
-            .load_custom()?
-            .context("McBlockExtra not found in the masterchain block")?;
-        let config = custom.config.context("Config not found in the key block")?;
-
-        let global_capabilities = config.get_global_version()?.capabilities;
-        let capabilities = global_capabilities.into_inner();
-        self.signature_id.store(capabilities, key_block.global_id);
-
+    fn update_signature_id(&self, capabilities: u64, global_id: i32) -> Result<()> {
+        self.signature_id.store(capabilities, global_id);
         Ok(())
     }
 }

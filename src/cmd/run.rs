@@ -176,7 +176,10 @@ impl Cmd {
         .await
         .context("failed to run node")?;
 
-        context.start().await.context("failed to start context")?;
+        context
+            .start(&last_block_id)
+            .await
+            .context("failed to start context")?;
 
         // Serve API for the reset of the lifetime
         api_fut.await.map_err(Into::into)
