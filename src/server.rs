@@ -1,5 +1,6 @@
 use std::sync::Arc;
 
+use anyhow::Context;
 use anyhow::Result;
 use futures::future::BoxFuture;
 use sqlx::postgres::PgPoolOptions;
@@ -91,9 +92,18 @@ impl EngineContext {
     }
 
     pub async fn start(&self) -> Result<()> {
-        self.ton_client.start().await?;
-        self.ton_service.start().await?;
-        self.ton_core.start().await?;
+        self.ton_client
+            .start()
+            .await
+            .context("failed to start ton_client")?;
+        self.ton_service
+            .start()
+            .await
+            .context("failed to start ton_service")?;
+        self.ton_core
+            .start()
+            .await
+            .context("failed to start ton_core")?;
 
         Ok(())
     }

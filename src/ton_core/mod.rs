@@ -165,13 +165,17 @@ impl TonCoreContext {
                     .storage
                     .block_storage()
                     .load_block_data(&handle)
-                    .await?;
+                    .await
+                    .context("Failed to load last key block")?;
                 Some(block_stuff)
             }
             None => None,
         };
 
-        self.ton_subscriber.start(block_stuff).await?;
+        self.ton_subscriber
+            .start(block_stuff)
+            .await
+            .context("Failed to start ton_subscriber")?;
 
         Ok(())
     }
