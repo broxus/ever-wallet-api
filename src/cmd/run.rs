@@ -100,13 +100,8 @@ impl Cmd {
                 let stop_fut = signal::any_signal(signal::TERMINATION_SIGNALS);
                 tokio::select! {
                     res = run_fut => {
-                        match res {
-                            Ok(_) => Ok(()),
-                            Err(e) => {
-                                tracing::error!(?e, "failed to run node");
-                                panic!("failed to run node: {e:?}");
-                            }
-                        }
+                        tracing::error!(?res, "failed to run node");
+                        res.unwrap()
                     },
                     signal = stop_fut => match signal {
                         Ok(signal) => {
@@ -165,7 +160,8 @@ impl Cmd {
         // Sync node.
         let last_block_id = node
             .init(ColdBootType::LatestPersistent, import_zerostate)
-            .await?;
+            .await
+            .context("failed to sync node")?;
 
         node.update_validator_set(&last_block_id).await?;
 
@@ -177,9 +173,10 @@ impl Cmd {
             archive_block_provider.chain((blockchain_block_provider, storage_block_provider)),
             ShardStateApplier::new(node.storage().clone(), context.clone()),
         )
-        .await?;
+        .await
+        .context("failed to run node")?;
 
-        context.start().await?;
+        context.start().await.context("failed to start context")?;
 
         // Serve API for the reset of the lifetime
         api_fut.await.map_err(Into::into)
