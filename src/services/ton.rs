@@ -1053,8 +1053,11 @@ impl TonService {
     pub fn encode_tvm_cell(&self, data: Vec<InputParam>) -> Result<String, Error> {
         let mut tokens: Vec<Token> = Vec::new();
         for d in data {
-            let token_value =
-                ton_abi::token::Tokenizer::tokenize_parameter(&d.param.kind, &d.value)?;
+            let token_value = ton_abi::token::Tokenizer::tokenize_parameter(
+                &d.param.kind,
+                &d.value,
+                &d.param.name,
+            )?;
             let token = Token::new(&d.param.name, token_value);
             tokens.push(token);
         }

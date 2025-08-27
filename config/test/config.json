@@ -62,33 +62,24 @@
       "keep": 5,
       "max_ping_tasks": 5,
       "default_roundtrip": "300ms",
-      "send_timeout": {
-        "secs": 0,
-        "nanos": 500000000
-      },
-      "query_timeout": {
-        "secs": 1,
-        "nanos": 0
-      }
+      "send_timeout": "500ms",
+      "query_timeout": "1s"
     },
     "validators": {
       "ping_interval": "1m",
       "ping_timeout": "1s",
       "keep": 5,
       "max_ping_tasks": 5,
-      "send_timeout": {
-        "secs": 0,
-        "nanos": 500000000
-      }
+      "send_timeout": "500ms"
     }
   },
   "storage": {
     "root_dir": "./db",
     "rocksdb_enable_metrics": true,
-    "rocksdb_lru_capacity": "134.2 MB",
-    "cells_cache_size": "1.9 GB",
-    "archive_chunk_size": "1024.0 KB",
-    "split_block_tasks": 100,
+    "rocksdb_lru_capacity": "2.1 GB"
+  },
+  "core_storage": {
+    "cells_cache_size": "256.0 MB",
     "archives_gc": {
       "persistent_state_offset": "5m"
     },
@@ -106,6 +97,9 @@
     "blocks_cache": {
       "ttl": "5m",
       "size": "500.0 MB"
+    },
+    "blob_db": {
+      "pre_create_cas_tree": true
     }
   },
   "blockchain_rpc_client": {
@@ -131,8 +125,8 @@
     "listen_addr": "127.0.0.1:10000"
   },
   "threads": {
-    "rayon_threads": 8,
-    "tokio_workers": 8
+    "rayon_threads": 12,
+    "tokio_workers": 12
   },
   "profiling": {
     "profiling_dir": ""
@@ -152,65 +146,41 @@
     "database_url": "postgresql://postgres:postgres@127.0.0.1:5432/tycho_wallet_api",
     "db_pool_size": 8,
     "key": [
-      101,
-      247,
-      113,
-      21,
-      159,
-      244,
-      255,
-      167,
-      16,
-      129,
-      32,
-      34,
-      161,
-      5,
-      240,
-      97,
-      250,
-      232,
-      42,
-      55,
-      221,
-      67,
-      175,
-      105,
-      229,
-      178,
-      134,
+      254,
+      253,
+      72,
+      225,
+      66,
+      168,
+      192,
+      96,
+      74,
       166,
-      208,
-      30,
-      180,
-      236
+      65,
+      13,
+      126,
+      27,
+      103,
+      57,
+      71,
+      225,
+      209,
+      133,
+      243,
+      170,
+      5,
+      92,
+      239,
+      36,
+      235,
+      63,
+      254,
+      182,
+      107,
+      132
     ],
     "api_metrics_addr": null,
     "node_metrics_settings": null,
-    "logger_settings": {
-      "appenders": {
-        "stdout": {
-          "kind": "console",
-          "encoder": {
-            "pattern": "{d(%Y-%m-%d %H:%M:%S %Z)(utc)} - {h({l})} {M} = {m} {n}"
-          }
-        }
-      },
-      "root": {
-        "level": "info",
-        "appenders": [
-          "stdout"
-        ]
-      },
-      "loggers": {
-        "tycho_wallet_api": {
-          "level": "info",
-          "appenders": [
-            "stdout"
-          ],
-          "additive": false
-        }
-      }
-    }
+    "public_url": null
   }
 }

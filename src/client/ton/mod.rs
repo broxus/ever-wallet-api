@@ -5,8 +5,6 @@ use anyhow::anyhow;
 use axum::http::StatusCode;
 use bigdecimal::{BigDecimal, ToPrimitive};
 use ed25519_dalek::{Keypair, PublicKey, SecretKey, Signer};
-use everscale_types::cell::HashBytes;
-use everscale_types::models::StdAddr;
 use nekoton::core::models::Expiration;
 use nekoton::core::ton_wallet::multisig::DeployParams;
 use nekoton::core::ton_wallet::{MultisigType, TransferAction};
@@ -19,6 +17,8 @@ use num_traits::FromPrimitive;
 use tokio::sync::oneshot;
 use ton_block::{GetRepresentationHash, MsgAddressInt};
 use ton_types::{deserialize_tree_of_cells, SliceData, UInt256};
+use tycho_types::cell::HashBytes;
+use tycho_types::models::StdAddr;
 use uuid::Uuid;
 
 use crate::api::*;
@@ -68,7 +68,9 @@ impl TonClient {
     }
 
     pub async fn create_address(&self, payload: CreateAddress) -> Result<CreatedAddress, Error> {
-        let generated_key = nekoton::crypto::generate_key(nekoton::crypto::MnemonicType::Labs(0));
+        let generated_key = nekoton::crypto::generate_key(nekoton::crypto::MnemonicType::Bip39(
+            nekoton::crypto::Bip39MnemonicData::labs_old(0),
+        ));
 
         let Keypair { public, secret } = nekoton::crypto::derive_from_phrase(
             &generated_key.words.join(" "),
@@ -303,7 +305,10 @@ impl TonClient {
                 for item in transaction.outputs {
                     let flags = item.output_type.unwrap_or_default();
                     let destination = nekoton_utils::repack_address(&item.recipient_address.0)?;
-                    let amount = item.value.to_u64().ok_or(TonClientError::ParseBigDecimal)?;
+                    let amount = item
+                        .value
+                        .to_u128()
+                        .ok_or(TonClientError::ParseBigDecimal)?;
                     let body = payload_cell
                         .as_ref()
                         .map(|c| SliceData::load_cell(c.clone()))
@@ -337,7 +342,7 @@ impl TonClient {
                 let destination = nekoton_utils::repack_address(&recipient.recipient_address.0)?;
                 let amount = recipient
                     .value
-                    .to_u64()
+                    .to_u128()
                     .ok_or(TonClientError::ParseBigDecimal)?;
                 let flags = recipient.output_type.clone().unwrap_or_default();
                 let body = payload_cell.map(SliceData::load_cell).transpose()?;
@@ -372,7 +377,7 @@ impl TonClient {
                 let destination = nekoton_utils::repack_address(&recipient.recipient_address.0)?;
                 let amount = recipient
                     .value
-                    .to_u64()
+                    .to_u128()
                     .ok_or(TonClientError::ParseBigDecimal)?;
                 let flags = recipient.output_type.clone().unwrap_or_default();
                 let has_multiple_owners = match custodians {
@@ -408,7 +413,10 @@ impl TonClient {
                 for item in transaction.outputs {
                     let flags = item.output_type.unwrap_or_default();
                     let destination = nekoton_utils::repack_address(&item.recipient_address.0)?;
-                    let amount = item.value.to_u64().ok_or(TonClientError::ParseBigDecimal)?;
+                    let amount = item
+                        .value
+                        .to_u128()
+                        .ok_or(TonClientError::ParseBigDecimal)?;
                     let body = payload_cell
                         .as_ref()
                         .map(|c| SliceData::load_cell(c.clone()))
@@ -580,7 +588,7 @@ impl TonClient {
         let (value, _) = input.value.clone().as_bigint_and_exponent();
         let tokens = value.to_biguint().ok_or(TonClientError::ParseBigUint)?;
 
-        let attached_amount = input.fee.to_u64().ok_or(TonClientError::ParseBigDecimal)?;
+        let attached_amount = input.fee.to_u128().ok_or(TonClientError::ParseBigDecimal)?;
 
         // parse input payload
         let payload_cell = match &input.payload {
@@ -651,7 +659,7 @@ impl TonClient {
         let (value, _) = input.value.clone().as_bigint_and_exponent();
         let tokens = value.to_biguint().ok_or(TonClientError::ParseBigUint)?;
 
-        let attached_amount = input.fee.to_u64().ok_or(TonClientError::ParseBigDecimal)?;
+        let attached_amount = input.fee.to_u128().ok_or(TonClientError::ParseBigDecimal)?;
 
         let internal_message = prepare_token_burn(
             owner.clone(),
@@ -711,7 +719,7 @@ impl TonClient {
             None => owner.clone(),
         };
 
-        let attached_amount = input.fee.to_u64().ok_or(TonClientError::ParseBigDecimal)?;
+        let attached_amount = input.fee.to_u128().ok_or(TonClientError::ParseBigDecimal)?;
 
         let internal_message = prepare_token_mint(
             owner.clone(),
@@ -888,7 +896,7 @@ impl TonClient {
         let body = function_data.map(SliceData::load_builder).transpose()?;
 
         let destination = nekoton_utils::repack_address(target_addr)?;
-        let amount = value.to_u64().ok_or(TonClientError::ParseBigDecimal)?;
+        let amount = value.to_u128().ok_or(TonClientError::ParseBigDecimal)?;
         let transfer_action = match account_type {
             AccountType::Wallet => {
                 let account = UInt256::from_be_bytes(&address.address().get_bytestring(0));

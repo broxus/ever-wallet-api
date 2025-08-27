@@ -1,11 +1,11 @@
 use std::hash::BuildHasherDefault;
 
 use anyhow::Result;
-use everscale_types::boc::Boc;
-use everscale_types::cell::CellBuilder;
-use everscale_types::models::Transaction;
 use rustc_hash::FxHasher;
 use ton_block::Deserializable;
+use tycho_types::boc::Boc;
+use tycho_types::cell::CellBuilder;
+use tycho_types::models::Transaction;
 
 pub use self::encoding::*;
 pub use self::existing_contract::*;

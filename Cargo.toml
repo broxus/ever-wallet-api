@@ -19,7 +19,6 @@ chrono = { version = "0.4", features = ["serde"] }
 clap = { version = "4.5.3", features = ["derive"] }
 dashmap = "5.3.4"
 derive_more = { version = "1.0.0", features = ["full"] }
-everscale-types = { version = "0.1.2", features = ["tycho", "abi"] }
 futures = "0.3"
 futures-util = "0.3.31"
 hex = "0.4"
@@ -56,6 +55,7 @@ tower-http = { version = "0.6", features = ["trace", "cors", "limit", "set-heade
 tower-service = "0.3.3"
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+tycho-types = { version = "0.2.0", features = ["tycho", "stats"] }
 
 uuid = { version = "1.1", features = ["v4", "serde"] }
 
@@ -66,14 +66,14 @@ tikv-jemallocator = { version = "0.6.0", features = [
     "background_threads",
 ] }
 
-tycho-block-util = { git = "https://github.com/broxus/tycho.git", rev = "d5a481a8319688ef843ba09976e146ab70579382" }
-tycho-core = { git = "https://github.com/broxus/tycho.git", rev = "d5a481a8319688ef843ba09976e146ab70579382" }
-tycho-light-node = { git = "https://github.com/broxus/tycho.git", rev = "d5a481a8319688ef843ba09976e146ab70579382" }
-tycho-storage = { git = "https://github.com/broxus/tycho.git", rev = "d5a481a8319688ef843ba09976e146ab70579382" }
-tycho-util = { git = "https://github.com/broxus/tycho.git", rev = "d5a481a8319688ef843ba09976e146ab70579382" }
+tycho-block-util = { git = "https://github.com/broxus/tycho.git" }
+tycho-core = { git = "https://github.com/broxus/tycho.git" }
+tycho-light-node = { git = "https://github.com/broxus/tycho.git" }
+tycho-storage = { git = "https://github.com/broxus/tycho.git" }
+tycho-util = { git = "https://github.com/broxus/tycho.git" }
 
-tycho-vm = { git = "https://github.com/broxus/tycho-vm.git", rev = "f45e047044f6dd054ea8e27905b1b7485fbf3227" }
-tycho-executor = { git = "https://github.com/broxus/tycho-vm.git", rev = "f45e047044f6dd054ea8e27905b1b7485fbf3227" }
+tycho-vm = "0.2.0"
+tycho-executor = "0.2.0"
 
 # TON specific dependencies
 ton_block = { git = "https://github.com/broxus/ton-labs-block" }
@@ -81,15 +81,13 @@ ton_abi = { git = "https://github.com/broxus/ton-labs-abi" }
 ton_types = { git = "https://github.com/broxus/ton-labs-types" }
 
 # Nekoton SDK
-nekoton = { git = "https://github.com/broxus/nekoton.git", default-features = true, rev="561b60e7a47e994500dce9f25933dd8d8fb2987a" }
-nekoton-abi = { git = "https://github.com/broxus/nekoton.git", features = ["derive"], rev="561b60e7a47e994500dce9f25933dd8d8fb2987a" }
-nekoton-utils = { git = "https://github.com/broxus/nekoton.git", rev="561b60e7a47e994500dce9f25933dd8d8fb2987a" }
-nekoton-contracts = { git = "https://github.com/broxus/nekoton.git", rev="561b60e7a47e994500dce9f25933dd8d8fb2987a" }
+nekoton = { git = "https://github.com/broxus/nekoton.git", default-features = true }
+nekoton-abi = { git = "https://github.com/broxus/nekoton.git", features = ["derive"] }
+nekoton-utils = { git = "https://github.com/broxus/nekoton.git" }
+nekoton-contracts = { git = "https://github.com/broxus/nekoton.git" }
 
 sysinfo = "0.30.13"
 
-[patch.crates-io]
-everscale-types = { git = "https://github.com/broxus/everscale-types.git", rev = "3c23f629b5b2144d5be596dcb93fd1a146484468" }
 
 [features]
 default = []

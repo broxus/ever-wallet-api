@@ -2,7 +2,6 @@ use std::sync::Arc;
 
 use anyhow::Context;
 use anyhow::Result;
-use everscale_types::models::BlockId;
 use futures::future::BoxFuture;
 use sqlx::postgres::PgPoolOptions;
 use tokio::sync::mpsc;
@@ -10,7 +9,8 @@ use tokio::sync::Mutex;
 use tycho_core::block_strider::StateSubscriber;
 use tycho_core::block_strider::StateSubscriberContext;
 use tycho_core::blockchain_rpc::BlockchainRpcClient;
-use tycho_storage::Storage;
+use tycho_core::storage::CoreStorage;
+use tycho_types::models::BlockId;
 
 use crate::client::*;
 use crate::models::*;
@@ -34,7 +34,7 @@ pub struct EngineContext {
 impl EngineContext {
     pub async fn new(
         config: AppConfig,
-        storage: Storage,
+        storage: CoreStorage,
         blockchain_rpc_client: BlockchainRpcClient,
     ) -> Result<Arc<Self>> {
         let pool = PgPoolOptions::new()

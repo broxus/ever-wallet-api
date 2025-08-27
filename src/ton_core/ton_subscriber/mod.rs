@@ -3,8 +3,6 @@ use std::sync::atomic::{AtomicU32, AtomicU64, Ordering};
 use std::sync::{Arc, Weak};
 
 use anyhow::Result;
-use everscale_types::boc::Boc;
-use everscale_types::cell::{Cell, CellBuilder, HashBytes, Load};
 use futures::stream::FuturesUnordered;
 use futures::StreamExt;
 use nekoton::core::models::TokenWalletVersion;
@@ -12,6 +10,8 @@ use nekoton::transport::models::ExistingContract;
 use nekoton_utils::TrustMe;
 use parking_lot::{Mutex, RwLock, RwLockReadGuard};
 use rustc_hash::FxHashMap;
+use tycho_types::boc::Boc;
+use tycho_types::cell::{Cell, CellBuilder, HashBytes, Load};
 
 use ton_block::Deserializable;
 use ton_types::SliceData;
@@ -196,7 +196,7 @@ impl TonSubscriber {
                         // Compute parent shard of the B' or B"
                         let parent = shard
                             .merge()
-                            .ok_or(everscale_types::error::Error::InvalidData)?;
+                            .ok_or(tycho_types::error::Error::InvalidData)?;
 
                         let opposite = shard.opposite().expect("after split");
 
@@ -215,7 +215,7 @@ impl TonSubscriber {
                         // Compute parent shard of the B' or B"
                         let (left, right) = shard
                             .split()
-                            .ok_or(everscale_types::error::Error::InvalidData)?;
+                            .ok_or(tycho_types::error::Error::InvalidData)?;
 
                         // Find and remove all parent shards
                         cache.remove(&left);
@@ -610,7 +610,7 @@ pub fn make_existing_contract(state: Option<ShardAccount>) -> Result<Option<Exis
         None => return Ok(None),
     };
 
-    let account = everscale_types::models::OptionalAccount::load_from(&mut state.data.as_slice()?)?;
+    let account = tycho_types::models::OptionalAccount::load_from(&mut state.data.as_slice()?)?;
 
     if let Some(stuff) = convert_to_old_account(account)? {
         Ok(Some(ExistingContract {
@@ -624,7 +624,7 @@ pub fn make_existing_contract(state: Option<ShardAccount>) -> Result<Option<Exis
 }
 
 pub fn convert_to_old_account(
-    account: everscale_types::models::OptionalAccount,
+    account: tycho_types::models::OptionalAccount,
 ) -> Result<Option<ton_block::AccountStuff>> {
     let cell = CellBuilder::build_from(account)?;
     let bytes = Boc::encode(cell);

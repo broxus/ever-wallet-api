@@ -1,7 +1,7 @@
-use everscale_types::models::BlockId;
 use nekoton::transport::models::ExistingContract;
 use tokio::sync::oneshot;
 use ton_types::UInt256;
+use tycho_types::models::BlockId;
 
 pub trait ReadFromTransaction: Sized {
     fn read_from_transaction(ctx: &TxContext<'_>, state: HandleTransactionStatusTx)

@@ -3,11 +3,11 @@ use std::sync::atomic::{AtomicU32, AtomicUsize, Ordering};
 use std::sync::Arc;
 
 use anyhow::Result;
-use everscale_types::cell::HashBytes;
-use everscale_types::models::ShardIdent;
 use parking_lot::Mutex;
 use rustc_hash::FxHashMap;
 use tokio::sync::oneshot;
+use tycho_types::cell::HashBytes;
+use tycho_types::models::ShardIdent;
 
 use super::shard_utils::*;
 

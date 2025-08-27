@@ -2,11 +2,6 @@ use std::str::FromStr;
 use std::sync::Arc;
 
 use anyhow::{Context, Result};
-use everscale_types::boc::Boc;
-use everscale_types::cell::HashBytes;
-use everscale_types::cell::Lazy;
-use everscale_types::cell::Load;
-use everscale_types::models::*;
 use nekoton::transport::models::*;
 use nekoton_abi::*;
 use nekoton_utils::Clock;
@@ -16,9 +11,14 @@ use tokio::sync::{mpsc, oneshot};
 use ton_block::Serializable;
 use ton_types::UInt256;
 use tycho_core::blockchain_rpc::BlockchainRpcClient;
+use tycho_core::storage::CoreStorage;
 use tycho_executor::ExecutorParams;
 use tycho_executor::ParsedConfig;
-use tycho_storage::Storage;
+use tycho_types::boc::Boc;
+use tycho_types::cell::HashBytes;
+use tycho_types::cell::Lazy;
+use tycho_types::cell::Load;
+use tycho_types::models::*;
 
 use self::monitoring::*;
 use self::ton_subscriber::*;
@@ -42,7 +42,7 @@ impl TonCore {
         owners_cache: OwnersCache,
         ton_transaction_producer: TonTransactionTx,
         token_transaction_producer: TokenTransactionTx,
-        storage: Storage,
+        storage: CoreStorage,
         blockchain_rpc_client: BlockchainRpcClient,
     ) -> Result<Arc<Self>> {
         let context =
@@ -117,7 +117,7 @@ pub struct TonCoreContext {
     pub owners_cache: OwnersCache,
     pub messages_queue: Arc<PendingMessagesQueue>,
     pub ton_subscriber: Arc<TonSubscriber>,
-    pub storage: Storage,
+    pub storage: CoreStorage,
     pub blockchain_rpc_client: BlockchainRpcClient,
 }
 
@@ -125,7 +125,7 @@ impl TonCoreContext {
     async fn new(
         sqlx_client: SqlxClient,
         owners_cache: OwnersCache,
-        storage: Storage,
+        storage: CoreStorage,
         blockchain_rpc_client: BlockchainRpcClient,
     ) -> Result<Arc<Self>> {
         let messages_queue = PendingMessagesQueue::new(512);
@@ -234,16 +234,15 @@ impl TonCoreContext {
             None => return Ok(None),
         };
 
-        let account = everscale_types::models::OptionalAccount::load_from(
-            &mut account_state.data.as_slice()?,
-        )?;
+        let account =
+            tycho_types::models::OptionalAccount::load_from(&mut account_state.data.as_slice()?)?;
 
         let LastTransactionId::Exact(last_transaction_id) = account_state.last_transaction_id
         else {
             return Ok(None);
         };
 
-        let shard_account = everscale_types::models::ShardAccount {
+        let shard_account = tycho_types::models::ShardAccount {
             account: Lazy::new(&account).unwrap(),
             last_trans_hash: HashBytes::from_slice(last_transaction_id.hash.as_slice()),
             last_trans_lt: last_transaction_id.lt,
