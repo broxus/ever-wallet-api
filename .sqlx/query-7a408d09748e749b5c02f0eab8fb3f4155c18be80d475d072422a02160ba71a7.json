@@ -1,0 +1,44 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT name, address, version as \"version: _\"\n                FROM token_whitelist\n                WHERE address = $1",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "name",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 1,
+        "name": "address",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 2,
+        "name": "version: _",
+        "type_info": {
+          "Custom": {
+            "name": "twa_token_wallet_version",
+            "kind": {
+              "Enum": [
+                "OldTip3v4",
+                "Tip3"
+              ]
+            }
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "7a408d09748e749b5c02f0eab8fb3f4155c18be80d475d072422a02160ba71a7"
+}

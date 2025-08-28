@@ -2,7 +2,6 @@ use std::sync::Arc;
 
 use anyhow::Result;
 use tokio::sync::mpsc;
-use ton_types::UInt256;
 
 use crate::ton_core::monitoring::*;
 use crate::ton_core::*;
@@ -33,7 +32,7 @@ impl TonTransaction {
 
     pub fn add_account_subscription<I>(&self, accounts: I)
     where
-        I: IntoIterator<Item = UInt256>,
+        I: IntoIterator<Item = HashBytes>,
     {
         self.context
             .ton_subscriber
@@ -49,11 +48,10 @@ impl TonTransaction {
                     Some(engine) => engine,
                     None => {
                         event.state.send(HandleTransactionStatus::Fail).ok();
-                        log::error!("Failed to handle received ton transaction: Ton transaction handler was dropped");
+                        tracing::error!("Failed to handle received ton transaction: Ton transaction handler was dropped");
                         break;
                     }
                 };
-
                 match ton_transaction_parser::parse_ton_transaction(
                     event.account,
                     event.block_utime,
@@ -70,7 +68,7 @@ impl TonTransaction {
                     }
                     Err(e) => {
                         event.state.send(HandleTransactionStatus::Fail).ok();
-                        log::error!(
+                        tracing::error!(
                             "Failed to handle received ton transaction `{}`: {}",
                             event.transaction_hash,
                             e
@@ -101,7 +99,7 @@ impl ReadFromTransaction for TonTransactionEvent {
     ) -> Option<Self> {
         Some(TonTransactionEvent {
             account: *ctx.account,
-            block_utime: ctx.block_info.gen_utime().as_u32(),
+            block_utime: ctx.block_info_gen_utime,
             transaction_hash: *ctx.transaction_hash,
             transaction: ctx.transaction.clone(),
             state,

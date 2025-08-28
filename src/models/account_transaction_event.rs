@@ -1,16 +1,15 @@
 use std::str::FromStr;
 
 use bigdecimal::BigDecimal;
-use nekoton_utils::pack_std_smc_addr;
+use everscale_types::models::StdAddr;
+use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
-use ton_block::MsgAddressInt;
 use uuid::Uuid;
 
 use crate::models::*;
 
-#[derive(Debug, Serialize, Deserialize, Clone, derive_more::Constructor, opg::OpgModel)]
+#[derive(Debug, Serialize, Deserialize, Clone, derive_more::Constructor, JsonSchema)]
 #[serde(rename_all = "camelCase")]
-#[opg("AccountTokenTransactionEventResponse")]
 pub struct AccountTransactionEvent {
     pub id: Uuid,
     pub transaction_id: Uuid,
@@ -19,7 +18,6 @@ pub struct AccountTransactionEvent {
     pub owner_message_hash: Option<String>,
     pub account: Account,
     pub sender: Option<Account>,
-    #[opg("balanceChange", string, optional)]
     pub balance_change: Option<BigDecimal>,
     pub root_address: Option<String>,
     pub transaction_direction: TonTransactionDirection,
@@ -33,17 +31,15 @@ pub struct AccountTransactionEvent {
 impl From<TokenTransactionEventDb> for AccountTransactionEvent {
     fn from(t: TokenTransactionEventDb) -> Self {
         let account =
-            MsgAddressInt::from_str(&format!("{}:{}", t.account_workchain_id, t.account_hex))
-                .unwrap();
-        let base64url = Address(pack_std_smc_addr(true, &account, true).unwrap());
+            StdAddr::from_str(&format!("{}:{}", t.account_workchain_id, t.account_hex)).unwrap();
+        let base64url = Address(account.display_base64_url(true).to_string());
 
         let sender = if let (Some(sender_workchain_id), Some(sender_hex)) =
             (t.sender_workchain_id, t.sender_hex)
         {
             let sender =
-                MsgAddressInt::from_str(&format!("{}:{}", sender_workchain_id, sender_hex))
-                    .unwrap();
-            let base64url = Address(pack_std_smc_addr(true, &sender, true).unwrap());
+                StdAddr::from_str(&format!("{}:{}", sender_workchain_id, sender_hex)).unwrap();
+            let base64url = Address(sender.display_base64_url(true).to_string());
             Some(Account {
                 workchain_id: sender_workchain_id,
                 hex: Address(sender_hex),
@@ -71,8 +67,8 @@ impl From<TokenTransactionEventDb> for AccountTransactionEvent {
             transaction_status: t.transaction_status.into(),
             event_status: t.event_status,
             multisig_transaction_id: None,
-            created_at: t.created_at.timestamp_millis(),
-            updated_at: t.updated_at.timestamp_millis(),
+            created_at: t.created_at.and_utc().timestamp_millis(),
+            updated_at: t.updated_at.and_utc().timestamp_millis(),
         }
     }
 }
@@ -80,17 +76,15 @@ impl From<TokenTransactionEventDb> for AccountTransactionEvent {
 impl From<TransactionEventDb> for AccountTransactionEvent {
     fn from(t: TransactionEventDb) -> Self {
         let account =
-            MsgAddressInt::from_str(&format!("{}:{}", t.account_workchain_id, t.account_hex))
-                .unwrap();
-        let base64url = Address(pack_std_smc_addr(true, &account, true).unwrap());
+            StdAddr::from_str(&format!("{}:{}", t.account_workchain_id, t.account_hex)).unwrap();
+        let base64url = Address(account.display_base64_url(true).to_string());
 
         let sender = if let (Some(sender_workchain_id), Some(sender_hex)) =
             (t.sender_workchain_id, t.sender_hex)
         {
             let sender =
-                MsgAddressInt::from_str(&format!("{}:{}", sender_workchain_id, sender_hex))
-                    .unwrap();
-            let base64url = Address(pack_std_smc_addr(true, &sender, true).unwrap());
+                StdAddr::from_str(&format!("{}:{}", sender_workchain_id, sender_hex)).unwrap();
+            let base64url = Address(sender.display_base64_url(true).to_string());
             Some(Account {
                 workchain_id: sender_workchain_id,
                 hex: Address(sender_hex),
@@ -118,8 +112,8 @@ impl From<TransactionEventDb> for AccountTransactionEvent {
             transaction_status: t.transaction_status,
             event_status: t.event_status,
             multisig_transaction_id: t.multisig_transaction_id,
-            created_at: t.created_at.timestamp_millis(),
-            updated_at: t.updated_at.timestamp_millis(),
+            created_at: t.created_at.and_utc().timestamp_millis(),
+            updated_at: t.updated_at.and_utc().timestamp_millis(),
         }
     }
 }

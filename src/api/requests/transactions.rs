@@ -2,22 +2,21 @@ use bigdecimal::BigDecimal;
 use derive_more::Constructor;
 use nekoton_utils::TrustMe;
 use num_traits::FromPrimitive;
-use opg::OpgModel;
+
+use schemars::JsonSchema;
 use serde::Deserialize;
 use uuid::Uuid;
 
 use crate::models::*;
 use crate::prelude::*;
 
-#[derive(Deserialize, OpgModel, Constructor)]
+#[derive(Deserialize, Constructor, JsonSchema)]
 #[serde(rename_all = "camelCase")]
-#[opg("TonTransactionSendRequest")]
 pub struct TonTransactionSendRequest {
     pub id: Option<Uuid>,
     pub from_address: Address,
     pub outputs: Vec<TonTransactionSendOutputRequest>,
     pub bounce: Option<bool>,
-    #[opg("base64 encoded payload", string, optional)]
     pub payload: Option<String>,
 }
 
@@ -33,12 +32,10 @@ impl From<TonTransactionSendRequest> for TransactionSend {
     }
 }
 
-#[derive(Deserialize, OpgModel, Constructor)]
+#[derive(Deserialize, Constructor, JsonSchema)]
 #[serde(rename_all = "camelCase")]
-#[opg("TonTransactionSendOutputRequest")]
 pub struct TonTransactionSendOutputRequest {
     pub recipient_address: Address,
-    #[opg("value", string)]
     pub value: BigDecimal,
     pub output_type: Option<TransactionSendOutputType>,
 }
@@ -53,9 +50,8 @@ impl From<TonTransactionSendOutputRequest> for TransactionSendOutput {
     }
 }
 
-#[derive(Deserialize, OpgModel)]
+#[derive(Deserialize, JsonSchema)]
 #[serde(rename_all = "camelCase")]
-#[opg("TonTransactionConfirmRequest")]
 pub struct TonTransactionConfirmRequest {
     pub id: Option<Uuid>,
     pub address: Address,
@@ -72,9 +68,8 @@ impl From<TonTransactionConfirmRequest> for TransactionConfirm {
     }
 }
 
-#[derive(Deserialize, OpgModel)]
+#[derive(Deserialize, JsonSchema)]
 #[serde(rename_all = "camelCase")]
-#[opg("TonTransactionsRequest")]
 pub struct TonTransactionsRequest {
     pub id: Option<Uuid>,
     pub message_hash: Option<String>,
@@ -107,22 +102,17 @@ impl From<TonTransactionsRequest> for TransactionsSearch {
     }
 }
 
-#[derive(Deserialize, OpgModel)]
+#[derive(Deserialize, JsonSchema)]
 #[serde(rename_all = "camelCase")]
-#[opg("TonTokenTransactionSendRequest")]
 pub struct TonTokenTransactionSendRequest {
     pub id: Option<Uuid>,
     pub from_address: Address,
     pub root_address: Address,
     pub recipient_address: Address,
-    #[opg("sendGasTo", string, optional)]
     pub send_gas_to: Option<Address>,
-    #[opg("value", string)]
     pub value: BigDecimal,
     pub notify_receiver: Option<bool>,
-    #[opg("fee", string, optional)]
     pub fee: Option<BigDecimal>,
-    #[opg("base64 encoded payload", string, optional)]
     pub payload: Option<String>,
 }
 
@@ -144,19 +134,15 @@ impl From<TonTokenTransactionSendRequest> for TokenTransactionSend {
     }
 }
 
-#[derive(Deserialize, OpgModel)]
+#[derive(Deserialize, JsonSchema)]
 #[serde(rename_all = "camelCase")]
-#[opg("TonTokenTransactionBurnRequest")]
 pub struct TonTokenTransactionBurnRequest {
     pub id: Option<Uuid>,
     pub from_address: Address,
     pub root_address: Address,
-    #[opg("sendGasTo", string, optional)]
     pub send_gas_to: Option<Address>,
     pub callback_to: Address,
-    #[opg("value", string)]
     pub value: BigDecimal,
-    #[opg("fee", string, optional)]
     pub fee: Option<BigDecimal>,
 }
 
@@ -176,22 +162,17 @@ impl From<TonTokenTransactionBurnRequest> for TokenTransactionBurn {
     }
 }
 
-#[derive(Deserialize, OpgModel)]
+#[derive(Deserialize, JsonSchema)]
 #[serde(rename_all = "camelCase")]
-#[opg("TonTokenTransactionMintRequest")]
 pub struct TonTokenTransactionMintRequest {
     pub id: Option<Uuid>,
     pub owner_address: Address,
     pub root_address: Address,
-    #[opg("value", string)]
     pub value: BigDecimal,
     pub recipient_address: Address,
-    #[opg("deployWalletValue", string, optional)]
     pub deploy_wallet_value: Option<BigDecimal>,
-    #[opg("sendGasTo", string, optional)]
     pub send_gas_to: Option<Address>,
     pub notify: Option<bool>,
-    #[opg("fee", string, optional)]
     pub fee: Option<BigDecimal>,
 }
 

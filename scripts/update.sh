@@ -9,14 +9,14 @@ function print_help() {
   echo ''
   echo 'Options:'
   echo '  -h,--help         Print this help message and exit'
-  echo '  -f,--force        Clear "/var/db/ton-wallet-api" on update'
+  echo '  -f,--force        Clear "/var/db/tycho-wallet-api" on update'
   echo '  -s,--sync         Restart "timesyncd" service'
   echo '  -t,--type TYPE    Installation types: native'
   echo '  -n,--network      One of two networks:'
-  echo '                      - Everscale'
-  echo '                      - Venom'
+  echo '                      - Testnet'
+  echo '                      - Production'
   echo '  --database-url    Postgres connection url which is needed to create'
-  echo '                    database and make migration before running ton-wallet-api.'
+  echo '                    database and make migration before running tycho-wallet-api.'
   echo '                    example: "postgresql://${DB_USER}:${DB_PASSWORD}@${DB_HOST}/${DB_NAME}"'
 }
 
@@ -86,21 +86,21 @@ if [[ "$setup_type" != "native" ]]; then
   exit 1
 fi
 
-if [[ "$network" != "Everscale" ]] && [[ "$network" != "Venom" ]]; then
+if [[ "$network" != "Testnet" ]] && [[ "$network" != "Production" ]]; then
   echo 'ERROR: Unknown network'
   echo ''
   print_help
   exit 1
 fi
 
-echo "INFO: stopping ton-wallet-api service"
-sudo systemctl stop ton-wallet-api
+echo "INFO: stopping tycho-wallet-api service"
+sudo systemctl stop tycho-wallet-api
 
 if [[ "$force" == "true" ]]; then
-  echo "INFO: removing ton-wallet-api db"
-  sudo rm -rf /var/db/ton-wallet-api
+  echo "INFO: removing tycho-wallet-api db"
+  sudo rm -rf /var/db/tycho-wallet-api
 else
-  echo 'INFO: skipping "/var/db/ton-wallet-api" deletion'
+  echo 'INFO: skipping "/var/db/tycho-wallet-api" deletion'
 fi
 
 if [[ "$setup_type" == "native" ]]; then
@@ -108,17 +108,17 @@ if [[ "$setup_type" == "native" ]]; then
 
   source "$HOME/.cargo/env"
 
-  echo 'INFO: building ton-wallet-api'
+  echo 'INFO: building tycho-wallet-api'
   cd "$REPO_DIR"
-  if [[ "$network" == "Everscale" ]]; then
+  if [[ "$network" == "Testnet" ]]; then
     RUSTFLAGS="-C target_cpu=native" cargo build --release
-  elif [[ "$network" == "Venom" ]]; then
-    RUSTFLAGS="-C target_cpu=native" cargo build --release --features venom
+  elif [[ "$network" == "Production" ]]; then
+    RUSTFLAGS="-C target_cpu=native" cargo build --release
   else
     echo 'ERROR: Unexpected'
     exit 1
   fi
-  sudo cp "$REPO_DIR/target/release/ton-wallet-api" /usr/local/bin/ton-wallet-api
+  sudo cp "$REPO_DIR/target/release/tycho-wallet-api" /usr/local/bin/tycho-wallet-api
 
 else
   echo 'ERROR: Unexpected'
@@ -126,7 +126,7 @@ else
 fi
 
 echo "INFO: preparing environment"
-sudo mkdir -p /var/db/ton-wallet-api
+sudo mkdir -p /var/db/tycho-wallet-api
 
 if [[ "$restart_timesyncd" == "true" ]]; then
   echo 'INFO: restarting timesyncd'
@@ -136,12 +136,12 @@ fi
 echo 'INFO: apply database migration'
 cargo sqlx migrate run --database-url "$database_url"
 
-echo 'INFO: restarting ton-wallet-api service'
-sudo systemctl restart ton-wallet-api
+echo 'INFO: restarting tycho-wallet-api service'
+sudo systemctl restart tycho-wallet-api
 
 echo 'INFO: done'
 echo ''
-echo 'INFO: Systemd service: ton-wallet-api'
-echo '      Keys and configs: /etc/ton-wallet-api'
-echo '      Node DB and stuff: /var/db/ton-wallet-api'
+echo 'INFO: Systemd service: tycho-wallet-api'
+echo '      Keys and configs: /etc/tycho-wallet-api'
+echo '      Node DB and stuff: /var/db/tycho-wallet-api'
 echo ''

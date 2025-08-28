@@ -4,7 +4,7 @@ use nekoton::core::models::{MultisigTransaction, TransactionError};
 use nekoton::core::ton_wallet::MultisigType;
 use num_traits::FromPrimitive;
 use serde::{Deserialize, Serialize};
-use ton_block::CommonMsgInfo;
+use ton_block::{CommonMsgInfo, GetRepresentationHash, MsgAddressInt};
 use ton_types::AccountId;
 use uuid::Uuid;
 

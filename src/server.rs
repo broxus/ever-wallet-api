@@ -1,12 +1,17 @@
 use std::sync::Arc;
 
+use anyhow::Context;
 use anyhow::Result;
-use pomfrit::formatter::*;
+use everscale_types::models::BlockId;
+use futures::future::BoxFuture;
 use sqlx::postgres::PgPoolOptions;
 use tokio::sync::mpsc;
 use tokio::sync::Mutex;
+use tycho_core::block_strider::StateSubscriber;
+use tycho_core::block_strider::StateSubscriberContext;
+use tycho_core::blockchain_rpc::BlockchainRpcClient;
+use tycho_storage::Storage;
 
-use crate::api::*;
 use crate::client::*;
 use crate::models::*;
 use crate::prelude::*;
@@ -16,60 +21,7 @@ use crate::sqlx_client::*;
 use crate::ton_core::*;
 use crate::utils::*;
 
-pub struct Engine {
-    context: Arc<EngineContext>,
-    _node_metrics_exporter: Arc<pomfrit::MetricsExporter>,
-}
-
-impl Engine {
-    pub async fn new(
-        config: AppConfig,
-        global_config: ton_indexer::GlobalConfig,
-        shutdown_requests_tx: ShutdownRequestsTx,
-    ) -> Result<Arc<Self>> {
-        let (metrics_exporter, metrics_writer) =
-            pomfrit::create_exporter(config.node_metrics_settings.clone()).await?;
-
-        let context = EngineContext::new(config, global_config, shutdown_requests_tx).await?;
-
-        let engine = Arc::new(Self {
-            context,
-            _node_metrics_exporter: metrics_exporter,
-        });
-
-        metrics_writer.spawn({
-            let engine = Arc::downgrade(&engine);
-            move |buffer| {
-                let engine = match engine.upgrade() {
-                    Some(engine) => engine,
-                    None => return,
-                };
-
-                buffer.write(LabeledTonSubscriberMetrics(&engine.context));
-            }
-        });
-
-        Ok(engine)
-    }
-
-    pub async fn start(self: &Arc<Self>) -> Result<()> {
-        self.context.start().await?;
-
-        tokio::spawn(http_service(
-            self.context.config.server_addr,
-            self.context.config.api_metrics_addr,
-            self.context.auth_service.clone(),
-            self.context.ton_service.clone(),
-            self.context.memory_storage.clone(),
-        ));
-
-        // Done
-        Ok(())
-    }
-}
-
 pub struct EngineContext {
-    pub shutdown_requests_tx: ShutdownRequestsTx,
     pub auth_service: Arc<AuthService>,
     pub ton_core: Arc<TonCore>,
     pub ton_client: Arc<TonClient>,
@@ -80,10 +32,10 @@ pub struct EngineContext {
 }
 
 impl EngineContext {
-    async fn new(
+    pub async fn new(
         config: AppConfig,
-        global_config: ton_indexer::GlobalConfig,
-        shutdown_requests_tx: ShutdownRequestsTx,
+        storage: Storage,
+        blockchain_rpc_client: BlockchainRpcClient,
     ) -> Result<Arc<Self>> {
         let pool = PgPoolOptions::new()
             .max_connections(config.db_pool_size)
@@ -101,14 +53,13 @@ impl EngineContext {
         let (ton_transaction_tx, ton_transaction_rx) = mpsc::unbounded_channel();
         let (token_transaction_tx, token_transaction_rx) = mpsc::unbounded_channel();
 
-        let node_config = config.ton_core.clone();
         let ton_core = TonCore::new(
-            node_config,
-            global_config,
             sqlx_client.clone(),
             owners_cache,
             ton_transaction_tx,
             token_transaction_tx,
+            storage,
+            blockchain_rpc_client,
         )
         .await?;
 
@@ -126,7 +77,6 @@ impl EngineContext {
         let memory_storage = Arc::new(StorageHandler::default());
 
         let engine_context = Arc::new(Self {
-            shutdown_requests_tx,
             auth_service,
             ton_core,
             ton_client,
@@ -142,10 +92,19 @@ impl EngineContext {
         Ok(engine_context)
     }
 
-    async fn start(&self) -> Result<()> {
-        self.ton_client.start().await?;
-        self.ton_service.start().await?;
-        self.ton_core.start().await?;
+    pub async fn start(&self, last_block_id: &BlockId) -> Result<()> {
+        self.ton_client
+            .start()
+            .await
+            .context("failed to start ton_client")?;
+        self.ton_service
+            .start()
+            .await
+            .context("failed to start ton_service")?;
+        self.ton_core
+            .start(last_block_id)
+            .await
+            .context("failed to start ton_core")?;
 
         Ok(())
     }
@@ -158,7 +117,7 @@ impl EngineContext {
                 let engine_context = match engine_context.upgrade() {
                     Some(engine_context) => engine_context,
                     None => {
-                        log::error!("Engine is already dropped");
+                        tracing::error!("Engine is already dropped");
                         return;
                     }
                 };
@@ -176,7 +135,7 @@ impl EngineContext {
                             }
                             Err(err) => {
                                 state.send(HandleTransactionStatus::Fail).ok();
-                                log::error!("Failed to create receive transaction with message hash '{}': {:?}", message_hash, err)
+                                tracing::error!("Failed to create receive transaction with message hash '{}': {:?}", message_hash, err)
                             }
                         }
                     }
@@ -210,7 +169,7 @@ impl EngineContext {
                                     }
                                     Err(err) => {
                                         state.send(HandleTransactionStatus::Fail).ok();
-                                        log::error!(
+                                        tracing::error!(
                                             "Failed to update token transaction with message hash '{}': {:?}",
                                             transaction.message_hash,
                                             err
@@ -220,7 +179,7 @@ impl EngineContext {
                             }
                             Err(err) => {
                                 state.send(HandleTransactionStatus::Fail).ok();
-                                log::error!(
+                                tracing::error!(
                                     "Failed to upsert sent transaction with message hash '{}': {:?}",
                                     transaction.message_hash,
                                     err
@@ -244,7 +203,7 @@ impl EngineContext {
                 let engine_context = match engine_context.upgrade() {
                     Some(engine_context) => engine_context,
                     None => {
-                        log::error!("Engine is already dropped");
+                        tracing::error!("Engine is already dropped");
                         return;
                     }
                 };
@@ -263,7 +222,7 @@ impl EngineContext {
                     }
                     Err(e) => {
                         state.send(HandleTransactionStatus::Fail).ok();
-                        log::error!(
+                        tracing::error!(
                             "Failed to create token transaction with message hash '{}': {:?}",
                             message_hash,
                             e
@@ -299,56 +258,18 @@ impl EngineContext {
     }
 }
 
-struct LabeledTonSubscriberMetrics<'a>(&'a EngineContext);
-
-impl std::fmt::Display for LabeledTonSubscriberMetrics<'_> {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        use std::sync::atomic::Ordering;
-
-        let metrics = self.0.ton_core.context.ton_subscriber.metrics();
-        let indexer_metrics = self.0.ton_core.context.ton_engine.metrics();
-
-        f.begin_metric("ton_subscriber_ready")
-            .value(metrics.ready as u8)?;
-
-        if metrics.current_utime > 0 {
-            let mc_time_diff = indexer_metrics.mc_time_diff.load(Ordering::Acquire);
-            let shard_client_time_diff = indexer_metrics
-                .shard_client_time_diff
-                .load(Ordering::Acquire);
-
-            let last_mc_block_seqno = indexer_metrics.last_mc_block_seqno.load(Ordering::Acquire);
-            let last_shard_client_mc_block_seqno = indexer_metrics
-                .last_shard_client_mc_block_seqno
-                .load(Ordering::Acquire);
-
-            f.begin_metric("ton_subscriber_current_utime")
-                .value(metrics.current_utime)?;
-
-            if let Some(signature_id) = metrics.signature_id {
-                f.begin_metric("ton_subscriber_signature_id")
-                    .value(signature_id)?;
-            }
-
-            f.begin_metric("ton_subscriber_time_diff")
-                .value(mc_time_diff)?;
-
-            f.begin_metric("ton_subscriber_shard_client_time_diff")
-                .value(shard_client_time_diff)?;
-
-            f.begin_metric("ton_subscriber_mc_block_seqno")
-                .value(last_mc_block_seqno)?;
-
-            f.begin_metric("ton_subscriber_shard_client_mc_block_seqno")
-                .value(last_shard_client_mc_block_seqno)?;
-        }
-
-        f.begin_metric("ton_subscriber_pending_message_count")
-            .value(metrics.pending_message_count)?;
-
-        Ok(())
-    }
-}
-
 pub type ShutdownRequestsRx = mpsc::UnboundedReceiver<()>;
 pub type ShutdownRequestsTx = mpsc::UnboundedSender<()>;
+
+impl StateSubscriber for EngineContext {
+    type HandleStateFut<'a> = BoxFuture<'a, Result<()>>;
+
+    fn handle_state<'a>(&'a self, cx: &'a StateSubscriberContext) -> Self::HandleStateFut<'a> {
+        Box::pin(
+            self.ton_core
+                .context
+                .ton_subscriber
+                .process_block(&cx.block, &cx.state),
+        )
+    }
+}

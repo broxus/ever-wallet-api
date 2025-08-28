@@ -3,10 +3,11 @@ use std::sync::atomic::{AtomicU32, AtomicUsize, Ordering};
 use std::sync::Arc;
 
 use anyhow::Result;
+use everscale_types::cell::HashBytes;
+use everscale_types::models::ShardIdent;
 use parking_lot::Mutex;
 use rustc_hash::FxHashMap;
 use tokio::sync::oneshot;
-use ton_types::UInt256;
 
 use super::shard_utils::*;
 
@@ -38,8 +39,8 @@ impl PendingMessagesQueue {
 
     pub fn add_message(
         &self,
-        account: UInt256,
-        message_hash: UInt256,
+        account: HashBytes,
+        message_hash: HashBytes,
         expire_at: u32,
     ) -> Result<MessageStatusRx> {
         let mut entries = self.entries.lock();
@@ -64,7 +65,7 @@ impl PendingMessagesQueue {
         }
     }
 
-    pub fn deliver_message(&self, account: UInt256, message_hash: UInt256) {
+    pub fn deliver_message(&self, account: HashBytes, message_hash: HashBytes) {
         let mut entries = self.entries.lock();
         let mut message = match entries.remove(&PendingMessageId {
             account,
@@ -95,7 +96,7 @@ impl PendingMessagesQueue {
         self.min_expire_at.store(min_expire_at, Ordering::Release);
     }
 
-    pub fn update(&self, shard: &ton_block::ShardIdent, current_utime: u32) {
+    pub fn update(&self, shard: &ShardIdent, current_utime: u32) {
         let current_min_expire_at = self.min_expire_at.load(Ordering::Acquire);
         if current_utime <= current_min_expire_at {
             return;
@@ -131,8 +132,8 @@ pub enum MessageStatus {
 
 #[derive(Debug, Copy, Clone, Eq, PartialEq, Hash)]
 struct PendingMessageId {
-    account: UInt256,
-    message_hash: UInt256,
+    account: HashBytes,
+    message_hash: HashBytes,
 }
 
 struct PendingMessage {
@@ -153,10 +154,10 @@ enum PendingMessagesQueueError {
 mod tests {
     use super::*;
 
-    fn make_hash(id: u8) -> UInt256 {
+    fn make_hash(id: u8) -> HashBytes {
         let mut hash = [0; 32];
         hash[0] = id;
-        UInt256::from(hash)
+        HashBytes::from(hash)
     }
 
     fn make_queue() -> Arc<PendingMessagesQueue> {
@@ -191,11 +192,11 @@ mod tests {
         let rx = queue.add_message(make_hash(0), make_hash(0), 10).unwrap();
 
         // Update before expiration time must not do anything
-        queue.update(&ton_block::ShardIdent::masterchain(), 5);
+        queue.update(&ShardIdent::MASTERCHAIN, 5);
         assert_eq!(queue.min_expire_at.load(Ordering::Acquire), 10);
 
         // Update after expiration time must remove message
-        queue.update(&ton_block::ShardIdent::masterchain(), 15);
+        queue.update(&ShardIdent::MASTERCHAIN, 15);
         assert_eq!(queue.min_expire_at.load(Ordering::Acquire), u32::MAX);
         assert_eq!(rx.await.unwrap(), MessageStatus::Expired);
     }
@@ -208,16 +209,16 @@ mod tests {
         let rx2 = queue.add_message(make_hash(1), make_hash(1), 20).unwrap();
         let rx1 = queue.add_message(make_hash(0), make_hash(0), 10).unwrap();
 
-        queue.update(&ton_block::ShardIdent::masterchain(), 5);
+        queue.update(&ShardIdent::MASTERCHAIN, 5);
         assert_eq!(queue.min_expire_at.load(Ordering::Acquire), 10);
 
-        queue.update(&ton_block::ShardIdent::masterchain(), 10);
+        queue.update(&ShardIdent::MASTERCHAIN, 10);
         assert_eq!(queue.min_expire_at.load(Ordering::Acquire), 10);
 
-        queue.update(&ton_block::ShardIdent::masterchain(), 15);
+        queue.update(&ShardIdent::MASTERCHAIN, 15);
         assert_eq!(queue.min_expire_at.load(Ordering::Acquire), 20);
 
-        queue.update(&ton_block::ShardIdent::masterchain(), 25);
+        queue.update(&ShardIdent::MASTERCHAIN, 25);
         assert_eq!(queue.min_expire_at.load(Ordering::Acquire), u32::MAX);
 
         assert_eq!(rx1.await.unwrap(), MessageStatus::Expired);
@@ -232,13 +233,13 @@ mod tests {
         let rx2 = queue.add_message(make_hash(1), make_hash(1), 20).unwrap();
         let rx1 = queue.add_message(make_hash(0), make_hash(0), 10).unwrap();
 
-        queue.update(&ton_block::ShardIdent::masterchain(), 5);
+        queue.update(&ShardIdent::MASTERCHAIN, 5);
         assert_eq!(queue.min_expire_at.load(Ordering::Acquire), 10);
 
         queue.deliver_message(make_hash(1), make_hash(1));
         assert_eq!(queue.min_expire_at.load(Ordering::Acquire), 10);
 
-        queue.update(&ton_block::ShardIdent::masterchain(), 15);
+        queue.update(&ShardIdent::MASTERCHAIN, 15);
         assert_eq!(queue.min_expire_at.load(Ordering::Acquire), u32::MAX);
 
         assert_eq!(rx1.await.unwrap(), MessageStatus::Expired);

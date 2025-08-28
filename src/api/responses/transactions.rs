@@ -1,18 +1,18 @@
 use std::str::FromStr;
 
 use bigdecimal::BigDecimal;
+use everscale_types::models::StdAddr;
 use nekoton_utils::pack_std_smc_addr;
-use opg::OpgModel;
+
+use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
-use ton_block::MsgAddressInt;
 use uuid::Uuid;
 
 use crate::api::*;
 use crate::models::*;
 
-#[derive(Serialize, OpgModel)]
+#[derive(Serialize, JsonSchema)]
 #[serde(rename_all = "camelCase")]
-#[opg("TransactionResponse")]
 pub struct TransactionResponse {
     pub status: TonStatus,
     pub data: Option<TransactionDataResponse>,
@@ -36,27 +36,22 @@ impl From<Result<TransactionDataResponse, Error>> for TransactionResponse {
     }
 }
 
-#[derive(Serialize, OpgModel)]
+#[derive(Serialize, JsonSchema)]
 #[serde(rename_all = "camelCase")]
-#[opg("TransactionDataResponse")]
 pub struct TransactionDataResponse {
-    #[opg("id", string)]
     pub id: Uuid,
     pub message_hash: String,
     pub transaction_hash: Option<String>,
     pub transaction_lt: Option<String>,
     pub transaction_timeout: Option<i64>,
-    #[opg("UTC timestamp in milliseconds", integer, format = "int64")]
     pub transaction_timestamp: Option<i64>,
     pub account: Account,
     pub sender: Option<Account>,
-    #[opg("value", string)]
     pub value: Option<BigDecimal>,
-    #[opg("originalValue", string)]
     pub original_value: Option<BigDecimal>,
-    #[opg("fee", string)]
+
     pub fee: Option<BigDecimal>,
-    #[opg("balanceChange", string)]
+
     pub balance_change: BigDecimal,
     pub out_messages: Option<Vec<TransactionMessage>>,
     pub original_outputs: Option<Vec<TransactionOutput>>,
@@ -66,9 +61,9 @@ pub struct TransactionDataResponse {
     pub bounce: bool,
     pub error: Option<String>,
     pub multisig_transaction_id: Option<i64>,
-    #[opg("UTC timestamp in milliseconds", integer, format = "int64")]
+
     pub created_at: i64,
-    #[opg("UTC timestamp in milliseconds", integer, format = "int64")]
+
     pub updated_at: i64,
 }
 
@@ -77,10 +72,9 @@ impl From<TransactionDb> for TransactionDataResponse {
         let sender = if let (Some(sender_hex), Some(sender_workchain_id)) =
             (c.sender_hex, c.sender_workchain_id)
         {
-            let sender =
-                MsgAddressInt::from_str(&format!("{}:{}", sender_workchain_id, sender_hex))
-                    .unwrap_or_default();
-            let sender_base64url = Address(pack_std_smc_addr(true, &sender, true).unwrap());
+            let sender = StdAddr::from_str(&format!("{}:{}", sender_workchain_id, sender_hex))
+                .unwrap_or_default();
+            let sender_base64url = Address(sender.display_base64_url(true).to_string());
             Some(Account {
                 workchain_id: sender_workchain_id,
                 hex: Address(sender_hex),
@@ -119,9 +113,8 @@ impl From<TransactionDb> for TransactionDataResponse {
         };
 
         let account =
-            MsgAddressInt::from_str(&format!("{}:{}", c.account_workchain_id, c.account_hex))
-                .unwrap();
-        let base64url = Address(pack_std_smc_addr(true, &account, true).unwrap());
+            StdAddr::from_str(&format!("{}:{}", c.account_workchain_id, c.account_hex)).unwrap();
+        let base64url = Address(account.display_base64_url(true).to_string());
 
         TransactionDataResponse {
             id: c.id,
@@ -145,39 +138,37 @@ impl From<TransactionDb> for TransactionDataResponse {
             status: c.status,
             aborted: c.aborted,
             bounce: c.bounce,
-            transaction_timestamp: c.transaction_timestamp.map(|t| t.timestamp_millis()),
-            created_at: c.created_at.timestamp_millis(),
-            updated_at: c.updated_at.timestamp_millis(),
+            transaction_timestamp: c
+                .transaction_timestamp
+                .map(|t| t.and_utc().timestamp_millis()),
+            created_at: c.created_at.and_utc().timestamp_millis(),
+            updated_at: c.updated_at.and_utc().timestamp_millis(),
             error: c.error,
             multisig_transaction_id: c.multisig_transaction_id,
         }
     }
 }
 
-#[derive(Serialize, Deserialize, OpgModel)]
+#[derive(Serialize, Deserialize, JsonSchema)]
 #[serde(rename_all = "camelCase")]
-#[opg("TransactionMessage")]
 pub struct TransactionMessage {
     pub message_hash: String,
-    #[opg("value", string)]
+
     pub value: BigDecimal,
-    #[opg("fee", string)]
+
     pub fee: BigDecimal,
     pub recipient: Account,
 }
 
-#[derive(Serialize, Deserialize, OpgModel)]
+#[derive(Serialize, Deserialize, JsonSchema)]
 #[serde(rename_all = "camelCase")]
-#[opg("TransactionOutput")]
 pub struct TransactionOutput {
-    #[opg("value", string)]
     pub value: BigDecimal,
     pub recipient: Account,
 }
 
-#[derive(Serialize, OpgModel)]
+#[derive(Serialize, JsonSchema)]
 #[serde(rename_all = "camelCase")]
-#[opg("TonTransactionsResponse")]
 pub struct TonTransactionsResponse {
     pub status: TonStatus,
     pub data: Option<TransactionsResponse>,
@@ -201,17 +192,15 @@ impl From<Result<TransactionsResponse, Error>> for TonTransactionsResponse {
     }
 }
 
-#[derive(Serialize, OpgModel)]
+#[derive(Serialize, JsonSchema)]
 #[serde(rename_all = "camelCase")]
-#[opg("TransactionsResponse")]
 pub struct TransactionsResponse {
     pub count: i32,
     pub items: Vec<TransactionDataResponse>,
 }
 
-#[derive(Serialize, OpgModel)]
+#[derive(Serialize, JsonSchema)]
 #[serde(rename_all = "camelCase")]
-#[opg("TokenTransactionResponse")]
 pub struct TokenTransactionResponse {
     pub status: TonStatus,
     pub data: Option<TokenTransactionDataResponse>,
@@ -235,15 +224,14 @@ impl From<Result<TokenTransactionDataResponse, Error>> for TokenTransactionRespo
     }
 }
 
-#[derive(Serialize, OpgModel)]
+#[derive(Serialize, JsonSchema)]
 #[serde(rename_all = "camelCase")]
-#[opg("TokenTransactionDataResponse")]
 pub struct TokenTransactionDataResponse {
     pub id: Uuid,
     pub transaction_hash: Option<String>,
     pub message_hash: String,
     pub account: Account,
-    #[opg("value", string)]
+
     pub value: BigDecimal,
     pub root_address: String,
     pub error: Option<String>,
@@ -251,9 +239,9 @@ pub struct TokenTransactionDataResponse {
     pub block_time: Option<i32>,
     pub direction: TonTransactionDirection,
     pub status: TonTokenTransactionStatus,
-    #[opg("UTC timestamp in milliseconds", integer, format = "int64")]
+
     pub created_at: i64,
-    #[opg("UTC timestamp in milliseconds", integer, format = "int64")]
+
     pub updated_at: i64,
     pub payload: Option<String>,
 }
@@ -261,9 +249,8 @@ pub struct TokenTransactionDataResponse {
 impl From<TokenTransactionFromDb> for TokenTransactionDataResponse {
     fn from(c: TokenTransactionFromDb) -> Self {
         let account =
-            MsgAddressInt::from_str(&format!("{}:{}", c.account_workchain_id, c.account_hex))
-                .unwrap();
-        let base64url = Address(pack_std_smc_addr(true, &account, true).unwrap());
+            StdAddr::from_str(&format!("{}:{}", c.account_workchain_id, c.account_hex)).unwrap();
+        let base64url = Address(account.display_base64_url(true).to_string());
         let payload = c.payload.map(base64::encode);
 
         TokenTransactionDataResponse {
@@ -282,8 +269,8 @@ impl From<TokenTransactionFromDb> for TokenTransactionDataResponse {
             block_time: c.block_time,
             direction: c.direction,
             status: c.status,
-            created_at: c.created_at.timestamp_millis(),
-            updated_at: c.updated_at.timestamp_millis(),
+            created_at: c.created_at.and_utc().timestamp_millis(),
+            updated_at: c.updated_at.and_utc().timestamp_millis(),
             payload,
         }
     }

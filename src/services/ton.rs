@@ -2,8 +2,8 @@ use std::convert::TryInto;
 use std::str::FromStr;
 use std::sync::{Arc, Weak};
 
+use axum::http::StatusCode;
 use bigdecimal::BigDecimal;
-use http::StatusCode;
 use nekoton::crypto::{SignedMessage, UnsignedMessage};
 use nekoton_utils::{repack_address, unpack_std_smc_addr};
 use serde_json::Value;
@@ -56,7 +56,8 @@ impl TonService {
             let account = UInt256::from_be_bytes(&hex::decode(transaction.account_hex.clone())?);
             let message_hash =
                 UInt256::from_be_bytes(&hex::decode(transaction.message_hash.clone())?);
-            let expire_at = transaction.created_at.timestamp() as u32 + DEFAULT_EXPIRATION_TIMEOUT;
+            let expire_at =
+                transaction.created_at.and_utc().timestamp() as u32 + DEFAULT_EXPIRATION_TIMEOUT;
 
             let rx = self
                 .ton_api_client
@@ -578,7 +579,7 @@ impl TonService {
             .await?;
 
         if address_db.balance < input.fee {
-            log::error!(
+            tracing::error!(
                 "Address balance is not enough to pay fee for token transfer. Balance: {}. Fee: {}",
                 address_db.balance,
                 input.fee
@@ -597,7 +598,7 @@ impl TonService {
             .await?;
 
         if token_balance.balance < input.value {
-            log::error!(
+            tracing::error!(
                 "Token balance is not enough to make request; Balance: {}. Sent amount: {}",
                 token_balance.balance,
                 input.value
@@ -670,7 +671,7 @@ impl TonService {
             .await?;
 
         if address_db.balance < input.fee {
-            log::error!(
+            tracing::error!(
                 "Address balance is not enough to pay fee for token transfer. Balance: {}. Fee: {}",
                 address_db.balance,
                 input.fee
@@ -689,7 +690,7 @@ impl TonService {
             .await?;
 
         if token_balance.balance < input.value {
-            log::error!(
+            tracing::error!(
                 "Token balance is not enough to make request; Balance: {}. Sent amount: {}",
                 token_balance.balance,
                 input.value
@@ -767,7 +768,7 @@ impl TonService {
             .await?;
 
         if address_db.balance < input.fee {
-            log::error!(
+            tracing::error!(
                 "Address balance is not enough to pay fee for token transfer. Balance: {}. Fee: {}",
                 address_db.balance,
                 input.fee
@@ -883,7 +884,7 @@ impl TonService {
         let tokens = match output.tokens {
             Some(tokens) => {
                 if tokens.is_empty() {
-                    log::warn!("No response tokens in execution output")
+                    tracing::warn!("No response tokens in execution output")
                 }
                 tokens
             }
@@ -1213,7 +1214,7 @@ impl TonService {
     {
         tokio::spawn(async move {
             if let Err(e) = fut.await {
-                log::error!("Failed to {}: {:?}", name, e);
+                tracing::error!("Failed to {}: {:?}", name, e);
             }
         });
     }
@@ -1226,7 +1227,7 @@ async fn wait_message(
 ) -> Result<(), Error> {
     match rx.await? {
         MessageStatus::Delivered => {
-            log::info!("Successfully sent message `{}`", transaction.message_hash)
+            tracing::info!("Successfully sent message `{}`", transaction.message_hash)
         }
         MessageStatus::Expired => {
             let ton_service = match ton_service.upgrade() {

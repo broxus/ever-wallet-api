@@ -2,25 +2,24 @@ use std::str::FromStr;
 
 use bigdecimal::BigDecimal;
 use derive_more::Constructor;
-use nekoton_utils::{pack_std_smc_addr, TrustMe};
-use opg::OpgModel;
+use everscale_types::models::StdAddr;
+use nekoton_utils::TrustMe;
+
+use schemars::JsonSchema;
 use serde::Serialize;
-use ton_block::MsgAddressInt;
 use uuid::Uuid;
 
 use crate::api::*;
 use crate::models::*;
 
-#[derive(Serialize, OpgModel, Constructor)]
+#[derive(Serialize, JsonSchema, Constructor)]
 #[serde(rename_all = "camelCase")]
-#[opg("AddressValidResponse")]
 pub struct AddressValidResponse {
     pub valid: bool,
 }
 
-#[derive(Serialize, OpgModel)]
+#[derive(Serialize, JsonSchema)]
 #[serde(rename_all = "camelCase")]
-#[opg("AddressResponse")]
 pub struct AddressResponse {
     pub status: TonStatus,
     pub data: Option<Account>,
@@ -44,9 +43,8 @@ impl From<Result<Account, Error>> for AddressResponse {
     }
 }
 
-#[derive(Serialize, opg::OpgModel)]
+#[derive(Serialize, JsonSchema)]
 #[serde(rename_all = "camelCase")]
-#[opg("CheckedAddressResponse")]
 pub struct CheckedAddressResponse {
     pub status: TonStatus,
     pub data: Option<AddressValidResponse>,
@@ -67,9 +65,8 @@ impl From<Result<AddressValidResponse, Error>> for CheckedAddressResponse {
     }
 }
 
-#[derive(Serialize, OpgModel)]
+#[derive(Serialize, JsonSchema)]
 #[serde(rename_all = "camelCase")]
-#[opg("AddressBalanceResponse")]
 pub struct AddressBalanceResponse {
     pub status: TonStatus,
     pub data: Option<AddressBalanceDataResponse>,
@@ -93,31 +90,26 @@ impl From<Result<AddressBalanceDataResponse, Error>> for AddressBalanceResponse 
     }
 }
 
-#[derive(Serialize, OpgModel)]
+#[derive(Serialize, JsonSchema)]
 #[serde(rename_all = "camelCase")]
-#[opg("AddressBalanceDataResponse")]
 pub struct AddressBalanceDataResponse {
     pub id: Uuid,
     pub address: Account,
     pub account_type: AccountType,
     pub account_status: AccountStatus,
-    #[opg("balance", string)]
     pub balance: BigDecimal,
-    #[opg("networkBalance", string)]
     pub network_balance: BigDecimal,
     pub last_transaction_hash: Option<String>,
     pub last_transaction_lt: Option<String>,
     pub sync_u_time: i64,
-    #[opg("UTC timestamp in milliseconds", integer, format = "int64")]
     pub created_at: i64,
-    #[opg("UTC timestamp in milliseconds", integer, format = "int64")]
     pub updated_at: i64,
 }
 
 impl AddressBalanceDataResponse {
     pub fn new(a: AddressDb, b: NetworkAddressData) -> Self {
-        let account = MsgAddressInt::from_str(&format!("{}:{}", a.workchain_id, a.hex)).trust_me();
-        let base64url = Address(pack_std_smc_addr(true, &account, true).trust_me());
+        let account = StdAddr::from_str(&format!("{}:{}", a.workchain_id, a.hex)).trust_me();
+        let base64url = Address(account.display_base64_url(true).to_string());
 
         Self {
             id: a.id,
@@ -133,15 +125,14 @@ impl AddressBalanceDataResponse {
             last_transaction_hash: b.last_transaction_hash,
             last_transaction_lt: b.last_transaction_lt,
             sync_u_time: b.sync_u_time,
-            created_at: a.created_at.timestamp_millis(),
-            updated_at: a.updated_at.timestamp_millis(),
+            created_at: a.created_at.and_utc().timestamp_millis(),
+            updated_at: a.updated_at.and_utc().timestamp_millis(),
         }
     }
 }
 
-#[derive(Serialize, OpgModel)]
+#[derive(Serialize, JsonSchema)]
 #[serde(rename_all = "camelCase")]
-#[opg("AddressInfoResponse")]
 pub struct AddressInfoResponse {
     pub status: TonStatus,
     pub data: Option<AddressInfoDataResponse>,
@@ -165,28 +156,24 @@ impl From<Result<AddressInfoDataResponse, Error>> for AddressInfoResponse {
     }
 }
 
-#[derive(Serialize, OpgModel)]
+#[derive(Serialize, JsonSchema)]
 #[serde(rename_all = "camelCase")]
-#[opg("AddressInfoDataResponse")]
 pub struct AddressInfoDataResponse {
     pub id: Uuid,
     pub address: Account,
     pub account_type: AccountType,
-    #[opg("balance", string)]
     pub balance: BigDecimal,
     pub custodians: Option<i32>,
     pub confirmations: Option<i32>,
     pub custodians_public_keys: Option<Vec<String>>,
-    #[opg("UTC timestamp in milliseconds", integer, format = "int64")]
     pub created_at: i64,
-    #[opg("UTC timestamp in milliseconds", integer, format = "int64")]
     pub updated_at: i64,
 }
 
 impl AddressInfoDataResponse {
     pub fn new(a: AddressDb) -> Self {
-        let account = MsgAddressInt::from_str(&format!("{}:{}", a.workchain_id, a.hex)).trust_me();
-        let base64url = Address(pack_std_smc_addr(true, &account, true).trust_me());
+        let account = StdAddr::from_str(&format!("{}:{}", a.workchain_id, a.hex)).trust_me();
+        let base64url = Address(account.display_base64_url(true).to_string());
 
         Self {
             id: a.id,
@@ -202,15 +189,14 @@ impl AddressInfoDataResponse {
                 .custodians_public_keys
                 .and_then(|k| serde_json::from_value(k).unwrap_or_default()),
             balance: a.balance,
-            created_at: a.created_at.timestamp_millis(),
-            updated_at: a.updated_at.timestamp_millis(),
+            created_at: a.created_at.and_utc().timestamp_millis(),
+            updated_at: a.updated_at.and_utc().timestamp_millis(),
         }
     }
 }
 
-#[derive(Serialize, OpgModel)]
+#[derive(Serialize, JsonSchema)]
 #[serde(rename_all = "camelCase")]
-#[opg("TokenBalanceResponse")]
 pub struct TokenBalanceResponse {
     pub status: TonStatus,
     pub data: Option<Vec<TokenBalanceDataResponse>>,
@@ -234,30 +220,24 @@ impl From<Result<Vec<TokenBalanceDataResponse>, Error>> for TokenBalanceResponse
     }
 }
 
-#[derive(Serialize, OpgModel)]
+#[derive(Serialize, JsonSchema)]
 #[serde(rename_all = "camelCase")]
-#[opg("TokenBalanceDataResponse")]
 pub struct TokenBalanceDataResponse {
     pub service_id: ServiceId,
     pub address: Account,
-    #[opg("balance", string)]
     pub balance: BigDecimal,
-    #[opg("networkBalance", string)]
     pub network_balance: BigDecimal,
     pub account_status: AccountStatus,
     pub root_address: String,
-    #[opg("UTC timestamp in milliseconds", integer, format = "int64")]
     pub created_at: i64,
-    #[opg("UTC timestamp in milliseconds", integer, format = "int64")]
     pub updated_at: i64,
 }
 
 impl TokenBalanceDataResponse {
     pub fn new(a: TokenBalanceFromDb, b: NetworkTokenAddressData) -> Self {
         let account =
-            MsgAddressInt::from_str(&format!("{}:{}", a.account_workchain_id, a.account_hex))
-                .trust_me();
-        let base64url = Address(pack_std_smc_addr(true, &account, true).trust_me());
+            StdAddr::from_str(&format!("{}:{}", a.account_workchain_id, a.account_hex)).trust_me();
+        let base64url = Address(account.display_base64_url(true).to_string());
 
         Self {
             service_id: a.service_id,
@@ -270,8 +250,8 @@ impl TokenBalanceDataResponse {
             account_status: b.account_status,
             network_balance: b.network_balance,
             root_address: a.root_address,
-            created_at: a.created_at.timestamp_millis(),
-            updated_at: a.updated_at.timestamp_millis(),
+            created_at: a.created_at.and_utc().timestamp_millis(),
+            updated_at: a.updated_at.and_utc().timestamp_millis(),
         }
     }
 }

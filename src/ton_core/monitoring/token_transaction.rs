@@ -46,7 +46,7 @@ impl TokenTransaction {
                     Some(engine) => engine,
                     None => {
                         event.state.send(HandleTransactionStatus::Fail).ok();
-                        log::error!("Failed to handle received token transaction: Token transaction handler was dropped");
+                        tracing::error!("Failed to handle received token transaction: Token transaction handler was dropped");
                         break;
                     }
                 };
@@ -67,7 +67,7 @@ impl TokenTransaction {
                     }
                     Err(e) => {
                         event.state.send(HandleTransactionStatus::Fail).ok();
-                        log::error!("Failed to handle received token transaction: {}", e);
+                        tracing::error!("Failed to handle received token transaction: {}", e);
                     }
                 }
             }
@@ -113,7 +113,7 @@ impl ReadFromTransaction for TokenTransactionEvent {
                     ctx: TokenTransactionContext {
                         account: *ctx.account,
                         block_hash: *ctx.block_hash,
-                        block_utime: ctx.block_info.gen_utime().as_u32(),
+                        block_utime: ctx.block_info_gen_utime,
                         transaction_hash: *ctx.transaction_hash,
                         transaction: ctx.transaction.clone(),
                         token_state: token_state.clone(),

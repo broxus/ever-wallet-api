@@ -1,9 +1,12 @@
-use std::sync::atomic::Ordering;
+use std::str::FromStr;
 use std::sync::Arc;
 
+use anyhow::anyhow;
+use axum::http::StatusCode;
 use bigdecimal::{BigDecimal, ToPrimitive};
 use ed25519_dalek::{Keypair, PublicKey, SecretKey, Signer};
-use http::StatusCode;
+use everscale_types::cell::HashBytes;
+use everscale_types::models::StdAddr;
 use nekoton::core::models::Expiration;
 use nekoton::core::ton_wallet::multisig::DeployParams;
 use nekoton::core::ton_wallet::{MultisigType, TransferAction};
@@ -49,16 +52,15 @@ impl TonClient {
             .await?
             .into_iter()
             .map(|item| {
-                nekoton_utils::repack_address(&format!("{}:{}", item.workchain_id, item.hex))
-                    .trust_me()
+                StdAddr::from_str(&format!("{}:{}", item.workchain_id, item.hex)).trust_me()
             })
-            .collect::<Vec<MsgAddressInt>>();
+            .collect::<Vec<StdAddr>>();
 
         // Subscribe to ton accounts
         let owner_accounts = owner_addresses
             .iter()
-            .map(|item| UInt256::from_be_bytes(&item.address().get_bytestring(0)))
-            .collect::<Vec<UInt256>>();
+            .map(|item| item.address)
+            .collect::<Vec<HashBytes>>();
 
         self.ton_core.add_ton_account_subscription(owner_accounts);
 
@@ -150,7 +152,8 @@ impl TonClient {
         };
 
         // Subscribe to accounts
-        let account = UInt256::from_be_bytes(&hex::decode(address.address().to_hex_string())?);
+        let account = HashBytes::from_str(&address.address().to_hex_string())
+            .map_err(|_| anyhow!("Couldn't parse address"))?;
         self.ton_core.add_ton_account_subscription([account]);
 
         Ok(CreatedAddress {
@@ -273,7 +276,6 @@ impl TonClient {
     ) -> Result<(SentTransaction, SignedMessage), Error> {
         let original_value = transaction.outputs.iter().map(|o| o.value.clone()).sum();
         let original_outputs = serde_json::to_value(transaction.outputs.clone())?;
-
         let bounce = transaction.bounce.unwrap_or_default();
 
         let public_key = PublicKey::from_bytes(public_key)?;
@@ -316,7 +318,6 @@ impl TonClient {
                         state_init: None,
                     });
                 }
-
                 nekoton::core::ton_wallet::highload_wallet_v2::prepare_transfer(
                     &SimpleClock,
                     &public_key,
@@ -333,7 +334,6 @@ impl TonClient {
                     .outputs
                     .first()
                     .ok_or(TonClientError::RecipientNotFound)?;
-
                 let destination = nekoton_utils::repack_address(&recipient.recipient_address.0)?;
                 let amount = recipient
                     .value
@@ -350,13 +350,11 @@ impl TonClient {
                     body,
                     state_init: None,
                 }];
-
                 let seqno_offset = nekoton::core::ton_wallet::wallet_v3::estimate_seqno_offset(
                     &SimpleClock,
                     &current_state,
                     &[],
                 );
-
                 nekoton::core::ton_wallet::wallet_v3::prepare_transfer(
                     &SimpleClock,
                     &public_key,
@@ -371,14 +369,12 @@ impl TonClient {
                     .outputs
                     .first()
                     .ok_or(TonClientError::RecipientNotFound)?;
-
                 let destination = nekoton_utils::repack_address(&recipient.recipient_address.0)?;
                 let amount = recipient
                     .value
                     .to_u64()
                     .ok_or(TonClientError::ParseBigDecimal)?;
                 let flags = recipient.output_type.clone().unwrap_or_default();
-
                 let has_multiple_owners = match custodians {
                     Some(custodians) => *custodians > 1,
                     None => return Err(TonClientError::CustodiansNotFound.into()),
@@ -394,7 +390,6 @@ impl TonClient {
                     body,
                     state_init: None,
                 };
-
                 nekoton::core::ton_wallet::multisig::prepare_transfer(
                     &SimpleClock,
                     MultisigType::SafeMultisigWallet,
@@ -418,7 +413,6 @@ impl TonClient {
                         .as_ref()
                         .map(|c| SliceData::load_cell(c.clone()))
                         .transpose()?;
-
                     gifts.push(nekoton::core::ton_wallet::Gift {
                         flags: flags.into(),
                         bounce,
@@ -428,7 +422,6 @@ impl TonClient {
                         state_init: None,
                     });
                 }
-
                 nekoton::core::ton_wallet::ever_wallet::prepare_transfer(
                     &SimpleClock,
                     &public_key,
@@ -439,26 +432,22 @@ impl TonClient {
                 )?
             }
         };
-
         let unsigned_message = match transfer_action {
             TransferAction::Sign(unsigned_message) => unsigned_message,
             TransferAction::DeployFirst => {
                 return Err(TonClientError::AccountNotDeployed(address.to_string()).into())
             }
         };
-
         let key_pair = Keypair {
             secret: SecretKey::from_bytes(private_key)?,
             public: public_key,
         };
-
         let data_to_sign = ton_abi::extend_signature_with_id(
             unsigned_message.hash(),
             self.ton_core.signature_id(),
         );
         let signature = key_pair.sign(&data_to_sign);
         let signed_message = unsigned_message.sign(&signature.to_bytes())?;
-
         let sent_transaction = SentTransaction {
             id: transaction.id,
             message_hash: signed_message.message.hash()?.to_hex_string(),
@@ -469,7 +458,6 @@ impl TonClient {
             aborted: false,
             bounce,
         };
-
         Ok((sent_transaction, signed_message))
     }
 
@@ -787,24 +775,18 @@ impl TonClient {
         let gen_utime = self.ton_core.current_utime();
 
         let network_id = match () {
-            _ if cfg!(feature = "venom") => VENOM_CHAIN_ID,
-            _ if cfg!(feature = "ton") => TON_CHAIN_ID,
-            _ => EVER_CHAIN_ID,
+            _ => TYCHO_TESTNET_CHAIN_ID,
         };
 
         let subscriber_metrics = self.ton_core.context.ton_subscriber.metrics();
-        let indexer_metrics = self.ton_core.context.ton_engine.metrics();
-
-        let last_mc_block_seqno = indexer_metrics.last_mc_block_seqno.load(Ordering::Acquire);
-        let mc_time_diff = indexer_metrics.mc_time_diff.load(Ordering::Acquire);
 
         Ok(BlockchainInfo {
             network_id,
             synced: subscriber_metrics.ready,
             subscriber_pending_messages: subscriber_metrics.pending_message_count,
             tip_block_ts: gen_utime,
-            masterchain_height: last_mc_block_seqno,
-            masterchain_last_updated: mc_time_diff,
+            masterchain_height: 0,
+            masterchain_last_updated: 0,
         })
     }
 
@@ -820,7 +802,7 @@ impl TonClient {
         let state = match self.ton_core.get_contract_state(&contract_address) {
             Ok(a) => a,
             Err(e) => {
-                log::error!("Failed to get contract state: {e:?}");
+                tracing::error!("Failed to get contract state: {e:?}");
                 return Ok(None);
             }
         };
@@ -1016,6 +998,7 @@ impl TonClient {
     }
 
     pub fn add_ton_account_subscription(&self, account: UInt256) {
+        let account = HashBytes::from_slice(account.as_slice());
         self.ton_core.add_ton_account_subscription([account])
     }
 }
@@ -1198,6 +1181,4 @@ fn build_token_transaction(
     Ok((sent_transaction, signed_message))
 }
 
-const EVER_CHAIN_ID: i32 = 42;
-const VENOM_CHAIN_ID: i32 = 1;
-const TON_CHAIN_ID: i32 = -239;
+const TYCHO_TESTNET_CHAIN_ID: i32 = -4000;

@@ -1,6 +1,11 @@
 use std::hash::BuildHasherDefault;
 
+use anyhow::Result;
+use everscale_types::boc::Boc;
+use everscale_types::cell::CellBuilder;
+use everscale_types::models::Transaction;
 use rustc_hash::FxHasher;
+use ton_block::Deserializable;
 
 pub use self::encoding::*;
 pub use self::existing_contract::*;
@@ -18,3 +23,10 @@ mod tx_context;
 
 pub type FxDashMap<K, V> = dashmap::DashMap<K, V, BuildHasherDefault<FxHasher>>;
 pub type FxDashSet<K> = dashmap::DashSet<K, BuildHasherDefault<FxHasher>>;
+
+pub fn conver_to_old_transaction(transaction: &Transaction) -> Result<ton_block::Transaction> {
+    let cell = CellBuilder::build_from(transaction)?;
+    let bytes = Boc::encode(cell);
+    let cell = ton_types::deserialize_tree_of_cells(&mut &*bytes)?;
+    ton_block::Transaction::construct_from_cell(cell)
+}

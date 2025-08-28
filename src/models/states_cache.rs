@@ -4,13 +4,13 @@ use lru::LruCache;
 use nekoton::transport::models::ExistingContract;
 use nekoton_utils::TrustMe;
 use parking_lot::Mutex;
-use ton_block::MsgAddressInt;
+use ton_block::StdAddr;
 
 use crate::sqlx_client::*;
 
 #[derive(Clone)]
 pub struct StatesCache {
-    cache: Arc<Mutex<LruCache<MsgAddressInt, ExistingContract>>>,
+    cache: Arc<Mutex<LruCache<StdAddr, ExistingContract>>>,
     db: SqlxClient,
 }
 
@@ -33,7 +33,7 @@ impl StatesCache {
         })
     }
 
-    pub async fn get(&self, address: &MsgAddressInt) -> Option<ExistingContract> {
+    pub async fn get(&self, address: &StdAddr) -> Option<ExistingContract> {
         let state = {
             let mut lock = self.cache.lock();
             lock.get(address).cloned()
@@ -53,7 +53,7 @@ impl StatesCache {
         }
     }
 
-    pub async fn insert(&self, key: MsgAddressInt, value: ExistingContract) {
+    pub async fn insert(&self, key: StdAddr, value: ExistingContract) {
         {
             self.cache.lock().put(key.clone(), value.clone());
         }
@@ -63,7 +63,7 @@ impl StatesCache {
             .update_root_token_state(&key.to_string(), serde_json::json!(value))
             .await
         {
-            log::error!("Failed inserting root token state: {}", e)
+            tracing::error!("Failed inserting root token state: {}", e)
         }
     }
 }

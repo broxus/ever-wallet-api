@@ -11,10 +11,10 @@ function print_help() {
   echo '  -h,--help         Print this help message and exit'
   echo '  -t,--type TYPE    Installation types: native'
   echo '  -n,--network      One of two networks:'
-  echo '                      - Everscale'
-  echo '                      - Venom'
+  echo '                      - Testnet'
+  echo '                      - Production'
   echo '  --database-url    Postgres connection url which is needed to create'
-  echo '                    database and make migration before running ton-wallet-api.'
+  echo '                    database and make migration before running tycho-wallet-api.'
   echo '                    example: "postgresql://${DB_USER}:${DB_PASSWORD}@${DB_HOST}/${DB_NAME}"'
 }
 
@@ -74,15 +74,15 @@ if [[ "$setup_type" != "native" ]]; then
   exit 1
 fi
 
-if [[ "$network" != "Everscale" ]] && [[ "$network" != "Venom" ]]; then
+if [[ "$network" != "Testnet" ]] && [[ "$network" != "Production" ]]; then
   echo 'ERROR: Unknown network'
   echo ''
   print_help
   exit 1
 fi
 
-service_path="/etc/systemd/system/ton-wallet-api.service"
-config_path="/etc/ton-wallet-api/config.yaml"
+service_path="/etc/systemd/system/tycho-wallet-api.service"
+config_path="/etc/tycho-wallet-api/config.json"
 
 if [[ "$setup_type" == "native" ]]; then
   echo 'INFO: Running native installation'
@@ -98,24 +98,24 @@ if [[ "$setup_type" == "native" ]]; then
   echo 'INFO: installing sqlx-cli'
   cargo install sqlx-cli
 
-  echo 'INFO: building ton-wallet-api'
+  echo 'INFO: building tycho-wallet-api'
   cd "$REPO_DIR"
 
-  if [[ "$network" == "Everscale" ]]; then
+  if [[ "$network" == "Testnet" ]]; then
     RUSTFLAGS="-C target_cpu=native" SQLX_OFFLINE=true cargo build --release
-  elif [[ "$network" == "Venom" ]]; then
-    RUSTFLAGS="-C target_cpu=native" SQLX_OFFLINE=true cargo build --release --features venom
+  elif [[ "$network" == "Production" ]]; then
+    RUSTFLAGS="-C target_cpu=native" SQLX_OFFLINE=true cargo build --release
   else
     echo 'ERROR: Unexpected'
     exit 1
   fi
-  sudo cp "$REPO_DIR/target/release/ton-wallet-api" /usr/local/bin/ton-wallet-api
+  sudo cp "$REPO_DIR/target/release/tycho-wallet-api" /usr/local/bin/tycho-wallet-api
 
   echo 'INFO: creating systemd service'
   if [[ -f "$service_path" ]]; then
     echo "WARN: $service_path already exists"
   else
-    sudo cp "$SCRIPT_DIR/contrib/ton-wallet-api.native.service" "$service_path"
+    sudo cp "$SCRIPT_DIR/contrib/tycho-wallet-api.native.service" "$service_path"
   fi
 
 else
@@ -124,15 +124,15 @@ else
 fi
 
 echo "INFO: preparing environment"
-sudo mkdir -p /etc/ton-wallet-api
-sudo mkdir -p /var/db/ton-wallet-api
+sudo mkdir -p /etc/tycho-wallet-api
+sudo mkdir -p /var/db/tycho-wallet-api
 if [[ -f "$config_path" ]]; then
   echo "WARN: $config_path already exists"
 else
-  sudo cp -n "$SCRIPT_DIR/contrib/config.yaml" "$config_path"
+  sudo cp -n "$SCRIPT_DIR/contrib/config.json" "$config_path"
 fi
-sudo curl -so /etc/ton-wallet-api/ton-global.config.json \
-  https://raw.githubusercontent.com/tonlabs/main.ton.dev/master/configs/ton-global.config.json
+sudo curl -so /etc/tycho-wallet-api/global-config.json \
+    https://testnet.tychoprotocol.com/global-config.json
 
 echo 'INFO: restarting timesyncd'
 sudo systemctl restart systemd-timesyncd.service
@@ -145,11 +145,11 @@ cargo sqlx migrate run --database-url "$database_url"
 
 echo 'INFO: done'
 echo ''
-echo 'INFO: Systemd service: ton-wallet-api'
-echo '      Keys and configs: /etc/ton-wallet-api'
-echo '      Node DB and stuff: /var/db/ton-wallet-api'
+echo 'INFO: Systemd service: tycho-wallet-api'
+echo '      Keys and configs: /etc/tycho-wallet-api'
+echo '      Node DB and stuff: /var/db/tycho-wallet-api'
 echo ''
-echo 'NOTE: replace all "${..}" variables in /etc/ton-wallet-api/config.yaml'
-echo '      or specify them in /etc/systemd/system/ton-wallet-api.service'
+echo 'NOTE: replace all "${..}" variables in /etc/tycho-wallet-api/config.json'
+echo '      or specify them in /etc/systemd/system/tycho-wallet-api.service'
 echo '      in "[Service]" section with something like this:'
 echo '      Environment=SECRET=secret'

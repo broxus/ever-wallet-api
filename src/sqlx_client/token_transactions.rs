@@ -11,8 +11,9 @@ impl SqlxClient {
         service_id: ServiceId,
     ) -> Result<(TokenTransactionFromDb, TokenTransactionEventDb)> {
         let transaction_timestamp =
-            NaiveDateTime::from_timestamp_opt(payload.transaction_timestamp as i64, 0)
-                .context("Invalid transaction timestamp")?;
+            DateTime::from_timestamp(payload.transaction_timestamp as i64, 0)
+                .context("Invalid transaction timestamp")?
+                .naive_utc();
 
         let mut tx = self.pool.begin().await?;
 
@@ -268,28 +269,9 @@ impl SqlxClient {
 }
 
 #[cfg(test)]
-async fn prepare_test(level_filter: log::LevelFilter) -> SqlxClient {
-    use env_logger::Builder;
-    use std::io::Write;
-
-    Builder::new()
-        .format(|buf, record| {
-            writeln!(
-                buf,
-                "{} {}/{} {} [{}] - {}",
-                Local::now().format("%Y-%m-%dT%H:%M:%S"),
-                record.module_path().unwrap_or_default(),
-                record.file().unwrap_or_default(),
-                record.line().unwrap_or_default(),
-                record.level(),
-                record.args(),
-            )
-        })
-        .filter(None, level_filter)
-        .init();
-
+async fn prepare_test() -> SqlxClient {
     let pg_pool =
-        PgPool::connect("postgresql://everscale:everscale@localhost:5432/ton_wallet_api_rs")
+        PgPool::connect("postgresql://everscale:everscale@localhost:5432/tycho_wallet_api_rs")
             .await
             .unwrap();
 
@@ -299,13 +281,12 @@ async fn prepare_test(level_filter: log::LevelFilter) -> SqlxClient {
 #[cfg(test)]
 mod test {
     use super::*;
-    use log::LevelFilter;
     use std::str::FromStr;
 
     #[tokio::test]
     #[ignore]
     async fn test() {
-        let sqlx_client = prepare_test(LevelFilter::Trace).await;
+        let sqlx_client = prepare_test().await;
 
         let service_id =
             ServiceId::new(uuid::Uuid::from_str("5b30733f-e1cc-44e2-91f3-0ab7128e4534").unwrap());

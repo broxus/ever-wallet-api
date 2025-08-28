@@ -1,12 +1,14 @@
 use bigdecimal::BigDecimal;
-use opg::OpgModel;
+
+use schemars::JsonSchema;
 use serde::Deserialize;
 use ton_abi::Param;
 use uuid::Uuid;
 
+use crate::api::any_schema;
 use crate::models::*;
 
-#[derive(Deserialize, OpgModel)]
+#[derive(Deserialize, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct ExecuteContractRequest {
     pub target_account_addr: String,
@@ -14,23 +16,22 @@ pub struct ExecuteContractRequest {
     pub responsible: Option<bool>,
 }
 
-#[derive(Deserialize, OpgModel)]
+#[derive(Deserialize, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct FunctionDetailsDTO {
     pub function_name: String,
     pub input_params: Vec<InputParamDTO>,
-    #[opg(string, format = "any[]")]
+    #[schemars(schema_with = "any_schema")]
     pub output_params: Vec<Param>,
-    #[opg(string, format = "any[]")]
+    #[schemars(schema_with = "any_schema")]
     pub headers: Vec<Param>,
 }
 
-#[derive(Deserialize, OpgModel)]
+#[derive(Deserialize, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct InputParamDTO {
-    #[opg(string, format = "any")]
+    #[schemars(schema_with = "any_schema")]
     pub param: Param,
-    #[opg(string, format = "any")]
     pub value: serde_json::Value,
 }
 
@@ -43,20 +44,20 @@ impl From<InputParamDTO> for InputParam {
     }
 }
 
-#[derive(Deserialize, OpgModel)]
+#[derive(Deserialize, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct EncodeParamRequest {
     pub input_params: Vec<InputParamDTO>,
 }
 
-#[derive(Deserialize, OpgModel)]
+#[derive(Deserialize, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct PrepareMessageRequest {
     pub sender_addr: String,
     pub public_key: String,
     pub target_account_addr: String,
     pub execution_flag: u8,
-    #[opg("value", string)]
+
     pub value: BigDecimal,
     pub bounce: bool,
     pub account_type: AccountType,
@@ -64,7 +65,7 @@ pub struct PrepareMessageRequest {
     pub function_details: Option<FunctionDetailsDTO>,
 }
 
-#[derive(Deserialize, OpgModel)]
+#[derive(Deserialize, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct SignedMessageRequest {
     pub sender_addr: String,
@@ -72,14 +73,14 @@ pub struct SignedMessageRequest {
     pub signature: String,
 }
 
-#[derive(Deserialize, OpgModel)]
+#[derive(Deserialize, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct SendMessageRequest {
     pub id: Option<Uuid>,
     pub sender_addr: String,
     pub target_account_addr: String,
     pub execution_flag: u8,
-    #[opg("value", string)]
+
     pub value: BigDecimal,
     pub bounce: bool,
     pub account_type: AccountType,
@@ -87,7 +88,7 @@ pub struct SendMessageRequest {
     pub function_details: Option<FunctionDetailsDTO>,
 }
 
-#[derive(Deserialize, OpgModel)]
+#[derive(Deserialize, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct SetCallbackRequest {
     pub callback: String,

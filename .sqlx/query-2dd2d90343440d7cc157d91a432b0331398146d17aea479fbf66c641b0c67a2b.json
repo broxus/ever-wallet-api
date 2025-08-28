@@ -1,0 +1,202 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            INSERT INTO token_transactions\n            (id, service_id, transaction_hash, transaction_timestamp, message_hash, owner_message_hash,\n            account_workchain_id, account_hex, value, sender_workchain_id, sender_hex, root_address,\n            payload, error, block_hash, block_time, direction, status, in_message_hash)\n            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19)\n            RETURNING id, service_id as \"service_id: _\", transaction_hash, transaction_timestamp, message_hash,\n                owner_message_hash, account_workchain_id, account_hex, value, sender_workchain_id, sender_hex,\n                root_address, payload, error, block_hash, block_time, direction as \"direction: _\",\n                status as \"status: _\", in_message_hash, created_at, updated_at",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "service_id: _",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 2,
+        "name": "transaction_hash",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 3,
+        "name": "transaction_timestamp",
+        "type_info": "Timestamp"
+      },
+      {
+        "ordinal": 4,
+        "name": "message_hash",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 5,
+        "name": "owner_message_hash",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 6,
+        "name": "account_workchain_id",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 7,
+        "name": "account_hex",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 8,
+        "name": "value",
+        "type_info": "Numeric"
+      },
+      {
+        "ordinal": 9,
+        "name": "sender_workchain_id",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 10,
+        "name": "sender_hex",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 11,
+        "name": "root_address",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 12,
+        "name": "payload",
+        "type_info": "Bytea"
+      },
+      {
+        "ordinal": 13,
+        "name": "error",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 14,
+        "name": "block_hash",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 15,
+        "name": "block_time",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 16,
+        "name": "direction: _",
+        "type_info": {
+          "Custom": {
+            "name": "twa_transaction_direction",
+            "kind": {
+              "Enum": [
+                "Send",
+                "Receive"
+              ]
+            }
+          }
+        }
+      },
+      {
+        "ordinal": 17,
+        "name": "status: _",
+        "type_info": {
+          "Custom": {
+            "name": "twa_token_transaction_status",
+            "kind": {
+              "Enum": [
+                "New",
+                "Done",
+                "Error"
+              ]
+            }
+          }
+        }
+      },
+      {
+        "ordinal": 18,
+        "name": "in_message_hash",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 19,
+        "name": "created_at",
+        "type_info": "Timestamp"
+      },
+      {
+        "ordinal": 20,
+        "name": "updated_at",
+        "type_info": "Timestamp"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid",
+        "Varchar",
+        "Timestamp",
+        "Varchar",
+        "Varchar",
+        "Int4",
+        "Varchar",
+        "Numeric",
+        "Int4",
+        "Varchar",
+        "Varchar",
+        "Bytea",
+        "Varchar",
+        "Varchar",
+        "Int4",
+        {
+          "Custom": {
+            "name": "twa_transaction_direction",
+            "kind": {
+              "Enum": [
+                "Send",
+                "Receive"
+              ]
+            }
+          }
+        },
+        {
+          "Custom": {
+            "name": "twa_token_transaction_status",
+            "kind": {
+              "Enum": [
+                "New",
+                "Done",
+                "Error"
+              ]
+            }
+          }
+        },
+        "Varchar"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      true,
+      true,
+      false,
+      true,
+      false,
+      false,
+      false,
+      true,
+      true,
+      false,
+      true,
+      true,
+      true,
+      true,
+      false,
+      false,
+      true,
+      false,
+      false
+    ]
+  },
+  "hash": "2dd2d90343440d7cc157d91a432b0331398146d17aea479fbf66c641b0c67a2b"
+}

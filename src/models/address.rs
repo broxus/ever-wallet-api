@@ -1,4 +1,6 @@
 use bigdecimal::BigDecimal;
+use schemars::JsonSchema;
+use ton_block::MsgAddressInt;
 
 use crate::models::*;
 
@@ -17,9 +19,8 @@ use crate::models::*;
     derive_more::Into,
     serde::Serialize,
     serde::Deserialize,
-    opg::OpgModel,
+    JsonSchema,
 )]
-#[opg(inline, string)]
 pub struct Address(pub String);
 
 #[derive(Clone, Debug, serde::Serialize, serde::Deserialize, Eq, PartialEq)]
@@ -97,7 +98,7 @@ pub struct NetworkAddressData {
 }
 
 impl NetworkAddressData {
-    pub fn uninit(owner: &ton_block::MsgAddressInt) -> NetworkAddressData {
+    pub fn uninit(owner: &MsgAddressInt) -> NetworkAddressData {
         NetworkAddressData {
             workchain_id: owner.workchain_id(),
             hex: owner.address().to_hex_string(),

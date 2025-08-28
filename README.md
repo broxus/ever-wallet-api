@@ -20,7 +20,7 @@ tracked, and there is a whitelist of root token addresses to be tracked in the s
 in the database, where you can specify the url of your backend to which callbacks will come for all transactions.
 
 It takes about 20 minutes to synchronize the node.
-Both the ton-wallet-api and callback requests use HMAC signatures in the headers.
+Both the tycho-wallet-api and callback requests use HMAC signatures in the headers.
 
 ### Runtime requirements
 - CPU: 4 cores, 2 GHz
@@ -32,25 +32,25 @@ Both the ton-wallet-api and callback requests use HMAC signatures in the headers
 ### How to run natively
 
 To simplify the build and create some semblance of standardization in this repository
-there is a set of scripts for configuring the ton-wallet-api.
+there is a set of scripts for configuring the tycho-wallet-api.
 
 NOTE: scripts are prepared and tested on **Ubuntu 20.04**. You may need to modify them a little for other distros.
 
-1. ##### Setup ton-wallet-api service
+1. ##### Setup tycho-wallet-api service
    ```bash
    ./scripts/setup.sh -t native --database-url ${DATABASE_URL}
    ```
 
-   DATABASE_URL - Postgres connection url (example: postgresql://postgres:postgres@127.0.0.1/ton_wallet_api)
+   DATABASE_URL - Postgres connection url (example: postgresql://postgres:postgres@127.0.0.1/tycho_wallet_api)
 
-   > At this stage, a systemd service `ton-wallet-api` is created. Configs and keys will be in `/etc/ton-wallet-api`
-   > and TON node DB will be in `/var/db/ton-wallet-api`.
+   > At this stage, a systemd service `tycho-wallet-api` is created. Configs and keys will be in `/etc/tycho-wallet-api`
+   > and TON node DB will be in `/var/db/tycho-wallet-api`.
 
    **Do not start this service yet!**
 
 2. ##### Prepare config
    Either add the environment variables to the `[Service]` section of unit file.
-   It is located at `/etc/systemd/system/ton-wallet-api.service`.
+   It is located at `/etc/systemd/system/tycho-wallet-api.service`.
 
    ```unit file (systemd)
    [Service]
@@ -58,7 +58,7 @@ NOTE: scripts are prepared and tested on **Ubuntu 20.04**. You may need to modif
    Environment=DB_HOST=db_host
    Environment=DB_USER=db_user
    Environment=DB_PASSWORD=db_password
-   Environment=DB_NAME=ton_wallet_api
+   Environment=DB_NAME=tycho_wallet_api
    Environment=SECRET=secret
    Environment=SALT=salt
    ...
@@ -71,7 +71,13 @@ NOTE: scripts are prepared and tested on **Ubuntu 20.04**. You may need to modif
    ###### How to gen SALT
    ```bash
    cargo build --release
-   ./target/release/ton-wallet-api salt
+   ./target/release/tycho-wallet-api salt
+   ```
+   
+   ###### How to gen config
+   ```bash
+   cargo build --release
+   SALT=salt SECRET=secret ./target/release/tycho-wallet-api server --init-config config.json
    ```
 
 3. ##### Create api service
@@ -79,20 +85,20 @@ NOTE: scripts are prepared and tested on **Ubuntu 20.04**. You may need to modif
      ./scripts/api_service.sh -t native --database-url ${DATABASE_URL} --id ${SERVICE_ID} --name ${SERVICE_NAME} --key ${SERVICE_KEY} --secret ${SERVICE_SECRET}
    ```
 
-   DATABASE_URL - Postgres connection url (example: postgresql://postgres:postgres@127.0.0.1/ton_wallet_api) \
+   DATABASE_URL - Postgres connection url (example: postgresql://postgres:postgres@127.0.0.1/tycho_wallet_api) \
    SERVICE_ID - Service id (UUID4) (example: 1fa337bd-2947-4809-9a7a-f04b4f9b738a) \
    SERVICE_NAME - Service name (example: test) \
    SERVICE_KEY - Public key (example: apiKey) \
    SERVICE_SECRET - Secret key (example: apiSecret)
 
-4. ##### Enable and start ton-wallet-api service
+4. ##### Enable and start tycho-wallet-api service
    ```bash
-   systemctl enable ton-wallet-api
-   systemctl start ton-wallet-api
+   systemctl enable tycho-wallet-api
+   systemctl start tycho-wallet-api
 
    # Optionally check if it is running normally. It will take some time to start.
-   # ton-wallet-api is fully operational when it prints `listening on ${your_listen_address}`
-   journalctl -fu ton-wallet-api
+   # tycho-wallet-api is fully operational when it prints `listening on ${your_listen_address}`
+   journalctl -fu tycho-wallet-api
    ```
 
    > Wallet API has a two built-in Prometheus metrics exporters: API and Node.
@@ -121,7 +127,7 @@ NOTE: scripts are prepared and tested on **Ubuntu 20.04**. You may need to modif
      ./scripts/update.sh -t native --database-url ${DATABASE_URL}
    ```
 
-   DATABASE_URL - Postgres connection url (example: postgresql://postgres:postgres@127.0.0.1/ton_wallet_api)
+   DATABASE_URL - Postgres connection url (example: postgresql://postgres:postgres@127.0.0.1/tycho_wallet_api)
 
 
 ### Let's start using Wallet API
@@ -151,7 +157,7 @@ NOTE: scripts are prepared and tested on **Ubuntu 20.04**. You may need to modif
      ./scripts/root_token.sh -t native --database-url ${DATABASE_URL} --name ${TOKEN_NAME} --address ${TOKEN_ADDRESS} --version ${TOKEN_CONTRACT_VERSION}
    ```
    
-   DATABASE_URL - Postgres connection url (example: postgresql://postgres:postgres@127.0.0.1/ton_wallet_api) \
+   DATABASE_URL - Postgres connection url (example: postgresql://postgres:postgres@127.0.0.1/tycho_wallet_api) \
    TOKEN_NAME - Token name (example: WTON) \
    TOKEN_ADDRESS - Token address (example: 0:0ee39330eddb680ce731cd6a443c71d9069db06d149a9bec9569d1eb8d04eb37)
    TOKEN_CONTRACT_VERSION - "Tip3" or "OldTip3v4"
@@ -279,55 +285,223 @@ echo -en "$stringToSign" | openssl sha256 -hmac "$secret" -binary | base64
 > NOTE: The syntax `${VAR}` can also be used everywhere in config. It will be
 > replaced by the value of the environment variable `VAR`.
 
-```yaml
----
-# Server address
-server_addr: "0.0.0.0:8080"
-# Database URL
-database_url: "postgresql://${DB_USER}:${DB_PASSWORD}@${DB_HOST}/${DB_NAME}"
-# Database Connection Pools
-db_pool_size: 5
-ton_core:
-  # UDP port, used for ADNL node. Default: 30303
-  adnl_port: 30303
-  # Root directory for ton-wallet-api DB. Default: "./db"
-  db_path: "/var/ton-wallet-api/db"
-  # Path to ADNL keys.
-  # NOTE: Will be generated if it was not there.
-  # Default: "./adnl-keys.json"
-  keys_path: "/var/ton-wallet-api/adnl-keys.json"
-metrics_settings:
-  # Listen address of metrics. Used by the client to gather prometheus metrics.
-  # Default: "127.0.0.1:10000"
-  listen_address: "127.0.0.1:10000"
-  # URL path to the metrics. Default: "/"
-  # Example: `curl http://127.0.0.1:10000/`
-  metrics_path: "/"
-  # Metrics update interval in seconds. Default: 10
-  collection_interval_sec: 10
-# log4rs settings.
-# See https://docs.rs/log4rs/1.0.0/log4rs/ for more details
-logger_settings:
-  appenders:
-    stdout:
-      kind: console
-      encoder:
-        pattern: "{d(%Y-%m-%d %H:%M:%S %Z)(utc)} - {h({l})} {M} = {m} {n}"
-  root:
-    level: error
-    appenders:
-      - stdout
-  loggers:
-    ton_wallet_api:
-      level: info
-      appenders:
-        - stdout
-      additive: false
-    ton_indexer:
-      level: error
-      appenders:
-        - stdout
-      additive: false
+```json
+{
+  "public_ip": null,
+  "local_ip": "0.0.0.0",
+  "port": 30000,
+  "network": {
+    "quic": null,
+    "connection_manager_channel_capacity": 128,
+    "connectivity_check_interval": "5s",
+    "max_frame_size": "8.4 MB",
+    "connect_timeout": "10s",
+    "connection_backoff": "10s",
+    "max_connection_backoff": "1m",
+    "connection_error_delay": "3s",
+    "max_concurrent_outstanding_connections": 100,
+    "max_concurrent_connections": null,
+    "active_peers_event_channel_capacity": 128,
+    "max_concurrent_requests_per_peer": 128,
+    "shutdown_idle_timeout": "1m",
+    "enable_0rtt": false,
+    "connection_metrics": null
+  },
+  "dht": {
+    "max_k": 6,
+    "max_peer_info_ttl": "1h",
+    "max_stored_value_ttl": "1h",
+    "max_storage_capacity": "16.8 MB",
+    "storage_item_time_to_idle": null,
+    "local_info_refresh_period": "1m",
+    "local_info_announce_period": "10m",
+    "local_info_announce_period_max_jitter": "1m",
+    "routing_table_refresh_period": "10m",
+    "routing_table_refresh_period_max_jitter": "1m",
+    "announced_peers_channel_capacity": 10
+  },
+  "peer_resolver": {
+    "max_parallel_resolve_requests": 100,
+    "min_ttl_sec": 600,
+    "update_before_sec": 1200,
+    "fast_retry_count": 10,
+    "min_successfull_resolve_interval": "1m",
+    "min_retry_interval": "1s",
+    "max_retry_interval": "2m",
+    "stale_retry_interval": "10m"
+  },
+  "overlay": {
+    "public_overlay_peer_store_period": "3m",
+    "public_overlay_peer_store_max_jitter": "30s",
+    "public_overlay_peer_store_max_entries": 20,
+    "public_overlay_peer_exchange_period": "3m",
+    "public_overlay_peer_exchange_max_jitter": "30s",
+    "public_overlay_peer_collect_period": "10s",
+    "public_overlay_peer_collect_max_jitter": "5s",
+    "public_overlay_peer_discovery_period": "3m",
+    "public_overlay_peer_discovery_max_jitter": "30s",
+    "exchange_public_entries_batch": 20
+  },
+  "public_overlay_client": {
+    "neighbors": {
+      "update_interval": "2m",
+      "ping_interval": "30s",
+      "apply_score_interval": "10s",
+      "keep": 5,
+      "max_ping_tasks": 5,
+      "default_roundtrip": "300ms",
+      "send_timeout": {
+        "secs": 0,
+        "nanos": 500000000
+      },
+      "query_timeout": {
+        "secs": 1,
+        "nanos": 0
+      }
+    },
+    "validators": {
+      "ping_interval": "1m",
+      "ping_timeout": "1s",
+      "keep": 5,
+      "max_ping_tasks": 5,
+      "send_timeout": {
+        "secs": 0,
+        "nanos": 500000000
+      }
+    }
+  },
+  "storage": {
+    "root_dir": "./db",
+    "rocksdb_enable_metrics": true,
+    "rocksdb_lru_capacity": "134.2 MB",
+    "cells_cache_size": "1.9 GB",
+    "archive_chunk_size": "1024.0 KB",
+    "split_block_tasks": 100,
+    "archives_gc": {
+      "persistent_state_offset": "5m"
+    },
+    "states_gc": {
+      "random_offset": true,
+      "interval": "1m"
+    },
+    "blocks_gc": {
+      "type": "BeforeSafeDistance",
+      "safe_distance": 1000,
+      "min_interval": "1m",
+      "enable_for_sync": true,
+      "max_blocks_per_batch": 100000
+    },
+    "blocks_cache": {
+      "ttl": "5m",
+      "size": "500.0 MB"
+    }
+  },
+  "blockchain_rpc_client": {
+    "min_broadcast_timeout": "100ms",
+    "too_new_archive_threshold": 4,
+    "download_retries": 10
+  },
+  "blockchain_rpc_service": {
+    "max_key_blocks_list_len": 8,
+    "serve_persistent_states": true
+  },
+  "blockchain_block_provider": {
+    "get_next_block_polling_interval": "1s",
+    "get_block_polling_interval": "1s",
+    "get_next_block_timeout": "2m",
+    "get_block_timeout": "1m"
+  },
+  "archive_block_provider": {
+    "max_archive_to_memory_size": "100.0 MB"
+  },
+  "rpc": null,
+  "metrics": {
+    "listen_addr": "127.0.0.1:10000"
+  },
+  "threads": {
+    "rayon_threads": 8,
+    "tokio_workers": 8
+  },
+  "profiling": {
+    "profiling_dir": ""
+  },
+  "logger_config": {
+    "outputs": [
+      {
+        "type": "Stderr"
+      }
+    ]
+  },
+  "starter": {
+    "custom_boot_offset": null
+  },
+  "api": {
+    "server_addr": "${SERVER_ADDR}",
+    "database_url": "postgresql://postgres:postgres@${DATABASE_ADDR}:5432/tycho_wallet_api",
+    "db_pool_size": 8,
+    "key": [
+      101,
+      247,
+      113,
+      21,
+      159,
+      244,
+      255,
+      167,
+      16,
+      129,
+      32,
+      34,
+      161,
+      5,
+      240,
+      97,
+      250,
+      232,
+      42,
+      55,
+      221,
+      67,
+      175,
+      105,
+      229,
+      178,
+      134,
+      166,
+      208,
+      30,
+      180,
+      236
+    ],
+    "api_metrics_addr": null,
+    "node_metrics_settings": null,
+    "logger_settings": {
+      "appenders": {
+        "stdout": {
+          "kind": "console",
+          "encoder": {
+            "pattern": "{d(%Y-%m-%d %H:%M:%S %Z)(utc)} - {h({l})} {M} = {m} {n}"
+          }
+        }
+      },
+      "root": {
+        "level": "info",
+        "appenders": [
+          "stdout"
+        ]
+      },
+      "loggers": {
+        "tycho_wallet_api": {
+          "level": "info",
+          "appenders": [
+            "stdout"
+          ],
+          "additive": false
+        }
+      }
+    }
+  }
+}
 ```
 
 ### How to Run via Docker/Podman
@@ -379,7 +553,7 @@ Once the images are built, you can run the container using Podman or Docker.
    podman run --network=host ever-wallet
    ```
 
-   This will run the `ton-wallet-api` server using the default configuration files already existing in the container.
+   This will run the `tycho-wallet-api` server using the default configuration files already existing in the container.
    Errors shall be expected at this step.
 
    ```bash
@@ -394,7 +568,7 @@ Once the images are built, you can run the container using Podman or Docker.
 
    ```bash
    podman run --network=host \
-     -v /tmp/everscale-data:/var/db/ton-wallet-api
+     -v /tmp/everscale-data:/var/db/tycho-wallet-api
      -e DB_USER=everscale \
      -e DB_PASSWORD=everscale \
      -e DB_HOST=localhost \
@@ -412,4 +586,4 @@ Once the images are built, you can run the container using Podman or Docker.
 When the node is out of sync, which especially applies for Venom, removing database and re-syncing node may help to
 restore service operations.
 
-`rm -rf /var/db/ton-wallet-api`
+`rm -rf /var/db/tycho-wallet-api`

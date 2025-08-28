@@ -1,5 +1,5 @@
-use axum::extract::Path;
-use axum::{Extension, Json};
+use axum::extract::{Path, State};
+use axum::Json;
 use tokio::time::Instant;
 
 use metrics::{histogram, increment_counter};
@@ -11,9 +11,9 @@ use crate::api::*;
 use crate::models::*;
 
 pub async fn post_address_create(
-    Json(req): Json<CreateAddressRequest>,
-    Extension(ctx): Extension<Arc<ApiContext>>,
+    State(ctx): State<ApiContext>,
     IdExtractor(service_id): IdExtractor,
+    Json(req): Json<CreateAddressRequest>,
 ) -> Result<Json<AddressResponse>> {
     let start = Instant::now();
 
@@ -31,8 +31,8 @@ pub async fn post_address_create(
 }
 
 pub async fn post_address_check(
+    State(ctx): State<ApiContext>,
     Json(req): Json<AddressCheckRequest>,
-    Extension(ctx): Extension<Arc<ApiContext>>,
 ) -> Result<Json<CheckedAddressResponse>> {
     let address = ctx
         .ton_service
@@ -45,7 +45,7 @@ pub async fn post_address_check(
 
 pub async fn get_address_balance(
     Path(address): Path<Address>,
-    Extension(ctx): Extension<Arc<ApiContext>>,
+    State(ctx): State<ApiContext>,
     IdExtractor(service_id): IdExtractor,
 ) -> Result<Json<AddressBalanceResponse>> {
     let address = ctx
@@ -59,7 +59,7 @@ pub async fn get_address_balance(
 
 pub async fn get_address_info(
     Path(address): Path<Address>,
-    Extension(ctx): Extension<Arc<ApiContext>>,
+    State(ctx): State<ApiContext>,
     IdExtractor(service_id): IdExtractor,
 ) -> Result<Json<AddressInfoResponse>> {
     let address = ctx
@@ -73,7 +73,7 @@ pub async fn get_address_info(
 
 pub async fn get_token_address_balance(
     Path(address): Path<Address>,
-    Extension(ctx): Extension<Arc<ApiContext>>,
+    State(ctx): State<ApiContext>,
     IdExtractor(service_id): IdExtractor,
 ) -> Result<Json<TokenBalanceResponse>> {
     let addresses = ctx

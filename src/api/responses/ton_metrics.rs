@@ -1,11 +1,10 @@
-use opg::OpgModel;
+use schemars::JsonSchema;
 use serde::Serialize;
 
 use crate::models::*;
 
-#[derive(Serialize, OpgModel)]
+#[derive(Serialize, JsonSchema)]
 #[serde(rename_all = "camelCase")]
-#[opg("MetricsResponse")]
 pub struct MetricsResponse {
     pub gen_utime: u32,
 }

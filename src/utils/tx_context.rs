@@ -1,3 +1,4 @@
+use everscale_types::models::BlockId;
 use nekoton::transport::models::ExistingContract;
 use tokio::sync::oneshot;
 use ton_types::UInt256;
@@ -6,19 +7,18 @@ pub trait ReadFromTransaction: Sized {
     fn read_from_transaction(ctx: &TxContext<'_>, state: HandleTransactionStatusTx)
         -> Option<Self>;
 }
-
 pub trait ReadFromState: Sized {
     fn read_from_state(ctx: &StateContext<'_>, state: HandleTransactionStatusTx) -> Self;
 }
 
 #[derive(Copy, Clone)]
 pub struct StateContext<'a> {
-    pub block_id: &'a ton_block::BlockIdExt,
+    pub block_id: &'a BlockId,
 }
 
 #[derive(Copy, Clone)]
 pub struct TxContext<'a> {
-    pub block_info: &'a ton_block::BlockInfo,
+    pub block_info_gen_utime: u32,
     pub block_hash: &'a UInt256,
     pub account: &'a UInt256,
     pub transaction_hash: &'a UInt256,
@@ -52,7 +52,6 @@ impl TxContext<'_> {
             None
         }
     }
-
     #[allow(dead_code)]
     pub fn find_function_output(
         &self,
@@ -126,6 +125,5 @@ pub enum HandleTransactionStatus {
     Success,
     Fail,
 }
-
 pub type HandleTransactionStatusTx = oneshot::Sender<HandleTransactionStatus>;
 pub type HandleTransactionStatusRx = oneshot::Receiver<HandleTransactionStatus>;

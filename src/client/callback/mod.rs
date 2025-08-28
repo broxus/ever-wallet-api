@@ -1,8 +1,7 @@
 use anyhow::Result;
 use chrono::Utc;
-use http::Method;
 use nekoton_utils::TrustMe;
-use reqwest::Url;
+use reqwest::{Method, StatusCode, Url};
 
 use crate::models::*;
 
@@ -33,7 +32,7 @@ impl CallbackClient {
         payload: AccountTransactionEvent,
         secret: String,
     ) -> Result<()> {
-        let nonce = Utc::now().naive_utc().timestamp() * 1000;
+        let nonce = Utc::now().naive_utc().and_utc().timestamp() * 1000;
 
         let body = serde_json::to_string(&payload)?;
 
@@ -51,7 +50,7 @@ impl CallbackClient {
             .send()
             .await?;
 
-        if res.status() != http::StatusCode::OK {
+        if res.status() != StatusCode::OK {
             anyhow::bail!(format!(
                 "Received status is not 200. Payload: {:#?}. Receive: {:?}.",
                 payload, res

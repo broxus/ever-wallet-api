@@ -2,7 +2,7 @@ use anyhow::Result;
 use bigdecimal::BigDecimal;
 use nekoton::core::models::{TokenIncomingTransfer, TokenWalletTransaction};
 use num_bigint::BigUint;
-use ton_block::MsgAddressInt;
+use ton_block::{GetRepresentationHash, MsgAddressInt};
 use ton_types::{AccountId, BuilderData};
 use uuid::Uuid;
 

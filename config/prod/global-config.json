@@ -1,0 +1,103 @@
+{
+  "bootstrap_peers": [
+    {
+      "id": "23ecc8ae7a19b8bc7bd2a5eccfc87875a38ade6598bed613e149e9f0103d8548",
+      "address_list": ["57.129.53.62:30000"],
+      "created_at": 1738174526,
+      "expires_at": 4294967295,
+      "signature": "S+8qP0sL64kOGDwY5VBKz/RsD6HGZx0LYswnFlt9q5AhEaoA4JcLUsPPENj5zfPdhm9bMedjIMtzPEkvYsSFCA=="
+    },
+    {
+      "id": "a8541e256904f36cbae7cf03d10c5a20c55a8c6473a09bf2c65ed9826c267485",
+      "address_list": ["57.129.53.60:30000"],
+      "created_at": 1738174526,
+      "expires_at": 4294967295,
+      "signature": "pA8b1RtNsckjVDtzM4ZM5mFCkFLQdWYXMoEE6rjhFdSo/jk9MVDa+QgujdQIJyrWg/4tEPI+Fbe63W8z4h3TBw=="
+    },
+    {
+      "id": "85ee82cf5eec189141ff48b7aaa27f4a17c0a6d0c5459f99d255497c75898fe2",
+      "address_list": ["57.129.53.58:30000"],
+      "created_at": 1738174526,
+      "expires_at": 4294967295,
+      "signature": "6BFSI97s4CS9FBp7kE2JLIysFY9nwhezeQPjLpYFLn+KJHeeoGxgH8xF/6kbmOU7nxscmVV5Dk0aBmfWh8n/Bw=="
+    },
+    {
+      "id": "ccbf488d1a8f98ce173733188ea47cb537ca3baa47cc25b960f6e6b1f0595768",
+      "address_list": ["57.129.53.63:30000"],
+      "created_at": 1738174526,
+      "expires_at": 4294967295,
+      "signature": "brYwODCysagSj1qooysnaaJ1xSNRMB2DH+WXLQ/YAjCv1bNf9E/HCdUbcC3f4tn9sWb6do+1CjO2enHl5JDjBQ=="
+    },
+    {
+      "id": "1778eb66b9386bcc37031cad14d73e4554413b23d16b4b680726375a622f3a5b",
+      "address_list": ["57.129.53.59:30000"],
+      "created_at": 1738174526,
+      "expires_at": 4294967295,
+      "signature": "BZhVYgAjOP4RX0PnL9ACNMyYN8ElI/t3lMSTCckxEUfltBd32k2FC/MnVqaGyHf4NUW1jCTxgcozcaZDi7dxDQ=="
+    },
+    {
+      "id": "dd3a881a8fe874b9f6f398a18da66363743675f453470a2639411c6ebd3e33c4",
+      "address_list": ["57.129.53.61:30000"],
+      "created_at": 1738174526,
+      "expires_at": 4294967295,
+      "signature": "w7BKzJ8zewRbKJRufBKnvCzmPqf+wOJvgInQPHkBduC6JSaCDSeaXugSxFX27RWj498pIxptBmPifl8IDCQwDg=="
+    },
+    {
+      "id": "1bee52331b5e4987993a3fc9b86493dbcb024a9099b728a57907df0a19a6e386",
+      "address_list": ["57.129.53.57:30000"],
+      "created_at": 1738174526,
+      "expires_at": 4294967295,
+      "signature": "Z4nRrO8fFjDncvI5nXvVweVkXixtyoHkGIq4TH/tjNl9dMj0PgwQe2/rQGapGsCxwJP2m307UrTOVvj7lvEQDw=="
+    },
+    {
+      "id": "91c88f5066a4fcccb4e3cdd0d9ca0980c01657ecf68feb429e60c0af63aa026a",
+      "address_list": ["79.137.100.38:30000"],
+      "created_at": 1738174526,
+      "expires_at": 4294967295,
+      "signature": "yq2G5OfFH7Yeusl3poyWqBHQ8tLrahfVdgJE1Gk+zslaJANDKzuIAZ03dvB8DuuqPVmvuKTOOuG3zttWEHFSDg=="
+    },
+    {
+      "id": "46130918ae9128cd1386a1d3e0199883832e242776332680d023efd017e8f24e",
+      "address_list": ["79.137.100.31:30000"],
+      "created_at": 1738174526,
+      "expires_at": 4294967295,
+      "signature": "yDHieT5xIm+En0+L5JoUqnff67AVntJt7t1/JzvQR7b13GpIgnN7iybyeAt6C37j7pXDDUgh5zHPhB4zyxUUCQ=="
+    },
+    {
+      "id": "28fa39e1bddd9c35a108a4d50ec3e2abe72e52df4600133fa6b83ec88f4d1c16",
+      "address_list": ["79.137.100.39:30000"],
+      "created_at": 1738174526,
+      "expires_at": 4294967295,
+      "signature": "EsXtOT5rmMwq40ejiWLHqlmGgT3gCHXUBp98mq9M7kVDZEF8Sg694Eg4ElBsazfOA8nR3rjMIkNf3lP9zeAlCw=="
+    },
+    {
+      "id": "a73d64ecf807634d9fbbf094bf20734b6e0b39f2665ca9cc1de876f84dbdb17b",
+      "address_list": ["79.137.100.30:30000"],
+      "created_at": 1738174526,
+      "expires_at": 4294967295,
+      "signature": "ToKLDeUoffmefqG6uG+RAg/jByUbaXvY09r4TS902cndlMJ8YUFlAzchM816SsT/eNdN/QS3K/QPam4IhVyaAg=="
+    },
+    {
+      "id": "4122dfc139febe5a86e59c975062fe3206cbbf6dc814dba175ca5d41b026f7f0",
+      "address_list": ["79.137.100.34:30000"],
+      "created_at": 1738174526,
+      "expires_at": 4294967295,
+      "signature": "ZBwSHcbPVeoiispCbkxxpolm+kAumDZpfDfv48VQlJr3vMoA0rdYgF4fWzZXR7SOsXfKQU/KS+FJ7gFEDqRkCA=="
+    },
+    {
+      "id": "f630e9314c9d21d28b8dc4dde7507bf1e0d13a7dae540f08f8b00ea100c4bd34",
+      "address_list": ["79.137.100.33:30000"],
+      "created_at": 1738174526,
+      "expires_at": 4294967295,
+      "signature": "hhlNUKbwAD+v3TBzYZa+uIiOXvaMx0KsAnbpBWonhPOlw9CV51ptTuGzhnmzCpnzrft2H51BHBIaRmjLVI9qDg=="
+    }
+  ],
+  "zerostate": {
+    "root_hash": "68ce2ad5df408d4776d91467ff1b88a77e059a2cbff404dd6870154d78899ea9",
+    "file_hash": "538111b4d0f2cda3b7d5e0389c74a0f5e6028583d92cf0f85d6f39a39f5a8551"
+  },
+  "mempool": {
+    "start_round": 28924049,
+    "genesis_millis": 1746729231652
+  }
+}

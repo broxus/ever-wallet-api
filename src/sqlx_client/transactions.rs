@@ -97,10 +97,11 @@ impl SqlxClient {
         let transaction_timestamp = payload
             .transaction_timestamp
             .map(|transaction_timestamp| {
-                NaiveDateTime::from_timestamp_opt(transaction_timestamp as i64, 0)
+                DateTime::from_timestamp(transaction_timestamp as i64, 0)
                     .context("Invalid transaction timestamp")
             })
-            .transpose()?;
+            .transpose()?
+            .map(|transaction_timestamp| transaction_timestamp.naive_utc());
 
         let (transaction, event) = match sqlx::query_as!(TransactionDb,
                 r#"
@@ -294,8 +295,9 @@ impl SqlxClient {
         let mut tx = self.pool.begin().await?;
         let transaction_id = Uuid::new_v4();
         let transaction_timestamp =
-            NaiveDateTime::from_timestamp_opt(payload.transaction_timestamp.trust_me() as i64, 0)
-                .context("Invalid transaction timestamp")?;
+            DateTime::from_timestamp(payload.transaction_timestamp.trust_me() as i64, 0)
+                .context("Invalid transaction timestamp")?
+                .naive_utc();
 
         let transaction = sqlx::query_as!(TransactionDb,
                 r#"
@@ -383,8 +385,9 @@ impl SqlxClient {
     ) -> Result<(TransactionDb, TransactionEventDb)> {
         let mut tx = self.pool.begin().await?;
         let transaction_timestamp =
-            NaiveDateTime::from_timestamp_opt(payload.transaction_timestamp as i64, 0)
-                .context("Invalid transaction timestamp")?;
+            DateTime::from_timestamp(payload.transaction_timestamp as i64, 0)
+                .context("Invalid transaction timestamp")?
+                .naive_utc();
 
         let transaction = sqlx::query_as!(TransactionDb,
                 r#"
@@ -616,7 +619,7 @@ impl SqlxClient {
             },
         };
 
-        let updates = filter_transaction_query(&mut args, &mut args_len, input);
+        let updates = filter_transaction_query(&mut args, &mut args_len, input)?;
 
         let query: String = format!(
             r#"SELECT id, service_id as "service_id: _", message_hash, transaction_hash, transaction_lt, transaction_timeout,
@@ -675,7 +678,7 @@ pub fn filter_transaction_query(
     args: &mut PgArguments,
     args_len: &mut i32,
     input: &TransactionsSearch,
-) -> Vec<String> {
+) -> Result<Vec<String>> {
     let TransactionsSearch {
         id,
         message_hash,
@@ -712,7 +715,7 @@ pub fn filter_transaction_query(
             updates.push(format!(" AND account_workchain_id = ${} ", *args_len + 1,));
             *args_len += 1;
             args.add(account.workchain_id())
-                .map_err(sqlx::Error::Encode);
+                .map_err(sqlx::Error::Encode)?;
             updates.push(format!(" AND account_hex = ${} ", *args_len + 1,));
             *args_len += 1;
             args.add(account.address().to_hex_string())
@@ -736,29 +739,31 @@ pub fn filter_transaction_query(
         updates.push(format!(" AND created_at >= ${} ", *args_len + 1,));
         *args_len += 1;
         args.add(
-            NaiveDateTime::from_timestamp_opt(
+            DateTime::from_timestamp(
                 created_at_min / 1000,
                 ((created_at_min % 1000) * 1_000_000) as u32,
             )
-            .expect("Shouldn't fail"),
+            .expect("Shouldn't fail")
+            .naive_utc(),
         )
-        .map_err(sqlx::Error::Encode);
+        .map_err(sqlx::Error::Encode)?;
     }
 
     if let Some(created_at_max) = created_at_max {
         updates.push(format!(" AND created_at <= ${} ", *args_len + 1,));
         *args_len += 1;
         args.add(
-            NaiveDateTime::from_timestamp_opt(
+            DateTime::from_timestamp(
                 created_at_max / 1000,
                 ((created_at_max % 1000) * 1_000_000) as u32,
             )
-            .expect("Shouldn't fail"),
+            .expect("Shouldn't fail")
+            .naive_utc(),
         )
-        .map_err(sqlx::Error::Encode);
+        .map_err(sqlx::Error::Encode)?;
     }
 
-    updates
+    Ok(updates)
 }
 
 #[cfg(test)]

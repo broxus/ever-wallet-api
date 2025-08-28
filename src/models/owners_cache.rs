@@ -38,7 +38,7 @@ impl OwnersCache {
                         got.owner_account_workchain_id, got.owner_account_hex
                     ))
                     .trust_me(),
-                    root_address: nekoton_utils::repack_address(&got.root_address).trust_me(),
+                    root_address: MsgAddressInt::from_str(&got.root_address).trust_me(),
                     code_hash: got.code_hash,
                     version: got.version.into(),
                 }
@@ -60,7 +60,7 @@ impl OwnersCache {
             version: value.version.into(),
         };
         if let Err(e) = self.db.new_token_owner(&owner).await {
-            log::error!("Failed inserting owner info: {}", e)
+            tracing::error!("Failed inserting owner info: {}", e)
         }
     }
 }
@@ -80,14 +80,14 @@ impl OwnersCache {
         let mut cache = LruCache::new(NonZeroUsize::new(5000).trust_me());
         balances.into_iter().for_each(|x| {
             cache.put(
-                nekoton_utils::repack_address(&x.address).trust_me(),
+                MsgAddressInt::from_str(&x.address).trust_me(),
                 OwnerInfo {
                     owner_address: MsgAddressInt::from_str(&format!(
                         "{}:{}",
                         x.owner_account_workchain_id, x.owner_account_hex
                     ))
                     .trust_me(),
-                    root_address: nekoton_utils::repack_address(&x.root_address).trust_me(),
+                    root_address: MsgAddressInt::from_str(&x.root_address).trust_me(),
                     code_hash: x.code_hash,
                     version: x.version.into(),
                 },

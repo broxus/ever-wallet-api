@@ -131,12 +131,13 @@ impl SqlxClient {
         args.add(event_status).map_err(sqlx::Error::Encode)?;
         args.add(service_id.inner()).map_err(sqlx::Error::Encode)?;
 
-        let old = old_event_status
-            .map(|old| {
-                args.add(old).map_err(sqlx::Error::Encode);
-                "AND te.event_status = $3"
-            })
-            .unwrap_or_default();
+        let old = if let Some(old) = old_event_status {
+            args.add(old).map_err(sqlx::Error::Encode)?;
+            "AND te.event_status = $3"
+        } else {
+            ""
+        };
+
         let query = format!(
             r#"UPDATE transaction_events te SET event_status = $1
             FROM transactions t

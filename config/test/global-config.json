@@ -1,0 +1,129 @@
+{
+  "bootstrap_peers": [
+    {
+      "id": "18e186f43eb2164e700b9f769364782ba7e7e10beb83c5499a2af9b7189e047a",
+      "address_list": [
+        "45.92.131.15:30000"
+      ],
+      "created_at": 1741701048,
+      "expires_at": 4294967295,
+      "signature": "BfQ+DSUx/php60P4IukZAVsltYNNVu1wt3yznG+mMtAnhbvqCsegvSKmhSLxLj6QOhCk6JJ3C4DmKP6w1p4ECw=="
+    },
+    {
+      "id": "b65977938c53320e2c54e03975950ea1560913a9b97f50a42522ad15694f7016",
+      "address_list": [
+        "45.92.131.16:30000"
+      ],
+      "created_at": 1741701048,
+      "expires_at": 4294967295,
+      "signature": "0QN/Cre228uILh+8+MXK7aPPMOogtRrFDpWIzlMZgLwZj7bac4VPwop1+nZ9H+zClejglNGr2J/wFthtsYeBCg=="
+    },
+    {
+      "id": "71433aac2435a5eed9f5baea3f44da7a5f149ae2476fcbe78253ad39609ebdc9",
+      "address_list": [
+        "45.92.131.17:30000"
+      ],
+      "created_at": 1741701048,
+      "expires_at": 4294967295,
+      "signature": "h3zU8p7UknWiZfNTHst7pAgm2VxCXdJ+fTQfB+Jov10LoDEMHzZFcSKgpG1ph0XRocl8b2XhRGQuVq6yjSxqCQ=="
+    },
+    {
+      "id": "bdcbf462eff4c6cf38ec8740973ce557778a20598b771c62c6528b6ce6df364e",
+      "address_list": [
+        "194.0.107.2:30000"
+      ],
+      "created_at": 1741701048,
+      "expires_at": 4294967295,
+      "signature": "iUuRJMCxRRuZZuosut4d5vle0KO5f5JuGy117YOegYHEavIgKlKCxTyf3+n7aoVOc3juWWEh8P/pLR7nOQsEDw=="
+    },
+    {
+      "id": "d80ec747625d7940b45b478ad94746a89bc7c8e848ccbe6aaca982a0332fb6f4",
+      "address_list": [
+        "194.0.107.3:30000"
+      ],
+      "created_at": 1741701049,
+      "expires_at": 4294967295,
+      "signature": "s+cGP+QRNsq/UT5rxRjdltNq/yHgrWHZEsnSZM+M6mMhJeOYB1iZQqgFDIhk0qDPfG71tG36yEOmPLJiS+zWBQ=="
+    },
+    {
+      "id": "966ef478293afebd9b8913646e5b5e7881fbcc994a121c18666111d9ee2dcf27",
+      "address_list": [
+        "194.0.107.4:30000"
+      ],
+      "created_at": 1741701049,
+      "expires_at": 4294967295,
+      "signature": "Y8CJftbIXRFI4MAbcNeYmgaPF9+f7DT+nd6/gK6eNba5vfbVNVF71/gdnWR6IUu/E7tRcwysXX4jNV9Vxq/5AQ=="
+    },
+    {
+      "id": "f5ed69c810d14533c81074b3698e523bec0452a41809487b277896fdce8e25d1",
+      "address_list": [
+        "194.0.107.5:30000"
+      ],
+      "created_at": 1741701049,
+      "expires_at": 4294967295,
+      "signature": "PN3r2hOOR3DF1CHt3G6MrYx01+P3g5XYinBm5ZjzPn8nlvBh7qtpYjkGtyztdJMHta/U249Ty5BXITWoYNY/Aw=="
+    },
+    {
+      "id": "cc02616327cb38af9488d1ccb5441b5608541e251da3720448f3a8243589111b",
+      "address_list": [
+        "194.0.107.6:30000"
+      ],
+      "created_at": 1741701049,
+      "expires_at": 4294967295,
+      "signature": "k8I3cVM0ELVeOshZe/KLYmp7j/xxV0k4RIsn2JsDRYiXIc0HHnzKc8KGbLVpS7/6DB6to/OrVplt22SMoXRaAA=="
+    },
+    {
+      "id": "fa7e5dcb7af82915d502a8aac4578f3f3bf08656b37c95236676434e6c148c3e",
+      "address_list": [
+        "194.0.107.7:30000"
+      ],
+      "created_at": 1741701049,
+      "expires_at": 4294967295,
+      "signature": "sZFPKcU6/JkbxvwPq3hWvxC9grxq0vuEtY4AklwD9Y0WQrrZpG6ewhFDQLB4napDFvDoE4a1d3Gim4TOrSTTDg=="
+    },
+    {
+      "id": "9d10bad3ec84506542dee0b5fcbb9384cc9f71cbe72ac88956a04d3e103fe63d",
+      "address_list": [
+        "194.0.107.8:30000"
+      ],
+      "created_at": 1741701049,
+      "expires_at": 4294967295,
+      "signature": "oBwv6S1zu1sDXy/iKrmmNmsGGlF3GtIcY5vOwaD17hFDDhWOWz3Dd4UHYvh6CAZpR5T2kOVtbvs3kZZ2FxwbDQ=="
+    },
+    {
+      "id": "e2a087b9b47b7d12ec8db2c5a139671ca79f4cb266d6ef5d071469c6f25be7f1",
+      "address_list": [
+        "194.0.107.9:30000"
+      ],
+      "created_at": 1741701049,
+      "expires_at": 4294967295,
+      "signature": "pJu7KEmAXqtqvNtRt416UuE/gUpPvisQ80g3Fu2g+UX/e4wzqqASTsVHmU2QT1yXpUl/1PUsdLL/bL3LcvqsAg=="
+    },
+    {
+      "id": "13ce86f27c4a02728b2bb457980c327fc4280f449cbdc82711d7648a3e9fe8aa",
+      "address_list": [
+        "194.0.107.10:30000"
+      ],
+      "created_at": 1741701049,
+      "expires_at": 4294967295,
+      "signature": "LWDwvojEz/oGCn7yrmHFtIsYQBcED0bkJhnZL8gTqD+BzBg24g2GW8AGuaWI0I6G8YPGv8DcVNLPpSVaasZxBQ=="
+    },
+    {
+      "id": "f398a8599afd472e94e139fc10ffd9775579e4d9b8ae767b50ebe8f0df1468f1",
+      "address_list": [
+        "194.0.107.11:30000"
+      ],
+      "created_at": 1741701049,
+      "expires_at": 4294967295,
+      "signature": "5rwS2ETu7Xqoh3cPi3unnqWOfcSOQT/kw/Z9YwH3bgrXWx13M+RtjgAeZ3CNSxgSK4qNNFqZzqb0EExtAfsuAA=="
+    }
+  ],
+  "zerostate": {
+    "root_hash": "fdd82b5fc143b114389463dee30f9aaf99b8e14f503e1fc7a88542c0275bdbb2",
+    "file_hash": "74b30c8a96a96a63110d01ad54040ec7bc1a500f6d2c18b5b32c7943578a1789"
+  },
+  "mempool": {
+    "start_round": 32396325,
+    "genesis_millis": 1749559078161
+  }
+}

@@ -3,7 +3,7 @@
 set -e
 
 SERVICE_DIR=app
-SERVICE=ton-wallet-api
+SERVICE=tycho-wallet-api
 USER=ton
 GROUP=ton
 
