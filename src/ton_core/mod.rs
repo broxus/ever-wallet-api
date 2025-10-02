@@ -150,7 +150,7 @@ impl TonCoreContext {
             if let Ok(state) = self
                 .storage
                 .shard_state_storage()
-                .load_state(&block_id)
+                .load_state(last_block_id.seqno, &block_id)
                 .await
             {
                 self.ton_subscriber
@@ -161,7 +161,7 @@ impl TonCoreContext {
         let mc_state = self
             .storage
             .shard_state_storage()
-            .load_state(last_block_id)
+            .load_state(last_block_id.seqno, last_block_id)
             .await?;
 
         let config = mc_state.config_params()?;
