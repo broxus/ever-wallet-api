@@ -1,0 +1,56 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO token_whitelist\n                (name, address, version)\n                VALUES ($1, $2, $3::twa_token_wallet_version)\n                RETURNING\n                name, address, version as \"version: _\" ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "name",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 1,
+        "name": "address",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 2,
+        "name": "version: _",
+        "type_info": {
+          "Custom": {
+            "name": "twa_token_wallet_version",
+            "kind": {
+              "Enum": [
+                "OldTip3v4",
+                "Tip3"
+              ]
+            }
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Varchar",
+        "Varchar",
+        {
+          "Custom": {
+            "name": "twa_token_wallet_version",
+            "kind": {
+              "Enum": [
+                "OldTip3v4",
+                "Tip3"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "3ed5a8c725e537965ebc5c9eb31781918c432b48c652f6ec297557957b321b2a"
+}

@@ -1,0 +1,218 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            SELECT id, service_id as \"service_id: _\", message_hash, transaction_hash, transaction_lt, transaction_timeout,\n                transaction_scan_lt, transaction_timestamp, sender_workchain_id, sender_hex, account_workchain_id, account_hex, messages, messages_hash, data,\n                original_value, original_outputs, value, fee, balance_change, direction as \"direction: _\", status as \"status: _\",\n                error, aborted, bounce, multisig_transaction_id, created_at, updated_at\n            FROM transactions\n            WHERE status = $1",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "service_id: _",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 2,
+        "name": "message_hash",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 3,
+        "name": "transaction_hash",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 4,
+        "name": "transaction_lt",
+        "type_info": "Numeric"
+      },
+      {
+        "ordinal": 5,
+        "name": "transaction_timeout",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 6,
+        "name": "transaction_scan_lt",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 7,
+        "name": "transaction_timestamp",
+        "type_info": "Timestamp"
+      },
+      {
+        "ordinal": 8,
+        "name": "sender_workchain_id",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 9,
+        "name": "sender_hex",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 10,
+        "name": "account_workchain_id",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 11,
+        "name": "account_hex",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 12,
+        "name": "messages",
+        "type_info": "Jsonb"
+      },
+      {
+        "ordinal": 13,
+        "name": "messages_hash",
+        "type_info": "Jsonb"
+      },
+      {
+        "ordinal": 14,
+        "name": "data",
+        "type_info": "Jsonb"
+      },
+      {
+        "ordinal": 15,
+        "name": "original_value",
+        "type_info": "Numeric"
+      },
+      {
+        "ordinal": 16,
+        "name": "original_outputs",
+        "type_info": "Jsonb"
+      },
+      {
+        "ordinal": 17,
+        "name": "value",
+        "type_info": "Numeric"
+      },
+      {
+        "ordinal": 18,
+        "name": "fee",
+        "type_info": "Numeric"
+      },
+      {
+        "ordinal": 19,
+        "name": "balance_change",
+        "type_info": "Numeric"
+      },
+      {
+        "ordinal": 20,
+        "name": "direction: _",
+        "type_info": {
+          "Custom": {
+            "name": "twa_transaction_direction",
+            "kind": {
+              "Enum": [
+                "Send",
+                "Receive"
+              ]
+            }
+          }
+        }
+      },
+      {
+        "ordinal": 21,
+        "name": "status: _",
+        "type_info": {
+          "Custom": {
+            "name": "twa_transaction_status",
+            "kind": {
+              "Enum": [
+                "New",
+                "Done",
+                "PartiallyDone",
+                "Error"
+              ]
+            }
+          }
+        }
+      },
+      {
+        "ordinal": 22,
+        "name": "error",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 23,
+        "name": "aborted",
+        "type_info": "Bool"
+      },
+      {
+        "ordinal": 24,
+        "name": "bounce",
+        "type_info": "Bool"
+      },
+      {
+        "ordinal": 25,
+        "name": "multisig_transaction_id",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 26,
+        "name": "created_at",
+        "type_info": "Timestamp"
+      },
+      {
+        "ordinal": 27,
+        "name": "updated_at",
+        "type_info": "Timestamp"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        {
+          "Custom": {
+            "name": "twa_transaction_status",
+            "kind": {
+              "Enum": [
+                "New",
+                "Done",
+                "PartiallyDone",
+                "Error"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      false,
+      false,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      false,
+      false,
+      true,
+      false,
+      false,
+      true,
+      false,
+      false
+    ]
+  },
+  "hash": "3aeff4a59e43c7842d108fcef08a2d25662a4d6e89a14421402f1aa2c588e350"
+}
