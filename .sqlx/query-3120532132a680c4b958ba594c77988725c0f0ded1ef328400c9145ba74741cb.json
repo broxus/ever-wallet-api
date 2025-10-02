@@ -1,0 +1,163 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            UPDATE token_transaction_events tte SET event_status = $1\n            FROM token_transactions tt\n            WHERE tte.service_id = $2 AND tte.id = $3\n                AND tte.token_transaction_id = tt.id\n            RETURNING tte.id,\n                tte.service_id as \"service_id: _\",\n                tte.token_transaction_id,\n                tt.transaction_hash as token_transaction_hash,\n                tte.message_hash,\n                tte.account_workchain_id,\n                tte.account_hex,\n                tte.owner_message_hash,\n                tte.value,\n                tte.sender_workchain_id,\n                tte.sender_hex,\n                tte.root_address,\n                tte.transaction_direction as \"transaction_direction: _\",\n                tte.transaction_status as \"transaction_status: _\",\n                tte.event_status as \"event_status: _\",\n                tte.created_at, tte.updated_at",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "service_id: _",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 2,
+        "name": "token_transaction_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 3,
+        "name": "token_transaction_hash",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 4,
+        "name": "message_hash",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 5,
+        "name": "account_workchain_id",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 6,
+        "name": "account_hex",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 7,
+        "name": "owner_message_hash",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 8,
+        "name": "value",
+        "type_info": "Numeric"
+      },
+      {
+        "ordinal": 9,
+        "name": "sender_workchain_id",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 10,
+        "name": "sender_hex",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 11,
+        "name": "root_address",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 12,
+        "name": "transaction_direction: _",
+        "type_info": {
+          "Custom": {
+            "name": "twa_transaction_direction",
+            "kind": {
+              "Enum": [
+                "Send",
+                "Receive"
+              ]
+            }
+          }
+        }
+      },
+      {
+        "ordinal": 13,
+        "name": "transaction_status: _",
+        "type_info": {
+          "Custom": {
+            "name": "twa_token_transaction_status",
+            "kind": {
+              "Enum": [
+                "New",
+                "Done",
+                "Error"
+              ]
+            }
+          }
+        }
+      },
+      {
+        "ordinal": 14,
+        "name": "event_status: _",
+        "type_info": {
+          "Custom": {
+            "name": "twa_transaction_event_status",
+            "kind": {
+              "Enum": [
+                "New",
+                "Notified",
+                "Error"
+              ]
+            }
+          }
+        }
+      },
+      {
+        "ordinal": 15,
+        "name": "created_at",
+        "type_info": "Timestamp"
+      },
+      {
+        "ordinal": 16,
+        "name": "updated_at",
+        "type_info": "Timestamp"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        {
+          "Custom": {
+            "name": "twa_transaction_event_status",
+            "kind": {
+              "Enum": [
+                "New",
+                "Notified",
+                "Error"
+              ]
+            }
+          }
+        },
+        "Uuid",
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      true,
+      false,
+      false,
+      false,
+      true,
+      false,
+      true,
+      true,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "3120532132a680c4b958ba594c77988725c0f0ded1ef328400c9145ba74741cb"
+}
