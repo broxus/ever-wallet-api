@@ -23,6 +23,7 @@ function print_help() {
   echo '                          --dst-addr    Recipient address'
   echo '                          --root-addr   Root Token address'
   echo '                          --amount      Token amount'
+  echo '                          --send-gas-to Address to receive remaining gas (optional)'
 }
 
 while [[ $# -gt 0 ]]; do
@@ -82,6 +83,17 @@ while [[ $# -gt 0 ]]; do
         if [ "$#" -gt 0 ]; then shift;
         else
           echo 'ERROR: Expected token root'
+          echo ''
+          print_help
+          exit 1
+        fi
+      ;;
+      --send-gas-to)
+        send_gas_to="$2"
+        shift # past argument
+        if [ "$#" -gt 0 ]; then shift;
+        else
+          echo 'ERROR: Expected address for send-gas-to'
           echo ''
           print_help
           exit 1
@@ -180,14 +192,20 @@ function create_token_transaction() {
   recipient=$3
   root_address=$4
   amount=$5
+  send_gas_to=$6
 
   uri="/ton/v3/tokens/transactions/create"
-  body='{"id": "", "fromAddress": "", "outputs": [{ "recipientAddress": "", "value": "" }]}'
+  body='{"id": "", "fromAddress": "", "recipientAddress": "", "rootAddress": "", "value": ""}'
   body=$(echo "$body" | jq --indent 4 -r --arg id "$(uuidgen)" '.id = $id')
   body=$(echo "$body" | jq --indent 4 -r --arg sender "$sender" '.fromAddress = $sender')
   body=$(echo "$body" | jq --indent 4 -r --arg recipient "$recipient" '.recipientAddress = $recipient')
   body=$(echo "$body" | jq --indent 4 -r --arg root_address "$root_address" '.rootAddress = $root_address')
   body=$(echo "$body" | jq --indent 4 -r --arg amount "$amount" '.value = $amount')
+
+  # Add sendGasTo field if it was provided
+  if [ -n "$send_gas_to" ]; then
+    body=$(echo "$body" | jq --indent 4 -r --arg send_gas_to "$send_gas_to" '. + {"sendGasTo": $send_gas_to}')
+  fi
 
   stringToSign="$timestamp$uri$body"
   signature=$(create_signature "$stringToSign")
@@ -262,7 +280,7 @@ case $method in
     fi
 
     timestamp=$(timestamp_ms)
-    create_token_transaction "$timestamp" "$sender" "$recipient" "$root_address" "$amount" | jq .
+    create_token_transaction "$timestamp" "$sender" "$recipient" "$root_address" "$amount" "$send_gas_to" | jq .
   ;;
   *) # unknown method
     echo 'ERROR: Unknown method'
