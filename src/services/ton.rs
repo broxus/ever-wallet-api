@@ -4,6 +4,7 @@ use std::sync::{Arc, Weak};
 
 use axum::http::StatusCode;
 use bigdecimal::BigDecimal;
+use chrono::Utc;
 use nekoton::crypto::{SignedMessage, UnsignedMessage};
 use nekoton_utils::{repack_address, unpack_std_smc_addr, TrustMe};
 use serde_json::Value;
@@ -1118,6 +1119,27 @@ impl TonService {
                 hex::decode_to_slice(item.hex, &mut result.0).trust_me();
                 result
             });
+
+        self.ton_api_client.add_ton_account_subscriptions(addresses);
+        Ok(())
+    }
+
+    pub async fn resubscribe_for_accounts_created_last_minute(
+        self: &Arc<Self>,
+    ) -> Result<(), Error> {
+        let now = Utc::now().naive_utc();
+        let address_dbs = self
+            .sqlx_client
+            .get_addresses_created_after(now - chrono::Duration::minutes(1))
+            .await?;
+        if address_dbs.is_empty() {
+            return Ok(());
+        }
+        let addresses = address_dbs.into_iter().map(|item| {
+            let mut result = HashBytes::default();
+            hex::decode_to_slice(item.hex, &mut result.0).trust_me();
+            result
+        });
 
         self.ton_api_client.add_ton_account_subscriptions(addresses);
         Ok(())

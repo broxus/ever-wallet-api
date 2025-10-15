@@ -88,6 +88,7 @@ impl EngineContext {
 
         engine_context.start_listening_ton_transaction(ton_transaction_rx);
         engine_context.start_listening_token_transaction(token_transaction_rx);
+        engine_context.start_updating_accounts_subscription();
 
         Ok(engine_context)
     }
@@ -233,6 +234,31 @@ impl EngineContext {
 
             rx.close();
             while rx.recv().await.is_some() {}
+        });
+    }
+
+    fn start_updating_accounts_subscription(self: &Arc<Self>) {
+        let engine_context = Arc::downgrade(self);
+
+        tokio::spawn(async move {
+            loop {
+                let engine_context = match engine_context.upgrade() {
+                    Some(engine_context) => engine_context,
+                    None => {
+                        tracing::error!("Engine is already dropped");
+                        return;
+                    }
+                };
+
+                engine_context
+                    .ton_service
+                    .resubscribe_for_accounts_created_last_minute()
+                    .await
+                    .unwrap_or_else(|e| {
+                        tracing::error!("Failed to update accounts: {}", e);
+                    });
+                tokio::time::sleep(std::time::Duration::from_secs(30)).await;
+            }
         });
     }
 
