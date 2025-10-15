@@ -1,9 +1,9 @@
 use std::str::FromStr;
 
 use bigdecimal::BigDecimal;
-use everscale_types::models::StdAddr;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
+use tycho_types::models::StdAddr;
 use uuid::Uuid;
 
 use crate::models::*;

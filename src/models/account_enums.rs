@@ -1,10 +1,10 @@
 use std::str::FromStr;
 
-use everscale_types::models::{AccountState, StdAddr};
 use nekoton::core::models::TokenWalletVersion;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use strum_macros::EnumString;
+use tycho_types::models::{AccountState, StdAddr};
 
 use crate::models::{Address, AddressDb};
 

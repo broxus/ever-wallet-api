@@ -2,8 +2,8 @@ use std::str::FromStr;
 
 use bigdecimal::BigDecimal;
 use derive_more::Constructor;
-use everscale_types::models::StdAddr;
 use nekoton_utils::TrustMe;
+use tycho_types::models::StdAddr;
 
 use schemars::JsonSchema;
 use serde::Serialize;

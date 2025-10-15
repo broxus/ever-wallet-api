@@ -23,7 +23,7 @@ pub fn prepare_token_transfer(
     tokens: BigUint,
     send_gas_to: MsgAddressInt,
     notify_receiver: bool,
-    attached_amount: u64,
+    attached_amount: u128,
     payload: ton_types::Cell,
 ) -> Result<InternalMessage> {
     let (function, input) = match version {
@@ -89,7 +89,7 @@ pub fn prepare_token_burn(
     tokens: BigUint,
     send_gas_to: MsgAddressInt,
     callback_to: MsgAddressInt,
-    attached_amount: u64,
+    attached_amount: u128,
     payload: ton_types::Cell,
 ) -> Result<InternalMessage> {
     let (function, input) = match version {
@@ -134,7 +134,7 @@ pub fn prepare_token_mint(
     deploy_wallet_value: BigUint,
     send_gas_to: MsgAddressInt,
     notify: bool,
-    attached_amount: u64,
+    attached_amount: u128,
     payload: ton_types::Cell,
 ) -> Result<InternalMessage> {
     let (function, input) = match version {
