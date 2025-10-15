@@ -255,3 +255,25 @@ impl TokenBalanceDataResponse {
         }
     }
 }
+
+#[derive(Serialize, JsonSchema)]
+#[serde(rename_all = "camelCase")]
+pub struct AddAccountSubscriptionResponse {
+    pub status: TonStatus,
+    pub error_message: Option<String>,
+}
+
+impl From<Result<(), Error>> for AddAccountSubscriptionResponse {
+    fn from(r: Result<(), Error>) -> Self {
+        match r {
+            Ok(()) => Self {
+                status: TonStatus::Ok,
+                error_message: None,
+            },
+            Err(e) => Self {
+                status: TonStatus::Error,
+                error_message: Some(e.get_error()),
+            },
+        }
+    }
+}

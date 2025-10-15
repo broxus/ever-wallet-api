@@ -30,3 +30,9 @@ impl From<CreateAddressRequest> for CreateAddress {
         }
     }
 }
+
+#[derive(Deserialize, JsonSchema)]
+#[serde(rename_all = "camelCase")]
+pub struct AddAccountSubscriptionRequest {
+    pub address: String,
+}

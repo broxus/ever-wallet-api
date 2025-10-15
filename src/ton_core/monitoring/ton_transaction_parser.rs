@@ -244,21 +244,6 @@ struct MessageRecipient {
     pub workchain_id: i32,
 }
 
-#[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-struct Outputs {
-    pub value: BigDecimal,
-    pub recipient: OutputsRecipient,
-}
-
-#[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-struct OutputsRecipient {
-    pub hex: String,
-    pub base64url: String,
-    pub workchain_id: i64,
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;

@@ -4,7 +4,8 @@ use axum::Json;
 use crate::api::{
     controllers,
     responses::{
-        AddressBalanceResponse, AddressInfoResponse, AddressResponse, CheckedAddressResponse,
+        AddAccountSubscriptionResponse, AddressBalanceResponse, AddressInfoResponse,
+        AddressResponse, CheckedAddressResponse,
     },
     taged, ApiContext,
 };
@@ -22,6 +23,13 @@ pub fn router() -> ApiRouter<ApiContext> {
             "/create",
             post_with(controllers::post_address_create, |op| {
                 op.response::<200, Json<AddressResponse>>()
+            }),
+            taged("address"),
+        )
+        .api_route_with(
+            "/subscribe",
+            post_with(controllers::post_address_subscription, |op| {
+                op.response::<200, Json<AddAccountSubscriptionResponse>>()
             }),
             taged("address"),
         )

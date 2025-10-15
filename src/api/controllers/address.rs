@@ -88,3 +88,12 @@ pub async fn get_token_address_balance(
 
     Ok(Json(TokenBalanceResponse::from(addresses)))
 }
+
+pub async fn post_address_subscription(
+    State(ctx): State<ApiContext>,
+    Json(req): Json<AddAccountSubscriptionRequest>,
+) -> Result<Json<AddAccountSubscriptionResponse>> {
+    let result = ctx.ton_service.add_account_subscription(req.address).await;
+
+    Ok(Json(AddAccountSubscriptionResponse::from(result)))
+}

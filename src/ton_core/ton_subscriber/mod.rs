@@ -86,11 +86,11 @@ impl TonSubscriber {
             match state_subscriptions.entry(account) {
                 hash_map::Entry::Vacant(entry) => {
                     entry.insert(StateSubscription {
-                        transaction_subscriptions: vec![weak.clone()],
+                        transaction_subscription: weak.clone(),
                     });
                 }
                 hash_map::Entry::Occupied(mut entry) => {
-                    entry.get_mut().transaction_subscriptions.push(weak.clone());
+                    entry.get_mut().transaction_subscription = weak.clone();
                 }
             };
         }
@@ -321,7 +321,7 @@ pub struct TonSubscriberMetrics {
 }
 
 struct StateSubscription {
-    transaction_subscriptions: Vec<Weak<dyn TransactionsSubscription>>,
+    transaction_subscription: Weak<dyn TransactionsSubscription>,
 }
 
 impl StateSubscription {
@@ -334,10 +334,6 @@ impl StateSubscription {
         block_hash: &HashBytes,
     ) -> Result<FuturesUnordered<HandleTransactionStatusRx>> {
         let states = FuturesUnordered::new();
-
-        if self.transaction_subscriptions.is_empty() {
-            return Ok(states);
-        }
 
         for transaction in account_block.transactions.iter() {
             let result = transaction.and_then(|(_, _, value)| {
@@ -397,8 +393,8 @@ impl StateSubscription {
             };
 
             // Handle transaction
-            for subscription in self.iter_transaction_subscriptions() {
-                let (tx, rx) = oneshot::channel();
+            let (tx, rx) = oneshot::channel();
+            if let Some(subscription) = self.transaction_subscription.upgrade() {
                 match subscription.handle_transaction(ctx, tx) {
                     Ok(_) => {
                         states.push(rx);
@@ -418,13 +414,6 @@ impl StateSubscription {
         Ok(states)
     }
 
-    fn iter_transaction_subscriptions(
-        &'_ self,
-    ) -> impl Iterator<Item = Arc<dyn TransactionsSubscription>> + '_ {
-        self.transaction_subscriptions
-            .iter()
-            .filter_map(Weak::upgrade)
-    }
 }
 
 struct TokenSubscription {

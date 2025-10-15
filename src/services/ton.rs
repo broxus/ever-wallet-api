@@ -1099,6 +1099,16 @@ impl TonService {
         Ok(hash)
     }
 
+    pub async fn add_account_subscription(
+        self: &Arc<Self>,
+        address: String,
+    ) -> Result<(), Error> {
+        let address = MsgAddressInt::from_str(&address)?;
+        self.ton_api_client
+            .add_ton_account_subscription(address.hash()?);
+        Ok(())
+    }
+
     pub async fn set_callback(
         &self,
         service_id: &ServiceId,
