@@ -1009,6 +1009,13 @@ impl TonClient {
         let account = HashBytes::from_slice(account.as_slice());
         self.ton_core.add_ton_account_subscription([account])
     }
+
+    pub fn add_ton_account_subscriptions<I>(&self, accounts: I)
+    where
+        I: Iterator<Item = HashBytes>,
+    {
+        self.ton_core.add_ton_account_subscription(accounts)
+    }
 }
 
 #[derive(thiserror::Error, Debug)]

@@ -228,3 +228,17 @@ pub async fn get_token_whitelist(
 
     Ok(Json(whitelist))
 }
+
+pub async fn post_resubscribe_for_all_accounts(
+    State(ctx): State<ApiContext>,
+) -> Result<Json<ResubscribeResponse>> {
+    let start = Instant::now();
+
+    ctx.ton_service.resubscribe_for_all_accounts().await?;
+
+    let elapsed = start.elapsed();
+    histogram!("execution_time_seconds", elapsed, "method" => "resubscribeForAllAccounts");
+    increment_counter!("requests_processed", "method" => "resubscribeForAllAccounts");
+
+    Ok(Json(ResubscribeResponse {}))
+}

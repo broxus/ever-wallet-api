@@ -6,6 +6,10 @@ use serde::Serialize;
 
 #[derive(Serialize, JsonSchema)]
 #[serde(rename_all = "camelCase")]
+pub struct ResubscribeResponse {}
+
+#[derive(Serialize, JsonSchema)]
+#[serde(rename_all = "camelCase")]
 pub struct ReadContractResponse {
     pub object: serde_json::Value,
 }

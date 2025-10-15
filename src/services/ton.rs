@@ -5,12 +5,13 @@ use std::sync::{Arc, Weak};
 use axum::http::StatusCode;
 use bigdecimal::BigDecimal;
 use nekoton::crypto::{SignedMessage, UnsignedMessage};
-use nekoton_utils::{repack_address, unpack_std_smc_addr};
+use nekoton_utils::{repack_address, unpack_std_smc_addr, TrustMe};
 use serde_json::Value;
 use ton_abi::contract::ABI_VERSION_2_2;
 use ton_abi::{Param, Token, TokenValue};
 use ton_block::{GetRepresentationHash, MsgAddressInt, Serializable};
 use ton_types::{BuilderData, UInt256};
+use tycho_types::cell::HashBytes;
 use uuid::Uuid;
 
 use crate::api::*;
@@ -1099,13 +1100,26 @@ impl TonService {
         Ok(hash)
     }
 
-    pub async fn add_account_subscription(
-        self: &Arc<Self>,
-        address: String,
-    ) -> Result<(), Error> {
+    pub async fn add_account_subscription(self: &Arc<Self>, address: String) -> Result<(), Error> {
         let address = MsgAddressInt::from_str(&address)?;
         self.ton_api_client
             .add_ton_account_subscription(address.hash()?);
+        Ok(())
+    }
+
+    pub async fn resubscribe_for_all_accounts(self: &Arc<Self>) -> Result<(), Error> {
+        let addresses = self
+            .sqlx_client
+            .get_all_addresses()
+            .await?
+            .into_iter()
+            .map(|item| {
+                let mut result = HashBytes::default();
+                hex::decode_to_slice(item.hex, &mut result.0).trust_me();
+                result
+            });
+
+        self.ton_api_client.add_ton_account_subscriptions(addresses);
         Ok(())
     }
 

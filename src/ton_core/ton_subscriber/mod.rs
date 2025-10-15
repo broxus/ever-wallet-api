@@ -413,7 +413,6 @@ impl StateSubscription {
 
         Ok(states)
     }
-
 }
 
 struct TokenSubscription {

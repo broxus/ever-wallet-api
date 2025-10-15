@@ -4,8 +4,8 @@ use axum::Json;
 use crate::api::{
     controllers,
     responses::{
-        EncodedCellResponse, ReadContractResponse, SetCallbackResponse, SignedMessageHashResponse,
-        TransactionResponse, UnsignedMessageHashResponse,
+        EncodedCellResponse, ReadContractResponse, ResubscribeResponse, SetCallbackResponse,
+        SignedMessageHashResponse, TransactionResponse, UnsignedMessageHashResponse,
     },
     taged, ApiContext,
 };
@@ -51,6 +51,13 @@ pub fn router() -> ApiRouter<ApiContext> {
             "/send-message",
             post_with(controllers::post_send_generic_message, |op| {
                 op.response::<200, Json<TransactionResponse>>()
+            }),
+            taged("misc"),
+        )
+        .api_route_with(
+            "/refresh-all-accounts-subscriptions",
+            post_with(controllers::post_resubscribe_for_all_accounts, |op| {
+                op.response::<200, Json<ResubscribeResponse>>()
             }),
             taged("misc"),
         )
