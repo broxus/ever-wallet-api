@@ -170,6 +170,7 @@ pub fn get_token_wallet_address(
     let root_contract_state = RootTokenContractState(ExecutionContext {
         clock: &SimpleClock,
         account_stuff: &root_contract.account,
+        libraries: &[],
     });
     let RootTokenContractDetails { version, .. } = root_contract_state.guess_details()?;
 
@@ -183,6 +184,7 @@ pub fn get_token_wallet_account(
     let root_contract_state = RootTokenContractState(ExecutionContext {
         clock: &SimpleClock,
         account_stuff: &root_contract.account,
+        libraries: &[],
     });
     let RootTokenContractDetails { version, .. } = root_contract_state.guess_details()?;
 
@@ -199,6 +201,7 @@ pub fn get_token_wallet_basic_info(
     let token_wallet_state = TokenWalletContractState(ExecutionContext {
         clock: &SimpleClock,
         account_stuff: &token_contract.account,
+        libraries: &[],
     });
 
     let version = token_wallet_state.get_version()?;
@@ -213,6 +216,7 @@ pub fn get_token_wallet_details(
     let contract_state = TokenWalletContractState(ExecutionContext {
         clock: &SimpleClock,
         account_stuff: &token_contract.account,
+        libraries: &[],
     });
 
     let hash = *contract_state.get_code_hash()?.as_slice();
@@ -226,6 +230,7 @@ pub fn get_root_token_version(root_contract: &ExistingContract) -> Result<TokenW
     let root_contract_state = RootTokenContractState(ExecutionContext {
         clock: &SimpleClock,
         account_stuff: &root_contract.account,
+        libraries: &[],
     });
     let RootTokenContractDetails { version, .. } = root_contract_state.guess_details()?;
 

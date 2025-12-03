@@ -816,9 +816,9 @@ impl TonClient {
         };
 
         let res = if responsible {
-            function.run_local_responsible(&SimpleClock, state.account, input)
+            function.run_local_responsible(&SimpleClock, state.account, input, &[])
         } else {
-            function.run_local(&SimpleClock, state.account, input)
+            function.run_local(&SimpleClock, state.account, input, &[])
         };
 
         res.map(Some)
