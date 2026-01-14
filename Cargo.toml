@@ -55,7 +55,7 @@ tower-http = { version = "0.6", features = ["trace", "cors", "limit", "set-heade
 tower-service = "0.3.3"
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
-tycho-types = { version = "0.3.0", features = ["tycho", "stats"] }
+tycho-types = { version = "0.3.1", features = ["tycho", "stats", "serde"] }
 
 uuid = { version = "1.1", features = ["v4", "serde"] }
 
@@ -66,11 +66,10 @@ tikv-jemallocator = { version = "0.6.0", features = [
     "background_threads",
 ] }
 
-tycho-block-util = { git = "https://github.com/broxus/tycho.git", rev = "7cb68c97c1109c8412e35fda1db6bd3a870421fa" }
-tycho-core = { git = "https://github.com/broxus/tycho.git", rev = "7cb68c97c1109c8412e35fda1db6bd3a870421fa" }
-tycho-light-node = { git = "https://github.com/broxus/tycho.git", rev = "7cb68c97c1109c8412e35fda1db6bd3a870421fa" }
-tycho-storage = { git = "https://github.com/broxus/tycho.git", rev = "7cb68c97c1109c8412e35fda1db6bd3a870421fa" }
-tycho-util = { git = "https://github.com/broxus/tycho.git", rev = "7cb68c97c1109c8412e35fda1db6bd3a870421fa", features = ["cli"] }
+tycho-block-util = { git = "https://github.com/broxus/tycho.git", rev = "bb2d3cca4c3dd010a4e1aef82e2f76655fc23a3e" }
+tycho-core = { git = "https://github.com/broxus/tycho.git", rev = "bb2d3cca4c3dd010a4e1aef82e2f76655fc23a3e", features = ["cli"]  }
+tycho-storage = { git = "https://github.com/broxus/tycho.git", rev = "bb2d3cca4c3dd010a4e1aef82e2f76655fc23a3e" }
+tycho-util = { git = "https://github.com/broxus/tycho.git", rev = "bb2d3cca4c3dd010a4e1aef82e2f76655fc23a3e", features = ["cli"] }
 
 tycho-vm = "0.3.0"
 tycho-executor = "0.3.0"

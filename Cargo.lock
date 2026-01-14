@@ -62,7 +62,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "5678d2978845ddb4bd736a026f467dd652d831e9e6254b0e41b07f7ee7523309"
 dependencies = [
  "aide-macros",
- "axum 0.7.9",
+ "axum",
  "axum-extra",
  "bytes",
  "cfg-if",
@@ -251,7 +251,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "edca88bc138befd0323b20752846e6587272d3b03b0343c8ea28a6f819e6e71f"
 dependencies = [
  "async-trait",
- "axum-core 0.4.5",
+ "axum-core",
  "axum-macros",
  "bytes",
  "futures-util",
@@ -261,7 +261,7 @@ dependencies = [
  "hyper 1.8.1",
  "hyper-util",
  "itoa",
- "matchit 0.7.3",
+ "matchit",
  "memchr",
  "mime",
  "multer",
@@ -269,39 +269,6 @@ dependencies = [
  "pin-project-lite",
  "rustversion",
  "serde",
- "serde_json",
- "serde_path_to_error",
- "serde_urlencoded",
- "sync_wrapper",
- "tokio",
- "tower",
- "tower-layer",
- "tower-service",
- "tracing",
-]
-
-[[package]]
-name = "axum"
-version = "0.8.7"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5b098575ebe77cb6d14fc7f32749631a6e44edbef6b796f89b020e99ba20d425"
-dependencies = [
- "axum-core 0.5.5",
- "bytes",
- "form_urlencoded",
- "futures-util",
- "http 1.4.0",
- "http-body 1.0.1",
- "http-body-util",
- "hyper 1.8.1",
- "hyper-util",
- "itoa",
- "matchit 0.8.4",
- "memchr",
- "mime",
- "percent-encoding",
- "pin-project-lite",
- "serde_core",
  "serde_json",
  "serde_path_to_error",
  "serde_urlencoded",
@@ -335,32 +302,13 @@ dependencies = [
 ]
 
 [[package]]
-name = "axum-core"
-version = "0.5.5"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "59446ce19cd142f8833f856eb31f3eb097812d1479ab224f54d72428ca21ea22"
-dependencies = [
- "bytes",
- "futures-core",
- "http 1.4.0",
- "http-body 1.0.1",
- "http-body-util",
- "mime",
- "pin-project-lite",
- "sync_wrapper",
- "tower-layer",
- "tower-service",
- "tracing",
-]
-
-[[package]]
 name = "axum-extra"
 version = "0.9.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c794b30c904f0a1c2fb7740f7df7f7972dfaa14ef6f57cb6178dc63e5dca2f04"
 dependencies = [
- "axum 0.7.9",
- "axum-core 0.4.5",
+ "axum",
+ "axum-core",
  "bytes",
  "fastrand",
  "futures-util",
@@ -545,9 +493,9 @@ dependencies = [
 
 [[package]]
 name = "cassadilia"
-version = "0.4.3"
+version = "0.4.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2772faa425602cbaa408f1ba5a91f3c4ca3b391981f8ee24497514e4eecd2424"
+checksum = "b241c1e0296981e531864393cabeccba83061a6e79e5556cc267eca5cf2f0d92"
 dependencies = [
  "ahash 0.8.12",
  "blake3",
@@ -2073,15 +2021,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "itertools"
-version = "0.14.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2b192c782037fadd9cfa75548310488aabdbf3d2da73885b31bd0abd03351285"
-dependencies = [
- "either",
-]
-
-[[package]]
 name = "itoa"
 version = "1.0.15"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2299,12 +2238,6 @@ name = "matchit"
 version = "0.7.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0e7465ac9959cc2b1404e8e2367b43684a6d13790fe23056cc8c6c5a6b7bcb94"
-
-[[package]]
-name = "matchit"
-version = "0.8.4"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "47e1ffaa40ddd1f3ed91f717a33c8c0ee23fff369e3aa8772b9605cc1d22f4c3"
 
 [[package]]
 name = "md-5"
@@ -3147,29 +3080,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "prost"
-version = "0.14.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7231bd9b3d3d33c86b58adbac74b5ec0ad9f496b19d22801d773636feaa95f3d"
-dependencies = [
- "bytes",
- "prost-derive",
-]
-
-[[package]]
-name = "prost-derive"
-version = "0.14.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9120690fafc389a67ba3803df527d0ec9cbbc9cc45e4cc20b332996dfb672425"
-dependencies = [
- "anyhow",
- "itertools 0.14.0",
- "proc-macro2",
- "quote",
- "syn 2.0.111",
-]
-
-[[package]]
 name = "quanta"
 version = "0.12.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3613,6 +3523,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "28d3b2b1366ec20994f1fd18c3c594f05c5dd4bc44d8bb0c1c632c8d6829481f"
 
 [[package]]
+name = "same-file"
+version = "1.0.6"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "93fc1dc3aaa9bfed95e02e6eadabb4baf7e3078b0bd1b4d7b6b0b68378900502"
+dependencies = [
+ "winapi-util",
+]
+
+[[package]]
 name = "scc"
 version = "2.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3769,7 +3688,6 @@ version = "1.0.145"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "402a6f66d8c709116cf22f558eab210f5a50187f702eb4d7e5ef38d9a7f1c79c"
 dependencies = [
- "indexmap",
  "itoa",
  "memchr",
  "ryu",
@@ -3794,7 +3712,7 @@ version = "0.13.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "cd34f36fe4c5ba9654417139a9b3a20d2e1de6012ee678ad14d240c22c78d8d6"
 dependencies = [
- "axum 0.7.9",
+ "axum",
  "futures",
  "percent-encoding",
  "serde",
@@ -4884,8 +4802,8 @@ checksum = "e421abadd41a4225275504ea4d6566923418b7f05506fbc9c0fe86ba7396114b"
 
 [[package]]
 name = "tycho-block-util"
-version = "0.3.4"
-source = "git+https://github.com/broxus/tycho.git?rev=7cb68c97c1109c8412e35fda1db6bd3a870421fa#7cb68c97c1109c8412e35fda1db6bd3a870421fa"
+version = "0.3.5"
+source = "git+https://github.com/broxus/tycho.git?rev=bb2d3cca4c3dd010a4e1aef82e2f76655fc23a3e#bb2d3cca4c3dd010a4e1aef82e2f76655fc23a3e"
 dependencies = [
  "anyhow",
  "arc-swap",
@@ -4903,16 +4821,16 @@ dependencies = [
 
 [[package]]
 name = "tycho-build-info"
-version = "0.3.4"
-source = "git+https://github.com/broxus/tycho.git?rev=7cb68c97c1109c8412e35fda1db6bd3a870421fa#7cb68c97c1109c8412e35fda1db6bd3a870421fa"
+version = "0.3.5"
+source = "git+https://github.com/broxus/tycho.git?rev=bb2d3cca4c3dd010a4e1aef82e2f76655fc23a3e#bb2d3cca4c3dd010a4e1aef82e2f76655fc23a3e"
 dependencies = [
  "anyhow",
 ]
 
 [[package]]
 name = "tycho-core"
-version = "0.3.4"
-source = "git+https://github.com/broxus/tycho.git?rev=7cb68c97c1109c8412e35fda1db6bd3a870421fa#7cb68c97c1109c8412e35fda1db6bd3a870421fa"
+version = "0.3.5"
+source = "git+https://github.com/broxus/tycho.git?rev=bb2d3cca4c3dd010a4e1aef82e2f76655fc23a3e#bb2d3cca4c3dd010a4e1aef82e2f76655fc23a3e"
 dependencies = [
  "ahash 0.8.12",
  "anyhow",
@@ -4925,6 +4843,7 @@ dependencies = [
  "bytesize",
  "cassadilia",
  "castaway",
+ "clap",
  "crc32c",
  "dashmap 6.1.0",
  "futures-util",
@@ -4986,31 +4905,9 @@ dependencies = [
 ]
 
 [[package]]
-name = "tycho-light-node"
-version = "0.3.4"
-source = "git+https://github.com/broxus/tycho.git?rev=7cb68c97c1109c8412e35fda1db6bd3a870421fa#7cb68c97c1109c8412e35fda1db6bd3a870421fa"
-dependencies = [
- "anyhow",
- "clap",
- "rand 0.9.2",
- "serde",
- "serde_json",
- "tokio",
- "tracing",
- "tycho-block-util",
- "tycho-core",
- "tycho-crypto",
- "tycho-network",
- "tycho-rpc",
- "tycho-storage",
- "tycho-types",
- "tycho-util",
-]
-
-[[package]]
 name = "tycho-network"
-version = "0.3.4"
-source = "git+https://github.com/broxus/tycho.git?rev=7cb68c97c1109c8412e35fda1db6bd3a870421fa#7cb68c97c1109c8412e35fda1db6bd3a870421fa"
+version = "0.3.5"
+source = "git+https://github.com/broxus/tycho.git?rev=bb2d3cca4c3dd010a4e1aef82e2f76655fc23a3e#bb2d3cca4c3dd010a4e1aef82e2f76655fc23a3e"
 dependencies = [
  "ahash 0.8.12",
  "anyhow",
@@ -5048,45 +4945,9 @@ dependencies = [
 ]
 
 [[package]]
-name = "tycho-rpc"
-version = "0.3.4"
-source = "git+https://github.com/broxus/tycho.git?rev=7cb68c97c1109c8412e35fda1db6bd3a870421fa#7cb68c97c1109c8412e35fda1db6bd3a870421fa"
-dependencies = [
- "ahash 0.8.12",
- "anyhow",
- "arc-swap",
- "axum 0.8.7",
- "base64 0.22.1",
- "bitflags",
- "bytes",
- "futures-util",
- "humantime",
- "metrics 0.24.3",
- "moka",
- "parking_lot",
- "prost",
- "rand 0.9.2",
- "scopeguard",
- "serde",
- "serde_json",
- "thiserror 2.0.17",
- "tokio",
- "tower",
- "tower-http",
- "tracing",
- "tycho-block-util",
- "tycho-core",
- "tycho-storage",
- "tycho-types",
- "tycho-util",
- "tycho-vm",
- "weedb",
-]
-
-[[package]]
 name = "tycho-storage"
-version = "0.3.4"
-source = "git+https://github.com/broxus/tycho.git?rev=7cb68c97c1109c8412e35fda1db6bd3a870421fa#7cb68c97c1109c8412e35fda1db6bd3a870421fa"
+version = "0.3.5"
+source = "git+https://github.com/broxus/tycho.git?rev=bb2d3cca4c3dd010a4e1aef82e2f76655fc23a3e#bb2d3cca4c3dd010a4e1aef82e2f76655fc23a3e"
 dependencies = [
  "anyhow",
  "arc-swap",
@@ -5108,8 +4969,8 @@ dependencies = [
 
 [[package]]
 name = "tycho-storage-traits"
-version = "0.3.4"
-source = "git+https://github.com/broxus/tycho.git?rev=7cb68c97c1109c8412e35fda1db6bd3a870421fa#7cb68c97c1109c8412e35fda1db6bd3a870421fa"
+version = "0.3.5"
+source = "git+https://github.com/broxus/tycho.git?rev=bb2d3cca4c3dd010a4e1aef82e2f76655fc23a3e#bb2d3cca4c3dd010a4e1aef82e2f76655fc23a3e"
 dependencies = [
  "bytes",
  "smallvec",
@@ -5118,9 +4979,9 @@ dependencies = [
 
 [[package]]
 name = "tycho-types"
-version = "0.3.0"
+version = "0.3.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b4f5833c3db328b9ec5544de8a2a7ff4a6d8d654d6f58d6ad5bf8b774dccf969"
+checksum = "c2ccb37e250becb5c4b827536644c777c247b41ac6c9ddd30902ff1db29818a7"
 dependencies = [
  "ahash 0.8.12",
  "base64 0.22.1",
@@ -5157,8 +5018,8 @@ dependencies = [
 
 [[package]]
 name = "tycho-util"
-version = "0.3.4"
-source = "git+https://github.com/broxus/tycho.git?rev=7cb68c97c1109c8412e35fda1db6bd3a870421fa#7cb68c97c1109c8412e35fda1db6bd3a870421fa"
+version = "0.3.5"
+source = "git+https://github.com/broxus/tycho.git?rev=bb2d3cca4c3dd010a4e1aef82e2f76655fc23a3e#bb2d3cca4c3dd010a4e1aef82e2f76655fc23a3e"
 dependencies = [
  "ahash 0.8.12",
  "anyhow",
@@ -5191,14 +5052,15 @@ dependencies = [
  "tracing-stackdriver",
  "tracing-subscriber",
  "tycho-util-proc",
+ "walkdir",
  "zstd-safe",
  "zstd-sys",
 ]
 
 [[package]]
 name = "tycho-util-proc"
-version = "0.3.4"
-source = "git+https://github.com/broxus/tycho.git?rev=7cb68c97c1109c8412e35fda1db6bd3a870421fa#7cb68c97c1109c8412e35fda1db6bd3a870421fa"
+version = "0.3.5"
+source = "git+https://github.com/broxus/tycho.git?rev=bb2d3cca4c3dd010a4e1aef82e2f76655fc23a3e#bb2d3cca4c3dd010a4e1aef82e2f76655fc23a3e"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -5247,7 +5109,7 @@ dependencies = [
  "anyhow",
  "argon2",
  "async-trait",
- "axum 0.7.9",
+ "axum",
  "base64 0.13.1",
  "bigdecimal",
  "chacha20poly1305",
@@ -5304,7 +5166,6 @@ dependencies = [
  "tycho-block-util",
  "tycho-core",
  "tycho-executor",
- "tycho-light-node",
  "tycho-storage",
  "tycho-types",
  "tycho-util",
@@ -5444,6 +5305,16 @@ name = "version_check"
 version = "0.9.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0b928f33d975fc6ad9f86c8f283853ad26bdd5b10b7f1542aa2fa15e2289105a"
+
+[[package]]
+name = "walkdir"
+version = "2.5.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "29790946404f91d9c5d06f9874efddea1dc06c5efe94541a7d6863108e3a5e4b"
+dependencies = [
+ "same-file",
+ "winapi-util",
+]
 
 [[package]]
 name = "want"
@@ -5591,6 +5462,15 @@ name = "winapi-i686-pc-windows-gnu"
 version = "0.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ac3b87c63620426dd9b991e5ce0329eff545bccbbb34f3be09ff6fb6ab51b7b6"
+
+[[package]]
+name = "winapi-util"
+version = "0.1.11"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c2a7b1c03c876122aa43f3020e6c3c3ee5c05081c9a00739faf7503aeba10d22"
+dependencies = [
+ "windows-sys 0.61.2",
+]
 
 [[package]]
 name = "winapi-x86_64-pc-windows-gnu"
