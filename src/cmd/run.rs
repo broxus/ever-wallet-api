@@ -11,9 +11,6 @@ use tycho_core::block_strider::{BlockProviderExt, ColdBootType};
 use tycho_core::blockchain_rpc::NoopBroadcastListener;
 use tycho_core::global_config::GlobalConfig;
 use tycho_core::node::{NodeBase, NodeBaseConfig, NodeBootArgs, NodeKeys};
-use tycho_core::storage::CoreStorage;
-use tycho_types::models::BlockId;
-use tycho_types::models::ValidatorSet;
 use tycho_util::cli;
 use tycho_util::cli::config::ThreadPoolConfig;
 use tycho_util::cli::logger::LoggerConfig;
@@ -151,7 +148,8 @@ impl Cmd {
             })
             .await?;
         tracing::info!(%init_block_id, "node initialized");
-        node.update_validator_set_from_shard_state(&init_block_id).await?;
+        node.update_validator_set_from_shard_state(&init_block_id)
+            .await?;
 
         // Build strider.
         let archive_block_provider = node.build_archive_block_provider();
@@ -196,52 +194,6 @@ impl Cmd {
         tracing::info!("block strider finished");
 
         Ok(())
-    }
-}
-
-#[allow(clippy::disallowed_methods)]
-pub async fn get_current_validator_set(
-    storage: &CoreStorage,
-    init_block_id: &BlockId,
-) -> Result<ValidatorSet> {
-    let handles = storage.block_handle_storage();
-    let states = storage.shard_state_storage();
-    let blocks = storage.block_storage();
-
-    // Init current vset.
-    if init_block_id.seqno == 0 {
-        // Load zerostate
-        let zerostate = states
-            .load_state(0, init_block_id)
-            .await
-            .context("failed to load zerostate")?;
-
-        // Get current validator set from the state.
-        zerostate
-            .config_params()?
-            .get_current_validator_set()
-            .context("failed to get current validator set")
-    } else {
-        // Find the latest key block (relative to the `init_block_id`).
-        let key_block_handle = handles
-            .find_prev_key_block(init_block_id.seqno + 1)
-            .context("no key block found")?;
-
-        // Load proof.
-        let block_proof = blocks
-            .load_block_proof(&key_block_handle)
-            .await
-            .context("failed to load init key block proof")?;
-
-        // Get current validator set from the proof.
-        let (block, _) = block_proof.virtualize_block()?;
-        let extra = block.extra.load()?;
-        let custom = extra.load_custom()?.context("invalid key block")?;
-        let config = custom.config.context("key block without config")?;
-
-        config
-            .get_current_validator_set()
-            .context("failed to get current validator set")
     }
 }
 
