@@ -151,8 +151,7 @@ impl Cmd {
             })
             .await?;
         tracing::info!(%init_block_id, "node initialized");
-        let current_vset = get_current_validator_set(&node.core_storage, &init_block_id).await?;
-        node.update_validator_set(&current_vset);
+        node.update_validator_set_from_shard_state(&init_block_id).await?;
 
         // Build strider.
         let archive_block_provider = node.build_archive_block_provider();
