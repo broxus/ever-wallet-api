@@ -147,7 +147,7 @@ impl Cmd {
                 boot_type,
                 zerostates: self.import_zerostate,
                 queue_state_handler: None,
-                ignore_states: true,
+                ignore_states: false,
             })
             .await?;
         tracing::info!(%init_block_id, "node initialized");
