@@ -1,10 +1,12 @@
-
 use anyhow::Result;
 use ed25519_dalek::PublicKey;
-use tycho_types::{abi::{AbiHeaderType, AbiVersion, Function, NamedAbiValue, UnsignedExternalMessage}, cell::{CellBuilder, HashBytes}, models::{Account, AccountState, IntAddr, IntMsgInfo, Message, MessageLayout, MsgInfo, StateInit, StdAddr}};
+use tycho_types::{
+    abi::{AbiHeaderType, AbiVersion, Function, NamedAbiValue, UnsignedExternalMessage},
+    cell::{CellBuilder, HashBytes},
+    models::{Account, AccountState, IntAddr, IntMsgInfo, Message, MsgInfo, StateInit, StdAddr},
+};
 
-use crate::utils::ton_wallet::{Gift, TonWalletDetails, ever_wallet};
-
+use crate::utils::ton_wallet::{ever_wallet, Gift, TonWalletDetails};
 
 pub fn prepare_deploy(
     public_key: &PublicKey,
@@ -14,12 +16,13 @@ pub fn prepare_deploy(
     let state_init = prepare_state_init(public_key)?;
     let hash = CellBuilder::build_from(&state_init)?.repr_hash();
 
-    let dst = StdAddr::new(
-        workchain,
-        hash.into(),
-    );
-    
-    let headers = vec![AbiHeaderType::Time, AbiHeaderType::Expire, AbiHeaderType::Pubkey];
+    let dst = StdAddr::new(workchain, hash.into());
+
+    let headers = vec![
+        AbiHeaderType::Time,
+        AbiHeaderType::Expire,
+        AbiHeaderType::Pubkey,
+    ];
     let function = Function::builder(AbiVersion::V2_3, "sendTransactionRaw")
         .with_headers(headers)
         .with_inputs(vec![])
@@ -27,7 +30,10 @@ pub fn prepare_deploy(
         .with_id(0x169e3e11)
         .build();
 
-    let unsigned_body = function.encode_external(&[]).with_expire_at(expire_at).build_input()?;
+    let unsigned_body = function
+        .encode_external(&[])
+        .with_expire_at(expire_at)
+        .build_input()?;
     let mut unsigned_message = unsigned_body.with_dst(dst);
     unsigned_message.set_state_init(Some(state_init));
     Ok(unsigned_message)
@@ -47,7 +53,7 @@ pub fn prepare_transfer(
     }
 
     let mut gifts = gifts.into_iter();
-    let body = match (gifts.len(), gifts.next()) {
+    let external_input = match (gifts.len(), gifts.next()) {
         (1, Some(gift)) if gift.state_init.is_none() => {
             let function = ever_wallet::send_transaction();
             function.encode_external(&[
@@ -56,7 +62,7 @@ pub fn prepare_transfer(
                 NamedAbiValue::from(("bounce", gift.bounce)),
                 NamedAbiValue::from(("flags", gift.flags)),
                 NamedAbiValue::from(("body", gift.body.unwrap_or_default().into_cell())),
-            ])?
+            ])
         }
         (len, gift) => {
             let function = match len {
@@ -85,22 +91,19 @@ pub fn prepare_transfer(
                 tokens.push(NamedAbiValue::from(("flags", gift.flags.token_value())));
                 tokens.push(NamedAbiValue::from((
                     "message",
-                    CellBuilder::build_from(internal_message.borrow())?
+                    CellBuilder::build_from(internal_message.borrow())?,
                 )));
             }
-            function.encode_external(&tokens)?
+            function.encode_external(&tokens)
         }
     };
 
-
-    let unsigned_body = function.encode_external(&[]).with_expire_at(expire_at).build_input()?;
+    let unsigned_body = external_input.with_expire_at(expire_at).build_input()?;
     let mut unsigned_message = unsigned_body.with_dst(address);
 
     match &current_state.state {
         AccountState::Active { .. } => {}
-        AccountState::Frozen { .. } => {
-            return Err(EverWalletError::AccountIsFrozen.into())
-        }
+        AccountState::Frozen { .. } => return Err(EverWalletError::AccountIsFrozen.into()),
         AccountState::Uninit => {
             unsigned_message.set_state_init(Some(prepare_state_init(public_key)?));
         }
@@ -122,10 +125,7 @@ pub fn compute_contract_address(public_key: &PublicKey, workchain_id: i8) -> Int
     let hash = prepare_state_init(public_key)
         .and_then(|state| state.hash())
         .trust_me();
-    IntAddr::Std(StdAddr::new(
-        workchain_id,
-        hash.into(),
-    ))
+    IntAddr::Std(StdAddr::new(workchain_id, hash.into()))
 }
 
 pub fn prepare_state_init(public_key: &PublicKey) -> Result<StateInit> {

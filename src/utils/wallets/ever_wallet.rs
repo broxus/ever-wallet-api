@@ -2,7 +2,6 @@ use tycho_types::abi::{AbiType, Function};
 
 use crate::utils::wallets::ever_wallet::utils::declare_function;
 
-
 pub mod utils {
     macro_rules! declare_function {
         (
@@ -15,13 +14,20 @@ pub mod utils {
         ) => {
             static ONCE: std::sync::OnceLock<tycho_types::abi::Function> = std::sync::OnceLock::new();
             ONCE.get_or_init(|| {
-                tycho_types::abi::Function::builder($crate::utils::wallets::ever_wallet::utils::declare_function!(@abi_version $($abi)?), ($name).to_string())
+                let mut builder = tycho_types::abi::Function::builder($crate::utils::wallets::ever_wallet::utils::declare_function!(@abi_version $($abi)?), ($name).to_string())
                     .with_headers($crate::utils::wallets::ever_wallet::utils::declare_function!(@header $($($header),+)?))
                     .with_inputs($inputs)
-                    .with_outputs($outputs)
+                    .with_outputs($outputs);
+
+                $crate::utils::wallets::ever_wallet::utils::declare_function!(@function_id builder $($id)?); 
+
+                builder
                     .build()
             })
         };
+
+        (@function_id $builder:ident $id:literal) => { $builder.with_id($id) };
+        (@function_id $builder:ident ) => {};
 
         (@abi_version) => { tycho_types::abi::AbiVersion::V2_2 };
         (@abi_version v2_0) => { tycho_types::abi::AbiVersion::V2_0 };
@@ -47,7 +53,6 @@ pub mod utils {
 
     pub(crate) use declare_function;
 }
-
 
 pub fn send_transaction() -> &'static Function {
     declare_function! {
