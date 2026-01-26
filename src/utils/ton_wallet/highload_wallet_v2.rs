@@ -3,9 +3,7 @@ use std::convert::TryFrom;
 use anyhow::Result;
 use ed25519_dalek::PublicKey;
 use tycho_types::{
-    abi::{
-        AbiVersion, UnsignedBody, UnsignedExternalMessage,
-    },
+    abi::{AbiVersion, UnsignedBody, UnsignedExternalMessage},
     cell::{Cell, CellBuilder, HashBytes},
     dict::Dict,
     models::{Account, AccountState, IntMsgInfo, Message, MsgInfo, StateInit, StdAddr},
@@ -13,7 +11,7 @@ use tycho_types::{
 
 use crate::utils::wallets::code::highload_wallet_v2;
 
-use super::{Gift, TonWalletDetails, TransferAction};
+use super::{Gift, TonWalletDetails};
 
 pub fn prepare_deploy(
     public_key: &PublicKey,

@@ -1,117 +1,114 @@
-use nekoton_abi::*;
-use ton_abi::{Param, ParamType};
+use std::sync::Arc;
+
+use tycho_types::{
+    abi::{AbiType, Function},
+    cell::{Cell, HashBytes},
+    models::StdAddr,
+};
 
 use crate::utils::declare_function;
 
-pub fn constructor() -> &'static ton_abi::Function {
+pub fn constructor() -> &'static Function {
     declare_function! {
         abi: v2_0,
         header: [pubkey, time, expire],
         name: "constructor",
         inputs: vec![
-            Param::new("owners", ParamType::Array(Box::new(ParamType::Uint(256)))),
-            Param::new("reqConfirms", ParamType::Uint(8)),
+            AbiType::Array(Arc::new(AbiType::Uint(256))).named("owners"),
+            AbiType::Uint(8).named("reqConfirms"),
         ],
         outputs: Vec::new(),
     }
 }
 
-pub fn send_transaction() -> &'static ton_abi::Function {
+pub fn send_transaction() -> &'static Function {
     declare_function! {
         abi: v2_0,
         header: [pubkey, time, expire],
         name: "sendTransaction",
         inputs: vec![
-            Param::new("dest", ParamType::Address),
-            Param::new("value", ParamType::Uint(128)),
-            Param::new("bounce", ParamType::Bool),
-            Param::new("flags", ParamType::Uint(8)),
-            Param::new("payload", ParamType::Cell),
+            AbiType::Address.named("dest"),
+            AbiType::Uint(128).named("value"),
+            AbiType::Bool.named("bounce"),
+            AbiType::Uint(8).named("flags"),
+            AbiType::Cell.named("payload"),
         ],
         outputs: Vec::new(),
     }
 }
 
-pub fn submit_transaction() -> &'static ton_abi::Function {
+pub fn submit_transaction() -> &'static Function {
     declare_function! {
         abi: v2_0,
         header: [pubkey, time, expire],
         name: "submitTransaction",
         inputs: vec![
-            Param::new("dest", ParamType::Address),
-            Param::new("value", ParamType::Uint(128)),
-            Param::new("bounce", ParamType::Bool),
-            Param::new("allBalance", ParamType::Bool),
-            Param::new("payload", ParamType::Cell)
+            AbiType::Address.named("dest"),
+            AbiType::Uint(128).named("value"),
+            AbiType::Bool.named("bounce"),
+            AbiType::Bool.named("allBalance"),
+            AbiType::Cell.named("payload"),
         ],
-        outputs: vec![Param::new("transId", ParamType::Uint(64))],
+        outputs: vec![
+            AbiType::Uint(64).named("transId")
+            ],
     }
 }
 
-pub fn confirm_transaction() -> &'static ton_abi::Function {
+pub fn confirm_transaction() -> &'static Function {
     declare_function! {
         abi: v2_0,
         header: [pubkey, time, expire],
         name: "confirmTransaction",
-        inputs: vec![Param::new("transactionId", ParamType::Uint(64))],
+        inputs: vec![
+            AbiType::Uint(64).named("transactionId"),
+            ],
         outputs: Vec::new(),
     }
 }
 
-#[derive(Debug, UnpackAbi, KnownParamType)]
+#[derive(Debug)]
 pub struct MultisigTransaction {
-    #[abi(uint64)]
     pub id: u64,
-    #[abi(uint32, name = "confirmationsMask")]
     pub confirmation_mask: u32,
-    #[abi(uint8, name = "signsRequired")]
     pub signs_required: u8,
-    #[abi(uint8, name = "signsReceived")]
     pub signs_received: u8,
-    #[abi(uint256)]
-    pub creator: ton_types::UInt256,
-    #[abi(uint8)]
+    pub creator: HashBytes,
     pub index: u8,
-    #[abi(address)]
-    pub dest: ton_block::MsgAddressInt,
-    #[abi(uint128)]
+    pub dest: StdAddr,
     pub value: u128,
-    #[abi(uint16, name = "sendFlags")]
     pub send_flags: u16,
-    #[abi(cell)]
-    pub payload: ton_types::Cell,
-    #[abi(bool)]
+    pub payload: Cell,
     pub bounce: bool,
 }
 
-pub fn get_transactions() -> &'static ton_abi::Function {
+pub fn get_transactions() -> &'static Function {
     declare_function! {
         abi: v2_0,
         header: [pubkey, time, expire],
         name: "getTransactions",
         inputs: Vec::new(),
         outputs: vec![
-            Param::new("transactions", ParamType::Array(Box::new(MultisigTransaction::param_type())))
+            AbiType::Array(Arc::new(MultisigTransaction::param_type())).named("transactions")
         ]
     }
 }
 
-#[derive(Debug, UnpackAbi, KnownParamType, Copy, Clone)]
+#[derive(Debug, Copy, Clone)]
 pub struct MultisigCustodian {
-    #[abi(uint8)]
     pub index: u8,
-    #[abi(uint256)]
-    pub pubkey: ton_types::UInt256,
+    pub pubkey: HashBytes,
 }
 
-pub fn get_custodians() -> &'static ton_abi::Function {
+pub fn get_custodians() -> &'static Function {
     declare_function! {
         abi: v2_0,
         header: [pubkey, time, expire],
         name: "getCustodians",
         inputs: Vec::new(),
         outputs: vec![
-            Param::new("custodians", ParamType::Array(Box::new(MultisigCustodian::param_type())))
+            AbiType::Array(Arc::new(MultisigCustodian::param_type())).named("custodians")
+
         ]
     }
 }
@@ -119,21 +116,16 @@ pub fn get_custodians() -> &'static ton_abi::Function {
 pub mod safe_multisig {
     use super::*;
 
-    #[derive(Debug, Clone, Copy, UnpackAbiPlain, KnownParamTypePlain)]
+    #[derive(Debug, Clone, Copy)]
     pub struct SafeMultisigParams {
-        #[abi(uint8, name = "maxQueuedTransactions")]
         pub max_queued_transactions: u8,
-        #[abi(uint8, name = "maxCustodianCount")]
         pub max_custodian_count: u8,
-        #[abi(uint64, name = "expirationTime")]
         pub expiration_time: u64,
-        #[abi(uint128, name = "minValue")]
         pub min_value: u128,
-        #[abi(uint8, name = "requiredTxnConfirms")]
         pub required_txn_confirms: u8,
     }
 
-    pub fn get_parameters() -> &'static ton_abi::Function {
+    pub fn get_parameters() -> &'static Function {
         declare_function! {
             abi: v2_0,
             header: [pubkey, time, expire],
@@ -147,23 +139,17 @@ pub mod safe_multisig {
 pub mod set_code_multisig {
     use super::*;
 
-    #[derive(Debug, Clone, Copy, UnpackAbiPlain, KnownParamTypePlain)]
+    #[derive(Debug, Clone, Copy)]
     pub struct SetCodeMultisigParams {
-        #[abi(uint8, name = "maxQueuedTransactions")]
         pub max_queued_transactions: u8,
-        #[abi(uint8, name = "maxCustodianCount")]
         pub max_custodian_count: u8,
-        #[abi(uint64, name = "expirationTime")]
         pub expiration_time: u64,
-        #[abi(uint128, name = "minValue")]
         pub min_value: u128,
-        #[abi(uint8, name = "requiredTxnConfirms")]
         pub required_txn_confirms: u8,
-        #[abi(uint8, name = "requiredUpdConfirms")]
         pub required_upd_confirms: u8,
     }
 
-    pub fn get_parameters() -> &'static ton_abi::Function {
+    pub fn get_parameters() -> &'static Function {
         declare_function! {
             abi: v2_0,
             header: [pubkey, time, expire],

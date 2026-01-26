@@ -3,18 +3,19 @@ use std::convert::TryFrom;
 
 use anyhow::Result;
 use ed25519_dalek::PublicKey;
-use ton_block::{Deserializable, GetRepresentationHash, MsgAddressInt, Serializable};
-use ton_types::UInt256;
+use tycho_types::{
+    abi::{AbiValue, Function, NamedAbiValue, UnsignedExternalMessage},
+    cell::{Cell, CellBuilder, CellDataBuilder, HashBytes},
+    dict::RawDict,
+    models::{Account, StateInit, StdAddr},
+};
 
 use nekoton_abi::*;
 use nekoton_utils::*;
 
-use super::{Gift, TonWalletDetails, TransferAction};
-use crate::core::models::{
-    Expiration, MessageFlags, MultisigPendingTransaction, MultisigPendingUpdate,
-};
-use crate::core::utils::*;
-use crate::crypto::UnsignedMessage;
+use crate::utils::ton_wallet::{MessageFlags, MultisigPendingTransaction, MultisigPendingUpdate};
+
+use super::{Gift, TonWalletDetails};
 
 #[derive(Copy, Clone, Debug)]
 pub struct DeployParams<'a> {
@@ -34,81 +35,70 @@ impl<'a> DeployParams<'a> {
 }
 
 pub fn prepare_deploy(
-    clock: &dyn Clock,
     public_key: &PublicKey,
     multisig_type: MultisigType,
     workchain: i8,
-    expiration: Expiration,
+    expire_at: u32,
     params: DeployParams<'_>,
-) -> Result<Box<dyn UnsignedMessage>> {
+) -> Result<UnsignedExternalMessage> {
     let state_init = prepare_state_init(public_key, multisig_type);
-    let hash = state_init.hash().trust_me();
+    let hash = CellBuilder::build_from(&state_init)?.repr_hash();
 
-    let dst = MsgAddressInt::AddrStd(ton_block::MsgAddrStd {
-        anycast: None,
-        workchain_id: workchain,
-        address: hash.into(),
-    });
-
-    let mut message =
-        ton_block::Message::with_ext_in_header(ton_block::ExternalInboundMessageHeader {
-            dst,
-            ..Default::default()
-        });
-
-    message.set_state_init(state_init);
+    let dst = StdAddr::new(workchain, hash.into());
 
     let owners = params
         .owners
         .iter()
-        .map(|public_key| UInt256::from(public_key.as_bytes()))
-        .collect::<Vec<UInt256>>();
+        .map(|public_key| HashBytes::from(public_key.as_bytes()))
+        .collect::<Vec<HashBytes>>();
 
     let is_new_multisig = multisig_type.is_multisig2();
     let function = if is_new_multisig {
-        nekoton_contracts::wallets::multisig2::constructor()
+        crate::utils::wallets::multisig2::constructor()
     } else if params.expiration_time.is_none() {
-        nekoton_contracts::wallets::multisig::constructor()
+        crate::utils::wallets::multisig::constructor()
     } else {
         return Err(MultisigError::CustomExpirationTimeNotSupported.into());
     };
 
-    let (function, input) = {
-        let mut message = MessageBuilder::new(function)
-            .arg(owners)
-            .arg(params.req_confirms);
+    let external_input = {
+        let mut abi_values = vec![
+            NamedAbiValue::from(("owners", owners)),
+            NamedAbiValue::from(("reqConfirms", params.req_confirms)),
+        ];
         if is_new_multisig {
-            message = message.arg(params.expiration_time.unwrap_or(DEFAULT_LIFETIME));
+            abi_values.push(NamedAbiValue::from(("lifetime", DEFAULT_LIFETIME)));
         }
-        message.build()
+
+        function.encode_external(&abi_values)
     };
 
-    make_labs_unsigned_message(
-        clock,
-        message,
-        expiration,
-        public_key,
-        Cow::Borrowed(function),
-        input,
-    )
+    let unsigned_body = external_input.with_expire_at(expire_at).build_input()?;
+    let mut unsigned_message = unsigned_body.with_dst(dst);
+    unsigned_message.set_state_init(Some(state_init));
+    Ok(unsigned_message)
 }
 
 pub fn prepare_confirm_transaction(
-    clock: &dyn Clock,
     multisig_type: MultisigType,
     public_key: &PublicKey,
-    address: MsgAddressInt,
+    address: StdAddr,
     transaction_id: u64,
-    expiration: Expiration,
-) -> Result<Box<dyn UnsignedMessage>> {
+    expire_at: u32,
+) -> Result<UnsignedExternalMessage> {
     let function = if multisig_type.is_multisig2() {
-        nekoton_contracts::wallets::multisig2::confirm_transaction()
+        crate::utils::wallets::multisig2::confirm_transaction()
     } else {
-        nekoton_contracts::wallets::multisig::confirm_transaction()
+        crate::utils::wallets::multisig::confirm_transaction()
     };
-    let (function, input) = MessageBuilder::new(function).arg(transaction_id).build();
 
-    make_ext_message(clock, public_key, address, expiration, function, input)
+    make_ext_message(
+        public_key,
+        address,
+        expire_at,
+        function,
+        vec![NamedAbiValue::from(("transactionId", transaction_id))],
+    )
 }
 
 pub fn prepare_transfer(
@@ -116,10 +106,10 @@ pub fn prepare_transfer(
     multisig_type: MultisigType,
     public_key: &PublicKey,
     has_multiple_owners: bool,
-    address: MsgAddressInt,
+    address: StdAddr,
     gift: Gift,
-    expiration: Expiration,
-) -> Result<TransferAction> {
+    expire_at: u32,
+) -> Result<UnsignedExternalMessage> {
     let is_new_multisig = multisig_type.is_multisig2();
 
     let (function, input) = if has_multiple_owners || is_new_multisig && gift.state_init.is_some() {
@@ -130,70 +120,67 @@ pub fn prepare_transfer(
         };
 
         let function = if is_new_multisig {
-            nekoton_contracts::wallets::multisig2::submit_transaction()
+            crate::utils::wallets::multisig2::submit_transaction()
         } else {
-            nekoton_contracts::wallets::multisig::submit_transaction()
+            crate::utils::wallets::multisig::submit_transaction()
         };
 
-        let message = MessageBuilder::new(function)
-            .arg(gift.destination)
-            .arg(BigUint128(gift.amount.into()))
-            .arg(gift.bounce)
-            .arg(all_balance)
-            .arg(gift.body.unwrap_or_default().into_cell());
+        let mut named_abi_values = vec![
+            NamedAbiValue::from(("destination", gift.destination)),
+            NamedAbiValue::from(("amount", gift.amount.into())),
+            NamedAbiValue::from(("bounce", gift.bounce)),
+            NamedAbiValue::from(("flags", all_balance)),
+            NamedAbiValue::from(("body", gift.body.unwrap_or_default().into_cell())),
+        ];
 
         if is_new_multisig {
-            message
-                .arg(
-                    gift.state_init
-                        .map(|state_init| state_init.serialize())
-                        .transpose()?,
-                )
-                .build()
-        } else {
-            message.build()
+            named_abi_values.push(NamedAbiValue::from((
+                "stateInit",
+                gift.state_init
+                    .map(|state_init| CellBuilder::build_from(&state_init))
+                    .transpose()?,
+            )));
         }
+        (function, named_abi_values)
     } else {
         let function = if is_new_multisig {
-            nekoton_contracts::wallets::multisig2::send_transaction()
+            crate::utils::wallets::multisig2::send_transaction()
         } else {
-            nekoton_contracts::wallets::multisig::send_transaction()
+            crate::utils::wallets::multisig::send_transaction()
         };
-        MessageBuilder::new(function)
-            .arg(gift.destination)
-            .arg(BigUint128(gift.amount.into()))
-            .arg(gift.bounce)
-            .arg(gift.flags)
-            .arg(gift.body.unwrap_or_default().into_cell())
-            .build()
+        let mut named_abi_values = vec![
+            NamedAbiValue::from(("destination", gift.destination)),
+            NamedAbiValue::from(("amount", gift.amount.into())),
+            NamedAbiValue::from(("bounce", gift.bounce)),
+            NamedAbiValue::from(("flags", gift.flags)),
+            NamedAbiValue::from(("body", gift.body.unwrap_or_default().into_cell())),
+        ];
+        (function, named_abi_values)
     };
 
-    make_ext_message(clock, public_key, address, expiration, function, input)
-        .map(TransferAction::Sign)
+    make_ext_message(public_key, address, expire_at, function, input)
 }
 
 pub fn prepare_code_update(
-    clock: &dyn Clock,
     multisig_type: MultisigType,
     public_key: &PublicKey,
-    address: MsgAddressInt,
+    address: StdAddr,
     new_code_hash: &[u8; 32],
-    expiration: Expiration,
-) -> Result<Box<dyn UnsignedMessage>> {
-    use nekoton_contracts::wallets::multisig2;
+    expire_at: u32,
+) -> Result<UnsignedExternalMessage> {
+    use crate::utils::wallets::multisig2;
 
     if !multisig_type.is_multisig2() {
         return Err(MultisigError::UnsupportedUpdate.into());
     }
 
     make_ext_message(
-        clock,
         public_key,
         address,
-        expiration,
+        expire_at,
         multisig2::submit_update(),
         multisig2::SubmitUpdateParams {
-            code_hash: Some(ton_types::UInt256::from(*new_code_hash)),
+            code_hash: Some(HashBytes::from(*new_code_hash)),
             owners: None,
             req_confirms: None,
             lifetime: None,
@@ -203,49 +190,45 @@ pub fn prepare_code_update(
 }
 
 pub fn prepare_confirm_update(
-    clock: &dyn Clock,
     multisig_type: MultisigType,
     public_key: &PublicKey,
-    address: MsgAddressInt,
+    address: StdAddr,
     update_id: u64,
-    expiration: Expiration,
-) -> Result<Box<dyn UnsignedMessage>> {
-    use nekoton_contracts::wallets::multisig2;
+    expire_at: u32,
+) -> Result<UnsignedExternalMessage> {
+    use crate::utils::wallets::multisig2;
 
     if !multisig_type.is_multisig2() {
         return Err(MultisigError::UnsupportedUpdate.into());
     }
 
     make_ext_message(
-        clock,
         public_key,
         address,
-        expiration,
+        expire_at,
         multisig2::confirm_update(),
         multisig2::ConfirmUpdateParams { update_id }.pack(),
     )
 }
 
 pub fn prepare_execute_update(
-    clock: &dyn Clock,
     multisig_type: MultisigType,
     public_key: &PublicKey,
-    address: MsgAddressInt,
     update_id: u64,
-    code: Option<ton_types::Cell>,
-    expiration: Expiration,
-) -> Result<Box<dyn UnsignedMessage>> {
-    use nekoton_contracts::wallets::multisig2;
+    code: Option<Cell>,
+    address: StdAddr,
+    expire_at: u32,
+) -> Result<UnsignedExternalMessage> {
+    use crate::utils::wallets::multisig2;
 
     if !multisig_type.is_multisig2() {
         return Err(MultisigError::UnsupportedUpdate.into());
     }
 
     make_ext_message(
-        clock,
         public_key,
         address,
-        expiration,
+        expire_at,
         multisig2::execute_update(),
         multisig2::ExecuteUpdateParams { update_id, code }.pack(),
     )
@@ -281,8 +264,8 @@ impl MultisigType {
         )
     }
 
-    pub fn state_init(&self) -> ton_block::StateInit {
-        use nekoton_contracts::wallets;
+    pub fn state_init(&self) -> StateInit {
+        use crate::utils::wallets;
 
         let state_init = match self {
             MultisigType::SafeMultisigWallet => wallets::code::safe_multisig_wallet(),
@@ -294,9 +277,7 @@ impl MultisigType {
             MultisigType::Multisig2 => wallets::code::multisig2(),
             MultisigType::Multisig2_1 => wallets::code::multisig2_1(),
         };
-        let mut state_init = ton_types::SliceData::load_cell(state_init).trust_me();
-
-        ton_block::StateInit::construct_from(&mut state_init).trust_me()
+        StateInit::load_from(&mut state_init.as_slice()?).trust_me()
     }
 
     pub fn code_hash(&self) -> &[u8; 32] {
@@ -312,7 +293,7 @@ impl MultisigType {
         }
     }
 
-    pub fn code(&self) -> ton_types::Cell {
+    pub fn code(&self) -> Cell {
         self.state_init().code.trust_me()
     }
 }
@@ -350,7 +331,7 @@ static MULTISIG2_1_HASH: &[u8; 32] = &[
     0x37, 0x1f, 0x51, 0x12, 0x55, 0x24, 0x08, 0x62, 0x5a, 0xeb, 0x0b, 0x31, 0xe0, 0xef, 0x2d, 0xf3,
 ];
 
-pub fn guess_multisig_type(code_hash: &UInt256) -> Option<MultisigType> {
+pub fn guess_multisig_type(code_hash: &HashBytes) -> Option<MultisigType> {
     match code_hash.as_slice() {
         s if s == SAFE_MULTISIG_WALLET_HASH => Some(MultisigType::SafeMultisigWallet),
         s if s == SAFE_MULTISIG_WALLET_24H_HASH => Some(MultisigType::SafeMultisigWallet24h),
@@ -368,15 +349,10 @@ pub fn compute_contract_address(
     public_key: &PublicKey,
     multisig_type: MultisigType,
     workchain_id: i8,
-) -> MsgAddressInt {
+) -> Result<StdAddr> {
     let state_init = prepare_state_init(public_key, multisig_type);
-    let hash = state_init.hash().trust_me();
-
-    MsgAddressInt::AddrStd(ton_block::MsgAddrStd {
-        anycast: None,
-        workchain_id,
-        address: hash.into(),
-    })
+    let hash = CellBuilder::build_from(&state_init)?.repr_hash();
+    Ok(StdAddr::new(workchain_id, hash.into()))
 }
 
 pub fn ton_wallet_details(multisig_type: MultisigType) -> TonWalletDetails {
@@ -406,27 +382,37 @@ pub fn ton_wallet_details(multisig_type: MultisigType) -> TonWalletDetails {
     }
 }
 
-pub fn prepare_state_init(
-    public_key: &PublicKey,
-    multisig_type: MultisigType,
-) -> ton_block::StateInit {
+pub fn prepare_state_init(public_key: &PublicKey, multisig_type: MultisigType) -> StateInit {
     let mut state_init = multisig_type.state_init();
 
-    let new_data = ton_abi::Contract::insert_pubkey(
-        ton_types::SliceData::load_cell(state_init.data.clone().unwrap_or_default()).trust_me(),
-        public_key.as_bytes(),
-    )
-    .trust_me();
-    state_init.set_data(new_data.into_cell());
+    let mut result = if state_init.data.is_none() {
+        RawDict::new()
+    } else {
+        state_init.data.parse::<RawDict<64>>()?
+    };
+
+    let context = Cell::empty_context();
+    let mut key_builder = CellDataBuilder::new();
+
+    key_builder.store_u64(0)?;
+    result.set_ext(
+        key_builder.as_data_slice(),
+        &CellBuilder::from_raw_data(public_key.as_bytes(), 256)?.as_data_slice(),
+        context,
+    )?;
+
+    // Encode init data as mapping
+    let cell = CellBuilder::build_from_ext(result, context)?;
+    state_init.data = Some(cell);
 
     state_init
 }
 
 fn run_local(
     clock: &dyn Clock,
-    function: &ton_abi::Function,
-    account_stuff: ton_block::AccountStuff,
-) -> Result<Vec<ton_abi::Token>> {
+    function: &Function,
+    account_stuff: Account,
+) -> Result<Vec<NamedAbiValue>> {
     let ExecutionOutput {
         tokens,
         result_code,
@@ -434,70 +420,64 @@ fn run_local(
     tokens.ok_or_else(|| MultisigError::NonZeroResultCode(result_code).into())
 }
 
-#[derive(Copy, Clone, UnpackAbiPlain)]
+#[derive(Copy, Clone)]
 pub struct MultisigParamsPrefix {
-    #[abi(uint8, name = "maxQueuedTransactions")]
     pub max_queued_transactions: u8,
-    #[abi(uint8, name = "maxCustodianCount")]
     pub max_custodian_count: u8,
-    #[abi(uint64, name = "expirationTime")]
     pub expiration_time: u64,
-    #[abi(uint128, name = "minValue")]
     pub min_value: u128,
-    #[abi(uint8, name = "requiredTxnConfirms")]
     pub required_confirms: u8,
 }
 
 pub fn get_params(
     clock: &dyn Clock,
     multisig_type: MultisigType,
-    account_stuff: Cow<'_, ton_block::AccountStuff>,
+    account: Cow<'_, Account>,
 ) -> Result<MultisigParamsPrefix> {
     let function = match multisig_type {
         MultisigType::Multisig2 | MultisigType::Multisig2_1 => {
-            nekoton_contracts::wallets::multisig2::get_parameters()
+            crate::utils::wallets::multisig2::get_parameters()
         }
         MultisigType::SafeMultisigWallet
         | MultisigType::SafeMultisigWallet24h
         | MultisigType::BridgeMultisigWallet => {
-            nekoton_contracts::wallets::multisig::safe_multisig::get_parameters()
+            crate::utils::wallets::multisig::safe_multisig::get_parameters()
         }
         MultisigType::SetcodeMultisigWallet
         | MultisigType::SetcodeMultisigWallet24h
         | MultisigType::SurfWallet => {
-            nekoton_contracts::wallets::multisig::set_code_multisig::get_parameters()
+            crate::utils::wallets::multisig::set_code_multisig::get_parameters()
         }
     };
 
     let output: MultisigParamsPrefix =
-        run_local(clock, function, account_stuff.into_owned())?.unpack()?;
+        run_local(clock, function, account.into_owned())?.unpack()?;
     Ok(output)
 }
 
 pub fn get_custodians(
     clock: &dyn Clock,
     multisig_type: MultisigType,
-    account_stuff: Cow<'_, ton_block::AccountStuff>,
-) -> Result<Vec<UInt256>> {
+    account: Cow<'_, Account>,
+) -> Result<Vec<HashBytes>> {
     let function = if multisig_type.is_multisig2() {
-        nekoton_contracts::wallets::multisig2::get_custodians()
+        crate::utils::wallets::multisig2::get_custodians()
     } else {
-        nekoton_contracts::wallets::multisig::get_custodians()
+        crate::utils::wallets::multisig::get_custodians()
     };
-    run_local(clock, function, account_stuff.into_owned())
-        .and_then(parse_multisig_contract_custodians)
+    run_local(clock, function, account.into_owned()).and_then(parse_multisig_contract_custodians)
 }
 
-fn parse_multisig_contract_custodians(tokens: Vec<ton_abi::Token>) -> Result<Vec<UInt256>> {
+fn parse_multisig_contract_custodians(tokens: Vec<ton_abi::Token>) -> Result<Vec<HashBytes>> {
     let array = match tokens.into_unpacker().unpack_next() {
-        Ok(ton_abi::TokenValue::Array(_, tokens)) => tokens,
+        Ok(AbiValue::Array(_, tokens)) => tokens,
         _ => return Err(UnpackerError::InvalidAbi.into()),
     };
 
     let mut custodians = array
         .into_iter()
         .map(|item| item.unpack())
-        .collect::<Result<Vec<nekoton_contracts::wallets::multisig::MultisigCustodian>, _>>()?;
+        .collect::<Result<Vec<crate::utils::wallets::multisig::MultisigCustodian>, _>>()?;
 
     custodians.sort_by(|a, b| a.index.cmp(&b.index));
 
@@ -507,25 +487,24 @@ fn parse_multisig_contract_custodians(tokens: Vec<ton_abi::Token>) -> Result<Vec
 pub fn find_pending_transaction(
     clock: &dyn Clock,
     multisig_type: MultisigType,
-    account_stuff: Cow<'_, ton_block::AccountStuff>,
+    account: Cow<'_, Account>,
     pending_transaction_id: u64,
 ) -> Result<bool> {
-    #[derive(Copy, Clone, UnpackAbi)]
+    #[derive(Copy, Clone)]
     pub struct MultisigTransactionId {
-        #[abi(uint64)]
         pub id: u64,
     }
 
     let function = if multisig_type.is_multisig2() {
-        nekoton_contracts::wallets::multisig2::get_transactions()
+        crate::utils::wallets::multisig2::get_transactions()
     } else {
-        nekoton_contracts::wallets::multisig::get_transactions()
+        crate::utils::wallets::multisig::get_transactions()
     };
 
-    let tokens = run_local(clock, function, account_stuff.into_owned())?;
+    let tokens = run_local(clock, function, account.into_owned())?;
 
     let array = match tokens.into_unpacker().unpack_next() {
-        Ok(ton_abi::TokenValue::Array(_, tokens)) => tokens,
+        Ok(AbiValue::Array(_, tokens)) => tokens,
         _ => return Err(UnpackerError::InvalidAbi.into()),
     };
 
@@ -541,10 +520,10 @@ pub fn find_pending_transaction(
 pub fn find_pending_update(
     clock: &dyn Clock,
     multisig_type: MultisigType,
-    account_stuff: Cow<'_, ton_block::AccountStuff>,
+    account: Cow<'_, Account>,
     update_id: u64,
 ) -> Result<Option<UpdatedParams>> {
-    use nekoton_contracts::wallets::multisig2;
+    use crate::utils::wallets::multisig2;
 
     let function = match multisig_type {
         MultisigType::Multisig2 => multisig2::v2_0::get_update_requests(),
@@ -552,10 +531,10 @@ pub fn find_pending_update(
         _ => return Ok(None),
     };
 
-    let tokens = run_local(clock, function, account_stuff.into_owned())?;
+    let tokens = run_local(clock, function, account.into_owned())?;
 
     let array = match tokens.into_unpacker().unpack_next() {
-        Ok(ton_abi::TokenValue::Array(_, tokens)) => tokens,
+        Ok(AbiValue::Array(_, tokens)) => tokens,
         _ => return Err(UnpackerError::InvalidAbi.into()),
     };
 
@@ -576,8 +555,8 @@ pub fn find_pending_update(
 
 #[derive(Debug, Clone)]
 pub struct UpdatedParams {
-    pub new_code_hash: Option<ton_types::UInt256>,
-    pub new_custodians: Option<Vec<ton_types::UInt256>>,
+    pub new_code_hash: Option<HashBytes>,
+    pub new_custodians: Option<Vec<HashBytes>>,
     pub new_req_confirms: Option<u8>,
     pub new_lifetime: Option<u32>,
 }
@@ -585,17 +564,17 @@ pub struct UpdatedParams {
 pub fn get_pending_transactions(
     clock: &dyn Clock,
     multisig_type: MultisigType,
-    account_stuff: Cow<'_, ton_block::AccountStuff>,
-    custodians: &[UInt256],
+    account: Cow<'_, Account>,
+    custodians: &[HashBytes],
 ) -> Result<Vec<MultisigPendingTransaction>> {
     let function = if multisig_type.is_multisig2() {
-        nekoton_contracts::wallets::multisig2::get_transactions()
+        crate::utils::wallets::multisig2::get_transactions()
     } else {
-        nekoton_contracts::wallets::multisig::get_transactions()
+        crate::utils::wallets::multisig::get_transactions()
     };
-    run_local(clock, function, account_stuff.into_owned()).and_then(|tokens| {
+    run_local(clock, function, account.into_owned()).and_then(|tokens| {
         let array = match tokens.into_unpacker().unpack_next() {
-            Ok(ton_abi::TokenValue::Array(_, tokens)) => tokens,
+            Ok(AbiValue::Array(_, tokens)) => tokens,
             _ => return Err(UnpackerError::InvalidAbi.into()),
         };
 
@@ -611,10 +590,10 @@ pub fn get_pending_transactions(
 pub fn get_pending_updates(
     clock: &dyn Clock,
     multisig_type: MultisigType,
-    account_stuff: Cow<'_, ton_block::AccountStuff>,
-    custodians: &[UInt256],
+    account: Cow<'_, Account>,
+    custodians: &[HashBytes],
 ) -> Result<Vec<MultisigPendingUpdate>> {
-    use nekoton_contracts::wallets::multisig2;
+    use crate::utils::wallets::multisig2;
 
     let function = match multisig_type {
         MultisigType::Multisig2 => multisig2::v2_0::get_update_requests(),
@@ -622,9 +601,9 @@ pub fn get_pending_updates(
         _ => return Ok(Vec::new()),
     };
 
-    run_local(clock, function, account_stuff.into_owned()).and_then(|tokens| {
+    run_local(clock, function, account.into_owned()).and_then(|tokens| {
         let array = match tokens.into_unpacker().unpack_next() {
-            Ok(ton_abi::TokenValue::Array(_, tokens)) => tokens,
+            Ok(AbiValue::Array(_, tokens)) => tokens,
             _ => return Err(UnpackerError::InvalidAbi.into()),
         };
 
@@ -638,15 +617,15 @@ pub fn get_pending_updates(
 }
 
 fn extend_pending_transaction(
-    tx: nekoton_contracts::wallets::multisig::MultisigTransaction,
-    custodians: &[UInt256],
+    tx: crate::utils::wallets::multisig::MultisigTransaction,
+    custodians: &[HashBytes],
 ) -> MultisigPendingTransaction {
     let confirmations = custodians
         .iter()
         .enumerate()
         .filter(|(i, _)| (0b1 << i) & tx.confirmation_mask != 0)
         .map(|(_, item)| *item)
-        .collect::<Vec<UInt256>>();
+        .collect::<Vec<HashBytes>>();
 
     MultisigPendingTransaction {
         id: tx.id,
@@ -664,15 +643,15 @@ fn extend_pending_transaction(
 }
 
 fn extend_pending_update(
-    tx: nekoton_contracts::wallets::multisig2::UpdateTransaction,
-    custodians: &[UInt256],
+    tx: crate::utils::wallets::multisig2::UpdateTransaction,
+    custodians: &[HashBytes],
 ) -> MultisigPendingUpdate {
     let confirmations = custodians
         .iter()
         .enumerate()
         .filter(|(i, _)| (0b1 << i) & tx.confirmations_mask != 0)
         .map(|(_, item)| *item)
-        .collect::<Vec<UInt256>>();
+        .collect::<Vec<HashBytes>>();
 
     MultisigPendingUpdate {
         id: tx.id,
@@ -688,26 +667,17 @@ fn extend_pending_update(
 }
 
 fn make_ext_message(
-    clock: &dyn Clock,
     public_key: &PublicKey,
-    address: MsgAddressInt,
-    expiration: Expiration,
-    function: &'static ton_abi::Function,
-    input: Vec<ton_abi::Token>,
-) -> Result<Box<dyn UnsignedMessage>> {
-    let message = ton_block::Message::with_ext_in_header(ton_block::ExternalInboundMessageHeader {
-        dst: address,
-        ..Default::default()
-    });
+    address: StdAddr,
+    expire_at: u32,
+    function: &'static Function,
+    input: Vec<NamedAbiValue>,
+) -> Result<UnsignedExternalMessage> {
+    let external_input = function.encode_external(&input);
+    let unsigned_body = external_input.with_expire_at(expire_at).build_input()?;
+    let mut unsigned_message = unsigned_body.with_dst(address);
 
-    make_labs_unsigned_message(
-        clock,
-        message,
-        expiration,
-        public_key,
-        Cow::Borrowed(function),
-        input,
-    )
+    Ok(unsigned_message)
 }
 
 const DEFAULT_LIFETIME: u32 = 3600;

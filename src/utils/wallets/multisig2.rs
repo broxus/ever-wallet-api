@@ -1,144 +1,134 @@
-use nekoton_abi::*;
-use ton_abi::{Param, ParamType};
+use std::sync::Arc;
+
+use tycho_types::{
+    abi::{AbiType, Function},
+    cell::{Cell, HashBytes},
+    models::StdAddr,
+};
 
 use crate::utils::declare_function;
 
-pub fn constructor() -> &'static ton_abi::Function {
+pub fn constructor() -> &'static Function {
     declare_function! {
         abi: v2_3,
         header: [pubkey, time, expire],
         name: "constructor",
         inputs: vec![
-            Param::new("owners", ParamType::Array(Box::new(ParamType::Uint(256)))),
-            Param::new("reqConfirms", ParamType::Uint(8)),
-            Param::new("lifetime", ParamType::Uint(32)),
+            AbiType::Array(Arc::new(AbiType::Uint(256))).named("owners"),
+            AbiType::Uint(8).named("reqConfirms"),
+            AbiType::Uint(32).named("lifetime"),
         ],
         outputs: Vec::new(),
     }
 }
 
-pub fn send_transaction() -> &'static ton_abi::Function {
+pub fn send_transaction() -> &'static Function {
     declare_function! {
         abi: v2_3,
         header: [pubkey, time, expire],
         name: "sendTransaction",
         inputs: vec![
-            Param::new("dest", ParamType::Address),
-            Param::new("value", ParamType::Uint(128)),
-            Param::new("bounce", ParamType::Bool),
-            Param::new("flags", ParamType::Uint(8)),
-            Param::new("payload", ParamType::Cell),
+            AbiType::Address.named("dest"),
+            AbiType::Uint(128).named("value"),
+            AbiType::Bool.named("bounce"),
+            AbiType::Uint(8).named("flags"),
+            AbiType::Cell.named("payload"),
         ],
         outputs: Vec::new(),
     }
 }
 
-pub fn submit_transaction() -> &'static ton_abi::Function {
+pub fn submit_transaction() -> &'static Function {
     declare_function! {
         abi: v2_3,
         header: [pubkey, time, expire],
         name: "submitTransaction",
         inputs: vec![
-            Param::new("dest", ParamType::Address),
-            Param::new("value", ParamType::Uint(128)),
-            Param::new("bounce", ParamType::Bool),
-            Param::new("allBalance", ParamType::Bool),
-            Param::new("payload", ParamType::Cell),
-            Param::new("stateInit", ParamType::Optional(Box::new(ParamType::Cell))),
+            AbiType::Address.named("dest"),
+            AbiType::Uint(128).named("value"),
+            AbiType::Bool.named("bounce"),
+            AbiType::Bool.named("allBalance"),
+            AbiType::Cell.named("payload"),
+            AbiType::Optional(Arc::new(AbiType::Cell)).named("stateInit"),
         ],
-        outputs: vec![Param::new("transId", ParamType::Uint(64))],
+        outputs: vec![
+            AbiType::Uint(64).named("transId")
+        ],
     }
 }
 
-pub fn confirm_transaction() -> &'static ton_abi::Function {
+pub fn confirm_transaction() -> &'static Function {
     declare_function! {
         abi: v2_3,
         header: [pubkey, time, expire],
         name: "confirmTransaction",
-        inputs: vec![Param::new("transactionId", ParamType::Uint(64))],
+        inputs: vec![
+            AbiType::Uint(64).named("transactionId"),
+            ],
         outputs: Vec::new(),
     }
 }
 
-#[derive(Debug, UnpackAbi, KnownParamType)]
+#[derive(Debug)]
 pub struct MultisigTransaction {
-    #[abi(uint64)]
     pub id: u64,
-    #[abi(uint32, name = "confirmationsMask")]
     pub confirmation_mask: u32,
-    #[abi(uint8, name = "signsRequired")]
     pub signs_required: u8,
-    #[abi(uint8, name = "signsReceived")]
     pub signs_received: u8,
-    #[abi(uint256)]
-    pub creator: ton_types::UInt256,
-    #[abi(uint8)]
+    pub creator: HashBytes,
     pub index: u8,
-    #[abi(address)]
-    pub dest: ton_block::MsgAddressInt,
-    #[abi(uint128)]
+    pub dest: StdAddr,
     pub value: u128,
-    #[abi(uint16, name = "sendFlags")]
     pub send_flags: u16,
-    #[abi(cell)]
-    pub payload: ton_types::Cell,
-    #[abi(bool)]
+    pub payload: Cell,
     pub bounce: bool,
-    #[abi]
-    pub state_init: Option<ton_types::Cell>,
+    pub state_init: Option<Cell>,
 }
 
-pub fn get_transactions() -> &'static ton_abi::Function {
+pub fn get_transactions() -> &'static Function {
     declare_function! {
         abi: v2_3,
         header: [pubkey, time, expire],
         name: "getTransactions",
         inputs: Vec::new(),
         outputs: vec![
-            Param::new("transactions", ParamType::Array(Box::new(MultisigTransaction::param_type())))
+            AbiType::Array(Arc::new(MultisigTransaction::param_type())).named("transactions")
         ]
     }
 }
 
-#[derive(Debug, Clone, Copy, UnpackAbi, KnownParamType)]
+#[derive(Debug, Clone, Copy)]
 pub struct MultisigCustodian {
-    #[abi(uint8)]
     pub index: u8,
-    #[abi(uint256)]
-    pub pubkey: ton_types::UInt256,
+    pub pubkey: HashBytes,
 }
 
-pub fn get_custodians() -> &'static ton_abi::Function {
+pub fn get_custodians() -> &'static Function {
     declare_function! {
         abi: v2_3,
         header: [pubkey, time, expire],
         name: "getCustodians",
         inputs: Vec::new(),
         outputs: vec![
-            Param::new("custodians", ParamType::Array(Box::new(MultisigCustodian::param_type())))
+            AbiType::Array(Arc::new(MultisigCustodian::param_type())).named("custodians")
         ]
     }
 }
 
-#[derive(Debug, Clone, UnpackAbiPlain, PackAbiPlain, KnownParamTypePlain)]
+#[derive(Debug, Clone)]
 pub struct SubmitUpdateParams {
-    #[abi]
-    pub code_hash: Option<ton_types::UInt256>,
-    #[abi]
-    pub owners: Option<Vec<ton_types::UInt256>>,
-    #[abi]
+    pub code_hash: Option<HashBytes>,
+    pub owners: Option<Vec<HashBytes>>,
     pub req_confirms: Option<u8>,
-    #[abi]
     pub lifetime: Option<u64>,
 }
 
-#[derive(Debug, Copy, Clone, UnpackAbiPlain, KnownParamTypePlain)]
+#[derive(Debug, Copy, Clone)]
 pub struct SubmitUpdateOutput {
-    #[abi(uint64)]
     pub update_id: u64,
 }
 
-pub fn submit_update() -> &'static ton_abi::Function {
+pub fn submit_update() -> &'static Function {
     declare_function! {
         abi: v2_3,
         header: [pubkey, time, expire],
@@ -148,13 +138,12 @@ pub fn submit_update() -> &'static ton_abi::Function {
     }
 }
 
-#[derive(Debug, Copy, Clone, UnpackAbiPlain, PackAbiPlain, KnownParamTypePlain)]
+#[derive(Debug, Copy, Clone)]
 pub struct ConfirmUpdateParams {
-    #[abi(uint64)]
     pub update_id: u64,
 }
 
-pub fn confirm_update() -> &'static ton_abi::Function {
+pub fn confirm_update() -> &'static Function {
     declare_function! {
         abi: v2_3,
         header: [pubkey, time, expire],
@@ -164,15 +153,13 @@ pub fn confirm_update() -> &'static ton_abi::Function {
     }
 }
 
-#[derive(Debug, Clone, UnpackAbiPlain, PackAbiPlain, KnownParamTypePlain)]
+#[derive(Debug, Clone)]
 pub struct ExecuteUpdateParams {
-    #[abi(uint64)]
     pub update_id: u64,
-    #[abi]
-    pub code: Option<ton_types::Cell>,
+    pub code: Option<Cell>,
 }
 
-pub fn execute_update() -> &'static ton_abi::Function {
+pub fn execute_update() -> &'static Function {
     declare_function! {
         abi: v2_3,
         header: [pubkey, time, expire],
@@ -182,23 +169,17 @@ pub fn execute_update() -> &'static ton_abi::Function {
     }
 }
 
-#[derive(Debug, Clone, Copy, UnpackAbiPlain, KnownParamTypePlain)]
+#[derive(Debug, Clone, Copy)]
 pub struct SetCodeMultisigParams {
-    #[abi(uint8, name = "maxQueuedTransactions")]
     pub max_queued_transactions: u8,
-    #[abi(uint8, name = "maxCustodianCount")]
     pub max_custodian_count: u8,
-    #[abi(uint64, name = "expirationTime")]
     pub expiration_time: u64,
-    #[abi(uint128, name = "minValue")]
     pub min_value: u128,
-    #[abi(uint8, name = "requiredTxnConfirms")]
     pub required_txn_confirms: u8,
-    #[abi(uint8, name = "requiredUpdConfirms")]
     pub required_upd_confirms: u8,
 }
 
-pub fn get_parameters() -> &'static ton_abi::Function {
+pub fn get_parameters() -> &'static Function {
     declare_function! {
         abi: v2_3,
         header: [pubkey, time, expire],
@@ -208,60 +189,54 @@ pub fn get_parameters() -> &'static ton_abi::Function {
     }
 }
 
-#[derive(Debug, Clone, UnpackAbi, KnownParamType)]
+#[derive(Debug, Clone)]
 pub struct UpdateTransaction {
-    #[abi(uint64)]
     pub id: u64,
-    #[abi(uint8)]
     pub index: u8,
-    #[abi(uint8)]
     pub signs: u8,
-    #[abi(uint32)]
     pub confirmations_mask: u32,
-    #[abi(uint256)]
-    pub creator: ton_types::UInt256,
-    #[abi]
-    pub new_code_hash: Option<ton_types::UInt256>,
-    #[abi]
-    pub new_custodians: Option<Vec<ton_types::UInt256>>,
-    #[abi]
+    pub creator: HashBytes,
+    pub new_code_hash: Option<HashBytes>,
+    pub new_custodians: Option<Vec<HashBytes>>,
     pub new_req_confirms: Option<u8>,
-    #[abi(with = "updated_lifetime")]
+    //#[abi(with = "updated_lifetime")]
     pub new_lifetime: Option<u32>,
 }
 
-mod updated_lifetime {
-    use super::*;
-    use num_traits::cast::ToPrimitive;
-
-    pub fn unpack(value: &ton_abi::TokenValue) -> UnpackerResult<Option<u32>> {
-        let value = match value {
-            ton_abi::TokenValue::Optional(_, None) => return Ok(None),
-            ton_abi::TokenValue::Optional(_, Some(value)) => value,
-            _ => return Err(UnpackerError::InvalidAbi),
-        };
-
-        match value.as_ref() {
-            ton_abi::TokenValue::Uint(ton_abi::Uint { number, size: 32 }) => {
-                Ok(Some(number.to_u32().ok_or(UnpackerError::InvalidAbi)?))
-            }
-            ton_abi::TokenValue::Uint(ton_abi::Uint { number, size: 64 }) => {
-                let lifetime = number.to_u64().ok_or(UnpackerError::InvalidAbi)?;
-                Ok(Some(lifetime as u32))
-            }
-            _ => Err(UnpackerError::InvalidAbi),
-        }
-    }
-
-    pub fn param_type() -> ParamType {
-        Option::<u32>::param_type()
-    }
-}
+//mod updated_lifetime {
+//    use super::*;
+//    use num_traits::cast::ToPrimitive;
+//
+//    pub fn unpack(value: &TokenValue) -> UnpackerResult<Option<u32>> {
+//        let value = match value {
+//            TokenValue::Optional(_, None) => return Ok(None),
+//            TokenValue::Optional(_, Some(value)) => value,
+//            _ => return Err(UnpackerError::InvalidAbi),
+//        };
+//
+//        match value.as_ref() {
+//            TokenValue::Uint(Uint { number, size: 32 }) => {
+//                Ok(Some(number.to_u32().ok_or(UnpackerError::InvalidAbi)?))
+//            }
+//            TokenValue::Uint(Uint { number, size: 64 }) => {
+//                let lifetime = number.to_u64().ok_or(UnpackerError::InvalidAbi)?;
+//                Ok(Some(lifetime as u32))
+//            }
+//            _ => Err(UnpackerError::InvalidAbi),
+//        }
+//    }
+//
+//    pub fn param_type() -> ParamType {
+//        Option::<u32>::param_type()
+//    }
+//}
 
 pub mod v2_0 {
+    use tycho_types::abi::NamedAbiType;
+
     use super::*;
 
-    pub fn get_update_requests() -> &'static ton_abi::Function {
+    pub fn get_update_requests() -> &'static Function {
         declare_function! {
             abi: v2_3,
             header: [pubkey, time, expire],
@@ -269,18 +244,20 @@ pub mod v2_0 {
             inputs: Vec::new(),
             outputs: {
                 let mut param_types = UpdateTransaction::param_type();
-                if let ton_abi::ParamType::Tuple(params) = &mut param_types {
-                    if let Some(ton_abi::Param {
-                        kind: ton_abi::ParamType::Optional(param),
+                if let AbiType::Tuple(params) = &mut param_types {
+                    if let Some(NamedAbiType {
+                        ty: AbiType::Optional(param),
                         ..
                     }) = params.last_mut() {
-                        if let ton_abi::ParamType::Uint(size) = param.as_mut() {
+                        if let AbiType::Uint(size) = param.as_mut() {
                             *size = 64;
                         }
                     }
                 }
 
-                vec![Param::new("updates", ParamType::Array(Box::new(param_types)))]
+                vec![
+                    AbiType::Array(Arc::new(param_types)).named("updates")
+                ]
             },
         }
     }
@@ -289,14 +266,14 @@ pub mod v2_0 {
 pub mod v2_1 {
     use super::*;
 
-    pub fn get_update_requests() -> &'static ton_abi::Function {
+    pub fn get_update_requests() -> &'static Function {
         declare_function! {
             abi: v2_3,
             header: [pubkey, time, expire],
             name: "getUpdateRequests",
             inputs: Vec::new(),
             outputs: vec![
-                Param::new("updates", ParamType::Array(Box::new(UpdateTransaction::param_type())))
+                AbiType::Array(Arc::new(UpdateTransaction::param_type())).named("updates")
             ],
         }
     }

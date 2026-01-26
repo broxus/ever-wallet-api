@@ -6,7 +6,8 @@ use tycho_types::{
     models::{Account, AccountState, IntAddr, IntMsgInfo, Message, MsgInfo, StateInit, StdAddr},
 };
 
-use crate::utils::ton_wallet::{ever_wallet, Gift, TonWalletDetails};
+use crate::utils::ton_wallet::{Gift, TonWalletDetails};
+use crate::utils::wallets::code::ever_wallet;
 
 pub fn prepare_deploy(
     public_key: &PublicKey,
