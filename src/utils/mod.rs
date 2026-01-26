@@ -20,6 +20,8 @@ mod pending_messages_queue;
 mod shard_utils;
 mod token_wallet;
 mod tx_context;
+mod ton_wallet;
+mod wallets;
 
 pub type FxDashMap<K, V> = dashmap::DashMap<K, V, BuildHasherDefault<FxHasher>>;
 pub type FxDashSet<K> = dashmap::DashSet<K, BuildHasherDefault<FxHasher>>;

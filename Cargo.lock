@@ -857,6 +857,7 @@ dependencies = [
  "cfg-if",
  "cpufeatures",
  "curve25519-dalek-derive",
+ "digest 0.10.7",
  "fiat-crypto",
  "rustc_version",
  "subtle",
@@ -1117,6 +1118,20 @@ dependencies = [
  "rand 0.8.5",
  "serde",
  "sha2 0.9.9",
+ "zeroize",
+]
+
+[[package]]
+name = "ed25519-dalek"
+version = "2.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "70e796c081cee67dc755e1a36a0a172b897fab85fc3f6bc48307991f64e4eca9"
+dependencies = [
+ "curve25519-dalek",
+ "ed25519 2.2.3",
+ "serde",
+ "sha2 0.10.9",
+ "subtle",
  "zeroize",
 ]
 
@@ -2462,7 +2477,7 @@ dependencies = [
  "curve25519-dalek-ng",
  "downcast-rs",
  "dyn-clone",
- "ed25519-dalek",
+ "ed25519-dalek 1.0.1",
  "erased-serde",
  "futures-util",
  "getrandom 0.2.16",
@@ -2501,7 +2516,7 @@ source = "git+https://github.com/broxus/nekoton.git#9c87c3d74dccf21c474a9ad8c2cc
 dependencies = [
  "anyhow",
  "base64 0.13.1",
- "ed25519-dalek",
+ "ed25519-dalek 1.0.1",
  "hex",
  "log",
  "nekoton-derive",
@@ -2574,7 +2589,7 @@ dependencies = [
  "anyhow",
  "base64 0.13.1",
  "chacha20poly1305",
- "ed25519-dalek",
+ "ed25519-dalek 1.0.1",
  "hex",
  "hmac 0.11.0",
  "pbkdf2 0.12.2",
@@ -4541,7 +4556,7 @@ dependencies = [
  "base64 0.13.1",
  "byteorder",
  "ed25519 1.5.3",
- "ed25519-dalek",
+ "ed25519-dalek 1.0.1",
  "hex",
  "num-bigint",
  "num-traits",
@@ -4563,7 +4578,7 @@ dependencies = [
  "base64 0.13.1",
  "crc",
  "ed25519 1.5.3",
- "ed25519-dalek",
+ "ed25519-dalek 1.0.1",
  "hex",
  "log",
  "num",
@@ -4618,7 +4633,7 @@ source = "git+https://github.com/broxus/ton-labs-vm.git#211bd88f46fa257ac4b93944
 dependencies = [
  "anyhow",
  "ed25519 1.5.3",
- "ed25519-dalek",
+ "ed25519-dalek 1.0.1",
  "hex",
  "lazy_static",
  "log",
@@ -4984,11 +4999,14 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c2ccb37e250becb5c4b827536644c777c247b41ac6c9ddd30902ff1db29818a7"
 dependencies = [
  "ahash 0.8.12",
+ "anyhow",
  "base64 0.22.1",
  "bitflags",
  "blake3",
+ "bytes",
  "crc32c",
  "dashmap 6.1.0",
+ "ed25519-dalek 2.2.0",
  "hex",
  "num-bigint",
  "num-traits",
@@ -5001,8 +5019,21 @@ dependencies = [
  "thiserror 2.0.17",
  "tl-proto",
  "tycho-crypto",
+ "tycho-types-abi-proc",
  "tycho-types-proc",
  "typeid",
+]
+
+[[package]]
+name = "tycho-types-abi-proc"
+version = "0.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "6c813c08a03554252747f9e5e88485d9af4c30077394a1c3bb6d774ddca56b07"
+dependencies = [
+ "anyhow",
+ "proc-macro2",
+ "quote",
+ "syn 2.0.111",
 ]
 
 [[package]]
@@ -5117,7 +5148,7 @@ dependencies = [
  "clap",
  "dashmap 5.5.3",
  "derive_more",
- "ed25519-dalek",
+ "ed25519-dalek 1.0.1",
  "futures",
  "futures-util",
  "hex",
