@@ -156,8 +156,8 @@ else
       https://testnet.tychoprotocol.com/global-config.json
 fi
 
-echo 'INFO: restarting timesyncd'
-sudo systemctl restart systemd-timesyncd.service
+# echo 'INFO: restarting timesyncd'
+# sudo systemctl restart systemd-timesyncd.service
 
 echo 'INFO: create database'
 cargo sqlx database create --database-url "$database_url"

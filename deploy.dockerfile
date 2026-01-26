@@ -19,7 +19,7 @@ RUN curl -so /etc/tycho-wallet-api/global-config.json \
      https://testnet.tychoprotocol.com/global-config.json
 
 # Restart systemd-timesyncd service
-RUN systemctl enable systemd-timesyncd.service
+# RUN systemctl enable systemd-timesyncd.service
 WORKDIR /etc/tycho-wallet-api
 
 # Default command for the container (optional)
