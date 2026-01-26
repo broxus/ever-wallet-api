@@ -94,7 +94,7 @@ pub fn prepare_transfer(
         return Err(WalletV3Error::TooManyGifts.into());
     }
 
-    let (init_data, with_state_init) = match &current_state.state {
+    let (mut init_data, with_state_init) = match &current_state.state {
         AccountState::Active(state_init) => match &state_init.data {
             Some(data) => (InitData::try_from(data)?, false),
             None => return Err(WalletV3Error::InvalidInitData.into()),
@@ -150,10 +150,10 @@ pub fn is_wallet_v3(code_hash: &HashBytes) -> bool {
 }
 
 pub fn compute_contract_address(public_key: &PublicKey, workchain_id: i8) -> Result<StdAddr> {
-    let hash = InitData::from_key(public_key)
+    let state_init = InitData::from_key(public_key)
         .with_wallet_id(WALLET_ID)
-        .make_state_init()
-        .and_then(|state| state.hash())?;
+        .make_state_init()?;
+    let hash = CellBuilder::build_from(&state_init)?.repr_hash();
     Ok(StdAddr::new(workchain_id, hash.into()))
 }
 
@@ -280,4 +280,6 @@ enum WalletV3Error {
     AccountIsFrozen,
     #[error("Too many outgoing messages")]
     TooManyGifts,
+    #[error("Account address is not valid")]
+    InvalidAddress,
 }
