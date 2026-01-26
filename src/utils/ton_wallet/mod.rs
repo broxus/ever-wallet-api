@@ -9,6 +9,8 @@ use nekoton_utils::*;
 use tycho_types::cell::{Cell, HashBytes};
 use tycho_types::models::{IntAddr, StateInit, StdAddr};
 
+use crate::utils::wallets;
+
 pub use self::multisig::MultisigType;
 
 pub mod ever_wallet;
@@ -109,7 +111,6 @@ impl WalletType {
     }
 
     pub fn code(&self) -> Cell {
-        use nekoton_contracts::wallets;
         match self {
             Self::Multisig(multisig_type) => multisig_type.code(),
             Self::WalletV3 => wallets::code::wallet_v3(),
@@ -283,4 +284,18 @@ impl From<MessageFlags> for u8 {
 pub enum MessageFlagsError {
     #[error("Unknown message flags combination")]
     UnknownMessageFlags,
+}
+
+#[derive(Debug, Clone, Eq, PartialEq)]
+pub struct PendingTransaction {
+    /// External message hash
+    pub message_hash: HashBytes,
+    /// Incoming message source
+    pub src: Option<StdAddr>,
+    /// Last known lt at the time the message was sent
+    pub latest_lt: u64,
+    /// Message broadcast timestamp (adjusted)
+    pub created_at: u32,
+    /// Expiration timestamp (adjusted)
+    pub expire_at: u32,
 }

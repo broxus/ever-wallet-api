@@ -10,9 +10,6 @@ use tycho_types::{
     models::{Account, StateInit, StdAddr},
 };
 
-use nekoton_abi::*;
-use nekoton_utils::*;
-
 use crate::utils::ton_wallet::{MessageFlags, MultisigPendingTransaction, MultisigPendingUpdate};
 
 use super::{Gift, TonWalletDetails};
@@ -102,7 +99,6 @@ pub fn prepare_confirm_transaction(
 }
 
 pub fn prepare_transfer(
-    clock: &dyn Clock,
     multisig_type: MultisigType,
     public_key: &PublicKey,
     has_multiple_owners: bool,
@@ -234,19 +230,17 @@ pub fn prepare_execute_update(
     )
 }
 
-define_string_enum!(
-    #[derive(Debug, Copy, Clone, Eq, PartialEq, serde::Serialize, serde::Deserialize)]
-    pub enum MultisigType {
-        SafeMultisigWallet,
-        SafeMultisigWallet24h,
-        SetcodeMultisigWallet,
-        SetcodeMultisigWallet24h,
-        BridgeMultisigWallet,
-        SurfWallet,
-        Multisig2,
-        Multisig2_1,
-    }
-);
+#[derive(Debug, Copy, Clone, Eq, PartialEq, serde::Serialize, serde::Deserialize)]
+pub enum MultisigType {
+    SafeMultisigWallet,
+    SafeMultisigWallet24h,
+    SetcodeMultisigWallet,
+    SetcodeMultisigWallet24h,
+    BridgeMultisigWallet,
+    SurfWallet,
+    Multisig2,
+    Multisig2_1,
+}
 
 impl MultisigType {
     pub fn is_multisig2(self) -> bool {
@@ -692,6 +686,14 @@ enum MultisigError {
     CustomExpirationTimeNotSupported,
     #[error("Update is not supported or not implemented for this contract type")]
     UnsupportedUpdate,
+}
+
+pub type UnpackerResult<T> = Result<T, UnpackerError>;
+
+#[derive(thiserror::Error, Debug, Clone, Copy)]
+pub enum UnpackerError {
+    #[error("Invalid ABI")]
+    InvalidAbi,
 }
 
 #[cfg(test)]

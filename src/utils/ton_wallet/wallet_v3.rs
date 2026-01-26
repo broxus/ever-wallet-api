@@ -2,53 +2,47 @@ use std::convert::TryFrom;
 
 use anyhow::Result;
 use ed25519_dalek::PublicKey;
-use ton_block::{MsgAddrStd, MsgAddressInt, Serializable};
-use ton_types::{BuilderData, Cell, IBitstring, SliceData, UInt256};
+use tycho_types::{
+    abi::{AbiVersion, UnsignedBody, UnsignedExternalMessage},
+    cell::{Cell, CellBuilder, HashBytes},
+    models::{Account, AccountState, IntMsgInfo, Message, MsgInfo, StateInit, StdAddr},
+};
+use tycho_util::time::now_sec;
 
-use nekoton_utils::*;
-
-use super::{Gift, TonWalletDetails, TransferAction};
-use crate::core::models::{Expiration, ExpireAt, PendingTransaction};
-use crate::crypto::{SignedMessage, UnsignedMessage};
+use crate::utils::{
+    ton_wallet::{Gift, PendingTransaction, TonWalletDetails},
+    wallets::code::wallet_v3,
+};
 
 pub fn prepare_deploy(
-    clock: &dyn Clock,
     public_key: &PublicKey,
     workchain: i8,
-    expiration: Expiration,
-) -> Result<Box<dyn UnsignedMessage>> {
+    expire_at: u32,
+) -> Result<UnsignedExternalMessage> {
     let init_data = InitData::from_key(public_key).with_wallet_id(WALLET_ID);
-    let dst = compute_contract_address(public_key, workchain);
-    let mut message =
-        ton_block::Message::with_ext_in_header(ton_block::ExternalInboundMessageHeader {
-            dst,
-            ..Default::default()
-        });
+    let dst = compute_contract_address(public_key, workchain)?;
 
-    message.set_state_init(init_data.make_state_init()?);
-
-    let expire_at = ExpireAt::new(clock, expiration);
-    let (hash, payload) = init_data.make_transfer_payload(None, expire_at.timestamp)?;
-
-    Ok(Box::new(UnsignedWalletV3Message {
-        init_data,
-        gifts: Vec::new(),
+    let (hash, payload) = init_data.make_transfer_payload(None, expire_at)?;
+    let unsigned_body = UnsignedBody {
         payload,
-        message,
-        expire_at,
         hash,
-    }))
+        abi_version: AbiVersion::V2_3,
+        expire_at,
+    };
+    let mut unsigned_message = unsigned_body.with_dst(dst);
+    let state_init = init_data.make_state_init()?;
+    unsigned_message.set_state_init(Some(state_init));
+    Ok(unsigned_message)
 }
 
-pub fn prepare_state_init(public_key: &PublicKey) -> Result<ton_block::StateInit> {
+pub fn prepare_state_init(public_key: &PublicKey) -> Result<StateInit> {
     let init_data = InitData::from_key(public_key).with_wallet_id(WALLET_ID);
     init_data.make_state_init()
 }
 
 /// Adjusts seqno if there are some recent pending transactions that have not expired
 pub fn estimate_seqno_offset(
-    clock: &dyn Clock,
-    current_state: &ton_block::AccountStuff,
+    current_state: &Account,
     pending_transactions: &[PendingTransaction],
 ) -> u32 {
     const SEQNO_ADJUST_INTERVAL: u32 = 30; // seconds
@@ -66,8 +60,8 @@ pub fn estimate_seqno_offset(
         return 0;
     }
 
-    let now = clock.now_sec_u64() as u32;
-    let latest_lt = current_state.storage.last_trans_lt;
+    let now = now_sec();
+    let latest_lt = current_state.last_trans_lt;
 
     let mut seqno_offset = 0;
     for pending in pending_transactions.iter().rev() {
@@ -90,26 +84,23 @@ pub fn estimate_seqno_offset(
 }
 
 pub fn prepare_transfer(
-    clock: &dyn Clock,
     public_key: &PublicKey,
-    current_state: &ton_block::AccountStuff,
+    current_state: &Account,
     seqno_offset: u32,
     gifts: Vec<Gift>,
-    expiration: Expiration,
-) -> Result<TransferAction> {
+    expire_at: u32,
+) -> Result<UnsignedExternalMessage> {
     if gifts.len() > MAX_MESSAGES {
         return Err(WalletV3Error::TooManyGifts.into());
     }
 
-    let (mut init_data, with_state_init) = match &current_state.storage.state {
-        ton_block::AccountState::AccountActive { state_init, .. } => match &state_init.data {
+    let (init_data, with_state_init) = match &current_state.state {
+        AccountState::Active(state_init) => match &state_init.data {
             Some(data) => (InitData::try_from(data)?, false),
             None => return Err(WalletV3Error::InvalidInitData.into()),
         },
-        ton_block::AccountState::AccountFrozen { .. } => {
-            return Err(WalletV3Error::AccountIsFrozen.into())
-        }
-        ton_block::AccountState::AccountUninit => (
+        AccountState::Frozen { .. } => return Err(WalletV3Error::AccountIsFrozen.into()),
+        AccountState::Uninit => (
             InitData::from_key(public_key).with_wallet_id(WALLET_ID),
             true,
         ),
@@ -117,91 +108,36 @@ pub fn prepare_transfer(
 
     init_data.seqno += seqno_offset;
 
-    let mut message =
-        ton_block::Message::with_ext_in_header(ton_block::ExternalInboundMessageHeader {
-            dst: current_state.addr.clone(),
-            ..Default::default()
-        });
-
-    if with_state_init {
-        message.set_state_init(init_data.make_state_init()?);
-    }
-
-    let expire_at = ExpireAt::new(clock, expiration);
-    let (hash, payload) = init_data.make_transfer_payload(gifts.clone(), expire_at.timestamp)?;
-
-    Ok(TransferAction::Sign(Box::new(UnsignedWalletV3Message {
-        init_data,
-        gifts,
+    let (hash, payload) = init_data.make_transfer_payload(gifts.clone(), expire_at)?;
+    let unsigned_body = UnsignedBody {
         payload,
         hash,
+        abi_version: AbiVersion::V2_3,
         expire_at,
-        message,
-    })))
+    };
+    let mut unsigned_message = unsigned_body.with_dst(
+        current_state
+            .address
+            .as_std()
+            .ok_or_else(|| WalletV3Error::InvalidAddress)?
+            .clone(),
+    );
+    if with_state_init {
+        let state_init = init_data.make_state_init()?;
+        unsigned_message.set_state_init(Some(state_init));
+    }
+
+    Ok(unsigned_message)
 }
 
 #[derive(Clone)]
 struct UnsignedWalletV3Message {
     init_data: InitData,
     gifts: Vec<Gift>,
-    payload: BuilderData,
-    hash: UInt256,
-    expire_at: ExpireAt,
-    message: ton_block::Message,
-}
-
-impl UnsignedMessage for UnsignedWalletV3Message {
-    fn refresh_timeout(&mut self, clock: &dyn Clock) {
-        if !self.expire_at.refresh(clock) {
-            return;
-        }
-
-        let (hash, payload) = self
-            .init_data
-            .make_transfer_payload(self.gifts.clone(), self.expire_at())
-            .trust_me();
-        self.hash = hash;
-        self.payload = payload;
-    }
-
-    fn expire_at(&self) -> u32 {
-        self.expire_at.timestamp
-    }
-
-    fn hash(&self) -> &[u8] {
-        self.hash.as_slice()
-    }
-
-    fn sign(&self, signature: &[u8; ed25519_dalek::SIGNATURE_LENGTH]) -> Result<SignedMessage> {
-        let mut payload = self.payload.clone();
-        payload.prepend_raw(signature, signature.len() * 8)?;
-
-        let mut message = self.message.clone();
-        message.set_body(SliceData::load_builder(payload)?);
-
-        Ok(SignedMessage {
-            message,
-            expire_at: self.expire_at(),
-        })
-    }
-
-    fn sign_with_pruned_payload(
-        &self,
-        signature: &[u8; ed25519_dalek::SIGNATURE_LENGTH],
-        prune_after_depth: u16,
-    ) -> Result<SignedMessage> {
-        let mut payload = self.payload.clone();
-        payload.prepend_raw(signature, signature.len() * 8)?;
-        let body = payload.into_cell()?;
-
-        let mut message = self.message.clone();
-        message.set_body(prune_deep_cells(&body, prune_after_depth)?);
-
-        Ok(SignedMessage {
-            message,
-            expire_at: self.expire_at(),
-        })
-    }
+    payload: Cell,
+    hash: HashBytes,
+    expire_at: u32,
+    message: UnsignedExternalMessage,
 }
 
 pub static CODE_HASH: &[u8; 32] = &[
@@ -209,15 +145,16 @@ pub static CODE_HASH: &[u8; 32] = &[
     0xc0, 0xf7, 0x6d, 0xc4, 0x52, 0x40, 0x02, 0xa5, 0xd0, 0x91, 0x8b, 0x9a, 0x75, 0xd2, 0xd5, 0x99,
 ];
 
-pub fn is_wallet_v3(code_hash: &UInt256) -> bool {
+pub fn is_wallet_v3(code_hash: &HashBytes) -> bool {
     code_hash.as_slice() == CODE_HASH
 }
 
-pub fn compute_contract_address(public_key: &PublicKey, workchain_id: i8) -> MsgAddressInt {
-    InitData::from_key(public_key)
+pub fn compute_contract_address(public_key: &PublicKey, workchain_id: i8) -> Result<StdAddr> {
+    let hash = InitData::from_key(public_key)
         .with_wallet_id(WALLET_ID)
-        .compute_addr(workchain_id)
-        .trust_me()
+        .make_state_init()
+        .and_then(|state| state.hash())?;
+    Ok(StdAddr::new(workchain_id, hash.into()))
 }
 
 pub static DETAILS: TonWalletDetails = TonWalletDetails {
@@ -239,12 +176,12 @@ const MAX_MESSAGES: usize = 4;
 pub struct InitData {
     pub seqno: u32,
     pub wallet_id: u32,
-    pub public_key: UInt256,
+    pub public_key: HashBytes,
 }
 
 impl InitData {
     pub fn public_key(&self) -> &[u8; 32] {
-        self.public_key.as_slice()
+        &self.public_key.0
     }
 
     pub fn from_key(key: &PublicKey) -> Self {
@@ -260,75 +197,63 @@ impl InitData {
         self
     }
 
-    pub fn compute_addr(&self, workchain_id: i8) -> Result<MsgAddressInt> {
-        let init_state = self.make_state_init()?.serialize()?;
-        let hash = init_state.repr_hash();
-        Ok(MsgAddressInt::AddrStd(MsgAddrStd {
-            anycast: None,
-            workchain_id,
-            address: hash.into(),
-        }))
+    pub fn compute_addr(&self, workchain_id: i8) -> Result<StdAddr> {
+        let state_init = self.make_state_init()?;
+        let hash = CellBuilder::build_from(&state_init)?.repr_hash();
+        Ok(StdAddr::new(workchain_id, hash.into()))
     }
 
-    pub fn make_state_init(&self) -> Result<ton_block::StateInit> {
-        Ok(ton_block::StateInit {
-            code: Some(nekoton_contracts::wallets::code::wallet_v3()),
+    pub fn make_state_init(&self) -> Result<StateInit> {
+        Ok(StateInit {
+            code: Some(wallet_v3()),
             data: Some(self.serialize()?),
             ..Default::default()
         })
     }
 
     pub fn serialize(&self) -> Result<Cell> {
-        let mut data = BuilderData::new();
-        data.append_u32(self.seqno)?
-            .append_u32(self.wallet_id)?
-            .append_raw(self.public_key.as_slice(), 256)?;
-        data.into_cell()
+        let mut builder = CellBuilder::new();
+        builder.store_u32(self.seqno)?;
+        builder.store_u32(self.wallet_id)?;
+        builder.store_u256(self.public_key.as_bytes())?;
+        let data = builder.build()?;
+        Ok(data)
     }
 
     pub fn make_transfer_payload(
         &self,
         gifts: impl IntoIterator<Item = Gift>,
         expire_at: u32,
-    ) -> Result<(UInt256, BuilderData)> {
-        let mut payload = BuilderData::new();
-
+    ) -> Result<(HashBytes, Cell)> {
         // insert prefix
-        payload
-            .append_u32(self.wallet_id)?
-            .append_u32(expire_at)?
-            .append_u32(self.seqno)?;
+        let mut builder = CellBuilder::new();
+        builder.store_u32(self.wallet_id)?;
+        builder.store_u32(expire_at)?;
+        builder.store_u32(self.seqno)?;
 
         // create internal message
         for gift in gifts {
-            let mut internal_message =
-                ton_block::Message::with_int_header(ton_block::InternalMessageHeader {
+            let internal_message = Message {
+                info: MsgInfo::Int(IntMsgInfo {
                     ihr_disabled: true,
                     bounce: gift.bounce,
                     dst: gift.destination,
-                    value: ton_block::CurrencyCollection::from_grams(ton_block::Grams::new(
-                        gift.amount,
-                    )?),
+                    value: gift.amount.into(),
                     ..Default::default()
-                });
-
-            if let Some(body) = gift.body {
-                internal_message.set_body(body);
-            }
-
-            if let Some(state_init) = gift.state_init {
-                internal_message.set_state_init(state_init);
-            }
-
+                }),
+                init: gift.state_init,
+                body: gift.body.unwrap_or(Default::default()).as_slice()?,
+                layout: None,
+            };
             // append it to the body
-            payload
-                .append_u8(gift.flags)?
-                .checked_append_reference(internal_message.serialize()?)?;
+            builder.store_u8(self.flags)?;
+            builder.store_reference(CellBuilder::build_from(internal_message.borrow())?)?;
         }
 
-        let hash = payload.clone().into_cell()?.repr_hash();
+        let payload = builder.build()?;
+        let hash = payload.repr_hash();
 
-        Ok((hash, payload))
+        Ok((*hash, payload))
     }
 }
 
@@ -336,11 +261,11 @@ impl TryFrom<&Cell> for InitData {
     type Error = anyhow::Error;
 
     fn try_from(data: &Cell) -> Result<Self, Self::Error> {
-        let mut cs = SliceData::load_cell_ref(data)?;
+        let mut slice = data.as_slice()?;
         Ok(Self {
-            seqno: cs.get_next_u32()?,
-            wallet_id: cs.get_next_u32()?,
-            public_key: UInt256::from_be_bytes(&cs.get_next_bytes(32)?),
+            seqno: slice.get_next_u32()?,
+            wallet_id: slice.get_next_u32()?,
+            public_key: HashBytes::from_be_bytes(&slice.get_next_bytes(32)?),
         })
     }
 }
