@@ -16,6 +16,8 @@ function print_help() {
   echo '  --database-url    Postgres connection url which is needed to create'
   echo '                    database and make migration before running tycho-wallet-api.'
   echo '                    example: "postgresql://${DB_USER}:${DB_PASSWORD}@${DB_HOST}/${DB_NAME}"'
+  echo '  --global-config   Path to local global-config.json file to copy instead'
+  echo '                    of downloading from testnet. File must exist locally.'
 }
 
 while [[ $# -gt 0 ]]; do
@@ -53,6 +55,17 @@ while [[ $# -gt 0 ]]; do
         if [ "$#" -gt 0 ]; then shift;
         else
           echo 'ERROR: Expected postgres connection url'
+          echo ''
+          print_help
+          exit 1
+        fi
+      ;;
+      --global-config)
+        global_config_path="$2"
+        shift # past argument
+        if [ "$#" -gt 0 ]; then shift;
+        else
+          echo 'ERROR: Expected path to global-config.json file'
           echo ''
           print_help
           exit 1
@@ -131,8 +144,17 @@ if [[ -f "$config_path" ]]; then
 else
   sudo cp -n "$SCRIPT_DIR/contrib/config.json" "$config_path"
 fi
-sudo curl -so /etc/tycho-wallet-api/global-config.json \
-    https://testnet.tychoprotocol.com/global-config.json
+
+if [[ -n "$global_config_path" ]]; then
+  if [[ ! -f "$global_config_path" ]]; then
+    echo "ERROR: Global config file $global_config_path does not exist"
+    exit 1
+  fi
+  sudo cp "$global_config_path" /etc/tycho-wallet-api/global-config.json
+else
+  sudo curl -so /etc/tycho-wallet-api/global-config.json \
+      https://testnet.tychoprotocol.com/global-config.json
+fi
 
 echo 'INFO: restarting timesyncd'
 sudo systemctl restart systemd-timesyncd.service
