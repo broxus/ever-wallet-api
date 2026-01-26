@@ -4,7 +4,8 @@ use std::path::Path;
 use anyhow::{Context, Result};
 use argon2::password_hash::PasswordHasher;
 use nekoton_utils::TrustMe;
-use serde::{Deserialize, Serialize};
+use regex;
+use serde::{Deserialize, Deserializer, Serialize};
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct AppConfig {
@@ -13,6 +14,7 @@ pub struct AppConfig {
     pub server_addr: SocketAddr,
 
     /// Postgres database url.
+    #[serde(deserialize_with = "deserialize_database_url")]
     pub database_url: String,
 
     /// Postgres connection pools.
@@ -94,5 +96,53 @@ fn default_key() -> Vec<u8> {
             "Failed to get key to encrypt/decrypt private key: {:?}",
             err
         ),
+    }
+}
+
+fn parse_env_vars(data: &str) -> String {
+    let re = regex::Regex::new(r"\$\{([a-zA-Z_][0-9a-zA-Z_]*)\}").unwrap();
+    re.replace_all(data, |caps: &regex::Captures| {
+        match std::env::var(&caps[1]) {
+            Ok(value) => value,
+            Err(_) => {
+                eprintln!("WARN: Environment variable {} was not set", &caps[1]);
+                String::default()
+            }
+        }
+    })
+    .to_string()
+}
+
+fn deserialize_database_url<'de, D>(deserializer: D) -> Result<String, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    let s: String = Deserialize::deserialize(deserializer)?;
+    Ok(parse_env_vars(&s))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_parse_env_vars() {
+        // Set environment variables
+        std::env::set_var("DB_HOST", "127.0.0.1");
+        std::env::set_var("DB_USER", "myusername");
+        std::env::set_var("DB_PASSWORD", "mypassword");
+        std::env::set_var("DB_NAME", "tycho_wallet_api");
+
+        let input = "postgresql://${DB_USER}:${DB_PASSWORD}@${DB_HOST}:5432/${DB_NAME}";
+        let result = parse_env_vars(input);
+        let expected = "postgresql://myusername:mypassword@127.0.0.1:5432/tycho_wallet_api";
+
+        assert_eq!(result, expected);
+
+        // Clean up
+        std::env::remove_var("DB_HOST");
+        std::env::remove_var("DB_USER");
+        std::env::remove_var("DB_PASSWORD");
+        std::env::remove_var("DB_NAME");
     }
 }

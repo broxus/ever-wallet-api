@@ -41,7 +41,10 @@ impl EngineContext {
             .max_connections(config.db_pool_size)
             .connect(&config.database_url)
             .await
-            .expect(&format!("Failt connection to Database url - {}", config.database_url));
+            .expect(&format!(
+                "Failed connection to database url - {}",
+                config.database_url
+            ));
 
         sqlx::migrate!().run(&pool).await?;
 
