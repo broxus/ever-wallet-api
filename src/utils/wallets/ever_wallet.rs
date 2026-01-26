@@ -19,7 +19,7 @@ pub mod utils {
                     .with_inputs($inputs)
                     .with_outputs($outputs);
 
-                $crate::utils::wallets::ever_wallet::utils::declare_function!(@function_id builder $($id)?); 
+                $crate::utils::wallets::ever_wallet::utils::declare_function!(@function_id builder $($id)?);
 
                 builder
                     .build()

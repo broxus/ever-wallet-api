@@ -1,4 +1,4 @@
-use ton_types::Cell;
+use tycho_types::{boc::Boc, cell::Cell};
 
 macro_rules! declare_tvc {
     ($($contract:ident => $source:literal ($const_bytes:ident)),*$(,)?) => {$(
@@ -30,5 +30,5 @@ declare_tvc! {
 }
 
 fn load(mut data: &[u8]) -> Cell {
-    ton_types::deserialize_tree_of_cells(&mut data).expect("Trust me")
+    Boc::decode(&mut data).expect("Trust me")
 }
