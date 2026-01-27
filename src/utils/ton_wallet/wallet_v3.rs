@@ -262,10 +262,18 @@ impl TryFrom<&Cell> for InitData {
 
     fn try_from(data: &Cell) -> Result<Self, Self::Error> {
         let mut slice = data.as_slice()?;
+        let is_signature_allowed = slice.load_bit()?;
+        let seqno = slice.load_u32()?;
+        let wallet_id = slice.load_u32()?;
+        let mut buffer = [0u8; 32];
+        slice.load_raw(&mut buffer, 32)?;
+        let public_key = HashBytes::from_slice(&buffer);
+        let extensions = Option::<Cell>::load_from(&mut slice)?;
+
         Ok(Self {
-            seqno: slice.get_next_u32()?,
-            wallet_id: slice.get_next_u32()?,
-            public_key: HashBytes::from_be_bytes(&slice.get_next_bytes(32)?),
+            seqno,
+            wallet_id,
+            public_key,
         })
     }
 }

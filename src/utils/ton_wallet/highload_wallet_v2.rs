@@ -244,16 +244,19 @@ impl TryFrom<&Cell> for InitData {
 
     fn try_from(data: &Cell) -> Result<Self, Self::Error> {
         let mut slice = data.as_slice()?;
+        let wallet_id = slice.load_u32()?;
+        let last_cleaned = slice.load_u64()?;
+        let mut buffer = [0u8; 32];
+        slice.load_raw(&mut buffer, 32)?;
+        let public_key = HashBytes::from_slice(&buffer);
+        let mut data = Dict::<u64, Cell>::new();
+        data.load_from(&mut slice)?;
 
         Ok(Self {
-            wallet_id: slice.get_next_u32()?,
-            last_cleaned: slice.get_next_u64()?,
-            public_key: HashBytes::from_be_bytes(&slice.get_next_bytes(32)?),
-            data: {
-                let mut map = Dict::<u64, Cell>::new();
-                map.load_from(&mut slice)?;
-                map
-            },
+            wallet_id,
+            last_cleaned,
+            public_key,
+            data,
         })
     }
 }
