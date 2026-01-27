@@ -6,8 +6,8 @@ use tycho_types::{
     abi::{AbiVersion, UnsignedBody, UnsignedExternalMessage},
     cell::{Cell, CellBuilder, HashBytes, Lazy},
     models::{
-        Account, AccountState, OutAction, OwnedRelaxedMessage, RelaxedIntMsgInfo, RelaxedMsgInfo,
-        StateInit, StdAddr,
+        Account, AccountState, CurrencyCollection, IntAddr, OutAction, OwnedRelaxedMessage,
+        RelaxedIntMsgInfo, RelaxedMsgInfo, StateInit, StdAddr,
     },
 };
 
@@ -25,7 +25,7 @@ pub fn prepare_deploy(
     expire_at: u32,
 ) -> Result<UnsignedExternalMessage> {
     let init_data = make_init_data(public_key);
-    let dst = compute_contract_address(public_key, workchain);
+    let dst = compute_contract_address(public_key, workchain)?;
     let (hash, payload) = init_data.make_transfer_payload(None, expire_at, false)?;
     let unsigned_body = UnsignedBody {
         payload,
@@ -106,7 +106,6 @@ pub fn prepare_transfer(
     Ok(unsigned_message)
 }
 
-#[derive(Clone)]
 struct UnsignedWalletV5 {
     init_data: InitData,
     gifts: Vec<Gift>,
@@ -125,10 +124,8 @@ pub fn is_wallet_v5r1(code_hash: &HashBytes) -> bool {
     code_hash.as_slice() == CODE_HASH
 }
 
-pub fn compute_contract_address(public_key: &PublicKey, workchain_id: i8) -> StdAddr {
-    make_init_data(public_key)
-        .compute_addr(workchain_id)
-        .trust_me()
+pub fn compute_contract_address(public_key: &PublicKey, workchain_id: i8) -> Result<StdAddr> {
+    make_init_data(public_key).compute_addr(workchain_id)
 }
 
 pub static DETAILS: TonWalletDetails = TonWalletDetails {
@@ -165,7 +162,7 @@ impl InitData {
             is_signature_allowed: false,
             seqno: 0,
             wallet_id: 0,
-            public_key: key.as_bytes().into(),
+            public_key: HashBytes::from_slice(key.as_bytes()),
             extensions: Default::default(),
         }
     }
@@ -182,8 +179,9 @@ impl InitData {
 
     pub fn compute_addr(&self, workchain_id: i8) -> Result<StdAddr> {
         let state_init = self.make_state_init()?;
-        let hash = CellBuilder::build_from(&state_init)?.repr_hash();
-        Ok(StdAddr::new(workchain_id, hash.into()))
+        let cell_builder = CellBuilder::build_from(&state_init)?;
+        let hash = cell_builder.repr_hash();
+        Ok(StdAddr::new(workchain_id, *hash))
     }
 
     pub fn make_state_init(&self) -> Result<StateInit> {
@@ -199,7 +197,7 @@ impl InitData {
         builder.store_bit(self.is_signature_allowed)?;
         builder.store_u32(self.seqno)?;
         builder.store_u32(self.wallet_id)?;
-        builder.store_u256(self.public_key.as_bytes())?;
+        builder.store_u256(&self.public_key)?;
 
         if let Some(extensions) = &self.extensions {
             builder.store_bit_one()?;
@@ -247,8 +245,8 @@ impl InitData {
                 info: RelaxedMsgInfo::Int(RelaxedIntMsgInfo {
                     ihr_disabled: true,
                     bounce: gift.bounce,
-                    dst: gift.destination,
-                    value: gift.amount.into(),
+                    dst: IntAddr::Std(gift.destination),
+                    value: CurrencyCollection::new(gift.amount),
                     ..Default::default()
                 }),
                 init: gift.state_init,

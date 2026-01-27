@@ -5,7 +5,9 @@ use ed25519_dalek::PublicKey;
 use tycho_types::{
     abi::{AbiVersion, UnsignedBody, UnsignedExternalMessage},
     cell::{Cell, CellBuilder, HashBytes},
-    models::{Account, AccountState, IntMsgInfo, Message, MsgInfo, StateInit, StdAddr},
+    models::{
+        Account, AccountState, CurrencyCollection, IntMsgInfo, Message, MsgInfo, StateInit, StdAddr,
+    },
 };
 use tycho_util::time::now_sec;
 
@@ -130,7 +132,6 @@ pub fn prepare_transfer(
     Ok(unsigned_message)
 }
 
-#[derive(Clone)]
 struct UnsignedWalletV3Message {
     init_data: InitData,
     gifts: Vec<Gift>,
@@ -153,8 +154,9 @@ pub fn compute_contract_address(public_key: &PublicKey, workchain_id: i8) -> Res
     let state_init = InitData::from_key(public_key)
         .with_wallet_id(WALLET_ID)
         .make_state_init()?;
-    let hash = CellBuilder::build_from(&state_init)?.repr_hash();
-    Ok(StdAddr::new(workchain_id, hash.into()))
+    let cell_builder = CellBuilder::build_from(&state_init)?;
+    let hash = cell_builder.repr_hash();
+    Ok(StdAddr::new(workchain_id, *hash))
 }
 
 pub static DETAILS: TonWalletDetails = TonWalletDetails {
@@ -188,7 +190,7 @@ impl InitData {
         Self {
             seqno: 0,
             wallet_id: 0,
-            public_key: key.as_bytes().into(),
+            public_key: HashBytes::from_slice(key.as_bytes()),
         }
     }
 
@@ -199,8 +201,9 @@ impl InitData {
 
     pub fn compute_addr(&self, workchain_id: i8) -> Result<StdAddr> {
         let state_init = self.make_state_init()?;
-        let hash = CellBuilder::build_from(&state_init)?.repr_hash();
-        Ok(StdAddr::new(workchain_id, hash.into()))
+        let cell_builder = CellBuilder::build_from(&state_init)?;
+        let hash = cell_builder.repr_hash();
+        Ok(StdAddr::new(workchain_id, *hash))
     }
 
     pub fn make_state_init(&self) -> Result<StateInit> {
@@ -215,7 +218,7 @@ impl InitData {
         let mut builder = CellBuilder::new();
         builder.store_u32(self.seqno)?;
         builder.store_u32(self.wallet_id)?;
-        builder.store_u256(self.public_key.as_bytes())?;
+        builder.store_u256(&self.public_key)?;
         let data = builder.build()?;
         Ok(data)
     }
@@ -233,21 +236,22 @@ impl InitData {
 
         // create internal message
         for gift in gifts {
+            let body = gift.body.unwrap_or(Default::default());
             let internal_message = Message {
                 info: MsgInfo::Int(IntMsgInfo {
                     ihr_disabled: true,
                     bounce: gift.bounce,
-                    dst: gift.destination,
-                    value: gift.amount.into(),
+                    dst: IntAddr::Std(gift.destination),
+                    value: CurrencyCollection::new(gift.amount),
                     ..Default::default()
                 }),
                 init: gift.state_init,
-                body: gift.body.unwrap_or(Default::default()).as_slice()?,
+                body: body.as_slice()?,
                 layout: None,
             };
             // append it to the body
-            builder.store_u8(self.flags)?;
-            builder.store_reference(CellBuilder::build_from(internal_message.borrow())?)?;
+            builder.store_u8(gift.flags)?;
+            builder.store_reference(CellBuilder::build_from(internal_message)?)?;
         }
 
         let payload = builder.build()?;
@@ -262,13 +266,11 @@ impl TryFrom<&Cell> for InitData {
 
     fn try_from(data: &Cell) -> Result<Self, Self::Error> {
         let mut slice = data.as_slice()?;
-        let is_signature_allowed = slice.load_bit()?;
         let seqno = slice.load_u32()?;
         let wallet_id = slice.load_u32()?;
         let mut buffer = [0u8; 32];
         slice.load_raw(&mut buffer, 32)?;
         let public_key = HashBytes::from_slice(&buffer);
-        let extensions = Option::<Cell>::load_from(&mut slice)?;
 
         Ok(Self {
             seqno,

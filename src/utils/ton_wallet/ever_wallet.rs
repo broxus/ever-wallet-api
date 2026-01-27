@@ -3,7 +3,9 @@ use ed25519_dalek::PublicKey;
 use tycho_types::{
     abi::{AbiHeaderType, AbiVersion, Function, NamedAbiValue, UnsignedExternalMessage},
     cell::{CellBuilder, HashBytes},
-    models::{Account, AccountState, IntAddr, IntMsgInfo, Message, MsgInfo, StateInit, StdAddr},
+    models::{
+        Account, AccountState, CurrencyCollection, IntMsgInfo, Message, MsgInfo, StateInit, StdAddr,
+    },
 };
 
 use crate::utils::ton_wallet::{Gift, TonWalletDetails};
@@ -15,14 +17,15 @@ pub fn prepare_deploy(
     expire_at: u32,
 ) -> Result<UnsignedExternalMessage> {
     let state_init = prepare_state_init(public_key)?;
-    let hash = CellBuilder::build_from(&state_init)?.repr_hash();
+    let cell_builder = CellBuilder::build_from(&state_init)?;
+    let hash = cell_builder.repr_hash();
 
-    let dst = StdAddr::new(workchain, hash.into());
+    let dst = StdAddr::new(workchain, *hash);
 
     let headers = vec![
         AbiHeaderType::Time,
         AbiHeaderType::Expire,
-        AbiHeaderType::Pubkey,
+        AbiHeaderType::PublicKey,
     ];
     let function = Function::builder(AbiVersion::V2_3, "sendTransactionRaw")
         .with_headers(headers)
@@ -58,7 +61,7 @@ pub fn prepare_transfer(
         (1, Some(gift)) if gift.state_init.is_none() => {
             let function = ever_wallet::send_transaction();
             function.encode_external(&[
-                NamedAbiValue::from(("destination", gift.destination)),
+                NamedAbiValue::from(("destination", gift.destination.into())),
                 NamedAbiValue::from(("amount", gift.amount.into())),
                 NamedAbiValue::from(("bounce", gift.bounce)),
                 NamedAbiValue::from(("flags", gift.flags)),
@@ -80,8 +83,8 @@ pub fn prepare_transfer(
                     info: MsgInfo::Int(IntMsgInfo {
                         ihr_disabled: true,
                         bounce: gift.bounce,
-                        dst: gift.destination,
-                        value: gift.amount.into(),
+                        dst: IntAddr::Std(gift.destination),
+                        value: CurrencyCollection::new(gift.amount),
                         ..Default::default()
                     }),
                     init: gift.state_init,
@@ -122,16 +125,16 @@ pub fn is_ever_wallet(code_hash: &HashBytes) -> bool {
     code_hash.as_slice() == CODE_HASH
 }
 
-pub fn compute_contract_address(public_key: &PublicKey, workchain_id: i8) -> IntAddr {
-    let hash = prepare_state_init(public_key)
-        .and_then(|state| state.hash())
-        .trust_me();
-    IntAddr::Std(StdAddr::new(workchain_id, hash.into()))
+pub fn compute_contract_address(public_key: &PublicKey, workchain_id: i8) -> Result<StdAddr> {
+    let state = prepare_state_init(public_key)?;
+    let binding = CellBuilder::build_from(state)?;
+    let hash = binding.repr_hash();
+    Ok(StdAddr::new(workchain_id, *hash))
 }
 
 pub fn prepare_state_init(public_key: &PublicKey) -> Result<StateInit> {
     let mut builder = CellBuilder::new();
-    builder.store_u256(public_key.as_bytes())?;
+    builder.store_u256(&public_key.as_bytes())?;
     builder.store_u64(0)?;
 
     let data = builder.build()?;

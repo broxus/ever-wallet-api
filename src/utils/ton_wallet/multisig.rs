@@ -9,6 +9,7 @@ use tycho_types::{
     dict::RawDict,
     models::{Account, StateInit, StdAddr},
 };
+use tycho_util::time::Clock;
 
 use crate::utils::ton_wallet::{MessageFlags, MultisigPendingTransaction, MultisigPendingUpdate};
 
@@ -39,9 +40,10 @@ pub fn prepare_deploy(
     params: DeployParams<'_>,
 ) -> Result<UnsignedExternalMessage> {
     let state_init = prepare_state_init(public_key, multisig_type);
-    let hash = CellBuilder::build_from(&state_init)?.repr_hash();
+    let cell_builder = CellBuilder::build_from(&state_init)?;
+    let hash = cell_builder.repr_hash();
 
-    let dst = StdAddr::new(workchain, hash.into());
+    let dst = StdAddr::new(workchain, *hash);
 
     let owners = params
         .owners
@@ -345,8 +347,9 @@ pub fn compute_contract_address(
     workchain_id: i8,
 ) -> Result<StdAddr> {
     let state_init = prepare_state_init(public_key, multisig_type);
-    let hash = CellBuilder::build_from(&state_init)?.repr_hash();
-    Ok(StdAddr::new(workchain_id, hash.into()))
+    let cell_builder = CellBuilder::build_from(&state_init)?;
+    let hash = cell_builder.repr_hash();
+    Ok(StdAddr::new(workchain_id, *hash))
 }
 
 pub fn ton_wallet_details(multisig_type: MultisigType) -> TonWalletDetails {
@@ -407,11 +410,12 @@ fn run_local(
     function: &Function,
     account_stuff: Account,
 ) -> Result<Vec<NamedAbiValue>> {
-    let ExecutionOutput {
-        tokens,
-        result_code,
-    } = function.run_local(clock, account_stuff, &[], &[])?;
-    tokens.ok_or_else(|| MultisigError::NonZeroResultCode(result_code).into())
+    unimplemented!()
+    //let ExecutionOutput {
+    //    tokens,
+    //    result_code,
+    //} = function.run_local(clock, account_stuff, &[], &[])?;
+    //tokens.ok_or_else(|| MultisigError::NonZeroResultCode(result_code).into())
 }
 
 #[derive(Copy, Clone)]

@@ -5,7 +5,10 @@ use ed25519_dalek::PublicKey;
 use tycho_types::{
     abi::{AbiVersion, UnsignedBody, UnsignedExternalMessage},
     cell::{Cell, CellBuilder, HashBytes},
-    models::{Account, AccountState, IntMsgInfo, Message, MsgInfo, StateInit, StdAddr},
+    models::{
+        Account, AccountState, CurrencyCollection, IntAddr, IntMsgInfo, Message, MsgInfo,
+        StateInit, StdAddr,
+    },
 };
 
 use crate::utils::{
@@ -89,7 +92,6 @@ pub fn prepare_transfer(
     Ok(unsigned_message)
 }
 
-#[derive(Clone)]
 struct UnsignedWallet {
     init_data: InitData,
     gifts: Vec<Gift>,
@@ -140,11 +142,10 @@ pub fn compute_contract_address(
     public_key: &PublicKey,
     workchain_id: i8,
     version: WalletVersion,
-) -> StdAddr {
+) -> Result<StdAddr> {
     InitData::from_key(public_key)
         .with_subwallet_id(WALLET_ID)
         .compute_addr(workchain_id, version)
-        .trust_me()
 }
 
 pub static DETAILS: TonWalletDetails = TonWalletDetails {
@@ -178,7 +179,7 @@ impl InitData {
         Self {
             seqno: 0,
             wallet_id: 0,
-            public_key: key.as_bytes().into(),
+            public_key: HashBytes::from_slice(key.as_bytes()),
         }
     }
 
@@ -189,8 +190,9 @@ impl InitData {
 
     pub fn compute_addr(&self, workchain_id: i8, version: WalletVersion) -> Result<StdAddr> {
         let state_init = self.make_state_init(version)?;
-        let hash = CellBuilder::build_from(&state_init)?.repr_hash();
-        Ok(StdAddr::new(workchain_id, hash.into()))
+        let cell_builder = CellBuilder::build_from(&state_init)?;
+        let hash = cell_builder.repr_hash();
+        Ok(StdAddr::new(workchain_id, *hash))
     }
 
     pub fn make_state_init(&self, version: WalletVersion) -> Result<StateInit> {
@@ -212,7 +214,7 @@ impl InitData {
         let mut builder = CellBuilder::new();
         builder.store_u32(self.seqno)?;
         builder.store_u32(self.wallet_id as _)?;
-        builder.store_u256(self.public_key.as_bytes())?;
+        builder.store_u256(&self.public_key)?;
 
         if matches!(version, WalletVersion::V4R1 | WalletVersion::V4R2) {
             // empty plugin dict
@@ -242,21 +244,22 @@ impl InitData {
 
         // create internal message
         for gift in gifts {
+            let body = gift.body.unwrap_or(Default::default());
             let internal_message = Message {
                 info: MsgInfo::Int(IntMsgInfo {
                     ihr_disabled: true,
                     bounce: gift.bounce,
-                    dst: gift.destination,
-                    value: gift.amount.into(),
+                    dst: IntAddr::Std(gift.destination),
+                    value: CurrencyCollection::new(gift.amount),
                     ..Default::default()
                 }),
                 init: gift.state_init,
-                body: gift.body.unwrap_or(Default::default()).as_slice()?,
+                body: body.as_slice()?,
                 layout: None,
             };
             // append it to the body
-            builder.store_u8(self.flags)?;
-            builder.store_reference(CellBuilder::build_from(internal_message.borrow())?)?;
+            builder.store_u8(gift.flags)?;
+            builder.store_reference(CellBuilder::build_from(internal_message)?)?;
         }
 
         let payload = builder.build()?;
@@ -273,7 +276,7 @@ impl TryFrom<&Cell> for InitData {
         let mut slice = data.as_slice()?;
 
         let seqno = slice.load_u32()?;
-        let wallet_id = slice.load_u32()?.into();
+        let wallet_id = slice.load_u32()? as i32;
         let mut buffer = [0u8; 32];
         slice.load_raw(&mut buffer, 32)?;
         let public_key = HashBytes::from_slice(&buffer);
@@ -310,6 +313,8 @@ enum WalletV4Error {
 
 #[cfg(test)]
 mod tests {
+
+    use std::str::FromStr;
 
     use tycho_types::{
         boc::Boc,

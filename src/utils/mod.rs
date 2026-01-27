@@ -71,7 +71,7 @@ macro_rules! declare_function {
         vec![$($crate::utils::declare_function!(@header_item $header)),+]
     };
     (@header_item pubkey) => {
-        tycho_types::abi::AbiHeaderType::Pubkey
+        tycho_types::abi::AbiHeaderType::PublicKey
     };
     (@header_item time) => {
         tycho_types::abi::AbiHeaderType::Time

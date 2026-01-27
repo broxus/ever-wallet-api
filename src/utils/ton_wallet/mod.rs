@@ -7,7 +7,7 @@ use serde::{Deserialize, Serialize};
 
 use nekoton_utils::*;
 use tycho_types::cell::{Cell, HashBytes};
-use tycho_types::models::{IntAddr, StateInit, StdAddr};
+use tycho_types::models::{StateInit, StdAddr};
 
 use crate::utils::wallets;
 
@@ -54,7 +54,7 @@ pub struct TonWalletDetails {
 pub struct Gift {
     pub flags: u8,
     pub bounce: bool,
-    pub destination: IntAddr,
+    pub destination: StdAddr,
     pub amount: u128,
     pub body: Option<Cell>,
     pub state_init: Option<StateInit>,

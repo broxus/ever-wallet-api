@@ -14,7 +14,7 @@ pub fn send_transaction() -> &'static Function {
             AbiType::Uint(8).named("flags"),
             AbiType::Cell.named("payload"),
         ],
-        outputs: Vec::new(),
+        outputs: vec![],
     }
 }
 
