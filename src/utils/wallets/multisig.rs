@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use tycho_types::{
-    abi::{AbiType, Function, NamedAbiType, WithAbiType},
+    abi::{AbiType, FromAbi, Function, IntoAbi, NamedAbiType, WithAbiType},
     cell::{Cell, HashBytes},
     models::StdAddr,
 };
@@ -67,37 +67,23 @@ pub fn confirm_transaction() -> &'static Function {
     }
 }
 
-#[derive(Debug)]
+#[derive(IntoAbi, FromAbi, WithAbiType, Eq, PartialEq, Debug, Clone)]
 pub struct MultisigTransaction {
     pub id: u64,
+    #[abi(name = "confirmationsMask")]
     pub confirmation_mask: u32,
+    #[abi(name = "signsRequired")]
     pub signs_required: u8,
+    #[abi(name = "signsReceived")]
     pub signs_received: u8,
     pub creator: HashBytes,
     pub index: u8,
     pub dest: StdAddr,
     pub value: u128,
+    #[abi(name = "sendFlags")]
     pub send_flags: u16,
     pub payload: Cell,
     pub bounce: bool,
-}
-
-impl WithAbiType for MultisigTransaction {
-    fn abi_type() -> AbiType {
-        AbiType::Tuple(Arc::new([
-            AbiType::Uint(64).named("id"),
-            AbiType::Uint(32).named("confirmationMask"),
-            AbiType::Uint(8).named("signsRequired"),
-            AbiType::Uint(8).named("signsReceived"),
-            AbiType::Uint(256).named("creator"),
-            AbiType::Uint(8).named("index"),
-            AbiType::Address.named("dest"),
-            AbiType::Uint(128).named("value"),
-            AbiType::Uint(16).named("sendFlags"),
-            AbiType::Cell.named("payload"),
-            AbiType::Bool.named("bounce"),
-        ]))
-    }
 }
 
 pub fn get_transactions() -> &'static Function {
@@ -112,19 +98,10 @@ pub fn get_transactions() -> &'static Function {
     }
 }
 
-#[derive(Debug, Copy, Clone)]
+#[derive(IntoAbi, FromAbi, WithAbiType, Eq, PartialEq, Debug, Clone)]
 pub struct MultisigCustodian {
     pub index: u8,
     pub pubkey: HashBytes,
-}
-
-impl WithAbiType for MultisigCustodian {
-    fn abi_type() -> AbiType {
-        AbiType::Tuple(Arc::new([
-            AbiType::Uint(8).named("index"),
-            AbiType::Uint(256).named("pubkey"),
-        ]))
-    }
 }
 
 pub fn get_custodians() -> &'static Function {

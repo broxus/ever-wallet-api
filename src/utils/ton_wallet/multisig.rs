@@ -4,7 +4,7 @@ use std::convert::TryFrom;
 use anyhow::Result;
 use ed25519_dalek::PublicKey;
 use tycho_types::{
-    abi::{AbiValue, Function, IntoAbi, NamedAbiValue, UnsignedExternalMessage},
+    abi::{AbiValue, FromAbi, Function, IntoAbi, NamedAbiValue, UnsignedExternalMessage},
     cell::{Cell, CellBuilder, CellDataBuilder, CellFamily, HashBytes, Load},
     dict::RawDict,
     models::{Account, StateInit, StdAddr},
@@ -61,14 +61,20 @@ pub fn prepare_deploy(
     };
 
     let mut abi_values = vec![
-        owners.as_abi().named("owners"), 
+        owners.as_abi().named("owners"),
         params.req_confirms.as_abi().named("reqConfirms"),
     ];
     if is_new_multisig {
-        abi_values.push(params.expiration_time.unwrap_or(DEFAULT_LIFETIME).as_abi().named("lifetime"));
+        abi_values.push(
+            params
+                .expiration_time
+                .unwrap_or(DEFAULT_LIFETIME)
+                .as_abi()
+                .named("lifetime"),
+        );
     }
 
-    let external_input =     function.encode_external(&abi_values);
+    let external_input = function.encode_external(&abi_values);
 
     let unsigned_body = external_input.with_expire_at(expire_at).build_input()?;
     let mut unsigned_message = unsigned_body.with_dst(dst);
@@ -94,8 +100,7 @@ pub fn prepare_confirm_transaction(
         address,
         expire_at,
         function,
-        vec![
-            transaction_id.as_abi().named("transactionId")],
+        vec![transaction_id.as_abi().named("transactionId")],
     )
 }
 
@@ -134,8 +139,10 @@ pub fn prepare_transfer(
             named_abi_values.push(
                 gift.state_init
                     .map(|state_init| CellBuilder::build_from(&state_init))
-                    .transpose()?.as_abi().named("stateInit"),
-);
+                    .transpose()?
+                    .as_abi()
+                    .named("stateInit"),
+            );
         }
         (function, named_abi_values)
     } else {
@@ -282,7 +289,6 @@ impl std::fmt::Display for MultisigType {
     }
 }
 
-
 impl MultisigType {
     pub fn is_multisig2(self) -> bool {
         matches!(self, Self::Multisig2 | Self::Multisig2_1)
@@ -329,7 +335,9 @@ impl MultisigType {
     }
 
     pub fn code(&self) -> Result<Cell> {
-        self.state_init()?.code.ok_or(UnpackerError::InvalidAbi.into())
+        self.state_init()?
+            .code
+            .ok_or(UnpackerError::InvalidAbi.into())
     }
 }
 
@@ -418,7 +426,10 @@ pub fn ton_wallet_details(multisig_type: MultisigType) -> TonWalletDetails {
     }
 }
 
-pub fn prepare_state_init(public_key: &PublicKey, multisig_type: MultisigType) -> Result<StateInit> {
+pub fn prepare_state_init(
+    public_key: &PublicKey,
+    multisig_type: MultisigType,
+) -> Result<StateInit> {
     let mut state_init = multisig_type.state_init()?;
 
     let mut result = if state_init.data.is_none() {
@@ -466,6 +477,44 @@ pub struct MultisigParamsPrefix {
     pub required_confirms: u8,
 }
 
+impl TryFrom<Vec<NamedAbiValue>> for MultisigParamsPrefix {
+    fn try_from(params: Vec<NamedAbiValue>) -> std::result::Result<Self, Self::Error> {
+        let mut params_iter = params.into_iter();
+
+        let Some(AbiValue::Uint(8, max_queued_transactions)) = params_iter.next().map(|v| v.value)
+        else {
+            return Err(MultisigError::InvalidParams.into());
+        };
+
+        let Some(AbiValue::Uint(8, max_custodian_count)) = params_iter.next().map(|v| v.value)
+        else {
+            return Err(MultisigError::InvalidParams.into());
+        };
+
+        let Some(AbiValue::Uint(64, expiration_time)) = params_iter.next().map(|v| v.value) else {
+            return Err(MultisigError::InvalidParams.into());
+        };
+
+        let Some(AbiValue::Uint(128, min_value)) = params_iter.next().map(|v| v.value) else {
+            return Err(MultisigError::InvalidParams.into());
+        };
+
+        let Some(AbiValue::Uint(8, required_confirms)) = params_iter.next().map(|v| v.value) else {
+            return Err(MultisigError::InvalidParams.into());
+        };
+
+        Ok(MultisigParamsPrefix {
+            max_queued_transactions: u8::try_from(max_queued_transactions)?,
+            max_custodian_count: u8::try_from(max_custodian_count)?,
+            expiration_time: u64::try_from(expiration_time)?,
+            min_value: u128::try_from(min_value)?,
+            required_confirms: u8::try_from(required_confirms)?,
+        })
+    }
+
+    type Error = anyhow::Error;
+}
+
 pub fn get_params(
     clock: &dyn Clock,
     multisig_type: MultisigType,
@@ -487,9 +536,8 @@ pub fn get_params(
         }
     };
 
-    let output: MultisigParamsPrefix =
-        run_local(clock, function, account.into_owned())?.unpack()?;
-    Ok(output)
+    let output = run_local(clock, function, account.into_owned())?;
+    MultisigParamsPrefix::try_from(output)
 }
 
 pub fn get_custodians(
@@ -506,14 +554,14 @@ pub fn get_custodians(
 }
 
 fn parse_multisig_contract_custodians(tokens: Vec<NamedAbiValue>) -> Result<Vec<HashBytes>> {
-    let array = match tokens.into_unpacker().unpack_next() {
-        Ok(AbiValue::Array(_, tokens)) => tokens,
+    let array = match tokens.into_iter().next().map(|v| v.value) {
+        Some(AbiValue::Array(_, tokens)) => tokens,
         _ => return Err(UnpackerError::InvalidAbi.into()),
     };
 
     let mut custodians = array
         .into_iter()
-        .map(|item| item.unpack())
+        .map(crate::utils::wallets::multisig::MultisigCustodian::from_abi)
         .collect::<Result<Vec<crate::utils::wallets::multisig::MultisigCustodian>, _>>()?;
 
     custodians.sort_by(|a, b| a.index.cmp(&b.index));
@@ -532,6 +580,26 @@ pub fn find_pending_transaction(
         pub id: u64,
     }
 
+    impl TryFrom<AbiValue> for MultisigTransactionId {
+        fn try_from(params: AbiValue) -> std::result::Result<Self, Self::Error> {
+            let AbiValue::Tuple(params) = params else {
+                return Err(anyhow::anyhow!("Invalid params"));
+            };
+
+            let mut params_iter = params.into_iter();
+
+            let Some(AbiValue::Uint(64, index)) = params_iter.next().map(|v| v.value) else {
+                return Err(anyhow::anyhow!("Invalid params"));
+            };
+
+            Ok(MultisigTransactionId {
+                id: u64::try_from(index)?,
+            })
+        }
+
+        type Error = anyhow::Error;
+    }
+
     let function = if multisig_type.is_multisig2() {
         crate::utils::wallets::multisig2::get_transactions()
     } else {
@@ -540,14 +608,14 @@ pub fn find_pending_transaction(
 
     let tokens = run_local(clock, function, account.into_owned())?;
 
-    let array = match tokens.into_unpacker().unpack_next() {
-        Ok(AbiValue::Array(_, tokens)) => tokens,
+    let array = match tokens.into_iter().next().map(|v| v.value) {
+        Some(AbiValue::Array(_, tokens)) => tokens,
         _ => return Err(UnpackerError::InvalidAbi.into()),
     };
 
     for item in array {
-        let MultisigTransactionId { id } = item.unpack()?;
-        if pending_transaction_id == id {
+        let m = MultisigTransactionId::try_from(item)?;
+        if pending_transaction_id == m.id {
             return Ok(true);
         }
     }
@@ -570,13 +638,13 @@ pub fn find_pending_update(
 
     let tokens = run_local(clock, function, account.into_owned())?;
 
-    let array = match tokens.into_unpacker().unpack_next() {
-        Ok(AbiValue::Array(_, tokens)) => tokens,
+    let array = match tokens.into_iter().next().map(|v| v.value) {
+        Some(AbiValue::Array(_, tokens)) => tokens,
         _ => return Err(UnpackerError::InvalidAbi.into()),
     };
 
     for item in array {
-        let update: multisig2::UpdateTransaction = item.unpack()?;
+        let update = multisig2::UpdateTransaction::from_abi(item)?;
         if update_id == update.id {
             return Ok(Some(UpdatedParams {
                 new_code_hash: update.new_code_hash,
@@ -598,6 +666,7 @@ pub struct UpdatedParams {
     pub new_lifetime: Option<u32>,
 }
 
+
 pub fn get_pending_transactions(
     clock: &dyn Clock,
     multisig_type: MultisigType,
@@ -610,15 +679,20 @@ pub fn get_pending_transactions(
         crate::utils::wallets::multisig::get_transactions()
     };
     run_local(clock, function, account.into_owned()).and_then(|tokens| {
-        let array = match tokens.into_unpacker().unpack_next() {
-            Ok(AbiValue::Array(_, tokens)) => tokens,
+        let array = match tokens.into_iter().next().map(|v| v.value) {
+            Some(AbiValue::Array(_, tokens)) => tokens,
             _ => return Err(UnpackerError::InvalidAbi.into()),
         };
 
         let transactions = array
             .into_iter()
-            .map(|item| Ok(extend_pending_transaction(item.unpack()?, custodians)))
-            .collect::<UnpackerResult<Vec<MultisigPendingTransaction>>>()?;
+            .map(|item| {
+                Ok(extend_pending_transaction(
+                    crate::utils::wallets::multisig::MultisigTransaction::from_abi(item)?,
+                    custodians,
+                ))
+            })
+            .collect::<Result<Vec<MultisigPendingTransaction>>>()?;
 
         Ok(transactions)
     })
@@ -639,15 +713,20 @@ pub fn get_pending_updates(
     };
 
     run_local(clock, function, account.into_owned()).and_then(|tokens| {
-        let array = match tokens.into_unpacker().unpack_next() {
-            Ok(AbiValue::Array(_, tokens)) => tokens,
+        let array = match tokens.into_iter().next().map(|v| v.value) {
+            Some(AbiValue::Array(_, tokens)) => tokens,
             _ => return Err(UnpackerError::InvalidAbi.into()),
         };
 
         let updates = array
             .into_iter()
-            .map(|item| Ok(extend_pending_update(item.unpack()?, custodians)))
-            .collect::<UnpackerResult<Vec<MultisigPendingUpdate>>>()?;
+            .map(|item| {
+                Ok(extend_pending_update(
+                    crate::utils::wallets::multisig2::UpdateTransaction::from_abi(item)?,
+                    custodians,
+                ))
+            })
+            .collect::<Result<Vec<MultisigPendingUpdate>>>()?;
 
         Ok(updates)
     })
@@ -729,6 +808,8 @@ enum MultisigError {
     CustomExpirationTimeNotSupported,
     #[error("Update is not supported or not implemented for this contract type")]
     UnsupportedUpdate,
+    #[error("Invalid params")]
+    InvalidParams,
 }
 
 pub type UnpackerResult<T> = Result<T, UnpackerError>;
@@ -752,7 +833,9 @@ mod tests {
         .unwrap();
 
         assert_eq!(
-            compute_contract_address(&key, MultisigType::SetcodeMultisigWallet24h, 0).unwrap().to_string(),
+            compute_contract_address(&key, MultisigType::SetcodeMultisigWallet24h, 0)
+                .unwrap()
+                .to_string(),
             "0:3de70f9212154344a3158768b3fed731fc865ca15948b0d6d0d34daf4c6a7a0a"
         );
     }

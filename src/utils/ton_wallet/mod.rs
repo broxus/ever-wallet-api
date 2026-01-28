@@ -6,6 +6,7 @@ use ed25519_dalek::PublicKey;
 use serde::{Deserialize, Serialize};
 
 use nekoton_utils::*;
+use tycho_types::abi::FromAbi;
 use tycho_types::cell::{Cell, HashBytes};
 use tycho_types::models::{StateInit, StdAddr};
 
@@ -221,7 +222,7 @@ pub fn compute_address(
     }
 }
 
-#[derive(Debug, Clone, Eq, PartialEq)]
+#[derive(Debug, Clone, Eq, PartialEq, FromAbi)]
 pub struct MultisigPendingTransaction {
     pub id: u64,
     pub confirmations: Vec<HashBytes>,
@@ -236,7 +237,7 @@ pub struct MultisigPendingTransaction {
     pub bounce: bool,
 }
 
-#[derive(Debug, Clone, Eq, PartialEq)]
+#[derive(Debug, Clone, Eq, PartialEq, FromAbi)]
 pub struct MultisigPendingUpdate {
     pub id: u64,
     pub confirmations: Vec<HashBytes>,

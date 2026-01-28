@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use tycho_types::{
-    abi::{AbiType, Function, IntoAbi, NamedAbiType, NamedAbiValue, WithAbiType},
+    abi::{AbiType, FromAbi, Function, IntoAbi, NamedAbiType, NamedAbiValue, WithAbiType},
     cell::{Cell, HashBytes},
     models::StdAddr,
 };
@@ -85,7 +85,6 @@ pub struct MultisigTransaction {
     pub state_init: Option<Cell>,
 }
 
-
 impl WithAbiType for MultisigTransaction {
     fn abi_type() -> AbiType {
         AbiType::Tuple(Arc::new([
@@ -156,7 +155,8 @@ impl SubmitUpdateParams {
     fn abi_type() -> Vec<NamedAbiType> {
         vec![
             AbiType::Optional(Arc::new(AbiType::Uint(256))).named("codeHash"),
-            AbiType::Optional(Arc::new(AbiType::Array(Arc::new(AbiType::Uint(256))))).named("owners"),
+            AbiType::Optional(Arc::new(AbiType::Array(Arc::new(AbiType::Uint(256)))))
+                .named("owners"),
             AbiType::Optional(Arc::new(AbiType::Uint(8))).named("reqConfirms"),
             AbiType::Optional(Arc::new(AbiType::Uint(64))).named("lifetime"),
         ]
@@ -179,9 +179,7 @@ pub struct SubmitUpdateOutput {
 
 impl SubmitUpdateOutput {
     fn abi_type() -> Vec<NamedAbiType> {
-        vec![
-            AbiType::Uint(64).named("updateId"),
-        ]
+        vec![AbiType::Uint(64).named("updateId")]
     }
 }
 
@@ -202,15 +200,11 @@ pub struct ConfirmUpdateParams {
 
 impl ConfirmUpdateParams {
     fn abi_type() -> Vec<NamedAbiType> {
-        vec![
-            AbiType::Uint(64).named("updateId"),
-        ]
+        vec![AbiType::Uint(64).named("updateId")]
     }
 
     pub fn abi_values(&self) -> Vec<NamedAbiValue> {
-        vec![
-            self.update_id.as_abi().named("updateId"),
-        ]
+        vec![self.update_id.as_abi().named("updateId")]
     }
 }
 
@@ -244,7 +238,6 @@ impl ExecuteUpdateParams {
             self.code.as_abi().named("code"),
         ]
     }
-
 }
 
 pub fn execute_update() -> &'static Function {
@@ -289,33 +282,22 @@ pub fn get_parameters() -> &'static Function {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(IntoAbi, FromAbi, WithAbiType, Eq, PartialEq, Debug, Clone)]
 pub struct UpdateTransaction {
     pub id: u64,
     pub index: u8,
     pub signs: u8,
+    #[abi(name = "confirmationsMask")]
     pub confirmations_mask: u32,
     pub creator: HashBytes,
+    #[abi(name = "newCodeHash")]
     pub new_code_hash: Option<HashBytes>,
+    #[abi(name = "newCustodians")]
     pub new_custodians: Option<Vec<HashBytes>>,
+    #[abi(name = "newReqConfirms")]
     pub new_req_confirms: Option<u8>,
+    #[abi(name = "newLifetime")]
     pub new_lifetime: Option<u32>,
-}
-
-impl  WithAbiType for UpdateTransaction {
-    fn abi_type() -> AbiType {
-        AbiType::Tuple(Arc::new([
-            AbiType::Uint(64).named("id"),
-            AbiType::Uint(8).named("index"),
-            AbiType::Uint(8).named("signs"),
-            AbiType::Uint(32).named("confirmationsMask"),
-            AbiType::Uint(256).named("creator"),
-            AbiType::Optional(Arc::new(AbiType::Uint(256))).named("newCodeHash"),
-            AbiType::Optional(Arc::new(AbiType::Array(Arc::new(AbiType::Uint(256))))).named("newCustodians"),
-            AbiType::Optional(Arc::new(AbiType::Uint(8))).named("newReqConfirms"),
-            AbiType::Optional(Arc::new(AbiType::Uint(32))).named("newLifetime"),
-        ]))
-    }
 }
 
 pub mod v2_0 {
