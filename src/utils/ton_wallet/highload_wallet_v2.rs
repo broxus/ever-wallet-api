@@ -7,7 +7,8 @@ use tycho_types::{
     cell::{Cell, CellBuilder, CellFamily, HashBytes, Load, Store},
     dict::Dict,
     models::{
-        Account, AccountState, CurrencyCollection, IntMsgInfo, Message, MsgInfo, StateInit, StdAddr,
+        Account, AccountState, CurrencyCollection, IntAddr, IntMsgInfo, Message, MsgInfo,
+        StateInit, StdAddr,
     },
 };
 

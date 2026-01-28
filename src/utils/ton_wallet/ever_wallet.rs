@@ -1,10 +1,11 @@
 use anyhow::Result;
 use ed25519_dalek::PublicKey;
 use tycho_types::{
-    abi::{AbiHeaderType, AbiVersion, Function, NamedAbiValue, UnsignedExternalMessage},
+    abi::{AbiHeaderType, AbiValue, AbiVersion, Function, NamedAbiType, UnsignedExternalMessage},
     cell::{CellBuilder, HashBytes},
     models::{
-        Account, AccountState, CurrencyCollection, IntMsgInfo, Message, MsgInfo, StateInit, StdAddr,
+        Account, AccountState, CurrencyCollection, IntAddr, IntMsgInfo, Message, MsgInfo,
+        StateInit, StdAddr,
     },
 };
 
@@ -29,8 +30,8 @@ pub fn prepare_deploy(
     ];
     let function = Function::builder(AbiVersion::V2_3, "sendTransactionRaw")
         .with_headers(headers)
-        .with_inputs(vec![])
-        .with_outputs(vec![])
+        .with_inputs(vec![] as Vec<NamedAbiType>)
+        .with_outputs(vec![] as Vec<NamedAbiType>)
         .with_id(0x169e3e11)
         .build();
 
@@ -57,16 +58,18 @@ pub fn prepare_transfer(
     }
 
     let mut gifts = gifts.into_iter();
-    let external_input = match (gifts.len(), gifts.next()) {
+    let (function, tokens) = match (gifts.len(), gifts.next()) {
         (1, Some(gift)) if gift.state_init.is_none() => {
             let function = ever_wallet::send_transaction();
-            function.encode_external(&[
-                NamedAbiValue::from(("destination", gift.destination.into())),
-                NamedAbiValue::from(("amount", gift.amount.into())),
-                NamedAbiValue::from(("bounce", gift.bounce)),
-                NamedAbiValue::from(("flags", gift.flags)),
-                NamedAbiValue::from(("body", gift.body.unwrap_or_default().into_cell())),
-            ])
+            let tokens = [
+                AbiValue::address(gift.destination).named("destination"),
+                AbiValue::uint(128, gift.amount).named("value"),
+                AbiValue::Bool(gift.bounce).named("bounce"),
+                AbiValue::uint(8, gift.flags).named("flags"),
+                AbiValue::Cell(gift.body.unwrap_or_default()).named("body"),
+            ]
+            .to_vec();
+            (function, tokens)
         }
         (len, gift) => {
             let function = match len {
@@ -79,6 +82,7 @@ pub fn prepare_transfer(
 
             let mut tokens = Vec::with_capacity(len * 2);
             for gift in gift.into_iter().chain(gifts) {
+                let body = gift.body.unwrap_or(Default::default());
                 let internal_message = Message {
                     info: MsgInfo::Int(IntMsgInfo {
                         ihr_disabled: true,
@@ -88,20 +92,20 @@ pub fn prepare_transfer(
                         ..Default::default()
                     }),
                     init: gift.state_init,
-                    body: gift.body.unwrap_or(Default::default()).as_slice()?,
+                    body: body.as_slice()?,
                     layout: None,
                 };
 
-                tokens.push(NamedAbiValue::from(("flags", gift.flags.token_value())));
-                tokens.push(NamedAbiValue::from((
-                    "message",
-                    CellBuilder::build_from(internal_message.borrow())?,
-                )));
+                tokens.push(AbiValue::uint(8, gift.flags).named("flags"));
+                tokens.push(
+                    AbiValue::Cell(CellBuilder::build_from(internal_message)?).named("message"),
+                );
             }
-            function.encode_external(&tokens)
+            (function, tokens)
         }
     };
 
+    let external_input = function.encode_external(&tokens);
     let unsigned_body = external_input.with_expire_at(expire_at).build_input()?;
     let mut unsigned_message = unsigned_body.with_dst(address);
 
@@ -134,7 +138,7 @@ pub fn compute_contract_address(public_key: &PublicKey, workchain_id: i8) -> Res
 
 pub fn prepare_state_init(public_key: &PublicKey) -> Result<StateInit> {
     let mut builder = CellBuilder::new();
-    builder.store_u256(&public_key.as_bytes())?;
+    builder.store_u256(&HashBytes::from(public_key.to_bytes()))?;
     builder.store_u64(0)?;
 
     let data = builder.build()?;

@@ -4,10 +4,10 @@ use anyhow::Result;
 use ed25519_dalek::PublicKey;
 use tycho_types::{
     abi::{AbiVersion, UnsignedBody, UnsignedExternalMessage},
-    cell::{Cell, CellBuilder, HashBytes, Lazy},
+    cell::{Cell, CellBuilder, HashBytes, Lazy, Load},
     models::{
         Account, AccountState, CurrencyCollection, IntAddr, OutAction, OwnedRelaxedMessage,
-        RelaxedIntMsgInfo, RelaxedMsgInfo, StateInit, StdAddr,
+        RelaxedIntMsgInfo, RelaxedMsgInfo, SendMsgFlags, StateInit, StdAddr,
     },
 };
 
@@ -52,7 +52,7 @@ pub fn make_init_data(public_key: &PublicKey) -> InitData {
 
 pub fn get_init_data(current_state: &Account, public_key: &PublicKey) -> Result<(InitData, bool)> {
     match current_state.state {
-        AccountState::Active(state_init) => match &state_init.data {
+        AccountState::Active(ref state_init) => match &state_init.data {
             Some(data) => Ok((InitData::try_from(data)?, false)),
             None => return Err(WalletV5Error::InvalidInitData.into()),
         },
@@ -78,8 +78,7 @@ pub fn prepare_transfer(
     if gifts.len() > MAX_MESSAGES {
         return Err(WalletV5Error::TooManyGifts.into());
     }
-    let (mut init_data, with_state_init) =
-        get_init_data(current_state.storage.state(), public_key)?;
+    let (mut init_data, with_state_init) = get_init_data(current_state, public_key)?;
 
     init_data.seqno += seqno_offset;
 
@@ -255,7 +254,7 @@ impl InitData {
             })?;
 
             let action = OutAction::SendMsg {
-                mode: gift.flags.into(),
+                mode: SendMsgFlags::from_bits_retain(gift.flags),
                 out_msg: internal_message,
             };
 
@@ -312,6 +311,8 @@ enum WalletV5Error {
     SignaturesDisabled,
     #[error("Wallet locked")]
     WalletLocked,
+    #[error("Account address is not valid")]
+    InvalidAddress,
 }
 
 #[cfg(test)]
@@ -335,18 +336,18 @@ mod tests {
 
         let state = Account::load_from(&mut account.as_slice()?)?;
 
-        if let AccountState::Active(state_init) = state_init.data {
-            let init_data = InitData::try_from(state_init.data().unwrap())?;
+        if let AccountState::Active(state_init) = state.state {
+            let init_data = InitData::try_from(&state_init.data.unwrap())?;
             assert_eq!(init_data.is_signature_allowed, true);
             assert_eq!(
-                init_data.public_key.to_hex_string(),
+                init_data.public_key.to_string(),
                 "9107a65271437e1a982bb98404bd9a82c434f31ee30c621b6596702bb59bf0a0"
             );
             assert_eq!(init_data.wallet_id, WALLET_ID);
             assert_eq!(init_data.extensions, None);
 
             let public_key = PublicKey::from_bytes(init_data.public_key.as_slice())?;
-            let address = compute_contract_address(&public_key, 0);
+            let address = compute_contract_address(&public_key, 0)?;
             assert_eq!(
                 address.to_string(),
                 "0:6ca35273892588b4c5f4ae898dc1983eec9662dffebeacdbe82103a1d1dcac60"

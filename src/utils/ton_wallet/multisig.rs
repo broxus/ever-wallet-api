@@ -4,8 +4,8 @@ use std::convert::TryFrom;
 use anyhow::Result;
 use ed25519_dalek::PublicKey;
 use tycho_types::{
-    abi::{AbiValue, Function, NamedAbiValue, UnsignedExternalMessage},
-    cell::{Cell, CellBuilder, CellDataBuilder, HashBytes},
+    abi::{AbiValue, Function, IntoAbi, NamedAbiValue, UnsignedExternalMessage},
+    cell::{Cell, CellBuilder, CellDataBuilder, CellFamily, HashBytes, Load},
     dict::RawDict,
     models::{Account, StateInit, StdAddr},
 };
@@ -39,7 +39,7 @@ pub fn prepare_deploy(
     expire_at: u32,
     params: DeployParams<'_>,
 ) -> Result<UnsignedExternalMessage> {
-    let state_init = prepare_state_init(public_key, multisig_type);
+    let state_init = prepare_state_init(public_key, multisig_type)?;
     let cell_builder = CellBuilder::build_from(&state_init)?;
     let hash = cell_builder.repr_hash();
 
@@ -48,7 +48,7 @@ pub fn prepare_deploy(
     let owners = params
         .owners
         .iter()
-        .map(|public_key| HashBytes::from(public_key.as_bytes()))
+        .map(|public_key| HashBytes(public_key.to_bytes()))
         .collect::<Vec<HashBytes>>();
 
     let is_new_multisig = multisig_type.is_multisig2();
@@ -60,17 +60,15 @@ pub fn prepare_deploy(
         return Err(MultisigError::CustomExpirationTimeNotSupported.into());
     };
 
-    let external_input = {
-        let mut abi_values = vec![
-            NamedAbiValue::from(("owners", owners)),
-            NamedAbiValue::from(("reqConfirms", params.req_confirms)),
-        ];
-        if is_new_multisig {
-            abi_values.push(NamedAbiValue::from(("lifetime", DEFAULT_LIFETIME)));
-        }
+    let mut abi_values = vec![
+        owners.as_abi().named("owners"), 
+        params.req_confirms.as_abi().named("reqConfirms"),
+    ];
+    if is_new_multisig {
+        abi_values.push(params.expiration_time.unwrap_or(DEFAULT_LIFETIME).as_abi().named("lifetime"));
+    }
 
-        function.encode_external(&abi_values)
-    };
+    let external_input =     function.encode_external(&abi_values);
 
     let unsigned_body = external_input.with_expire_at(expire_at).build_input()?;
     let mut unsigned_message = unsigned_body.with_dst(dst);
@@ -96,7 +94,8 @@ pub fn prepare_confirm_transaction(
         address,
         expire_at,
         function,
-        vec![NamedAbiValue::from(("transactionId", transaction_id))],
+        vec![
+            transaction_id.as_abi().named("transactionId")],
     )
 }
 
@@ -124,20 +123,19 @@ pub fn prepare_transfer(
         };
 
         let mut named_abi_values = vec![
-            NamedAbiValue::from(("destination", gift.destination)),
-            NamedAbiValue::from(("amount", gift.amount.into())),
-            NamedAbiValue::from(("bounce", gift.bounce)),
-            NamedAbiValue::from(("flags", all_balance)),
-            NamedAbiValue::from(("body", gift.body.unwrap_or_default().into_cell())),
+            AbiValue::address(gift.destination).named("destination"),
+            AbiValue::uint(128, gift.amount).named("amount"),
+            AbiValue::Bool(gift.bounce).named("bounce"),
+            AbiValue::uint(8, all_balance).named("flags"),
+            AbiValue::Cell(gift.body.unwrap_or_default()).named("body"),
         ];
 
         if is_new_multisig {
-            named_abi_values.push(NamedAbiValue::from((
-                "stateInit",
+            named_abi_values.push(
                 gift.state_init
                     .map(|state_init| CellBuilder::build_from(&state_init))
-                    .transpose()?,
-            )));
+                    .transpose()?.as_abi().named("stateInit"),
+);
         }
         (function, named_abi_values)
     } else {
@@ -146,12 +144,12 @@ pub fn prepare_transfer(
         } else {
             crate::utils::wallets::multisig::send_transaction()
         };
-        let mut named_abi_values = vec![
-            NamedAbiValue::from(("destination", gift.destination)),
-            NamedAbiValue::from(("amount", gift.amount.into())),
-            NamedAbiValue::from(("bounce", gift.bounce)),
-            NamedAbiValue::from(("flags", gift.flags)),
-            NamedAbiValue::from(("body", gift.body.unwrap_or_default().into_cell())),
+        let named_abi_values = vec![
+            AbiValue::address(gift.destination).named("destination"),
+            AbiValue::uint(128, gift.amount).named("amount"),
+            AbiValue::Bool(gift.bounce).named("bounce"),
+            AbiValue::uint(8, gift.flags).named("flags"),
+            AbiValue::Cell(gift.body.unwrap_or_default()).named("body"),
         ];
         (function, named_abi_values)
     };
@@ -183,7 +181,7 @@ pub fn prepare_code_update(
             req_confirms: None,
             lifetime: None,
         }
-        .pack(),
+        .abi_values(),
     )
 }
 
@@ -205,7 +203,7 @@ pub fn prepare_confirm_update(
         address,
         expire_at,
         multisig2::confirm_update(),
-        multisig2::ConfirmUpdateParams { update_id }.pack(),
+        multisig2::ConfirmUpdateParams { update_id }.abi_values(),
     )
 }
 
@@ -228,7 +226,7 @@ pub fn prepare_execute_update(
         address,
         expire_at,
         multisig2::execute_update(),
-        multisig2::ExecuteUpdateParams { update_id, code }.pack(),
+        multisig2::ExecuteUpdateParams { update_id, code }.abi_values(),
     )
 }
 
@@ -243,6 +241,47 @@ pub enum MultisigType {
     Multisig2,
     Multisig2_1,
 }
+
+impl MultisigType {
+    #[inline(always)]
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            Self::SafeMultisigWallet => "SafeMultisigWallet",
+            Self::SafeMultisigWallet24h => "SafeMultisigWallet24h",
+            Self::SetcodeMultisigWallet => "SetcodeMultisigWallet",
+            Self::SetcodeMultisigWallet24h => "SetcodeMultisigWallet24h",
+            Self::BridgeMultisigWallet => "BridgeMultisigWallet",
+            Self::SurfWallet => "SurfWallet",
+            Self::Multisig2 => "Multisig2",
+            Self::Multisig2_1 => "Multisig2_1",
+        }
+    }
+}
+
+impl std::str::FromStr for MultisigType {
+    type Err = anyhow::Error;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        Ok(match s {
+            "SafeMultisigWallet" => Self::SafeMultisigWallet,
+            "SafeMultisigWallet24h" => Self::SafeMultisigWallet24h,
+            "SetcodeMultisigWallet" => Self::SetcodeMultisigWallet,
+            "SetcodeMultisigWallet24h" => Self::SetcodeMultisigWallet24h,
+            "BridgeMultisigWallet" => Self::BridgeMultisigWallet,
+            "SurfWallet" => Self::SurfWallet,
+            "Multisig2" => Self::Multisig2,
+            "Multisig2_1" => Self::Multisig2_1,
+            _ => return Err(anyhow::anyhow!("Invalid multisig type")),
+        })
+    }
+}
+
+impl std::fmt::Display for MultisigType {
+    fn fmt(&self, f: &'_ mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(self.as_str())
+    }
+}
+
 
 impl MultisigType {
     pub fn is_multisig2(self) -> bool {
@@ -260,7 +299,7 @@ impl MultisigType {
         )
     }
 
-    pub fn state_init(&self) -> StateInit {
+    pub fn state_init(&self) -> Result<StateInit> {
         use crate::utils::wallets;
 
         let state_init = match self {
@@ -273,7 +312,7 @@ impl MultisigType {
             MultisigType::Multisig2 => wallets::code::multisig2(),
             MultisigType::Multisig2_1 => wallets::code::multisig2_1(),
         };
-        StateInit::load_from(&mut state_init.as_slice()?).trust_me()
+        StateInit::load_from(&mut state_init.as_slice()?).map_err(Into::into)
     }
 
     pub fn code_hash(&self) -> &[u8; 32] {
@@ -289,8 +328,8 @@ impl MultisigType {
         }
     }
 
-    pub fn code(&self) -> Cell {
-        self.state_init().code.trust_me()
+    pub fn code(&self) -> Result<Cell> {
+        self.state_init()?.code.ok_or(UnpackerError::InvalidAbi.into())
     }
 }
 
@@ -346,7 +385,7 @@ pub fn compute_contract_address(
     multisig_type: MultisigType,
     workchain_id: i8,
 ) -> Result<StdAddr> {
-    let state_init = prepare_state_init(public_key, multisig_type);
+    let state_init = prepare_state_init(public_key, multisig_type)?;
     let cell_builder = CellBuilder::build_from(&state_init)?;
     let hash = cell_builder.repr_hash();
     Ok(StdAddr::new(workchain_id, *hash))
@@ -379,13 +418,13 @@ pub fn ton_wallet_details(multisig_type: MultisigType) -> TonWalletDetails {
     }
 }
 
-pub fn prepare_state_init(public_key: &PublicKey, multisig_type: MultisigType) -> StateInit {
-    let mut state_init = multisig_type.state_init();
+pub fn prepare_state_init(public_key: &PublicKey, multisig_type: MultisigType) -> Result<StateInit> {
+    let mut state_init = multisig_type.state_init()?;
 
     let mut result = if state_init.data.is_none() {
         RawDict::new()
     } else {
-        state_init.data.parse::<RawDict<64>>()?
+        RawDict::<64>::from(state_init.data)
     };
 
     let context = Cell::empty_context();
@@ -402,7 +441,7 @@ pub fn prepare_state_init(public_key: &PublicKey, multisig_type: MultisigType) -
     let cell = CellBuilder::build_from_ext(result, context)?;
     state_init.data = Some(cell);
 
-    state_init
+    Ok(state_init)
 }
 
 fn run_local(
@@ -466,7 +505,7 @@ pub fn get_custodians(
     run_local(clock, function, account.into_owned()).and_then(parse_multisig_contract_custodians)
 }
 
-fn parse_multisig_contract_custodians(tokens: Vec<ton_abi::Token>) -> Result<Vec<HashBytes>> {
+fn parse_multisig_contract_custodians(tokens: Vec<NamedAbiValue>) -> Result<Vec<HashBytes>> {
     let array = match tokens.into_unpacker().unpack_next() {
         Ok(AbiValue::Array(_, tokens)) => tokens,
         _ => return Err(UnpackerError::InvalidAbi.into()),
@@ -673,7 +712,7 @@ fn make_ext_message(
 ) -> Result<UnsignedExternalMessage> {
     let external_input = function.encode_external(&input);
     let unsigned_body = external_input.with_expire_at(expire_at).build_input()?;
-    let mut unsigned_message = unsigned_body.with_dst(address);
+    let unsigned_message = unsigned_body.with_dst(address);
 
     Ok(unsigned_message)
 }
@@ -713,7 +752,7 @@ mod tests {
         .unwrap();
 
         assert_eq!(
-            compute_contract_address(&key, MultisigType::SetcodeMultisigWallet24h, 0).to_string(),
+            compute_contract_address(&key, MultisigType::SetcodeMultisigWallet24h, 0).unwrap().to_string(),
             "0:3de70f9212154344a3158768b3fed731fc865ca15948b0d6d0d34daf4c6a7a0a"
         );
     }

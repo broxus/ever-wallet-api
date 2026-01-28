@@ -6,7 +6,8 @@ use tycho_types::{
     abi::{AbiVersion, UnsignedBody, UnsignedExternalMessage},
     cell::{Cell, CellBuilder, HashBytes},
     models::{
-        Account, AccountState, CurrencyCollection, IntMsgInfo, Message, MsgInfo, StateInit, StdAddr,
+        Account, AccountState, CurrencyCollection, IntAddr, IntMsgInfo, Message, MsgInfo,
+        StateInit, StdAddr,
     },
 };
 use tycho_util::time::now_sec;

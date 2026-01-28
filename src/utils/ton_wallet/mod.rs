@@ -112,7 +112,7 @@ impl WalletType {
 
     pub fn code(&self) -> Cell {
         match self {
-            Self::Multisig(multisig_type) => multisig_type.code(),
+            Self::Multisig(multisig_type) => multisig_type.code().unwrap(),
             Self::WalletV3 => wallets::code::wallet_v3(),
             Self::WalletV3R1 => wallets::code::wallet_v3r1(),
             Self::WalletV3R2 => wallets::code::wallet_v3r2(),

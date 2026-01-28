@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use tycho_types::{
-    abi::{AbiType, Function},
+    abi::{AbiType, Function, IntoAbi, NamedAbiType, NamedAbiValue, WithAbiType},
     cell::{Cell, HashBytes},
     models::StdAddr,
 };
@@ -18,7 +18,7 @@ pub fn constructor() -> &'static Function {
             AbiType::Uint(8).named("reqConfirms"),
             AbiType::Uint(32).named("lifetime"),
         ],
-        outputs: Vec::new(),
+        outputs: vec![] as Vec<NamedAbiType>,
     }
 }
 
@@ -34,7 +34,7 @@ pub fn send_transaction() -> &'static Function {
             AbiType::Uint(8).named("flags"),
             AbiType::Cell.named("payload"),
         ],
-        outputs: Vec::new(),
+        outputs: vec![] as Vec<NamedAbiType>,
     }
 }
 
@@ -65,7 +65,7 @@ pub fn confirm_transaction() -> &'static Function {
         inputs: vec![
             AbiType::Uint(64).named("transactionId"),
             ],
-        outputs: Vec::new(),
+        outputs: vec![] as Vec<NamedAbiType>,
     }
 }
 
@@ -85,14 +85,34 @@ pub struct MultisigTransaction {
     pub state_init: Option<Cell>,
 }
 
+
+impl WithAbiType for MultisigTransaction {
+    fn abi_type() -> AbiType {
+        AbiType::Tuple(Arc::new([
+            AbiType::Uint(64).named("id"),
+            AbiType::Uint(32).named("confirmationMask"),
+            AbiType::Uint(8).named("signsRequired"),
+            AbiType::Uint(8).named("signsReceived"),
+            AbiType::Uint(256).named("creator"),
+            AbiType::Uint(8).named("index"),
+            AbiType::Address.named("dest"),
+            AbiType::Uint(128).named("value"),
+            AbiType::Uint(16).named("sendFlags"),
+            AbiType::Cell.named("payload"),
+            AbiType::Bool.named("bounce"),
+            AbiType::Optional(Arc::new(AbiType::Cell)).named("stateInit"),
+        ]))
+    }
+}
+
 pub fn get_transactions() -> &'static Function {
     declare_function! {
         abi: v2_3,
         header: [pubkey, time, expire],
         name: "getTransactions",
-        inputs: Vec::new(),
+        inputs: vec![] as Vec<NamedAbiType>,
         outputs: vec![
-            AbiType::Array(Arc::new(MultisigTransaction::param_type())).named("transactions")
+            AbiType::Array(Arc::new(MultisigTransaction::abi_type())).named("transactions")
         ]
     }
 }
@@ -103,14 +123,23 @@ pub struct MultisigCustodian {
     pub pubkey: HashBytes,
 }
 
+impl WithAbiType for MultisigCustodian {
+    fn abi_type() -> AbiType {
+        AbiType::Tuple(Arc::new([
+            AbiType::Uint(8).named("index"),
+            AbiType::Uint(256).named("pubkey"),
+        ]))
+    }
+}
+
 pub fn get_custodians() -> &'static Function {
     declare_function! {
         abi: v2_3,
         header: [pubkey, time, expire],
         name: "getCustodians",
-        inputs: Vec::new(),
+        inputs: vec![] as Vec<NamedAbiType>,
         outputs: vec![
-            AbiType::Array(Arc::new(MultisigCustodian::param_type())).named("custodians")
+            AbiType::Array(Arc::new(MultisigCustodian::abi_type())).named("custodians")
         ]
     }
 }
@@ -123,9 +152,37 @@ pub struct SubmitUpdateParams {
     pub lifetime: Option<u64>,
 }
 
+impl SubmitUpdateParams {
+    fn abi_type() -> Vec<NamedAbiType> {
+        vec![
+            AbiType::Optional(Arc::new(AbiType::Uint(256))).named("codeHash"),
+            AbiType::Optional(Arc::new(AbiType::Array(Arc::new(AbiType::Uint(256))))).named("owners"),
+            AbiType::Optional(Arc::new(AbiType::Uint(8))).named("reqConfirms"),
+            AbiType::Optional(Arc::new(AbiType::Uint(64))).named("lifetime"),
+        ]
+    }
+
+    pub fn abi_values(&self) -> Vec<NamedAbiValue> {
+        vec![
+            self.code_hash.as_abi().named("codeHash"),
+            self.owners.as_abi().named("owners"),
+            self.req_confirms.as_abi().named("reqConfirms"),
+            self.lifetime.as_abi().named("lifetime"),
+        ]
+    }
+}
+
 #[derive(Debug, Copy, Clone)]
 pub struct SubmitUpdateOutput {
     pub update_id: u64,
+}
+
+impl SubmitUpdateOutput {
+    fn abi_type() -> Vec<NamedAbiType> {
+        vec![
+            AbiType::Uint(64).named("updateId"),
+        ]
+    }
 }
 
 pub fn submit_update() -> &'static Function {
@@ -133,8 +190,8 @@ pub fn submit_update() -> &'static Function {
         abi: v2_3,
         header: [pubkey, time, expire],
         name: "submitUpdate",
-        inputs: SubmitUpdateParams::param_type(),
-        outputs: SubmitUpdateOutput::param_type(),
+        inputs: SubmitUpdateParams::abi_type(),
+        outputs: SubmitUpdateOutput::abi_type(),
     }
 }
 
@@ -143,13 +200,27 @@ pub struct ConfirmUpdateParams {
     pub update_id: u64,
 }
 
+impl ConfirmUpdateParams {
+    fn abi_type() -> Vec<NamedAbiType> {
+        vec![
+            AbiType::Uint(64).named("updateId"),
+        ]
+    }
+
+    pub fn abi_values(&self) -> Vec<NamedAbiValue> {
+        vec![
+            self.update_id.as_abi().named("updateId"),
+        ]
+    }
+}
+
 pub fn confirm_update() -> &'static Function {
     declare_function! {
         abi: v2_3,
         header: [pubkey, time, expire],
         name: "confirmUpdate",
-        inputs: ConfirmUpdateParams::param_type(),
-        outputs: Vec::new(),
+        inputs: ConfirmUpdateParams::abi_type(),
+        outputs: vec![] as Vec<NamedAbiType>,
     }
 }
 
@@ -159,13 +230,30 @@ pub struct ExecuteUpdateParams {
     pub code: Option<Cell>,
 }
 
+impl ExecuteUpdateParams {
+    fn abi_type() -> Vec<NamedAbiType> {
+        vec![
+            AbiType::Uint(64).named("updateId"),
+            AbiType::Optional(Arc::new(AbiType::Cell)).named("code"),
+        ]
+    }
+
+    pub fn abi_values(&self) -> Vec<NamedAbiValue> {
+        vec![
+            self.update_id.as_abi().named("updateId"),
+            self.code.as_abi().named("code"),
+        ]
+    }
+
+}
+
 pub fn execute_update() -> &'static Function {
     declare_function! {
         abi: v2_3,
         header: [pubkey, time, expire],
         name: "executeUpdate",
-        inputs: ExecuteUpdateParams::param_type(),
-        outputs: Vec::new(),
+        inputs: ExecuteUpdateParams::abi_type(),
+        outputs: vec![] as Vec<NamedAbiType>,
     }
 }
 
@@ -179,13 +267,25 @@ pub struct SetCodeMultisigParams {
     pub required_upd_confirms: u8,
 }
 
+impl SetCodeMultisigParams {
+    fn abi_type() -> Vec<NamedAbiType> {
+        vec![
+            AbiType::Uint(8).named("maxQueuedTransactions"),
+            AbiType::Uint(8).named("maxCustodianCount"),
+            AbiType::Uint(64).named("expirationTime"),
+            AbiType::Uint(128).named("minValue"),
+            AbiType::Uint(8).named("requiredTxnConfirms"),
+            AbiType::Uint(8).named("requiredUpdConfirms"),
+        ]
+    }
+}
 pub fn get_parameters() -> &'static Function {
     declare_function! {
         abi: v2_3,
         header: [pubkey, time, expire],
         name: "getParameters",
-        inputs: Vec::new(),
-        outputs: SetCodeMultisigParams::param_type(),
+        inputs: vec![] as Vec<NamedAbiType>,
+        outputs: SetCodeMultisigParams::abi_type(),
     }
 }
 
@@ -199,37 +299,24 @@ pub struct UpdateTransaction {
     pub new_code_hash: Option<HashBytes>,
     pub new_custodians: Option<Vec<HashBytes>>,
     pub new_req_confirms: Option<u8>,
-    //#[abi(with = "updated_lifetime")]
     pub new_lifetime: Option<u32>,
 }
 
-//mod updated_lifetime {
-//    use super::*;
-//    use num_traits::cast::ToPrimitive;
-//
-//    pub fn unpack(value: &TokenValue) -> UnpackerResult<Option<u32>> {
-//        let value = match value {
-//            TokenValue::Optional(_, None) => return Ok(None),
-//            TokenValue::Optional(_, Some(value)) => value,
-//            _ => return Err(UnpackerError::InvalidAbi),
-//        };
-//
-//        match value.as_ref() {
-//            TokenValue::Uint(Uint { number, size: 32 }) => {
-//                Ok(Some(number.to_u32().ok_or(UnpackerError::InvalidAbi)?))
-//            }
-//            TokenValue::Uint(Uint { number, size: 64 }) => {
-//                let lifetime = number.to_u64().ok_or(UnpackerError::InvalidAbi)?;
-//                Ok(Some(lifetime as u32))
-//            }
-//            _ => Err(UnpackerError::InvalidAbi),
-//        }
-//    }
-//
-//    pub fn param_type() -> ParamType {
-//        Option::<u32>::param_type()
-//    }
-//}
+impl  WithAbiType for UpdateTransaction {
+    fn abi_type() -> AbiType {
+        AbiType::Tuple(Arc::new([
+            AbiType::Uint(64).named("id"),
+            AbiType::Uint(8).named("index"),
+            AbiType::Uint(8).named("signs"),
+            AbiType::Uint(32).named("confirmationsMask"),
+            AbiType::Uint(256).named("creator"),
+            AbiType::Optional(Arc::new(AbiType::Uint(256))).named("newCodeHash"),
+            AbiType::Optional(Arc::new(AbiType::Array(Arc::new(AbiType::Uint(256))))).named("newCustodians"),
+            AbiType::Optional(Arc::new(AbiType::Uint(8))).named("newReqConfirms"),
+            AbiType::Optional(Arc::new(AbiType::Uint(32))).named("newLifetime"),
+        ]))
+    }
+}
 
 pub mod v2_0 {
     use tycho_types::abi::NamedAbiType;
@@ -241,19 +328,22 @@ pub mod v2_0 {
             abi: v2_3,
             header: [pubkey, time, expire],
             name: "getUpdateRequests",
-            inputs: Vec::new(),
+            inputs: vec![] as Vec<NamedAbiType>,
             outputs: {
-                let mut param_types = UpdateTransaction::param_type();
-                if let AbiType::Tuple(params) = &mut param_types {
-                    if let Some(NamedAbiType {
-                        ty: AbiType::Optional(param),
-                        ..
-                    }) = params.last_mut() {
-                        if let AbiType::Uint(size) = param.as_mut() {
-                            *size = 64;
+                let param_types = match UpdateTransaction::abi_type() {
+                    AbiType::Tuple(params) => {
+                        let mut vec = params.iter().cloned().collect::<Vec<_>>();
+                        if let Some(last) = vec.last_mut() {
+                            if let NamedAbiType { ty: AbiType::Optional(param), name } = last {
+                                if let AbiType::Uint(_) = param.as_ref() {
+                                    *last = AbiType::Optional(Arc::new(AbiType::Uint(64))).named(&*name.clone());
+                                }
+                            }
                         }
+                        AbiType::Tuple(Arc::<[NamedAbiType]>::from(vec))
                     }
-                }
+                    other => other,
+                };
 
                 vec![
                     AbiType::Array(Arc::new(param_types)).named("updates")
@@ -271,9 +361,9 @@ pub mod v2_1 {
             abi: v2_3,
             header: [pubkey, time, expire],
             name: "getUpdateRequests",
-            inputs: Vec::new(),
+            inputs: vec![] as Vec<NamedAbiType>,
             outputs: vec![
-                AbiType::Array(Arc::new(UpdateTransaction::param_type())).named("updates")
+                AbiType::Array(Arc::new(UpdateTransaction::abi_type())).named("updates")
             ],
         }
     }
