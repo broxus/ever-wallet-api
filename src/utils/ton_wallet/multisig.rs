@@ -5,7 +5,7 @@ use anyhow::Result;
 use ed25519_dalek::PublicKey;
 use tycho_types::{
     abi::{AbiValue, FromAbi, Function, IntoAbi, NamedAbiValue, UnsignedExternalMessage},
-    cell::{Cell, CellBuilder, CellDataBuilder, CellFamily, HashBytes, Load},
+    cell::{Cell, CellBuilder, CellDataBuilder, HashBytes, Load},
     dict::RawDict,
     models::{Account, StateInit, StdAddr},
 };
@@ -432,24 +432,22 @@ pub fn prepare_state_init(
 ) -> Result<StateInit> {
     let mut state_init = multisig_type.state_init()?;
 
-    let mut result = if state_init.data.is_none() {
-        RawDict::new()
-    } else {
-        RawDict::<64>::from(state_init.data)
-    };
+    let state_init_data = state_init.data.unwrap_or_default();
 
-    let context = Cell::empty_context();
+    let state_init_data_slice = state_init_data.as_slice()?;
+
+    let cell = state_init_data_slice.get_reference_cloned(0).ok();
+
+    let mut result = RawDict::<64>::from(cell);
+
     let mut key_builder = CellDataBuilder::new();
-
     key_builder.store_u64(0)?;
-    result.set_ext(
-        key_builder.as_data_slice(),
-        &CellBuilder::from_raw_data(public_key.as_bytes(), 256)?.as_data_slice(),
-        context,
-    )?;
+    let cell_builder = CellBuilder::from_raw_data(public_key.as_bytes(), 256)?;
+    let data_slice = cell_builder.as_data_slice();
+    result.set(key_builder.as_data_slice(), &data_slice)?;
 
     // Encode init data as mapping
-    let cell = CellBuilder::build_from_ext(result, context)?;
+    let cell = CellBuilder::build_from(result)?;
     state_init.data = Some(cell);
 
     Ok(state_init)
@@ -665,7 +663,6 @@ pub struct UpdatedParams {
     pub new_req_confirms: Option<u8>,
     pub new_lifetime: Option<u32>,
 }
-
 
 pub fn get_pending_transactions(
     clock: &dyn Clock,
