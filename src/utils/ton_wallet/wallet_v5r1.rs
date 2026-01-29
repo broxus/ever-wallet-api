@@ -202,7 +202,7 @@ impl InitData {
             builder.store_bit_one()?;
             builder.store_reference(extensions.clone())?;
         } else {
-            builder.store_bit_one()?;
+            builder.store_bit_zero()?;
         }
 
         let data = builder.build()?;
@@ -283,7 +283,7 @@ impl TryFrom<&Cell> for InitData {
         let seqno = slice.load_u32()?;
         let wallet_id = slice.load_u32()?;
         let mut buffer = [0u8; 32];
-        slice.load_raw(&mut buffer, 32)?;
+        slice.load_raw(&mut buffer, 256)?;
         let public_key = HashBytes::from_slice(&buffer);
         let extensions = Option::<Cell>::load_from(&mut slice)?;
 
