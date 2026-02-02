@@ -6,7 +6,6 @@ use anyhow::Result;
 use futures::stream::FuturesUnordered;
 use futures::StreamExt;
 use nekoton::core::models::TokenWalletVersion;
-use nekoton::transport::models::ExistingContract;
 use nekoton_utils::TrustMe;
 use parking_lot::{Mutex, RwLock, RwLockReadGuard};
 use rustc_hash::FxHashMap;
@@ -20,6 +19,7 @@ use tycho_block_util::state::{RefMcStateHandle, ShardStateStuff};
 use tycho_vm::StackValue;
 
 use crate::ton_core::*;
+use crate::models::ExistingContract;
 
 pub struct TonSubscriber {
     // tip block timestamp
@@ -588,7 +588,7 @@ where
 
 pub struct ShardAccount {
     pub(crate) data: Cell,
-    pub(crate) last_transaction_id: LastTransactionId,
+    pub(crate) last_transaction_hash: HashBytes,
     _state_handle: RefMcStateHandle,
 }
 
@@ -599,16 +599,10 @@ pub fn make_existing_contract(state: Option<ShardAccount>) -> Result<Option<Exis
     };
 
     let account = tycho_types::models::OptionalAccount::load_from(&mut state.data.as_slice()?)?;
-
-    if let Some(stuff) = convert_to_old_account(account)? {
-        Ok(Some(ExistingContract {
-            account: stuff,
-            timings: GenTimings::Unknown,
-            last_transaction_id: state.last_transaction_id,
-        }))
-    } else {
-        Ok(None)
-    }
+    Ok(account.0.map(|account| ExistingContract {
+        account,
+        last_transaction_hash: state.last_transaction_hash,
+    }))
 }
 
 pub fn convert_to_old_account(
@@ -633,10 +627,7 @@ impl CachedAccounts {
         match self.accounts.get(account)? {
             Some((_, account)) => Ok(Some(ShardAccount {
                 data: account.account.as_cell().unwrap().clone(),
-                last_transaction_id: LastTransactionId::Exact(TransactionId {
-                    lt: account.last_trans_lt,
-                    hash: UInt256::with_array(account.last_trans_hash.0),
-                }),
+                last_transaction_hash: account.last_trans_hash,
                 _state_handle: self.state_handle.clone(),
             })),
             None => Ok(None),
@@ -653,17 +644,12 @@ impl ShardAccountsMapExt for FxHashMap<ShardIdent, CachedAccounts> {
         match item {
             Some((_, shard)) => {
                 if let Some((_, account)) = shard.accounts.get(account)? {
-                    let last_transaction_id = LastTransactionId::Exact(TransactionId {
-                        lt: account.last_trans_lt,
-                        hash: UInt256::with_array(account.last_trans_hash.0),
-                    });
-
+                    let last_transaction_hash = account.last_trans_hash;
                     let account = account.account.load()?;
-                    if let Some(stuff) = convert_to_old_account(account)? {
+                    if let Some(account) = account.0 {
                         return Ok(Some(ExistingContract {
-                            account: stuff,
-                            timings: GenTimings::Unknown,
-                            last_transaction_id,
+                            account,
+                            last_transaction_hash,
                         }));
                     }
                 }

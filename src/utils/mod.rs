@@ -16,10 +16,11 @@ pub use self::tx_context::*;
 
 mod encoding;
 mod existing_contract;
+pub mod mnemonic;
 mod pending_messages_queue;
 mod shard_utils;
 mod token_wallet;
-mod ton_wallet;
+pub mod ton_wallet;
 mod tx_context;
 mod wallets;
 

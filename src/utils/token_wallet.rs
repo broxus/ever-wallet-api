@@ -4,7 +4,6 @@ use nekoton::core::models::{
     RootTokenContractDetails, TokenWalletDetails, TokenWalletVersion, TransferRecipient,
 };
 use nekoton::core::InternalMessage;
-use nekoton::transport::models::ExistingContract;
 use nekoton_abi::{BigUint128, BigUint256, ExecutionContext, MessageBuilder};
 use nekoton_contracts::tip3_any::{RootTokenContractState, TokenWalletContractState};
 use nekoton_contracts::{old_tip3, tip3_1};
@@ -12,6 +11,8 @@ use nekoton_utils::SimpleClock;
 use num_bigint::BigUint;
 use ton_block::MsgAddressInt;
 use ton_types::{SliceData, UInt256};
+
+use crate::models::ExistingContract;
 
 const INITIAL_BALANCE: u64 = 100_000_000; // 0.1 TON
 

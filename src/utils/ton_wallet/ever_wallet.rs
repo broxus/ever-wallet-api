@@ -1,5 +1,4 @@
 use anyhow::Result;
-use ed25519_dalek::PublicKey;
 use tycho_types::{
     abi::{AbiHeaderType, AbiValue, AbiVersion, Function, NamedAbiType, UnsignedExternalMessage},
     cell::{CellBuilder, HashBytes},

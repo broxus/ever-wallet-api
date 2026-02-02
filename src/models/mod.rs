@@ -13,6 +13,7 @@ pub use self::token_transaction_events::*;
 pub use self::token_transactions::*;
 pub use self::transaction_events::*;
 pub use self::transactions::*;
+pub use self::existing_contract::*;
 
 mod account_enums;
 mod account_transaction_event;
@@ -29,3 +30,4 @@ mod token_transaction_events;
 mod token_transactions;
 mod transaction_events;
 mod transactions;
+mod existing_contract;

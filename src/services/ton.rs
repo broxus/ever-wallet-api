@@ -1179,7 +1179,7 @@ impl TonService {
         message_hash: String,
         account_hex: String,
         account_workchain_id: i32,
-        signed_message: SignedMessage,
+        signed_message: OwnerMessage,
         non_blocking: bool,
         with_db_update: bool,
     ) -> Result<(), Error> {

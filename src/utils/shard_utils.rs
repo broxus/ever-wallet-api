@@ -1,8 +1,9 @@
 use std::collections::HashMap;
 
 use anyhow::Result;
-use nekoton::transport::models::ExistingContract;
 use tycho_types::{cell::HashBytes, models::ShardIdent};
+
+use crate::models::ExistingContract;
 
 pub type ShardsMap = HashMap<ton_block::ShardIdent, ton_block::BlockIdExt>;
 

@@ -59,7 +59,7 @@ tycho-types = { version = "0.3.1", features = ["tycho", "stats", "serde", "abi"]
 
 uuid = { version = "1.1", features = ["v4", "serde"] }
 
-ed25519-dalek = { git = "https://github.com/broxus/ed25519-dalek.git" }
+ed25519-dalek = { version = "2.1.1" }
 
 tikv-jemallocator = { version = "0.6.0", features = [
     "unprefixed_malloc_on_supported_platforms",
