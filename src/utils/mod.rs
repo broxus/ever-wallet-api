@@ -44,7 +44,7 @@ macro_rules! declare_function {
     ) => {
         static ONCE: std::sync::OnceLock<tycho_types::abi::Function> = std::sync::OnceLock::new();
         ONCE.get_or_init(|| {
-            let mut builder = tycho_types::abi::Function::builder($crate::utils::declare_function!(@abi_version $($abi)?), ($name).to_string())
+            let builder = tycho_types::abi::Function::builder($crate::utils::declare_function!(@abi_version $($abi)?), ($name).to_string())
                 .with_headers($crate::utils::declare_function!(@header $($($header),+)?))
                 .with_inputs($inputs as Vec<tycho_types::abi::NamedAbiType>)
                 .with_outputs($outputs as Vec<tycho_types::abi::NamedAbiType>);
@@ -56,7 +56,7 @@ macro_rules! declare_function {
         })
     };
 
-    (@function_id $builder:ident $id:literal) => { $builder = $builder.with_id($id) };
+    (@function_id $builder:ident $id:literal) => { let $builder = $builder.with_id($id); };
     (@function_id $builder:ident ) => {};
 
     (@abi_version) => { tycho_types::abi::AbiVersion::V2_2 };
