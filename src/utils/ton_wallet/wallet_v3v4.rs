@@ -1,7 +1,7 @@
 use std::convert::TryFrom;
 
 use anyhow::Result;
-use ed25519_dalek::PublicKey;
+use ed25519_dalek::VerifyingKey;
 use tycho_types::{
     abi::{AbiVersion, UnsignedBody, UnsignedExternalMessage},
     cell::{Cell, CellBuilder, HashBytes},
@@ -17,7 +17,7 @@ use crate::utils::{
 };
 
 pub fn prepare_deploy(
-    public_key: &PublicKey,
+    public_key: &VerifyingKey,
     workchain: i8,
     expire_at: u32,
     version: WalletVersion,
@@ -38,13 +38,13 @@ pub fn prepare_deploy(
     Ok(unsigned_message)
 }
 
-pub fn prepare_state_init(public_key: &PublicKey, version: WalletVersion) -> Result<StateInit> {
+pub fn prepare_state_init(public_key: &VerifyingKey, version: WalletVersion) -> Result<StateInit> {
     let init_data = InitData::from_key(public_key).with_subwallet_id(WALLET_ID);
     init_data.make_state_init(version)
 }
 
 pub fn prepare_transfer(
-    public_key: &PublicKey,
+    public_key: &VerifyingKey,
     current_state: &Account,
     seqno_offset: u32,
     gifts: Vec<Gift>,
@@ -139,7 +139,7 @@ pub fn is_wallet_v4r2(code_hash: &HashBytes) -> bool {
 }
 
 pub fn compute_contract_address(
-    public_key: &PublicKey,
+    public_key: &VerifyingKey,
     workchain_id: i8,
     version: WalletVersion,
 ) -> Result<StdAddr> {
@@ -175,7 +175,7 @@ impl InitData {
         &self.public_key.0
     }
 
-    pub fn from_key(key: &PublicKey) -> Self {
+    pub fn from_key(key: &VerifyingKey) -> Self {
         Self {
             seqno: 0,
             wallet_id: 0,

@@ -2,7 +2,7 @@ use std::num::NonZeroU8;
 use std::str::FromStr;
 
 use anyhow::Result;
-use ed25519_dalek::PublicKey;
+use ed25519_dalek::VerifyingKey;
 use serde::{Deserialize, Serialize};
 
 use nekoton_utils::*;
@@ -185,7 +185,7 @@ impl std::fmt::Display for WalletType {
 }
 
 pub fn compute_address(
-    public_key: &PublicKey,
+    public_key: &VerifyingKey,
     wallet_type: WalletType,
     workchain_id: i8,
 ) -> Result<StdAddr> {

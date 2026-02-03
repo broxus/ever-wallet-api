@@ -5,13 +5,9 @@ use std::sync::{Arc, Weak};
 use axum::http::StatusCode;
 use bigdecimal::BigDecimal;
 use chrono::Utc;
-use nekoton::crypto::{SignedMessage, UnsignedMessage};
-use nekoton_utils::{repack_address, unpack_std_smc_addr, TrustMe};
 use serde_json::Value;
 use ton_abi::contract::ABI_VERSION_2_2;
 use ton_abi::{Param, Token, TokenValue};
-use ton_block::{GetRepresentationHash, MsgAddressInt, Serializable};
-use ton_types::{BuilderData, UInt256};
 use tycho_types::abi::UnsignedExternalMessage;
 use tycho_types::cell::{CellBuilder, HashBytes};
 use tycho_types::models::{OwnedMessage, StdAddr};
@@ -100,9 +96,7 @@ impl TonService {
     }
 
     pub async fn check_address(&self, address: Address) -> Result<bool, Error> {
-        Ok(MsgAddressInt::from_str(&address.0).is_ok()
-            || (unpack_std_smc_addr(&address.0, false).is_ok())
-            || (unpack_std_smc_addr(&address.0, true).is_ok()))
+        Ok(StdAddr::from_str(&address.0).is_ok())
     }
 
     pub async fn get_address_balance(
@@ -960,14 +954,15 @@ impl TonService {
             None => (None, None),
         };
 
-        let sender = repack_address(sender_addr)?;
+
+        let sender = StdAddr::from_str(&sender_addr).map_err(anyhow::Error::from)?;
 
         let address_db = self
             .sqlx_client
             .get_address(
                 *service_id,
-                sender.workchain_id(),
-                sender.address().to_hex_string(),
+                sender.workchain as i32,
+                sender.address.to_string(),
             )
             .await?;
 
@@ -999,8 +994,8 @@ impl TonService {
         let sent_transaction = SentTransaction {
             id: transaction_id,
             message_hash: message_hash.to_string(),
-            account_workchain_id: sender.workchain_id(),
-            account_hex: sender.address().to_hex_string(),
+            account_workchain_id: sender.workchain as i32,
+            account_hex: sender.address.to_string(),
             original_value: Some(value),
             original_outputs: None,
             aborted: false,
@@ -1151,7 +1146,7 @@ impl TonService {
             .into_iter()
             .map(|item| {
                 let mut result = HashBytes::default();
-                hex::decode_to_slice(item.hex, &mut result.0).trust_me();
+                hex::decode_to_slice(item.hex, &mut result.0).unwrap();
                 result
             });
 
@@ -1172,7 +1167,7 @@ impl TonService {
         }
         let addresses = address_dbs.into_iter().map(|item| {
             let mut result = HashBytes::default();
-            hex::decode_to_slice(item.hex, &mut result.0).trust_me();
+            hex::decode_to_slice(item.hex, &mut result.0).unwrap();
             result
         });
 

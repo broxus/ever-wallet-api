@@ -1,7 +1,7 @@
 use std::convert::TryFrom;
 
 use anyhow::Result;
-use ed25519_dalek::PublicKey;
+use ed25519_dalek::VerifyingKey;
 use tycho_types::{
     abi::{AbiVersion, UnsignedBody, UnsignedExternalMessage},
     cell::{Cell, CellBuilder, HashBytes, Lazy, Load},
@@ -20,7 +20,7 @@ const SIGNED_EXTERNAL_PREFIX: u32 = 0x7369676E;
 const SIGNED_INTERNAL_PREFIX: u32 = 0x73696E74;
 
 pub fn prepare_deploy(
-    public_key: &PublicKey,
+    public_key: &VerifyingKey,
     workchain: i8,
     expire_at: u32,
 ) -> Result<UnsignedExternalMessage> {
@@ -39,18 +39,18 @@ pub fn prepare_deploy(
     Ok(unsigned_message)
 }
 
-pub fn prepare_state_init(public_key: &PublicKey) -> Result<StateInit> {
+pub fn prepare_state_init(public_key: &VerifyingKey) -> Result<StateInit> {
     let init_data = make_init_data(public_key);
     init_data.make_state_init()
 }
 
-pub fn make_init_data(public_key: &PublicKey) -> InitData {
+pub fn make_init_data(public_key: &VerifyingKey) -> InitData {
     InitData::from_key(public_key)
         .with_wallet_id(WALLET_ID)
         .with_is_signature_allowed(true)
 }
 
-pub fn get_init_data(current_state: &Account, public_key: &PublicKey) -> Result<(InitData, bool)> {
+pub fn get_init_data(current_state: &Account, public_key: &VerifyingKey) -> Result<(InitData, bool)> {
     match current_state.state {
         AccountState::Active(ref state_init) => match &state_init.data {
             Some(data) => Ok((InitData::try_from(data)?, false)),
@@ -69,7 +69,7 @@ pub fn get_init_data_from_state_init(init: &StateInit) -> Result<InitData> {
 }
 
 pub fn prepare_transfer(
-    public_key: &PublicKey,
+    public_key: &VerifyingKey,
     current_state: &Account,
     seqno_offset: u32,
     gifts: Vec<Gift>,
@@ -123,7 +123,7 @@ pub fn is_wallet_v5r1(code_hash: &HashBytes) -> bool {
     code_hash.as_slice() == CODE_HASH
 }
 
-pub fn compute_contract_address(public_key: &PublicKey, workchain_id: i8) -> Result<StdAddr> {
+pub fn compute_contract_address(public_key: &VerifyingKey, workchain_id: i8) -> Result<StdAddr> {
     make_init_data(public_key).compute_addr(workchain_id)
 }
 
@@ -156,7 +156,7 @@ impl InitData {
         &self.public_key.0
     }
 
-    pub fn from_key(key: &PublicKey) -> Self {
+    pub fn from_key(key: &VerifyingKey) -> Self {
         Self {
             is_signature_allowed: false,
             seqno: 0,
@@ -317,7 +317,7 @@ enum WalletV5Error {
 
 #[cfg(test)]
 mod tests {
-    use ed25519_dalek::PublicKey;
+    use ed25519_dalek::VerifyingKey;
     use tycho_types::{
         boc::Boc,
         cell::Load,
@@ -346,7 +346,7 @@ mod tests {
             assert_eq!(init_data.wallet_id, WALLET_ID);
             assert_eq!(init_data.extensions, None);
 
-            let public_key = PublicKey::from_bytes(init_data.public_key.as_slice())?;
+            let public_key = VerifyingKey::from_bytes(init_data.public_key.as_slice().try_into().unwrap())?;
             let address = compute_contract_address(&public_key, 0)?;
             assert_eq!(
                 address.to_string(),
@@ -376,7 +376,7 @@ mod tests {
     //        let in_msg_body = ton_types::deserialize_tree_of_cells(&mut payload.as_slice())?;
     //        let in_msg_body_slice = SliceData::load_cell(in_msg_body)?;
     //
-    //        let public_key = PublicKey::from_bytes(public_key_bytes.as_slice())?;
+    //        let public_key = VerifyingKey::from_bytes(public_key_bytes.as_slice())?;
     //
     //        let result = check_signature(in_msg_body_slice, public_key, Some(2000))?;
     //        assert!(result);
@@ -385,7 +385,7 @@ mod tests {
     //
     //    fn check_signature(
     //        mut in_msg_body: SliceData,
-    //        public_key: PublicKey,
+    //        public_key: VerifyingKey,
     //        signature_id: Option<i32>,
     //    ) -> anyhow::Result<bool> {
     //        let signature_binding = in_msg_body

@@ -2,7 +2,7 @@ use std::borrow::Cow;
 use std::convert::TryFrom;
 
 use anyhow::Result;
-use ed25519_dalek::PublicKey;
+use ed25519_dalek::VerifyingKey;
 use tycho_types::{
     abi::{AbiValue, FromAbi, Function, IntoAbi, NamedAbiValue, UnsignedExternalMessage},
     cell::{Cell, CellBuilder, CellDataBuilder, HashBytes, Load},
@@ -17,13 +17,13 @@ use super::{Gift, TonWalletDetails};
 
 #[derive(Copy, Clone, Debug)]
 pub struct DeployParams<'a> {
-    pub owners: &'a [PublicKey],
+    pub owners: &'a [VerifyingKey],
     pub req_confirms: u8,
     pub expiration_time: Option<u32>,
 }
 
 impl<'a> DeployParams<'a> {
-    pub fn single_custodian(pubkey: &'a PublicKey) -> Self {
+    pub fn single_custodian(pubkey: &'a VerifyingKey) -> Self {
         Self {
             owners: std::slice::from_ref(pubkey),
             req_confirms: 1,
@@ -33,7 +33,7 @@ impl<'a> DeployParams<'a> {
 }
 
 pub fn prepare_deploy(
-    public_key: &PublicKey,
+    public_key: &VerifyingKey,
     multisig_type: MultisigType,
     workchain: i8,
     expire_at: u32,
@@ -84,7 +84,7 @@ pub fn prepare_deploy(
 
 pub fn prepare_confirm_transaction(
     multisig_type: MultisigType,
-    public_key: &PublicKey,
+    public_key: &VerifyingKey,
     address: StdAddr,
     transaction_id: u64,
     expire_at: u32,
@@ -106,7 +106,7 @@ pub fn prepare_confirm_transaction(
 
 pub fn prepare_transfer(
     multisig_type: MultisigType,
-    public_key: &PublicKey,
+    public_key: &VerifyingKey,
     has_multiple_owners: bool,
     address: StdAddr,
     gift: Gift,
@@ -166,7 +166,7 @@ pub fn prepare_transfer(
 
 pub fn prepare_code_update(
     multisig_type: MultisigType,
-    public_key: &PublicKey,
+    public_key: &VerifyingKey,
     address: StdAddr,
     new_code_hash: &[u8; 32],
     expire_at: u32,
@@ -194,7 +194,7 @@ pub fn prepare_code_update(
 
 pub fn prepare_confirm_update(
     multisig_type: MultisigType,
-    public_key: &PublicKey,
+    public_key: &VerifyingKey,
     address: StdAddr,
     update_id: u64,
     expire_at: u32,
@@ -216,7 +216,7 @@ pub fn prepare_confirm_update(
 
 pub fn prepare_execute_update(
     multisig_type: MultisigType,
-    public_key: &PublicKey,
+    public_key: &VerifyingKey,
     update_id: u64,
     code: Option<Cell>,
     address: StdAddr,
@@ -389,7 +389,7 @@ pub fn guess_multisig_type(code_hash: &HashBytes) -> Option<MultisigType> {
 }
 
 pub fn compute_contract_address(
-    public_key: &PublicKey,
+    public_key: &VerifyingKey,
     multisig_type: MultisigType,
     workchain_id: i8,
 ) -> Result<StdAddr> {
@@ -427,7 +427,7 @@ pub fn ton_wallet_details(multisig_type: MultisigType) -> TonWalletDetails {
 }
 
 pub fn prepare_state_init(
-    public_key: &PublicKey,
+    public_key: &VerifyingKey,
     multisig_type: MultisigType,
 ) -> Result<StateInit> {
     let mut state_init = multisig_type.state_init()?;
@@ -780,7 +780,7 @@ fn extend_pending_update(
 }
 
 fn make_ext_message(
-    public_key: &PublicKey,
+    public_key: &VerifyingKey,
     address: StdAddr,
     expire_at: u32,
     function: &'static Function,
@@ -823,9 +823,13 @@ mod tests {
 
     #[test]
     fn correct_address() {
-        let key = PublicKey::from_bytes(
-            &hex::decode("5ace46d93d8f3932499df9f2bc7ef787385e16965e7797258948febd186de7f6")
-                .unwrap(),
+        let key = hex::decode("5ace46d93d8f3932499df9f2bc7ef787385e16965e7797258948febd186de7f6")
+                .unwrap();
+
+        let key = key.try_into().unwrap();
+        
+        let key = VerifyingKey::from_bytes(
+            &key,
         )
         .unwrap();
 

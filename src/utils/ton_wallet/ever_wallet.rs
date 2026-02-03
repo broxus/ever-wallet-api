@@ -1,4 +1,5 @@
 use anyhow::Result;
+use ed25519_dalek::VerifyingKey;
 use tycho_types::{
     abi::{AbiHeaderType, AbiValue, AbiVersion, Function, NamedAbiType, UnsignedExternalMessage},
     cell::{CellBuilder, HashBytes},
@@ -12,7 +13,7 @@ use crate::utils::ton_wallet::{Gift, TonWalletDetails};
 use crate::utils::wallets::code::ever_wallet;
 
 pub fn prepare_deploy(
-    public_key: &PublicKey,
+    public_key: &VerifyingKey,
     workchain: i8,
     expire_at: u32,
 ) -> Result<UnsignedExternalMessage> {
@@ -44,7 +45,7 @@ pub fn prepare_deploy(
 }
 
 pub fn prepare_transfer(
-    public_key: &PublicKey,
+    public_key: &VerifyingKey,
     current_state: &Account,
     address: StdAddr,
     gifts: Vec<Gift>,
@@ -128,14 +129,14 @@ pub fn is_ever_wallet(code_hash: &HashBytes) -> bool {
     code_hash.as_slice() == CODE_HASH
 }
 
-pub fn compute_contract_address(public_key: &PublicKey, workchain_id: i8) -> Result<StdAddr> {
+pub fn compute_contract_address(public_key: &VerifyingKey, workchain_id: i8) -> Result<StdAddr> {
     let state = prepare_state_init(public_key)?;
     let binding = CellBuilder::build_from(state)?;
     let hash = binding.repr_hash();
     Ok(StdAddr::new(workchain_id, *hash))
 }
 
-pub fn prepare_state_init(public_key: &PublicKey) -> Result<StateInit> {
+pub fn prepare_state_init(public_key: &VerifyingKey) -> Result<StateInit> {
     let mut builder = CellBuilder::new();
     builder.store_u256(&HashBytes::from(public_key.to_bytes()))?;
     builder.store_u64(0)?;

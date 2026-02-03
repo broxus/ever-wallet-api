@@ -202,10 +202,10 @@ impl TonClient {
                     .into_iter()
                     .map(|item| {
                         let mut key = [0u8; 32];
-                        key.copy_from_slice(&hex::decode(item).map_err(From::from)?);
-                        VerifyingKey::from_bytes(&key).map_err(From::from)
+                        key.copy_from_slice(&hex::decode(item).map_err(anyhow::Error::from)?);
+                        VerifyingKey::from_bytes(&key).map_err(anyhow::Error::from)
                     })
-                    .collect::<Result<Vec<VerifyingKey>, Error>>()?;
+                    .collect::<Result<Vec<VerifyingKey>, anyhow::Error>>()?;
 
                 ton_wallet::multisig::prepare_deploy(
                     &public_key,
@@ -236,7 +236,7 @@ impl TonClient {
 
         let owned_message = unsigned_message.sign(&key_pair, self.ton_core.signature_id())?;
 
-        let cell_builder = CellBuilder::build_from(&owned_message).map_err(From::from)?;
+        let cell_builder = CellBuilder::build_from(&owned_message).map_err(anyhow::Error::from)?;
         let hash = cell_builder.repr_hash();
 
         let sent_transaction = SentTransaction {
@@ -274,7 +274,7 @@ impl TonClient {
 
         let public_key = VerifyingKey::from_bytes(&key)?;
 
-        let address = StdAddr::from_str(&transaction.from_address.0).map_err(From::from)?;
+        let address = StdAddr::from_str(&transaction.from_address.0).map_err(anyhow::Error::from)?;
 
         let expire_at = now_sec() + DEFAULT_EXPIRATION_TIMEOUT;
 
@@ -283,7 +283,7 @@ impl TonClient {
             .payload
             .map(|s| Boc::decode_base64(s))
             .transpose()
-            .map_err(From::from)?;
+            .map_err(anyhow::Error::from)?;
 
         let unsigned_message = match account_type {
             AccountType::HighloadWallet => {
@@ -294,7 +294,7 @@ impl TonClient {
                 for item in transaction.outputs {
                     let flags = item.output_type.unwrap_or_default();
                     let destination =
-                        StdAddr::from_str(&item.recipient_address.0).map_err(From::from)?;
+                        StdAddr::from_str(&item.recipient_address.0).map_err(anyhow::Error::from)?;
                     let amount = item
                         .value
                         .to_u128()
@@ -305,7 +305,7 @@ impl TonClient {
                         bounce,
                         destination,
                         amount,
-                        body,
+                        body: body.clone(),
                         state_init: None,
                     });
                 }
@@ -325,7 +325,7 @@ impl TonClient {
                     .first()
                     .ok_or(TonClientError::RecipientNotFound)?;
                 let destination =
-                    StdAddr::from_str(&recipient.recipient_address.0).map_err(From::from)?;
+                    StdAddr::from_str(&recipient.recipient_address.0).map_err(anyhow::Error::from)?;
                 let amount = recipient
                     .value
                     .to_u128()
@@ -356,7 +356,7 @@ impl TonClient {
                     .first()
                     .ok_or(TonClientError::RecipientNotFound)?;
                 let destination =
-                    StdAddr::from_str(&recipient.recipient_address.0).map_err(From::from)?;
+                    StdAddr::from_str(&recipient.recipient_address.0).map_err(anyhow::Error::from)?;
                 let amount = recipient
                     .value
                     .to_u128()
@@ -392,7 +392,7 @@ impl TonClient {
                 for item in transaction.outputs {
                     let flags = item.output_type.unwrap_or_default();
                     let destination =
-                        StdAddr::from_str(&item.recipient_address.0).map_err(From::from)?;
+                        StdAddr::from_str(&item.recipient_address.0).map_err(anyhow::Error::from)?;
                     let amount = item
                         .value
                         .to_u128()
@@ -402,7 +402,7 @@ impl TonClient {
                         bounce,
                         destination,
                         amount,
-                        body,
+                        body: body.clone(),
                         state_init: None,
                     });
                 }
@@ -423,7 +423,7 @@ impl TonClient {
 
         let owned_message = unsigned_message.sign(&key_pair, self.ton_core.signature_id())?;
 
-        let cell_builder = CellBuilder::build_from(&owned_message).map_err(From::from)?;
+        let cell_builder = CellBuilder::build_from(&owned_message).map_err(anyhow::Error::from)?;
         let message_hash = cell_builder.repr_hash();
 
         let sent_transaction = SentTransaction {
@@ -454,7 +454,7 @@ impl TonClient {
 
         let public_key = VerifyingKey::from_bytes(&key)?;
 
-        let address = StdAddr::from_str(&transaction.address.0).map_err(From::from)?;
+        let address = StdAddr::from_str(&transaction.address.0).map_err(anyhow::Error::from)?;
 
         let account_workchain_id = address.workchain as i32;
         let account_hex = address.address.to_string();
@@ -476,7 +476,7 @@ impl TonClient {
 
         let owned_message = unsigned_message.sign(&key_pair, self.ton_core.signature_id())?;
 
-        let cell_builder = CellBuilder::build_from(&owned_message).map_err(From::from)?;
+        let cell_builder = CellBuilder::build_from(&owned_message).map_err(anyhow::Error::from)?;
         let message_hash = cell_builder.repr_hash();
 
         let sent_transaction = SentTransaction {
@@ -861,7 +861,7 @@ impl TonClient {
 
         let public_key = VerifyingKey::from_bytes(&key)?;
 
-        let address = StdAddr::from_str(&sender_addr).map_err(From::from)?;
+        let address = StdAddr::from_str(&sender_addr).map_err(anyhow::Error::from)?;
 
         let expire_at = now_sec() + DEFAULT_EXPIRATION_TIMEOUT;
 
@@ -874,7 +874,7 @@ impl TonClient {
             .transpose()
             .map_err(anyhow::Error::from)?;
 
-        let destination = StdAddr::from_str(&target_addr).map_err(From::from)?;
+        let destination = StdAddr::from_str(&target_addr).map_err(anyhow::Error::from)?;
         let amount = value.to_u128().ok_or(TonClientError::ParseBigDecimal)?;
         let unsigned_message = match account_type {
             AccountType::Wallet => {
@@ -1132,7 +1132,7 @@ fn build_token_transaction(
 
     let owned_message = unsigned_message.sign(&key_pair, ton_core.signature_id())?;
 
-    let cell_builder = CellBuilder::build_from(&owned_message).map_err(From::from)?;
+    let cell_builder = CellBuilder::build_from(&owned_message).map_err(anyhow::Error::from)?;
     let hash = cell_builder.repr_hash();
 
     let sent_transaction = SentTransaction {
