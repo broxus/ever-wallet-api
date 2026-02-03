@@ -1,7 +1,6 @@
 use std::str::FromStr;
 use std::sync::Arc;
 
-use anyhow::anyhow;
 use axum::http::StatusCode;
 use bigdecimal::{BigDecimal, ToPrimitive};
 use ed25519_dalek::VerifyingKey;
@@ -16,7 +15,6 @@ use tycho_util::time::now_sec;
 use uuid::Uuid;
 
 use crate::api::*;
-use crate::client::ton::utils::PrepareResult;
 use crate::models::*;
 use crate::prelude::*;
 use crate::services::*;
@@ -25,8 +23,6 @@ use crate::ton_core::*;
 use crate::utils::ton_wallet::multisig::DeployParams;
 use crate::utils::ton_wallet::MultisigType;
 use crate::utils::*;
-
-mod utils;
 
 #[derive(Clone)]
 pub struct TonClient {
@@ -49,9 +45,10 @@ impl TonClient {
             .await?
             .into_iter()
             .map(|item| {
-                StdAddr::from_str(&format!("{}:{}", item.workchain_id, item.hex)).trust_me()
+                StdAddr::from_str(&format!("{}:{}", item.workchain_id, item.hex))
+                    .map_err(From::from)
             })
-            .collect::<Vec<StdAddr>>();
+            .collect::<anyhow::Result<Vec<StdAddr>>>()?;
 
         // Subscribe to ton accounts
         let owner_accounts = owner_addresses
@@ -193,31 +190,31 @@ impl TonClient {
         key.copy_from_slice(&public_key);
 
         let public_key = VerifyingKey::from_bytes(&key)?;
-        let expired_at = now_sec() + DEFAULT_EXPIRATION_TIMEOUT;
+        let expire_at = now_sec() + DEFAULT_EXPIRATION_TIMEOUT;
 
         let unsigned_message = match address.account_type {
             AccountType::SafeMultisig => {
-                let custodians: Vec<String> =
-                    serde_json::from_value(address.custodians_public_keys.clone().trust_me())
-                        .trust_me();
+                let custodians: Vec<String> = serde_json::from_value(
+                    address.custodians_public_keys.clone().unwrap_or_default(),
+                )?;
 
                 let owners = custodians
                     .into_iter()
                     .map(|item| {
                         let mut key = [0u8; 32];
-                        key.copy_from_slice(&hex::decode(item).trust_me());
-                        VerifyingKey::from_bytes(&key).trust_me()
+                        key.copy_from_slice(&hex::decode(item).map_err(From::from)?);
+                        VerifyingKey::from_bytes(&key).map_err(From::from)
                     })
-                    .collect::<Vec<VerifyingKey>>();
+                    .collect::<Result<Vec<VerifyingKey>, Error>>()?;
 
                 ton_wallet::multisig::prepare_deploy(
                     &public_key,
                     MultisigType::SafeMultisigWallet,
                     address.workchain_id as i8,
-                    expired_at,
+                    expire_at,
                     DeployParams {
                         owners: &owners,
-                        req_confirms: address.confirmations.trust_me() as u8,
+                        req_confirms: address.confirmations.unwrap_or_default() as u8,
                         expiration_time: None,
                     },
                 )?
@@ -225,7 +222,7 @@ impl TonClient {
             AccountType::EverWallet => ton_wallet::ever_wallet::prepare_deploy(
                 &public_key,
                 address.workchain_id as i8,
-                expired_at,
+                expire_at,
             )?,
             AccountType::HighloadWallet | AccountType::Wallet => {
                 return Ok(None);
@@ -256,7 +253,7 @@ impl TonClient {
         Ok(Some(PrepareResult {
             sent_transaction,
             owned_message,
-            expired_at,
+            expire_at,
         }))
     }
 
@@ -279,7 +276,7 @@ impl TonClient {
 
         let address = StdAddr::from_str(&transaction.from_address.0).map_err(From::from)?;
 
-        let expired_at = now_sec() + DEFAULT_EXPIRATION_TIMEOUT;
+        let expire_at = now_sec() + DEFAULT_EXPIRATION_TIMEOUT;
 
         // parse input payload
         let body = transaction
@@ -316,7 +313,7 @@ impl TonClient {
                     &public_key,
                     &current_state,
                     gifts,
-                    expired_at,
+                    expire_at,
                 )?
             }
             AccountType::Wallet => {
@@ -350,7 +347,7 @@ impl TonClient {
                     &current_state,
                     seqno_offset,
                     gifts,
-                    expired_at,
+                    expire_at,
                 )?
             }
             AccountType::SafeMultisig => {
@@ -384,7 +381,7 @@ impl TonClient {
                     has_multiple_owners,
                     address.clone(),
                     gift,
-                    expired_at,
+                    expire_at,
                 )?
             }
             AccountType::EverWallet => {
@@ -414,7 +411,7 @@ impl TonClient {
                     &current_state,
                     address.clone(),
                     gifts,
-                    expired_at,
+                    expire_at,
                 )?
             }
         };
@@ -442,7 +439,7 @@ impl TonClient {
         Ok(PrepareResult {
             sent_transaction,
             owned_message,
-            expired_at,
+            expire_at,
         })
     }
 
@@ -462,14 +459,14 @@ impl TonClient {
         let account_workchain_id = address.workchain as i32;
         let account_hex = address.address.to_string();
 
-        let expired_at = now_sec() + DEFAULT_EXPIRATION_TIMEOUT;
+        let expire_at = now_sec() + DEFAULT_EXPIRATION_TIMEOUT;
 
         let unsigned_message = ton_wallet::multisig::prepare_confirm_transaction(
             MultisigType::SafeMultisigWallet,
             &public_key,
             address,
             transaction.transaction_id,
-            expired_at,
+            expire_at,
         )?;
 
         let mut key = [0u8; 32];
@@ -496,7 +493,7 @@ impl TonClient {
         Ok(PrepareResult {
             sent_transaction,
             owned_message,
-            expired_at,
+            expire_at,
         })
     }
 
@@ -820,7 +817,7 @@ impl TonClient {
         function: Option<Function>,
         params: Option<Vec<NamedAbiValue>>,
     ) -> Result<(OwnedMessage, u32), Error> {
-        let (unsigned_message, expire_at) = self
+        let unsigned_message = self
             .prepare_generic_message(
                 sender_addr,
                 public_key,
@@ -839,6 +836,7 @@ impl TonClient {
         key.copy_from_slice(&private_key);
 
         let key_pair = ed25519_dalek::SigningKey::from_bytes(&key);
+        let expire_at = unsigned_message.expire_at();
 
         let owned_message = unsigned_message.sign(&key_pair, self.ton_core.signature_id())?;
 
@@ -857,7 +855,7 @@ impl TonClient {
         custodians: &Option<i32>,
         function: Option<Function>,
         params: Option<Vec<NamedAbiValue>>,
-    ) -> Result<(UnsignedExternalMessage, u32), Error> {
+    ) -> Result<UnsignedExternalMessage, Error> {
         let mut key = [0u8; 32];
         key.copy_from_slice(&public_key);
 
@@ -865,7 +863,7 @@ impl TonClient {
 
         let address = StdAddr::from_str(&sender_addr).map_err(From::from)?;
 
-        let expired_at = now_sec() + DEFAULT_EXPIRATION_TIMEOUT;
+        let expire_at = now_sec() + DEFAULT_EXPIRATION_TIMEOUT;
 
         let function_data = function.and_then(|function| {
             let tokens = params.unwrap_or_default();
@@ -900,7 +898,7 @@ impl TonClient {
                     &current_state,
                     seqno_offset,
                     gifts,
-                    expired_at,
+                    expire_at,
                 )?
             }
             AccountType::SafeMultisig => {
@@ -924,7 +922,7 @@ impl TonClient {
                     has_multiple_owners,
                     address,
                     gift,
-                    expired_at,
+                    expire_at,
                 )?
             }
             AccountType::HighloadWallet => {
@@ -944,7 +942,7 @@ impl TonClient {
                     &public_key,
                     &current_state,
                     vec![gift],
-                    expired_at,
+                    expire_at,
                 )?
             }
             AccountType::EverWallet => {
@@ -965,12 +963,12 @@ impl TonClient {
                     &current_state,
                     address,
                     vec![gift],
-                    expired_at,
+                    expire_at,
                 )?
             }
         };
 
-        Ok((unsigned_message, expired_at))
+        Ok(unsigned_message)
     }
 
     pub fn add_ton_account_subscription(&self, account: HashBytes) {
@@ -1034,7 +1032,7 @@ fn build_token_transaction(
 
     let public_key = VerifyingKey::from_bytes(&key)?;
 
-    let expired_at = now_sec() + DEFAULT_EXPIRATION_TIMEOUT;
+    let expire_at = now_sec() + DEFAULT_EXPIRATION_TIMEOUT;
 
     let unsigned_message = match account_type {
         AccountType::HighloadWallet => {
@@ -1054,7 +1052,7 @@ fn build_token_transaction(
                 &public_key,
                 &current_state,
                 vec![gift],
-                expired_at,
+                expire_at,
             )?
         }
         AccountType::Wallet => {
@@ -1077,7 +1075,7 @@ fn build_token_transaction(
                 &current_state,
                 seqno_offset,
                 gifts,
-                expired_at,
+                expire_at,
             )?
         }
         AccountType::SafeMultisig => {
@@ -1101,7 +1099,7 @@ fn build_token_transaction(
                 has_multiple_owners,
                 owner.clone(),
                 gift,
-                expired_at,
+                expire_at,
             )?
         }
         AccountType::EverWallet => {
@@ -1122,7 +1120,7 @@ fn build_token_transaction(
                 &current_state,
                 owner.clone(),
                 vec![gift],
-                expired_at,
+                expire_at,
             )?
         }
     };
@@ -1151,8 +1149,15 @@ fn build_token_transaction(
     Ok(PrepareResult {
         sent_transaction,
         owned_message,
-        expired_at,
+        expire_at,
     })
 }
 
 const TYCHO_TESTNET_CHAIN_ID: i32 = -4000;
+
+#[derive(Debug)]
+pub struct PrepareResult {
+    pub sent_transaction: SentTransaction,
+    pub owned_message: OwnedMessage,
+    pub expire_at: u32,
+}

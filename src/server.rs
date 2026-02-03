@@ -271,14 +271,14 @@ impl EngineContext {
         let now = chrono::Utc::now().timestamp() as u32;
 
         // Delete expired guards
-        self.guards.retain(|_, (_, expired_at)| now < *expired_at);
+        self.guards.retain(|_, (_, expire_at)| now < *expire_at);
 
         match self.guards.entry(account) {
             Entry::Occupied(entry) => entry.get().0.clone(),
             Entry::Vacant(entry) => {
-                let expired_at = now + 5 * DEFAULT_EXPIRATION_TIMEOUT;
+                let expire_at = now + 5 * DEFAULT_EXPIRATION_TIMEOUT;
                 entry
-                    .insert((Arc::new(Mutex::default()), expired_at))
+                    .insert((Arc::new(Mutex::default()), expire_at))
                     .value()
                     .0
                     .clone()

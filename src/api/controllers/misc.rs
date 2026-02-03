@@ -95,7 +95,7 @@ pub async fn post_prepare_generic_message(
         )
         .await?;
 
-    ctx.memory_storage.add_message(unsigned_message.clone());
+    ctx.memory_storage.add_message(unsigned_message);
 
     let elapsed = start.elapsed();
     histogram!("execution_time_seconds", elapsed, "method" => "prepareGenericMessage");
@@ -114,18 +114,19 @@ pub async fn post_send_signed_message(
 
     let res = match ctx.memory_storage.get_message(&req.hash) {
         Some(message) => {
+            let expire_at = message.expire_at();
             let signature: [u8; 64] = hex::decode(req.signature)
                 .map_err(|_| ControllersError::WrongInput("Bad signature format".to_string()))?
                 .try_into()
                 .map_err(|_| ControllersError::WrongInput("Bad signature format".to_string()))?;
 
-            let signed_message = message
-                .sign(&signature)
+            let owned_message = message
+                .with_signature(&ed25519_dalek::Signature::from_bytes(&signature))
                 .map_err(|_| ControllersError::WrongInput("Bad signature format".to_string()))?;
 
             let hash = ctx
                 .ton_service
-                .send_signed_message(req.sender_addr, req.hash, signed_message)
+                .send_signed_message(req.sender_addr, req.hash, owned_message, expire_at)
                 .await?;
 
             Ok(SignedMessageHashResponse {
