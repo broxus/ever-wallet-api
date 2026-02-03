@@ -4,17 +4,11 @@ use std::sync::Arc;
 use anyhow::anyhow;
 use axum::http::StatusCode;
 use bigdecimal::{BigDecimal, ToPrimitive};
-use ed25519_dalek::{SecretKey, Signer, VerifyingKey};
-use nekoton::core::models::Expiration;
-use nekoton::core::InternalMessage;
-use nekoton::crypto::{SignedMessage, UnsignedMessage};
-use nekoton_abi::MessageBuilder;
-use nekoton_utils::{SimpleClock, TrustMe};
+use ed25519_dalek::VerifyingKey;
 use num_bigint::BigUint;
 use num_traits::FromPrimitive;
 use tokio::sync::oneshot;
-use ton_block::{GetRepresentationHash, MsgAddressInt};
-use ton_types::{deserialize_tree_of_cells, SliceData, UInt256};
+use tycho_types::abi::{Function, NamedAbiValue, UnsignedExternalMessage};
 use tycho_types::boc::Boc;
 use tycho_types::cell::{CellBuilder, HashBytes};
 use tycho_types::models::{OwnedMessage, StdAddr};
@@ -22,6 +16,7 @@ use tycho_util::time::now_sec;
 use uuid::Uuid;
 
 use crate::api::*;
+use crate::client::ton::utils::PrepareResult;
 use crate::models::*;
 use crate::prelude::*;
 use crate::services::*;
@@ -167,19 +162,15 @@ impl TonClient {
         })
     }
 
-    pub async fn get_address_info(
-        &self,
-        owner: &StdAddr,
-    ) -> Result<NetworkAddressData, Error> {
+    pub async fn get_address_info(&self, owner: &StdAddr) -> Result<NetworkAddressData, Error> {
         let account = owner.address;
         let contract = match self.ton_core.get_contract_state(&account) {
             Ok(contract) => contract,
             Err(_) => return Ok(NetworkAddressData::uninit(owner)),
         };
 
-        let network_balance =
-            BigDecimal::from_u128(contract.account.balance.tokens.into_inner())
-                .ok_or(TonClientError::ParseBigDecimal)?;
+        let network_balance = BigDecimal::from_u128(contract.account.balance.tokens.into_inner())
+            .ok_or(TonClientError::ParseBigDecimal)?;
 
         Ok(NetworkAddressData {
             workchain_id: contract.account.address.workchain(),
@@ -197,11 +188,12 @@ impl TonClient {
         address: &AddressDb,
         public_key: &[u8],
         private_key: &[u8],
-    ) -> Result<Option<(SentTransaction, OwnedMessage)>, Error> {
+    ) -> Result<Option<PrepareResult>, Error> {
         let mut key = [0u8; 32];
         key.copy_from_slice(&public_key);
 
         let public_key = VerifyingKey::from_bytes(&key)?;
+        let expired_at = now_sec() + DEFAULT_EXPIRATION_TIMEOUT;
 
         let unsigned_message = match address.account_type {
             AccountType::SafeMultisig => {
@@ -222,7 +214,7 @@ impl TonClient {
                     &public_key,
                     MultisigType::SafeMultisigWallet,
                     address.workchain_id as i8,
-                    now_sec() + DEFAULT_EXPIRATION_TIMEOUT,
+                    expired_at,
                     DeployParams {
                         owners: &owners,
                         req_confirms: address.confirmations.trust_me() as u8,
@@ -233,7 +225,7 @@ impl TonClient {
             AccountType::EverWallet => ton_wallet::ever_wallet::prepare_deploy(
                 &public_key,
                 address.workchain_id as i8,
-                now_sec() + DEFAULT_EXPIRATION_TIMEOUT,
+                expired_at,
             )?,
             AccountType::HighloadWallet | AccountType::Wallet => {
                 return Ok(None);
@@ -245,9 +237,9 @@ impl TonClient {
 
         let key_pair = ed25519_dalek::SigningKey::from_bytes(&key);
 
-        let signed_message = unsigned_message.sign(&key_pair, self.ton_core.signature_id())?;
+        let owned_message = unsigned_message.sign(&key_pair, self.ton_core.signature_id())?;
 
-        let cell_builder = CellBuilder::build_from(&signed_message).map_err(From::from)?;
+        let cell_builder = CellBuilder::build_from(&owned_message).map_err(From::from)?;
         let hash = cell_builder.repr_hash();
 
         let sent_transaction = SentTransaction {
@@ -261,7 +253,11 @@ impl TonClient {
             bounce: false,
         };
 
-        Ok(Some((sent_transaction, signed_message)))
+        Ok(Some(PrepareResult {
+            sent_transaction,
+            owned_message,
+            expired_at,
+        }))
     }
 
     pub async fn prepare_transaction(
@@ -271,7 +267,7 @@ impl TonClient {
         private_key: &[u8],
         account_type: &AccountType,
         custodians: &Option<i32>,
-    ) -> Result<(SentTransaction, SignedMessage), Error> {
+    ) -> Result<PrepareResult, Error> {
         let original_value = transaction.outputs.iter().map(|o| o.value.clone()).sum();
         let original_outputs = serde_json::to_value(transaction.outputs.clone())?;
         let bounce = transaction.bounce.unwrap_or_default();
@@ -281,9 +277,9 @@ impl TonClient {
 
         let public_key = VerifyingKey::from_bytes(&key)?;
 
-        let address = nekoton_utils::repack_address(&transaction.from_address.0)?;
+        let address = StdAddr::from_str(&transaction.from_address.0).map_err(From::from)?;
 
-        let expire_at = now_sec() + DEFAULT_EXPIRATION_TIMEOUT;
+        let expired_at = now_sec() + DEFAULT_EXPIRATION_TIMEOUT;
 
         // parse input payload
         let body = transaction
@@ -292,9 +288,9 @@ impl TonClient {
             .transpose()
             .map_err(From::from)?;
 
-        let transfer_action = match account_type {
+        let unsigned_message = match account_type {
             AccountType::HighloadWallet => {
-                let account = UInt256::from_be_bytes(&address.address().get_bytestring(0));
+                let account = address.address;
                 let current_state = self.ton_core.get_contract_state(&account)?.account;
 
                 let mut gifts: Vec<ton_wallet::Gift> = vec![];
@@ -320,24 +316,24 @@ impl TonClient {
                     &public_key,
                     &current_state,
                     gifts,
-                    expire_at,
+                    expired_at,
                 )?
             }
             AccountType::Wallet => {
-                let account = UInt256::from_be_bytes(&address.address().get_bytestring(0));
+                let account = address.address;
                 let current_state = self.ton_core.get_contract_state(&account)?.account;
 
                 let recipient = transaction
                     .outputs
                     .first()
                     .ok_or(TonClientError::RecipientNotFound)?;
-                let destination = nekoton_utils::repack_address(&recipient.recipient_address.0)?;
+                let destination =
+                    StdAddr::from_str(&recipient.recipient_address.0).map_err(From::from)?;
                 let amount = recipient
                     .value
                     .to_u128()
                     .ok_or(TonClientError::ParseBigDecimal)?;
                 let flags = recipient.output_type.clone().unwrap_or_default();
-                let body = payload_cell.map(SliceData::load_cell).transpose()?;
 
                 let gifts = vec![ton_wallet::Gift {
                     flags: flags.into(),
@@ -348,14 +344,13 @@ impl TonClient {
                     state_init: None,
                 }];
                 let seqno_offset =
-                    ton_wallet::wallet_v3::estimate_seqno_offset(&SimpleClock, &current_state, &[]);
+                    ton_wallet::wallet_v3::estimate_seqno_offset(&current_state, &[]);
                 ton_wallet::wallet_v3::prepare_transfer(
-                    &SimpleClock,
                     &public_key,
                     &current_state,
                     seqno_offset,
                     gifts,
-                    expiration,
+                    expired_at,
                 )?
             }
             AccountType::SafeMultisig => {
@@ -363,7 +358,8 @@ impl TonClient {
                     .outputs
                     .first()
                     .ok_or(TonClientError::RecipientNotFound)?;
-                let destination = nekoton_utils::repack_address(&recipient.recipient_address.0)?;
+                let destination =
+                    StdAddr::from_str(&recipient.recipient_address.0).map_err(From::from)?;
                 let amount = recipient
                     .value
                     .to_u128()
@@ -374,8 +370,6 @@ impl TonClient {
                     None => return Err(TonClientError::CustodiansNotFound.into()),
                 };
 
-                let body = payload_cell.map(SliceData::load_cell).transpose()?;
-
                 let gift = ton_wallet::Gift {
                     flags: flags.into(),
                     bounce,
@@ -385,31 +379,27 @@ impl TonClient {
                     state_init: None,
                 };
                 ton_wallet::multisig::prepare_transfer(
-                    &SimpleClock,
                     MultisigType::SafeMultisigWallet,
                     &public_key,
                     has_multiple_owners,
                     address.clone(),
                     gift,
-                    expiration,
+                    expired_at,
                 )?
             }
             AccountType::EverWallet => {
-                let account = UInt256::from_be_bytes(&address.address().get_bytestring(0));
+                let account = address.address;
                 let current_state = self.ton_core.get_contract_state(&account)?.account;
 
                 let mut gifts: Vec<ton_wallet::Gift> = vec![];
                 for item in transaction.outputs {
                     let flags = item.output_type.unwrap_or_default();
-                    let destination = nekoton_utils::repack_address(&item.recipient_address.0)?;
+                    let destination =
+                        StdAddr::from_str(&item.recipient_address.0).map_err(From::from)?;
                     let amount = item
                         .value
                         .to_u128()
                         .ok_or(TonClientError::ParseBigDecimal)?;
-                    let body = payload_cell
-                        .as_ref()
-                        .map(|c| SliceData::load_cell(c.clone()))
-                        .transpose()?;
                     gifts.push(ton_wallet::Gift {
                         flags: flags.into(),
                         bounce,
@@ -420,42 +410,40 @@ impl TonClient {
                     });
                 }
                 ton_wallet::ever_wallet::prepare_transfer(
-                    &SimpleClock,
                     &public_key,
                     &current_state,
                     address.clone(),
                     gifts,
-                    expiration,
+                    expired_at,
                 )?
             }
         };
-        let unsigned_message = match transfer_action {
-            TransferAction::Sign(unsigned_message) => unsigned_message,
-            TransferAction::DeployFirst => {
-                return Err(TonClientError::AccountNotDeployed(address.to_string()).into())
-            }
-        };
-        let key_pair = Keypair {
-            secret: SecretKey::from_bytes(private_key)?,
-            public: public_key,
-        };
-        let data_to_sign = ton_abi::extend_signature_with_id(
-            unsigned_message.hash(),
-            self.ton_core.signature_id(),
-        );
-        let signature = key_pair.sign(&data_to_sign);
-        let signed_message = unsigned_message.sign(&signature.to_bytes())?;
+
+        let mut key = [0u8; 32];
+        key.copy_from_slice(&private_key);
+
+        let key_pair = ed25519_dalek::SigningKey::from_bytes(&key);
+
+        let owned_message = unsigned_message.sign(&key_pair, self.ton_core.signature_id())?;
+
+        let cell_builder = CellBuilder::build_from(&owned_message).map_err(From::from)?;
+        let message_hash = cell_builder.repr_hash();
+
         let sent_transaction = SentTransaction {
             id: transaction.id,
-            message_hash: signed_message.message.hash()?.to_hex_string(),
-            account_workchain_id: address.workchain_id(),
-            account_hex: address.address().to_hex_string(),
+            message_hash: message_hash.to_string(),
+            account_workchain_id: address.workchain as i32,
+            account_hex: address.address.to_string(),
             original_value: Some(original_value),
             original_outputs: Some(original_outputs),
             aborted: false,
             bounce,
         };
-        Ok((sent_transaction, signed_message))
+        Ok(PrepareResult {
+            sent_transaction,
+            owned_message,
+            expired_at,
+        })
     }
 
     pub async fn prepare_confirm_transaction(
@@ -463,37 +451,40 @@ impl TonClient {
         transaction: TransactionConfirm,
         public_key: &[u8],
         private_key: &[u8],
-    ) -> Result<(SentTransaction, SignedMessage), Error> {
-        let public_key = VerifyingKey::from_bytes(public_key)?;
-        let address = nekoton_utils::repack_address(&transaction.address.0)?;
+    ) -> Result<PrepareResult, Error> {
+        let mut key = [0u8; 32];
+        key.copy_from_slice(&public_key);
 
-        let account_workchain_id = address.workchain_id();
-        let account_hex = address.address().to_hex_string();
+        let public_key = VerifyingKey::from_bytes(&key)?;
+
+        let address = StdAddr::from_str(&transaction.address.0).map_err(From::from)?;
+
+        let account_workchain_id = address.workchain as i32;
+        let account_hex = address.address.to_string();
+
+        let expired_at = now_sec() + DEFAULT_EXPIRATION_TIMEOUT;
 
         let unsigned_message = ton_wallet::multisig::prepare_confirm_transaction(
-            &SimpleClock,
             MultisigType::SafeMultisigWallet,
             &public_key,
             address,
             transaction.transaction_id,
-            Expiration::Timeout(DEFAULT_EXPIRATION_TIMEOUT),
+            expired_at,
         )?;
 
-        let key_pair = Keypair {
-            secret: SecretKey::from_bytes(private_key)?,
-            public: public_key,
-        };
+        let mut key = [0u8; 32];
+        key.copy_from_slice(&private_key);
 
-        let data_to_sign = ton_abi::extend_signature_with_id(
-            unsigned_message.hash(),
-            self.ton_core.signature_id(),
-        );
-        let signature = key_pair.sign(&data_to_sign);
-        let signed_message = unsigned_message.sign(&signature.to_bytes())?;
+        let key_pair = ed25519_dalek::SigningKey::from_bytes(&key);
+
+        let owned_message = unsigned_message.sign(&key_pair, self.ton_core.signature_id())?;
+
+        let cell_builder = CellBuilder::build_from(&owned_message).map_err(From::from)?;
+        let message_hash = cell_builder.repr_hash();
 
         let sent_transaction = SentTransaction {
             id: transaction.id,
-            message_hash: signed_message.message.hash()?.to_hex_string(),
+            message_hash: message_hash.to_string(),
             account_workchain_id,
             account_hex,
             original_value: None,
@@ -502,19 +493,23 @@ impl TonClient {
             bounce: false,
         };
 
-        Ok((sent_transaction, signed_message))
+        Ok(PrepareResult {
+            sent_transaction,
+            owned_message,
+            expired_at,
+        })
     }
 
     pub async fn get_token_address_info(
         &self,
-        owner: &MsgAddressInt,
-        root_address: &MsgAddressInt,
+        owner: &StdAddr,
+        root_address: &StdAddr,
     ) -> Result<NetworkTokenAddressData, Error> {
-        let root_account = UInt256::from_be_bytes(&root_address.address().get_bytestring(0));
+        let root_account = root_address.address;
         let root_contract = self.ton_core.get_contract_state(&root_account)?;
 
         let token_address = get_token_wallet_address(&root_contract, owner)?;
-        let token_account = UInt256::from_be_bytes(&token_address.address().get_bytestring(0));
+        let token_account = token_address.address;
         let token_contract = match self.ton_core.get_contract_state(&token_account) {
             Ok(contract) => contract,
             Err(_) => {
@@ -526,21 +521,17 @@ impl TonClient {
         };
 
         let (version, network_balance) = get_token_wallet_basic_info(&token_contract)?;
-        let sync_u_time = token_contract.timings.current_utime(&SimpleClock) as i64;
-
-        let (last_transaction_hash, last_transaction_lt) =
-            utils::parse_last_transaction(&token_contract.last_transaction_id);
 
         Ok(NetworkTokenAddressData {
-            workchain_id: token_address.workchain_id(),
-            hex: token_address.address().to_hex_string(),
+            workchain_id: token_address.workchain as i32,
+            hex: token_address.address.to_string(),
             root_address: root_address.to_string(),
             version: version.to_string(),
             network_balance,
-            account_status: token_contract.account.storage.state.into(),
-            last_transaction_hash,
-            last_transaction_lt,
-            sync_u_time,
+            account_status: token_contract.account.state.into(),
+            last_transaction_hash: Some(token_contract.last_transaction_hash.to_string()),
+            last_transaction_lt: Some(token_contract.account.last_trans_lt.to_string()),
+            sync_u_time: 0, // TODO: fix
         })
     }
 
@@ -551,24 +542,24 @@ impl TonClient {
         private_key: &[u8],
         account_type: &AccountType,
         custodians: &Option<i32>,
-    ) -> Result<(SentTransaction, SignedMessage), Error> {
-        let owner = nekoton_utils::repack_address(&input.from_address.0)?;
+    ) -> Result<PrepareResult, Error> {
+        let owner = StdAddr::from_str(&input.from_address.0).map_err(anyhow::Error::from)?;
 
         let token_owner_db = self
             .sqlx_client
             .get_token_address(
-                owner.workchain_id(),
-                owner.address().to_hex_string(),
+                owner.workchain as i32,
+                owner.address.to_string(),
                 input.root_address.0.clone(),
             )
             .await?;
-        let token_wallet = nekoton_utils::repack_address(&token_owner_db.address)?;
-
-        let recipient = nekoton_utils::repack_address(&input.recipient_address.0)?;
-        let destination = nekoton::core::models::TransferRecipient::OwnerWallet(recipient);
+        let token_wallet =
+            StdAddr::from_str(&token_owner_db.address).map_err(anyhow::Error::from)?;
+        let destination =
+            StdAddr::from_str(&input.recipient_address.0).map_err(anyhow::Error::from)?;
 
         let send_gas_to = match &input.send_gas_to {
-            Some(send_gas_to) => nekoton_utils::repack_address(send_gas_to.0.as_str())?,
+            Some(send_gas_to) => StdAddr::from_str(&send_gas_to.0).map_err(anyhow::Error::from)?,
             None => owner.clone(),
         };
 
@@ -580,15 +571,13 @@ impl TonClient {
         let attached_amount = input.fee.to_u128().ok_or(TonClientError::ParseBigDecimal)?;
 
         // parse input payload
-        let payload_cell = match &input.payload {
-            None => None,
-            Some(s) => {
-                let bytes = base64::decode(s).map_err(anyhow::Error::from)?;
-                let mut slice = &bytes[..];
-                let tree_of_cells = deserialize_tree_of_cells(&mut slice)?;
-                Some(tree_of_cells)
-            }
-        };
+
+        let body = input
+            .payload
+            .as_ref()
+            .map(|s| Boc::decode_base64(s))
+            .transpose()
+            .map_err(anyhow::Error::from)?;
 
         let internal_message = prepare_token_transfer(
             owner.clone(),
@@ -599,7 +588,7 @@ impl TonClient {
             send_gas_to,
             input.notify_receiver,
             attached_amount,
-            payload_cell.unwrap_or_default(),
+            body.unwrap_or_default(),
         )?;
 
         let res = build_token_transaction(
@@ -623,25 +612,27 @@ impl TonClient {
         private_key: &[u8],
         account_type: &AccountType,
         custodians: &Option<i32>,
-    ) -> Result<(SentTransaction, SignedMessage), Error> {
-        let owner = nekoton_utils::repack_address(&input.from_address.0)?;
+    ) -> Result<PrepareResult, Error> {
+        let owner = StdAddr::from_str(&input.from_address.0).map_err(anyhow::Error::from)?;
 
         let token_owner_db = self
             .sqlx_client
             .get_token_address(
-                owner.workchain_id(),
-                owner.address().to_hex_string(),
+                owner.workchain as i32,
+                owner.address.to_string(),
                 input.root_address.0.clone(),
             )
             .await?;
-        let token_wallet = nekoton_utils::repack_address(&token_owner_db.address)?;
+
+        let token_wallet =
+            StdAddr::from_str(&token_owner_db.address).map_err(anyhow::Error::from)?;
 
         let send_gas_to = match &input.send_gas_to {
-            Some(send_gas_to) => nekoton_utils::repack_address(send_gas_to.0.as_str())?,
+            Some(send_gas_to) => StdAddr::from_str(&send_gas_to.0).map_err(anyhow::Error::from)?,
             None => owner.clone(),
         };
 
-        let callback_to = nekoton_utils::repack_address(input.callback_to.0.as_str())?;
+        let callback_to = StdAddr::from_str(&input.callback_to.0).map_err(anyhow::Error::from)?;
 
         let version = token_owner_db.version.into();
 
@@ -682,12 +673,13 @@ impl TonClient {
         private_key: &[u8],
         account_type: &AccountType,
         custodians: &Option<i32>,
-    ) -> Result<(SentTransaction, SignedMessage), Error> {
-        let owner = nekoton_utils::repack_address(&input.owner_address.0)?;
-        let root_token = nekoton_utils::repack_address(&input.root_address.0)?;
-        let recipient = nekoton_utils::repack_address(&input.recipient_address.0)?;
+    ) -> Result<PrepareResult, Error> {
+        let owner = StdAddr::from_str(&input.owner_address.0).map_err(anyhow::Error::from)?;
+        let root_token = StdAddr::from_str(&input.root_address.0).map_err(anyhow::Error::from)?;
+        let recipient =
+            StdAddr::from_str(&input.recipient_address.0).map_err(anyhow::Error::from)?;
 
-        let root_account = UInt256::from_be_bytes(&root_token.address().get_bytestring(0));
+        let root_account = root_token.address;
         let root_contract = self.ton_core.get_contract_state(&root_account)?;
 
         let version = get_root_token_version(&root_contract)?;
@@ -704,7 +696,7 @@ impl TonClient {
         .ok_or(TonClientError::ParseBigUint)?;
 
         let send_gas_to = match &input.send_gas_to {
-            Some(send_gas_to) => nekoton_utils::repack_address(send_gas_to.0.as_str())?,
+            Some(send_gas_to) => StdAddr::from_str(&send_gas_to.0).map_err(anyhow::Error::from)?,
             None => owner.clone(),
         };
 
@@ -739,12 +731,13 @@ impl TonClient {
 
     pub async fn send_transaction(
         &self,
-        account: UInt256,
-        signed_message: SignedMessage,
+        account: HashBytes,
+        owned_message: OwnedMessage,
+        expire_at: u32,
     ) -> Result<MessageStatus, Error> {
         let status = self
             .ton_core
-            .send_ton_message(&account, &signed_message.message, signed_message.expire_at)
+            .send_ton_message(account, owned_message, expire_at)
             .await?;
 
         Ok(status)
@@ -752,8 +745,8 @@ impl TonClient {
 
     pub fn add_pending_message(
         &self,
-        account: UInt256,
-        message_hash: UInt256,
+        account: HashBytes,
+        message_hash: HashBytes,
         expire_at: u32,
     ) -> Result<oneshot::Receiver<MessageStatus>, Error> {
         let status = self
@@ -789,9 +782,9 @@ impl TonClient {
 
     pub async fn run_local(
         &self,
-        contract_address: UInt256,
-        function: ton_abi::Function,
-        input: &[ton_abi::Token],
+        contract_address: HashBytes,
+        function: Function,
+        input: &[NamedAbiValue],
         responsible: bool,
     ) -> anyhow::Result<Option<nekoton_abi::ExecutionOutput>> {
         use nekoton_abi::FunctionExt;
@@ -824,10 +817,10 @@ impl TonClient {
         bounce: bool,
         account_type: &AccountType,
         custodians: &Option<i32>,
-        function: Option<ton_abi::Function>,
-        params: Option<Vec<ton_abi::Token>>,
-    ) -> Result<SignedMessage, Error> {
-        let unsigned_message = self
+        function: Option<Function>,
+        params: Option<Vec<NamedAbiValue>>,
+    ) -> Result<(OwnedMessage, u32), Error> {
+        let (unsigned_message, expire_at) = self
             .prepare_generic_message(
                 sender_addr,
                 public_key,
@@ -842,21 +835,14 @@ impl TonClient {
             )
             .await?;
 
-        let public_key = VerifyingKey::from_bytes(public_key).unwrap_or_default();
+        let mut key = [0u8; 32];
+        key.copy_from_slice(&private_key);
 
-        let key_pair = Keypair {
-            secret: SecretKey::from_bytes(private_key)?,
-            public: public_key,
-        };
+        let key_pair = ed25519_dalek::SigningKey::from_bytes(&key);
 
-        let data_to_sign = ton_abi::extend_signature_with_id(
-            unsigned_message.hash(),
-            self.ton_core.signature_id(),
-        );
-        let signature = key_pair.sign(&data_to_sign);
-        let signed_message = unsigned_message.sign(&signature.to_bytes())?;
+        let owned_message = unsigned_message.sign(&key_pair, self.ton_core.signature_id())?;
 
-        Ok(signed_message)
+        Ok((owned_message, expire_at))
     }
 
     pub async fn prepare_generic_message(
@@ -869,26 +855,32 @@ impl TonClient {
         bounce: bool,
         account_type: &AccountType,
         custodians: &Option<i32>,
-        function: Option<ton_abi::Function>,
-        params: Option<Vec<ton_abi::Token>>,
-    ) -> Result<Box<dyn UnsignedMessage>, Error> {
-        let address = nekoton_utils::repack_address(sender_addr)?;
-        let public_key = VerifyingKey::from_bytes(public_key)?;
+        function: Option<Function>,
+        params: Option<Vec<NamedAbiValue>>,
+    ) -> Result<(UnsignedExternalMessage, u32), Error> {
+        let mut key = [0u8; 32];
+        key.copy_from_slice(&public_key);
 
-        let expiration = Expiration::Timeout(DEFAULT_EXPIRATION_TIMEOUT);
+        let public_key = VerifyingKey::from_bytes(&key)?;
 
-        let function_data = function.and_then(|x| {
+        let address = StdAddr::from_str(&sender_addr).map_err(From::from)?;
+
+        let expired_at = now_sec() + DEFAULT_EXPIRATION_TIMEOUT;
+
+        let function_data = function.and_then(|function| {
             let tokens = params.unwrap_or_default();
-            let (func, _) = MessageBuilder::new(&x).build();
-            func.encode_internal_input(&tokens).ok()
+            function.encode_internal_input(&tokens).ok()
         });
-        let body = function_data.map(SliceData::load_builder).transpose()?;
+        let body = function_data
+            .map(|data| data.build())
+            .transpose()
+            .map_err(anyhow::Error::from)?;
 
-        let destination = nekoton_utils::repack_address(target_addr)?;
+        let destination = StdAddr::from_str(&target_addr).map_err(From::from)?;
         let amount = value.to_u128().ok_or(TonClientError::ParseBigDecimal)?;
-        let transfer_action = match account_type {
+        let unsigned_message = match account_type {
             AccountType::Wallet => {
-                let account = UInt256::from_be_bytes(&address.address().get_bytestring(0));
+                let account = address.address;
                 let current_state = self.ton_core.get_contract_state(&account)?.account;
 
                 let gifts = vec![ton_wallet::Gift {
@@ -901,15 +893,14 @@ impl TonClient {
                 }];
 
                 let seqno_offset =
-                    ton_wallet::wallet_v3::estimate_seqno_offset(&SimpleClock, &current_state, &[]);
+                    ton_wallet::wallet_v3::estimate_seqno_offset(&current_state, &[]);
 
                 ton_wallet::wallet_v3::prepare_transfer(
-                    &SimpleClock,
                     &public_key,
                     &current_state,
                     seqno_offset,
                     gifts,
-                    expiration,
+                    expired_at,
                 )?
             }
             AccountType::SafeMultisig => {
@@ -928,17 +919,16 @@ impl TonClient {
                 };
 
                 ton_wallet::multisig::prepare_transfer(
-                    &SimpleClock,
                     MultisigType::SafeMultisigWallet,
                     &public_key,
                     has_multiple_owners,
                     address,
                     gift,
-                    expiration,
+                    expired_at,
                 )?
             }
             AccountType::HighloadWallet => {
-                let account = UInt256::from_be_bytes(&address.address().get_bytestring(0));
+                let account = address.address;
                 let current_state = self.ton_core.get_contract_state(&account)?.account;
 
                 let gift = ton_wallet::Gift {
@@ -951,15 +941,14 @@ impl TonClient {
                 };
 
                 ton_wallet::highload_wallet_v2::prepare_transfer(
-                    &SimpleClock,
                     &public_key,
                     &current_state,
                     vec![gift],
-                    expiration,
+                    expired_at,
                 )?
             }
             AccountType::EverWallet => {
-                let account = UInt256::from_be_bytes(&address.address().get_bytestring(0));
+                let account = address.address;
                 let current_state = self.ton_core.get_contract_state(&account)?.account;
 
                 let gift = ton_wallet::Gift {
@@ -972,27 +961,19 @@ impl TonClient {
                 };
 
                 ton_wallet::ever_wallet::prepare_transfer(
-                    &SimpleClock,
                     &public_key,
                     &current_state,
                     address,
                     vec![gift],
-                    expiration,
+                    expired_at,
                 )?
             }
         };
 
-        let unsigned_message = match transfer_action {
-            TransferAction::Sign(unsigned_message) => unsigned_message,
-            TransferAction::DeployFirst => {
-                return Err(TonClientError::AccountNotDeployed(target_addr.to_string()).into())
-            }
-        };
-        Ok(unsigned_message)
+        Ok((unsigned_message, expired_at))
     }
 
-    pub fn add_ton_account_subscription(&self, account: UInt256) {
-        let account = HashBytes::from_slice(account.as_slice());
+    pub fn add_ton_account_subscription(&self, account: HashBytes) {
         self.ton_core.add_ton_account_subscription([account])
     }
 
@@ -1034,13 +1015,13 @@ impl TonClientError {
 fn build_token_transaction(
     ton_core: &Arc<TonCore>,
     id: Uuid,
-    owner: MsgAddressInt,
+    owner: StdAddr,
     public_key: &[u8],
     private_key: &[u8],
     account_type: &AccountType,
     custodians: &Option<i32>,
     internal_message: InternalMessage,
-) -> anyhow::Result<(SentTransaction, SignedMessage)> {
+) -> anyhow::Result<PrepareResult> {
     let flags = TransactionSendOutputType::default();
 
     let bounce = internal_message.bounce;
@@ -1048,13 +1029,16 @@ fn build_token_transaction(
     let amount = internal_message.amount;
     let body = Some(internal_message.body);
 
-    let expiration = Expiration::Timeout(DEFAULT_EXPIRATION_TIMEOUT);
+    let mut key = [0u8; 32];
+    key.copy_from_slice(&public_key);
 
-    let public_key = VerifyingKey::from_bytes(public_key).unwrap_or_default();
+    let public_key = VerifyingKey::from_bytes(&key)?;
 
-    let transfer_action = match account_type {
+    let expired_at = now_sec() + DEFAULT_EXPIRATION_TIMEOUT;
+
+    let unsigned_message = match account_type {
         AccountType::HighloadWallet => {
-            let account = UInt256::from_be_bytes(&owner.address().get_bytestring(0));
+            let account = owner.address;
             let current_state = ton_core.get_contract_state(&account)?.account;
 
             let gift = ton_wallet::Gift {
@@ -1067,15 +1051,14 @@ fn build_token_transaction(
             };
 
             ton_wallet::highload_wallet_v2::prepare_transfer(
-                &SimpleClock,
                 &public_key,
                 &current_state,
                 vec![gift],
-                expiration,
+                expired_at,
             )?
         }
         AccountType::Wallet => {
-            let account = UInt256::from_be_bytes(&owner.address().get_bytestring(0));
+            let account = owner.address;
             let current_state = ton_core.get_contract_state(&account)?.account;
 
             let gifts = vec![ton_wallet::Gift {
@@ -1087,16 +1070,14 @@ fn build_token_transaction(
                 state_init: None,
             }];
 
-            let seqno_offset =
-                ton_wallet::wallet_v3::estimate_seqno_offset(&SimpleClock, &current_state, &[]);
+            let seqno_offset = ton_wallet::wallet_v3::estimate_seqno_offset(&current_state, &[]);
 
             ton_wallet::wallet_v3::prepare_transfer(
-                &SimpleClock,
                 &public_key,
                 &current_state,
                 seqno_offset,
                 gifts,
-                expiration,
+                expired_at,
             )?
         }
         AccountType::SafeMultisig => {
@@ -1115,17 +1096,16 @@ fn build_token_transaction(
             };
 
             ton_wallet::multisig::prepare_transfer(
-                &SimpleClock,
                 MultisigType::SafeMultisigWallet,
                 &public_key,
                 has_multiple_owners,
                 owner.clone(),
                 gift,
-                expiration,
+                expired_at,
             )?
         }
         AccountType::EverWallet => {
-            let account = UInt256::from_be_bytes(&owner.address().get_bytestring(0));
+            let account = owner.address;
             let current_state = ton_core.get_contract_state(&account)?.account;
 
             let gift = ton_wallet::Gift {
@@ -1138,45 +1118,41 @@ fn build_token_transaction(
             };
 
             ton_wallet::ever_wallet::prepare_transfer(
-                &SimpleClock,
                 &public_key,
                 &current_state,
                 owner.clone(),
                 vec![gift],
-                expiration,
+                expired_at,
             )?
         }
     };
 
-    let unsigned_message = match transfer_action {
-        TransferAction::Sign(unsigned_message) => unsigned_message,
-        TransferAction::DeployFirst => {
-            return Err(TonClientError::AccountNotDeployed(owner.to_string()).into())
-        }
-    };
+    let mut key = [0u8; 32];
+    key.copy_from_slice(&private_key);
 
-    let key_pair = Keypair {
-        secret: SecretKey::from_bytes(private_key)?,
-        public: public_key,
-    };
+    let key_pair = ed25519_dalek::SigningKey::from_bytes(&key);
 
-    let data_to_sign =
-        ton_abi::extend_signature_with_id(unsigned_message.hash(), ton_core.signature_id());
-    let signature = key_pair.sign(&data_to_sign);
-    let signed_message = unsigned_message.sign(&signature.to_bytes())?;
+    let owned_message = unsigned_message.sign(&key_pair, ton_core.signature_id())?;
+
+    let cell_builder = CellBuilder::build_from(&owned_message).map_err(From::from)?;
+    let hash = cell_builder.repr_hash();
 
     let sent_transaction = SentTransaction {
         id,
-        message_hash: signed_message.message.hash()?.to_hex_string(),
-        account_workchain_id: owner.workchain_id(),
-        account_hex: owner.address().to_hex_string(),
+        message_hash: hash.to_string(),
+        account_workchain_id: owner.workchain as i32,
+        account_hex: owner.address.to_string(),
         original_value: None,
         original_outputs: None,
         aborted: false,
         bounce,
     };
 
-    Ok((sent_transaction, signed_message))
+    Ok(PrepareResult {
+        sent_transaction,
+        owned_message,
+        expired_at,
+    })
 }
 
 const TYCHO_TESTNET_CHAIN_ID: i32 = -4000;

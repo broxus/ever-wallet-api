@@ -14,6 +14,7 @@ use tycho_core::storage::CoreStorage;
 use tycho_executor::ExecutorParams;
 use tycho_executor::ParsedConfig;
 use tycho_types::boc::Boc;
+use tycho_types::cell::CellBuilder;
 use tycho_types::cell::HashBytes;
 use tycho_types::cell::Lazy;
 use tycho_types::cell::Load;
@@ -83,19 +84,19 @@ impl TonCore {
 
     pub async fn send_ton_message(
         &self,
-        account: &UInt256,
-        message: &ton_block::Message,
+        account: HashBytes,
+        owned_message: OwnedMessage,
         expire_at: u32,
     ) -> Result<MessageStatus> {
         self.context
-            .send_ton_message(account, message, expire_at)
+            .send_ton_message(account, owned_message, expire_at)
             .await
     }
 
     pub fn add_pending_message(
         &self,
-        account: UInt256,
-        message_hash: UInt256,
+        account: HashBytes,
+        message_hash: HashBytes,
         expire_at: u32,
     ) -> Result<oneshot::Receiver<MessageStatus>> {
         self.context
@@ -191,23 +192,22 @@ impl TonCoreContext {
 
     async fn send_ton_message(
         &self,
-        account: &UInt256,
-        message: &ton_block::Message,
+        account: HashBytes,
+        owned_message: OwnedMessage,
         expire_at: u32,
     ) -> Result<MessageStatus> {
-        match message.header() {
-            ton_block::CommonMsgInfo::ExtInMsgInfo(header) => header.dst.workchain_id(),
+        match &owned_message.info {
+            MsgInfo::ExtIn(ext) => ext.dst.workchain(),
             _ => return Err(TonCoreError::ExternalTonMessageExpected.into()),
         };
 
-        let cells = message.write_to_new_cell()?.into_cell()?;
-        let serialized = ton_types::serialize_toc(&cells)?;
+        let cell = CellBuilder::build_from(owned_message)?;
+        let message_hash = *cell.repr_hash();
+        let serialized = Boc::encode(cell);
 
-        let rx = self.messages_queue.add_message(
-            HashBytes::from_slice(account.as_slice()),
-            HashBytes::from_slice(cells.repr_hash().as_slice()),
-            expire_at,
-        )?;
+        let rx = self
+            .messages_queue
+            .add_message(account, message_hash, expire_at)?;
 
         self.blockchain_rpc_client
             .broadcast_external_message(&serialized)
@@ -274,15 +274,12 @@ impl TonCoreContext {
 
     fn add_pending_message(
         &self,
-        account: UInt256,
-        message_hash: UInt256,
+        account: HashBytes,
+        message_hash: HashBytes,
         expire_at: u32,
     ) -> Result<oneshot::Receiver<MessageStatus>> {
-        self.messages_queue.add_message(
-            HashBytes::from_slice(account.as_slice()),
-            HashBytes::from_slice(message_hash.as_slice()),
-            expire_at,
-        )
+        self.messages_queue
+            .add_message(account, message_hash, expire_at)
     }
 }
 

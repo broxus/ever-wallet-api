@@ -18,8 +18,8 @@ use tycho_block_util::block::BlockStuff;
 use tycho_block_util::state::{RefMcStateHandle, ShardStateStuff};
 use tycho_vm::StackValue;
 
-use crate::ton_core::*;
 use crate::models::ExistingContract;
+use crate::ton_core::*;
 
 pub struct TonSubscriber {
     // tip block timestamp

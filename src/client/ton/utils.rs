@@ -1,4 +1,7 @@
 use nekoton_abi::LastTransactionId;
+use tycho_types::models::OwnedMessage;
+
+use crate::models::SentTransaction;
 
 pub fn parse_last_transaction(
     last_transaction: &LastTransactionId,
@@ -12,4 +15,11 @@ pub fn parse_last_transaction(
     };
 
     (last_transaction_hash, last_transaction_lt)
+}
+
+#[derive(Debug)]
+pub struct PrepareResult {
+    pub sent_transaction: SentTransaction,
+    pub owned_message: OwnedMessage,
+    pub expired_at: u32,
 }

@@ -1,3 +1,4 @@
+use std::any;
 use std::convert::TryInto;
 use std::str::FromStr;
 use std::sync::{Arc, Weak};
@@ -13,6 +14,7 @@ use ton_abi::{Param, Token, TokenValue};
 use ton_block::{GetRepresentationHash, MsgAddressInt, Serializable};
 use ton_types::{BuilderData, UInt256};
 use tycho_types::cell::HashBytes;
+use tycho_types::models::{OwnedMessage, StdAddr};
 use uuid::Uuid;
 
 use crate::api::*;
@@ -109,13 +111,13 @@ impl TonService {
         service_id: &ServiceId,
         address: Address,
     ) -> Result<(AddressDb, NetworkAddressData), Error> {
-        let account = repack_address(&address.0)?;
+        let account = StdAddr::from_str(&address.0).map_err(anyhow::Error::from)?;
         let address = self
             .sqlx_client
             .get_address(
                 *service_id,
-                account.workchain_id(),
-                account.address().to_hex_string(),
+                account.workchain as i32,
+                account.address.to_string(),
             )
             .await?;
         let network = self.ton_api_client.get_address_info(&account).await?;
@@ -128,13 +130,13 @@ impl TonService {
         service_id: &ServiceId,
         address: Address,
     ) -> Result<AddressDb, Error> {
-        let account = repack_address(&address.0)?;
+        let account = StdAddr::from_str(&address.0).map_err(anyhow::Error::from)?;
         let address = self
             .sqlx_client
             .get_address(
                 *service_id,
-                account.workchain_id(),
-                account.address().to_hex_string(),
+                account.workchain as i32,
+                account.address.to_string(),
             )
             .await?;
 
@@ -188,7 +190,11 @@ impl TonService {
                 .await?;
         }
 
-        let (payload, signed_message) = self
+        let PrepareResult {
+            sent_transaction,
+            owned_message,
+            expired_at,
+        } = self
             .ton_api_client
             .prepare_transaction(
                 input,
@@ -201,16 +207,17 @@ impl TonService {
 
         let (transaction, event) = self
             .sqlx_client
-            .create_send_transaction(CreateSendTransaction::new(payload, *service_id))
+            .create_send_transaction(CreateSendTransaction::new(sent_transaction, *service_id))
             .await?;
 
         self.send_transaction(
             transaction.message_hash.clone(),
             transaction.account_hex.clone(),
             transaction.account_workchain_id,
-            signed_message,
+            owned_message,
             true,
             true,
+            expired_at,
         )
         .await?;
 
@@ -1179,9 +1186,10 @@ impl TonService {
         message_hash: String,
         account_hex: String,
         account_workchain_id: i32,
-        signed_message: OwnerMessage,
+        signed_message: OwnedMessage,
         non_blocking: bool,
         with_db_update: bool,
+        expired_at: u32,
     ) -> Result<(), Error> {
         let ton_service = Arc::downgrade(self);
 
@@ -1359,7 +1367,7 @@ async fn send_transaction(
     message_hash: String,
     account_hex: String,
     account_workchain_id: i32,
-    signed_message: SignedMessage,
+    signed_message: OwnedMessage,
     with_db_update: bool,
 ) -> Result<(), Error> {
     let ton_service = match ton_service.upgrade() {
@@ -1367,7 +1375,7 @@ async fn send_transaction(
         None => return Err(TonServiceError::ServiceUnavailable.into()),
     };
 
-    let account = UInt256::from_be_bytes(&hex::decode(&account_hex)?);
+    let account = HashBytes::from_str(&account_hex).map_err(anyhow::Error::from)?;
 
     let status = ton_service
         .ton_api_client
