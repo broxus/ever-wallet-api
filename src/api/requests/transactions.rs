@@ -1,6 +1,5 @@
 use bigdecimal::BigDecimal;
 use derive_more::Constructor;
-use nekoton_utils::TrustMe;
 use num_traits::FromPrimitive;
 
 use schemars::JsonSchema;

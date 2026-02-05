@@ -6,9 +6,9 @@ use axum::http::StatusCode;
 use bigdecimal::BigDecimal;
 use chrono::Utc;
 use serde_json::Value;
-use ton_abi::contract::ABI_VERSION_2_2;
-use ton_abi::{Param, Token, TokenValue};
-use tycho_types::abi::UnsignedExternalMessage;
+use tycho_types::abi::{
+    AbiHeaderType, AbiVersion, Function, NamedAbiType, NamedAbiValue, UnsignedExternalMessage,
+};
 use tycho_types::cell::{CellBuilder, HashBytes};
 use tycho_types::models::{OwnedMessage, StdAddr};
 use uuid::Uuid;
@@ -878,26 +878,27 @@ impl TonService {
         self: &Arc<Self>,
         account_addr: &str,
         function_name: &str,
-        inputs: Vec<InputParam>,
-        outputs: Vec<Param>,
-        headers: Vec<Param>,
+        inputs: Vec<NamedAbiValue>,
+        outputs: Vec<NamedAbiType>,
+        headers: Vec<AbiHeaderType>,
         responsible: bool,
     ) -> Result<Value, Error> {
         let account_addr = HashBytes::from_str(&account_addr).map_err(anyhow::Error::from)?;
 
-        let input_params: Vec<Param> = inputs.iter().map(|x| x.param.clone()).collect();
+        let input_params: Vec<NamedAbiType> = inputs
+            .iter()
+            .map(|x| x.value.get_type().named(x.name.into()))
+            .collect();
 
-        let function = nekoton_abi::FunctionBuilder::new(function_name)
-            .abi_version(ABI_VERSION_2_2)
-            .headers(headers)
-            .inputs(input_params)
-            .outputs(outputs)
+        let function = Function::builder(AbiVersion::V2_2, function_name)
+            .with_headers(headers)
+            .with_inputs(input_params)
+            .with_outputs(outputs)
             .build();
 
-        let input = parse_abi_tokens(inputs)?;
         let output = match self
             .ton_api_client
-            .run_local(account_addr, function, input.as_slice(), responsible)
+            .run_local(account_addr, function, &inputs, responsible)
             .await?
         {
             Some(output) => output,
@@ -914,8 +915,7 @@ impl TonService {
             None => return Err(TonServiceError::ExecuteContract.into()),
         };
 
-        let res = nekoton_abi::make_abi_tokens(tokens.as_slice())?;
-        Ok(res)
+        Ok(tokens)
     }
 
     pub async fn prepare_and_send_signed_generic_message(
@@ -933,23 +933,21 @@ impl TonService {
     ) -> Result<TransactionDb, Error> {
         let (function, values) = match function_details {
             Some(details) => {
-                let function = nekoton_abi::FunctionBuilder::new(&details.function_name)
-                    .abi_version(ABI_VERSION_2_2)
-                    .headers(details.headers)
-                    .inputs(
-                        details
-                            .input_params
-                            .clone()
-                            .into_iter()
-                            .map(|x| x.param)
-                            .collect::<Vec<Param>>(),
-                    )
-                    .outputs(details.output_params)
-                    .build();
+                let function =
+                    Function::builder(AbiVersion::V2_2, details.function_name.to_string())
+                        .with_headers(details.headers)
+                        .with_inputs(
+                            details
+                                .input_params
+                                .clone()
+                                .into_iter()
+                                .map(|x| x.value.get_type().named(x.name.into()))
+                                .collect::<Vec<NamedAbiType>>(),
+                        )
+                        .with_outputs(details.output_params)
+                        .build();
 
-                let tokens = parse_abi_tokens(details.input_params)?;
-
-                (Some(function), Some(tokens))
+                (Some(function), Some(details.input_params))
             }
             None => (None, None),
         };
@@ -1037,23 +1035,21 @@ impl TonService {
     ) -> Result<UnsignedExternalMessage, Error> {
         let (function, values) = match function_details {
             Some(details) => {
-                let function = nekoton_abi::FunctionBuilder::new(&details.function_name)
-                    .abi_version(ABI_VERSION_2_2)
-                    .headers(details.headers)
-                    .inputs(
-                        details
-                            .input_params
-                            .clone()
-                            .into_iter()
-                            .map(|x| x.param)
-                            .collect::<Vec<Param>>(),
-                    )
-                    .outputs(details.output_params)
-                    .build();
+                let function =
+                    Function::builder(AbiVersion::V2_2, details.function_name.to_string())
+                        .with_headers(details.headers)
+                        .with_inputs(
+                            details
+                                .input_params
+                                .clone()
+                                .into_iter()
+                                .map(|x| x.value.get_type().named(x.name.into()))
+                                .collect::<Vec<NamedAbiType>>(),
+                        )
+                        .with_outputs(details.output_params)
+                        .build();
 
-                let tokens = parse_abi_tokens(details.input_params)?;
-
-                (Some(function), Some(tokens))
+                (Some(function), Some(details.input_params))
             }
             None => (None, None),
         };
@@ -1425,16 +1421,6 @@ async fn send_transaction(
     }
 
     Ok(())
-}
-
-fn parse_abi_tokens(params: Vec<InputParam>) -> Result<Vec<Token>, Error> {
-    let mut tokens = Vec::<Token>::new();
-    for i in params {
-        let token = nekoton_abi::parse_abi_token(&i.param, i.value)?;
-        tokens.push(token);
-    }
-
-    Ok(tokens)
 }
 
 enum NotifyType {

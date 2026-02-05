@@ -1,6 +1,9 @@
 use num_bigint::BigUint;
 use serde::{Deserialize, Serialize};
-use tycho_types::{cell::{Cell, HashBytes}, models::{OrdinaryTxInfo, StdAddr, Transaction}};
+use tycho_types::{
+    cell::{Cell, HashBytes},
+    models::{OrdinaryTxInfo, StdAddr, Transaction},
+};
 
 use crate::utils::{serde_address, serde_cell, serde_string};
 
@@ -58,7 +61,6 @@ pub struct TokenSwapBack {
     pub callback_payload: Cell,
 }
 
-
 #[derive(Debug, Copy, Clone, Eq, PartialEq, Serialize, Deserialize)]
 pub enum TokenWalletVersion {
     /// Third iteration of token wallets, but with fixed bugs
@@ -68,7 +70,6 @@ pub enum TokenWalletVersion {
     /// [implementation](https://github.com/broxus/ton-eth-bridge-token-contracts/tree/9168190f218fd05a64269f5f24295c69c4840d94)
     Tip3,
 }
-
 
 #[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
 pub struct RootTokenContractDetails {
@@ -175,7 +176,6 @@ impl TokenWalletContractState<'_> {
         }
     }
 }
-
 
 pub fn parse_token_transaction(
     tx: &Transaction,

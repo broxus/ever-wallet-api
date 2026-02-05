@@ -5,11 +5,11 @@ use anyhow::Result;
 use ed25519_dalek::VerifyingKey;
 use serde::{Deserialize, Serialize};
 
-use nekoton_utils::*;
 use tycho_types::abi::FromAbi;
 use tycho_types::cell::{Cell, HashBytes};
 use tycho_types::models::{StateInit, StdAddr};
 
+use crate::utils::serde_string;
 use crate::utils::wallets;
 
 pub use self::multisig::MultisigType;

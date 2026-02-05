@@ -3,7 +3,7 @@ use std::sync::Arc;
 use anyhow::Result;
 
 use tokio::sync::mpsc;
-use ton_types::UInt256;
+use ton_types::HashBytes;
 
 use crate::ton_core::monitoring::*;
 use crate::ton_core::*;

@@ -1,6 +1,7 @@
 use bigdecimal::BigDecimal;
 use serde::{Deserialize, Serialize};
 use ton_abi::Param;
+use tycho_types::abi::{AbiHeaderType, NamedAbiType, NamedAbiValue};
 use uuid::Uuid;
 
 use crate::models::*;
@@ -188,7 +189,7 @@ pub struct InputParam {
 #[derive(Clone, Debug, Deserialize)]
 pub struct FunctionDetails {
     pub function_name: String,
-    pub input_params: Vec<InputParam>,
-    pub output_params: Vec<Param>,
-    pub headers: Vec<Param>,
+    pub input_params: Vec<NamedAbiValue>,
+    pub output_params: Vec<NamedAbiType>,
+    pub headers: Vec<AbiHeaderType>,
 }

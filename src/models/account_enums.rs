@@ -1,6 +1,5 @@
 use std::str::FromStr;
 
-use nekoton::core::models::TokenWalletVersion;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use strum_macros::EnumString;

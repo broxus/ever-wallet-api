@@ -361,10 +361,9 @@ impl StateSubscription {
                 _ => continue,
             };
 
-            let in_msg = match  transaction.in_msg.as_ref()
-            {
+            let in_msg = match transaction.in_msg.as_ref() {
                 Some(in_msg_cell) => {
-                    let in_msg =  OwnedMessage::load_from(&mut in_msg_cell.as_slice()?)?;
+                    let in_msg = OwnedMessage::load_from(&mut in_msg_cell.as_slice()?)?;
                     if matches!(in_msg.info, MsgInfo::ExtIn(_)) {
                         messages_queue.deliver_message(
                             account,
@@ -375,7 +374,6 @@ impl StateSubscription {
                 }
                 _ => continue,
             };
-
 
             let ctx = TxContext {
                 block_info_gen_utime: block_info.gen_utime,
@@ -473,20 +471,11 @@ impl TokenSubscription {
                     .ok_or_else(|| TonCoreError::AccountNotExist(account.to_string()))?;
 
                 let (token_wallet_details, ..) = get_token_wallet_details(&token_contract)?;
-                let owner_account = 
-                    &token_wallet_details
-                        .owner_address
-                ;
+                let owner_account = &token_wallet_details.owner_address;
 
-                if state_subscriptions
-                    .get(owner_account)
-                    .is_some()
-                {
-                    let in_msg = match  transaction.in_msg.as_ref()
-                    {
-                        Some(in_msg_cell) => {
-                            OwnedMessage::load_from(&mut in_msg_cell.as_slice()?)?
-                        }
+                if state_subscriptions.get(owner_account).is_some() {
+                    let in_msg = match transaction.in_msg.as_ref() {
+                        Some(in_msg_cell) => OwnedMessage::load_from(&mut in_msg_cell.as_slice()?)?,
                         _ => continue,
                     };
 

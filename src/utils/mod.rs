@@ -28,11 +28,11 @@ mod wallets;
 pub type FxDashMap<K, V> = dashmap::DashMap<K, V, BuildHasherDefault<FxHasher>>;
 pub type FxDashSet<K> = dashmap::DashSet<K, BuildHasherDefault<FxHasher>>;
 
-pub fn conver_to_old_transaction(transaction: &Transaction) -> Result<ton_block::Transaction> {
+pub fn conver_to_old_transaction(transaction: &Transaction) -> Result<Transaction> {
     let cell = CellBuilder::build_from(transaction)?;
     let bytes = Boc::encode(cell);
     let cell = ton_types::deserialize_tree_of_cells(&mut &*bytes)?;
-    ton_block::Transaction::construct_from_cell(cell)
+    Transaction::construct_from_cell(cell)
 }
 
 macro_rules! declare_function {

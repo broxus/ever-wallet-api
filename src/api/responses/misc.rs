@@ -1,5 +1,4 @@
 use crate::models::WhitelistedTokenFromDb;
-use nekoton_contracts::tip3_any::TokenWalletVersion;
 
 use schemars::JsonSchema;
 use serde::Serialize;

@@ -1,7 +1,6 @@
 use std::str::FromStr;
 
 use bigdecimal::BigDecimal;
-use nekoton_utils::pack_std_smc_addr;
 use tycho_types::models::StdAddr;
 
 use schemars::JsonSchema;
@@ -91,15 +90,14 @@ impl From<TransactionDb> for TransactionDataResponse {
                         .into_iter()
                         .map(|output| {
                             let output_address =
-                                nekoton_utils::repack_address(&output.recipient_address.0)
-                                    .unwrap_or_default();
+                                StdAddr::from_str(&output.recipient_address.0).unwrap_or_default();
                             let output_base64url =
-                                Address(pack_std_smc_addr(true, &output_address, true).unwrap());
+                                Address(output_address.display_base64_url(true).to_string());
                             TransactionOutput {
                                 value: output.value,
                                 recipient: Account {
-                                    workchain_id: output_address.workchain_id(),
-                                    hex: Address(output_address.address().to_hex_string()),
+                                    workchain_id: output_address.workchain as i32,
+                                    hex: Address(output_address.address.to_string()),
                                     base64url: output_base64url,
                                 },
                             }

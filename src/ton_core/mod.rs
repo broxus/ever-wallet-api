@@ -2,13 +2,8 @@ use std::str::FromStr;
 use std::sync::Arc;
 
 use anyhow::{Context, Result};
-use nekoton_abi::*;
-use nekoton_utils::Clock;
-use nekoton_utils::SimpleClock;
 use parking_lot::Mutex;
 use tokio::sync::{mpsc, oneshot};
-use ton_block::Serializable;
-use ton_types::UInt256;
 use tycho_core::blockchain_rpc::BlockchainRpcClient;
 use tycho_core::storage::CoreStorage;
 use tycho_executor::ExecutorParams;
@@ -220,7 +215,7 @@ impl TonCoreContext {
     #[allow(unused)]
     fn send_local(
         &self,
-        account: &UInt256,
+        account: &HashBytes,
         message_base64: &str,
         expire_at: u32,
     ) -> Result<Option<Transaction>> {

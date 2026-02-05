@@ -2,7 +2,6 @@ use std::str::FromStr;
 
 use bigdecimal::BigDecimal;
 use derive_more::Constructor;
-use nekoton_utils::TrustMe;
 use tycho_types::models::StdAddr;
 
 use schemars::JsonSchema;

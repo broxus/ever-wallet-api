@@ -10,7 +10,9 @@ use tycho_types::cell::{Cell, HashBytes};
 use tycho_types::models::StdAddr;
 
 use crate::models::ExistingContract;
-use crate::utils::token_wallets::models::{RootTokenContractDetails, TokenWalletDetails, TokenWalletVersion};
+use crate::utils::token_wallets::models::{
+    RootTokenContractDetails, TokenWalletDetails, TokenWalletVersion,
+};
 
 const INITIAL_BALANCE: u128 = 100_000_000; // 0.1
 

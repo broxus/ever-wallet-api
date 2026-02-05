@@ -785,8 +785,6 @@ impl TonClient {
         input: &[NamedAbiValue],
         responsible: bool,
     ) -> anyhow::Result<Option<nekoton_abi::ExecutionOutput>> {
-        use nekoton_abi::FunctionExt;
-
         let state = match self.ton_core.get_contract_state(&contract_address) {
             Ok(a) => a,
             Err(e) => {

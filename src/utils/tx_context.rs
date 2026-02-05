@@ -87,8 +87,8 @@ impl TxContext<'_> {
                 continue;
             }
 
-            if let Ok(function_id) = message.body.get_u32(0){
-                f(function_id, message.body) 
+            if let Ok(function_id) = message.body.get_u32(0) {
+                f(function_id, message.body)
             }
         }
     }

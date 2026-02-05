@@ -85,10 +85,10 @@ impl TonTransaction {
 
 #[derive(Debug)]
 pub struct TonTransactionEvent {
-    pub account: UInt256,
+    pub account: HashBytes,
     pub block_utime: u32,
-    pub transaction_hash: UInt256,
-    pub transaction: ton_block::Transaction,
+    pub transaction_hash: HashBytes,
+    pub transaction: Transaction,
     pub state: HandleTransactionStatusTx,
 }
 
