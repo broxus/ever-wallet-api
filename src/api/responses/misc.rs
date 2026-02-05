@@ -1,4 +1,4 @@
-use crate::models::WhitelistedTokenFromDb;
+use crate::{models::WhitelistedTokenFromDb, utils::token_wallets::models::TokenWalletVersion};
 
 use schemars::JsonSchema;
 use serde::Serialize;

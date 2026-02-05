@@ -5,8 +5,6 @@ use std::sync::{Arc, Weak};
 use anyhow::Result;
 use futures::stream::FuturesUnordered;
 use futures::StreamExt;
-use nekoton::core::models::TokenWalletVersion;
-use nekoton_utils::TrustMe;
 use parking_lot::{Mutex, RwLock, RwLockReadGuard};
 use rustc_hash::FxHashMap;
 use tycho_types::boc::Boc;

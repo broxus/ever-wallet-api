@@ -5,7 +5,10 @@ use serde::{Deserialize, Serialize};
 use strum_macros::EnumString;
 use tycho_types::models::{AccountState, StdAddr};
 
-use crate::models::{Address, AddressDb};
+use crate::{
+    models::{Address, AddressDb},
+    utils::token_wallets::models::TokenWalletVersion,
+};
 
 #[derive(
     Debug, Default, Deserialize, Serialize, Clone, JsonSchema, Eq, PartialEq, sqlx::Type, Copy,

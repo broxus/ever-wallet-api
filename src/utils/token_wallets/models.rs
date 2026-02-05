@@ -1,3 +1,5 @@
+use std::fmt::Display;
+
 use num_bigint::BigUint;
 use serde::{Deserialize, Serialize};
 use tycho_types::{
@@ -69,6 +71,15 @@ pub enum TokenWalletVersion {
     /// Latest iteration with completely new standard
     /// [implementation](https://github.com/broxus/ton-eth-bridge-token-contracts/tree/9168190f218fd05a64269f5f24295c69c4840d94)
     Tip3,
+}
+
+impl Display for TokenWalletVersion {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(match self {
+            TokenWalletVersion::OldTip3v4 => "OldTip3v4",
+            TokenWalletVersion::Tip3 => "Tip3",
+        })
+    }
 }
 
 #[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]

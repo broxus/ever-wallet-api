@@ -2,7 +2,6 @@ use bigdecimal::BigDecimal;
 
 use schemars::JsonSchema;
 use serde::Deserialize;
-use ton_abi::Param;
 use uuid::Uuid;
 
 use crate::api::any_schema;

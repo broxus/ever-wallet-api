@@ -107,7 +107,7 @@ pub struct AddressBalanceDataResponse {
 
 impl AddressBalanceDataResponse {
     pub fn new(a: AddressDb, b: NetworkAddressData) -> Self {
-        let account = StdAddr::from_str(&format!("{}:{}", a.workchain_id, a.hex)).trust_me();
+        let account = StdAddr::from_str(&format!("{}:{}", a.workchain_id, a.hex)).unwrap();
         let base64url = Address(account.display_base64_url(true).to_string());
 
         Self {
@@ -171,7 +171,7 @@ pub struct AddressInfoDataResponse {
 
 impl AddressInfoDataResponse {
     pub fn new(a: AddressDb) -> Self {
-        let account = StdAddr::from_str(&format!("{}:{}", a.workchain_id, a.hex)).trust_me();
+        let account = StdAddr::from_str(&format!("{}:{}", a.workchain_id, a.hex)).unwrap();
         let base64url = Address(account.display_base64_url(true).to_string());
 
         Self {
@@ -235,7 +235,7 @@ pub struct TokenBalanceDataResponse {
 impl TokenBalanceDataResponse {
     pub fn new(a: TokenBalanceFromDb, b: NetworkTokenAddressData) -> Self {
         let account =
-            StdAddr::from_str(&format!("{}:{}", a.account_workchain_id, a.account_hex)).trust_me();
+            StdAddr::from_str(&format!("{}:{}", a.account_workchain_id, a.account_hex)).unwrap();
         let base64url = Address(account.display_base64_url(true).to_string());
 
         Self {

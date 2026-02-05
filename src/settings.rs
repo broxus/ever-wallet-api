@@ -71,14 +71,16 @@ fn default_key() -> Vec<u8> {
         let mut options = argon2::ParamsBuilder::default();
         let options = options
             .output_len(32) //chacha key size
-            .and_then(|x| x.clone().params())?;
+            .and_then(|x| x.clone().params())
+            .unwrap();
 
         // Argon2 with default params (Argon2id v19)
         let argon2 =
             argon2::Argon2::new(argon2::Algorithm::Argon2id, argon2::Version::V0x13, options);
 
         let key = argon2
-            .hash_password(secret.as_bytes(), &salt)?
+            .hash_password(secret.as_bytes(), &salt)
+            .unwrap()
             .hash
             .context("No hash")?
             .as_bytes()

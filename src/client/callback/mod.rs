@@ -12,7 +12,7 @@ pub struct CallbackClient {
 impl CallbackClient {
     pub fn new() -> Self {
         Self {
-            client: reqwest::ClientBuilder::new().build().trust_me(),
+            client: reqwest::ClientBuilder::new().build().unwrap(),
         }
     }
 }

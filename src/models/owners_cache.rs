@@ -4,10 +4,11 @@ use std::sync::Arc;
 
 use lru::LruCache;
 use parking_lot::Mutex;
-use ton_block::StdAddr;
+use tycho_types::models::StdAddr;
 
 use crate::models::sqlx::*;
 use crate::sqlx_client::*;
+use crate::utils::token_wallets::models::TokenWalletVersion;
 
 #[derive(Clone)]
 /// Maps token wallet address to Owner info
@@ -35,8 +36,8 @@ impl OwnersCache {
                         "{}:{}",
                         got.owner_account_workchain_id, got.owner_account_hex
                     ))
-                    .trust_me(),
-                    root_address: StdAddr::from_str(&got.root_address).trust_me(),
+                    .unwrap(),
+                    root_address: StdAddr::from_str(&got.root_address).unwrap(),
                     code_hash: got.code_hash,
                     version: got.version.into(),
                 }
@@ -50,8 +51,8 @@ impl OwnersCache {
         }
         let owner = TokenOwnerFromDb {
             address: key.to_string(),
-            owner_account_workchain_id: value.owner_address.workchain_id(),
-            owner_account_hex: value.owner_address.address().to_hex_string(),
+            owner_account_workchain_id: value.owner_address.workchain as i32,
+            owner_account_hex: value.owner_address.address.to_string(),
             root_address: value.root_address.to_string(),
             code_hash: value.code_hash,
             created_at: chrono::Utc::now().naive_utc(), //doesn't matter
@@ -75,17 +76,20 @@ impl OwnersCache {
     pub async fn new(sqlx_client: SqlxClient) -> Result<Self, anyhow::Error> {
         let balances = sqlx_client.get_all_token_owners().await?;
         // no more than 10 mb
-        let mut cache = LruCache::new(NonZeroUsize::new(5000).trust_me());
+        let mut cache = LruCache::new(NonZeroUsize::new(5000).unwrap());
         balances.into_iter().for_each(|x| {
+            let k = StdAddr::from_str(&x.address).unwrap();
+            let owner_address = StdAddr::from_str(&format!(
+                "{}:{}",
+                x.owner_account_workchain_id, x.owner_account_hex
+            ))
+            .unwrap();
+            let root_address = StdAddr::from_str(&x.root_address).unwrap();
             cache.put(
-                StdAddr::from_str(&x.address).trust_me(),
+                k,
                 OwnerInfo {
-                    owner_address: StdAddr::from_str(&format!(
-                        "{}:{}",
-                        x.owner_account_workchain_id, x.owner_account_hex
-                    ))
-                    .trust_me(),
-                    root_address: StdAddr::from_str(&x.root_address).trust_me(),
+                    owner_address,
+                    root_address,
                     code_hash: x.code_hash,
                     version: x.version.into(),
                 },
