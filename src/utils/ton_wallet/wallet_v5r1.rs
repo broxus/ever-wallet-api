@@ -50,7 +50,10 @@ pub fn make_init_data(public_key: &VerifyingKey) -> InitData {
         .with_is_signature_allowed(true)
 }
 
-pub fn get_init_data(current_state: &Account, public_key: &VerifyingKey) -> Result<(InitData, bool)> {
+pub fn get_init_data(
+    current_state: &Account,
+    public_key: &VerifyingKey,
+) -> Result<(InitData, bool)> {
     match current_state.state {
         AccountState::Active(ref state_init) => match &state_init.data {
             Some(data) => Ok((InitData::try_from(data)?, false)),
@@ -346,7 +349,8 @@ mod tests {
             assert_eq!(init_data.wallet_id, WALLET_ID);
             assert_eq!(init_data.extensions, None);
 
-            let public_key = VerifyingKey::from_bytes(init_data.public_key.as_slice().try_into().unwrap())?;
+            let public_key =
+                VerifyingKey::from_bytes(init_data.public_key.as_slice().try_into().unwrap())?;
             let address = compute_contract_address(&public_key, 0)?;
             assert_eq!(
                 address.to_string(),

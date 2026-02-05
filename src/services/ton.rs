@@ -954,7 +954,6 @@ impl TonService {
             None => (None, None),
         };
 
-
         let sender = StdAddr::from_str(&sender_addr).map_err(anyhow::Error::from)?;
 
         let address_db = self

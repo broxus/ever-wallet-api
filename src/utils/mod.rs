@@ -20,6 +20,7 @@ pub mod mnemonic;
 mod pending_messages_queue;
 mod shard_utils;
 mod token_wallet;
+pub mod token_wallets;
 pub mod ton_wallet;
 mod tx_context;
 mod wallets;
@@ -83,3 +84,74 @@ macro_rules! declare_function {
 }
 
 pub(crate) use declare_function;
+
+pub mod serde_string {
+    use std::str::FromStr;
+
+    use serde::de::Error;
+    use serde::{Deserialize, Serialize};
+
+    pub fn serialize<S>(data: &dyn std::fmt::Display, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        data.to_string().serialize(serializer)
+    }
+
+    pub fn deserialize<'de, D, T>(deserializer: D) -> Result<T, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+        T: FromStr,
+        T::Err: std::fmt::Display,
+    {
+        String::deserialize(deserializer)
+            .and_then(|data| T::from_str(&data).map_err(D::Error::custom))
+    }
+}
+
+pub mod serde_address {
+    use std::str::FromStr;
+
+    use serde::de::Error;
+    use serde::Deserialize;
+    use tycho_types::models::StdAddr;
+
+    pub fn serialize<S>(data: &StdAddr, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        serializer.serialize_str(&data.to_string())
+    }
+
+    pub fn deserialize<'de, D>(deserializer: D) -> Result<StdAddr, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        let data = String::deserialize(deserializer)?;
+        StdAddr::from_str(&data).map_err(|_| D::Error::custom("Invalid address"))
+    }
+}
+
+pub mod serde_cell {
+    use serde::de::Error;
+    use serde::Deserialize;
+    use tycho_types::boc::Boc;
+    use tycho_types::cell::Cell;
+
+    pub fn serialize<S>(data: &Cell, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::ser::Serializer,
+    {
+        let bytes = Boc::encode_base64(data);
+        serializer.serialize_str(&bytes)
+    }
+
+    pub fn deserialize<'de, D>(deserializer: D) -> Result<Cell, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        let data = String::deserialize(deserializer)?;
+        let cell = Boc::decode_base64(&data).map_err(|_| D::Error::custom("Invalid cell"))?;
+        Ok(cell)
+    }
+}

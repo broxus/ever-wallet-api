@@ -340,7 +340,7 @@ impl StateSubscription {
                 let hash = *value.repr_hash();
                 value.load().map(|tx| (tx, hash))
             });
-            let (transaction, hash) = match result {
+            let (transaction, transaction_hash) = match result {
                 Ok((tx, transaction_hash)) => (tx, transaction_hash),
                 Err(e) => {
                     tracing::error!(
@@ -353,32 +353,29 @@ impl StateSubscription {
                 }
             };
 
-            let account = UInt256::with_array(account.0);
-            let transaction_hash = UInt256::with_array(hash.0);
-            let block_hash = UInt256::with_array(block_hash.0);
-            let transaction = conver_to_old_transaction(&transaction)?;
+            let account = *account;
+            let block_hash = *block_hash;
             // Skip non-ordinary transactions
-            let transaction_info = match transaction.description.read_struct() {
-                Ok(ton_block::TransactionDescr::Ordinary(info)) => info,
+            let transaction_info = match transaction.load_info() {
+                Ok(TxInfo::Ordinary(info)) => info,
                 _ => continue,
             };
 
-            let in_msg = match transaction
-                .in_msg
-                .as_ref()
-                .map(|message| (message, message.read_struct()))
+            let in_msg = match  transaction.in_msg.as_ref()
             {
-                Some((message_cell, Ok(message))) => {
-                    if matches!(message.header(), ton_block::CommonMsgInfo::ExtInMsgInfo(_)) {
+                Some(in_msg_cell) => {
+                    let in_msg =  OwnedMessage::load_from(&mut in_msg_cell.as_slice()?)?;
+                    if matches!(in_msg.info, MsgInfo::ExtIn(_)) {
                         messages_queue.deliver_message(
-                            HashBytes::from_slice(account.as_slice()),
-                            HashBytes::from_slice(message_cell.hash().as_slice()),
+                            account,
+                            *CellBuilder::build_from(&in_msg)?.repr_hash(),
                         );
                     }
-                    message
+                    in_msg
                 }
                 _ => continue,
             };
+
 
             let ctx = TxContext {
                 block_info_gen_utime: block_info.gen_utime,
@@ -402,7 +399,7 @@ impl StateSubscription {
                     Err(e) => {
                         tracing::error!(
                             "Failed to handle transaction {} for account {}: {:?}",
-                            hash.to_string(),
+                            transaction_hash.to_string(),
                             account.to_string(),
                             e
                         );
@@ -436,7 +433,7 @@ impl TokenSubscription {
                 let hash = *value.repr_hash();
                 value.load().map(|tx| (tx, hash))
             });
-            let (transaction, hash) = match result {
+            let (transaction, transaction_hash) = match result {
                 Ok((tx, transaction_hash)) => (tx, transaction_hash),
                 Err(e) => {
                     tracing::error!(
@@ -449,13 +446,11 @@ impl TokenSubscription {
                 }
             };
 
-            let account = UInt256::with_array(account.0);
-            let transaction_hash = UInt256::with_array(hash.0);
-            let block_hash = UInt256::with_array(block_hash.0);
-            let transaction = conver_to_old_transaction(&transaction)?;
+            let account = *account;
+            let block_hash = *block_hash;
             // Skip non-ordinary transactions
-            let transaction_info = match transaction.description.read_struct() {
-                Ok(ton_block::TransactionDescr::Ordinary(info)) => info,
+            let transaction_info = match transaction.load_info() {
+                Ok(TxInfo::Ordinary(info)) => info,
                 _ => continue,
             };
 
@@ -478,23 +473,20 @@ impl TokenSubscription {
                     .ok_or_else(|| TonCoreError::AccountNotExist(account.to_string()))?;
 
                 let (token_wallet_details, ..) = get_token_wallet_details(&token_contract)?;
-                let owner_account = UInt256::from_be_bytes(
+                let owner_account = 
                     &token_wallet_details
                         .owner_address
-                        .address()
-                        .get_bytestring(0),
-                );
+                ;
 
                 if state_subscriptions
-                    .get(&HashBytes::from_slice(owner_account.as_slice()))
+                    .get(owner_account)
                     .is_some()
                 {
-                    let in_msg = match transaction
-                        .in_msg
-                        .as_ref()
-                        .map(|message| (message, message.read_struct()))
+                    let in_msg = match  transaction.in_msg.as_ref()
                     {
-                        Some((_, Ok(message))) => message,
+                        Some(in_msg_cell) => {
+                            OwnedMessage::load_from(&mut in_msg_cell.as_slice()?)?
+                        }
                         _ => continue,
                     };
 
@@ -521,7 +513,7 @@ impl TokenSubscription {
                             Err(e) => {
                                 tracing::error!(
                                     "Failed to handle token transaction {} for account {}: {:?}",
-                                    hash.to_string(),
+                                    transaction_hash.to_string(),
                                     account.to_string(),
                                     e
                                 );

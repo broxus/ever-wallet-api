@@ -824,14 +824,11 @@ mod tests {
     #[test]
     fn correct_address() {
         let key = hex::decode("5ace46d93d8f3932499df9f2bc7ef787385e16965e7797258948febd186de7f6")
-                .unwrap();
+            .unwrap();
 
         let key = key.try_into().unwrap();
-        
-        let key = VerifyingKey::from_bytes(
-            &key,
-        )
-        .unwrap();
+
+        let key = VerifyingKey::from_bytes(&key).unwrap();
 
         assert_eq!(
             compute_contract_address(&key, MultisigType::SetcodeMultisigWallet24h, 0)

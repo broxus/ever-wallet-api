@@ -1,12 +1,13 @@
 use std::sync::Arc;
 
 use anyhow::Result;
-use nekoton::core::models::*;
+
 use tokio::sync::mpsc;
 use ton_types::UInt256;
 
 use crate::ton_core::monitoring::*;
 use crate::ton_core::*;
+use crate::utils::token_wallets::models::TokenWalletTransaction;
 
 pub struct TokenTransaction {
     context: Arc<TonCoreContext>,
@@ -80,13 +81,13 @@ impl TokenTransaction {
 
 #[derive(Debug)]
 pub struct TokenTransactionContext {
-    pub account: UInt256,
-    pub block_hash: UInt256,
+    pub account: HashBytes,
+    pub block_hash: HashBytes,
     pub block_utime: u32,
-    pub transaction_hash: UInt256,
-    pub transaction: ton_block::Transaction,
+    pub transaction_hash: HashBytes,
+    pub transaction: Transaction,
     pub token_state: ExistingContract,
-    pub in_msg: ton_block::Message,
+    pub in_msg: OwnedMessage,
 }
 
 #[derive(Debug)]

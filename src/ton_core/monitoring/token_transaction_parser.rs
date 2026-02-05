@@ -1,12 +1,12 @@
 use anyhow::Result;
 use bigdecimal::BigDecimal;
-use nekoton::core::models::{TokenIncomingTransfer, TokenWalletTransaction};
 use num_bigint::BigUint;
 use ton_block::{GetRepresentationHash, MsgAddressInt};
 use ton_types::{AccountId, BuilderData};
 use uuid::Uuid;
 
 use crate::ton_core::*;
+use crate::utils::token_wallets::models::{TokenIncomingTransfer, TokenWalletTransaction};
 
 struct ParseContext<'a> {
     sqlx_client: &'a SqlxClient,

@@ -274,7 +274,8 @@ impl TonClient {
 
         let public_key = VerifyingKey::from_bytes(&key)?;
 
-        let address = StdAddr::from_str(&transaction.from_address.0).map_err(anyhow::Error::from)?;
+        let address =
+            StdAddr::from_str(&transaction.from_address.0).map_err(anyhow::Error::from)?;
 
         let expire_at = now_sec() + DEFAULT_EXPIRATION_TIMEOUT;
 
@@ -293,8 +294,8 @@ impl TonClient {
                 let mut gifts: Vec<ton_wallet::Gift> = vec![];
                 for item in transaction.outputs {
                     let flags = item.output_type.unwrap_or_default();
-                    let destination =
-                        StdAddr::from_str(&item.recipient_address.0).map_err(anyhow::Error::from)?;
+                    let destination = StdAddr::from_str(&item.recipient_address.0)
+                        .map_err(anyhow::Error::from)?;
                     let amount = item
                         .value
                         .to_u128()
@@ -324,8 +325,8 @@ impl TonClient {
                     .outputs
                     .first()
                     .ok_or(TonClientError::RecipientNotFound)?;
-                let destination =
-                    StdAddr::from_str(&recipient.recipient_address.0).map_err(anyhow::Error::from)?;
+                let destination = StdAddr::from_str(&recipient.recipient_address.0)
+                    .map_err(anyhow::Error::from)?;
                 let amount = recipient
                     .value
                     .to_u128()
@@ -355,8 +356,8 @@ impl TonClient {
                     .outputs
                     .first()
                     .ok_or(TonClientError::RecipientNotFound)?;
-                let destination =
-                    StdAddr::from_str(&recipient.recipient_address.0).map_err(anyhow::Error::from)?;
+                let destination = StdAddr::from_str(&recipient.recipient_address.0)
+                    .map_err(anyhow::Error::from)?;
                 let amount = recipient
                     .value
                     .to_u128()
@@ -391,8 +392,8 @@ impl TonClient {
                 let mut gifts: Vec<ton_wallet::Gift> = vec![];
                 for item in transaction.outputs {
                     let flags = item.output_type.unwrap_or_default();
-                    let destination =
-                        StdAddr::from_str(&item.recipient_address.0).map_err(anyhow::Error::from)?;
+                    let destination = StdAddr::from_str(&item.recipient_address.0)
+                        .map_err(anyhow::Error::from)?;
                     let amount = item
                         .value
                         .to_u128()
