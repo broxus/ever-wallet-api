@@ -2,6 +2,7 @@ use bigdecimal::BigDecimal;
 
 use schemars::JsonSchema;
 use serde::Deserialize;
+use tycho_types::abi::{AbiHeaderType, NamedAbiType};
 use uuid::Uuid;
 
 use crate::api::any_schema;
@@ -21,16 +22,16 @@ pub struct FunctionDetailsDTO {
     pub function_name: String,
     pub input_params: Vec<InputParamDTO>,
     #[schemars(schema_with = "any_schema")]
-    pub output_params: Vec<Param>,
+    pub output_params: Vec<NamedAbiType>,
     #[schemars(schema_with = "any_schema")]
-    pub headers: Vec<Param>,
+    pub headers: Vec<AbiHeaderType>,
 }
 
 #[derive(Deserialize, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct InputParamDTO {
     #[schemars(schema_with = "any_schema")]
-    pub param: Param,
+    pub param: NamedAbiType,
     pub value: serde_json::Value,
 }
 

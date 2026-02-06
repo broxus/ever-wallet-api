@@ -1,7 +1,4 @@
 use anyhow::Result;
-use nekoton::transport::models::ExistingContract;
-use nekoton_abi::{ExecutionOutput, FunctionExt, GenTimings, LastTransactionId, TransactionId};
-use ton_block::{Account, ShardAccount};
 
 pub trait ExistingContractExt {
     fn from_shard_account(shard_account: &ShardAccount) -> Result<Option<ExistingContract>>;

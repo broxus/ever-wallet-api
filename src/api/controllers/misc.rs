@@ -2,6 +2,7 @@ use axum::extract::State;
 use axum::Json;
 use metrics::{histogram, increment_counter};
 use tokio::time::Instant;
+use tycho_types::abi::NamedAbiValue;
 use uuid::Uuid;
 
 use crate::api::controllers::*;
