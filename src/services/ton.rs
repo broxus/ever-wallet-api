@@ -885,12 +885,13 @@ impl TonService {
     ) -> Result<Value, Error> {
         let account_addr = HashBytes::from_str(&account_addr).map_err(anyhow::Error::from)?;
 
-        let inputs = inputs.into_iter().map(|x| {
-            NamedAbiValue {
+        let inputs = inputs
+            .into_iter()
+            .map(|x| NamedAbiValue {
                 name: x.param.name,
                 value: x.param.ty,
-            }
-        }).collect();
+            })
+            .collect();
 
         let input_params: Vec<NamedAbiType> = inputs
             .iter()

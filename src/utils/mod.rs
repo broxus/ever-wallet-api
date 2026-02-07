@@ -1,11 +1,6 @@
 use std::hash::BuildHasherDefault;
 
-use anyhow::Result;
 use rustc_hash::FxHasher;
-use ton_block::Deserializable;
-use tycho_types::boc::Boc;
-use tycho_types::cell::CellBuilder;
-use tycho_types::models::Transaction;
 
 pub use self::encoding::*;
 pub use self::existing_contract::*;
@@ -17,6 +12,7 @@ pub use self::tx_context::*;
 mod encoding;
 mod existing_contract;
 pub mod mnemonic;
+pub mod multisig;
 mod pending_messages_queue;
 mod shard_utils;
 mod token_wallet;
@@ -24,17 +20,9 @@ pub mod token_wallets;
 pub mod ton_wallet;
 mod tx_context;
 mod wallets;
-pub mod parsing;
 
 pub type FxDashMap<K, V> = dashmap::DashMap<K, V, BuildHasherDefault<FxHasher>>;
 pub type FxDashSet<K> = dashmap::DashSet<K, BuildHasherDefault<FxHasher>>;
-
-pub fn conver_to_old_transaction(transaction: &Transaction) -> Result<Transaction> {
-    let cell = CellBuilder::build_from(transaction)?;
-    let bytes = Boc::encode(cell);
-    let cell = ton_types::deserialize_tree_of_cells(&mut &*bytes)?;
-    Transaction::construct_from_cell(cell)
-}
 
 macro_rules! declare_function {
     (
@@ -155,4 +143,11 @@ pub mod serde_cell {
         let cell = Boc::decode_base64(&data).map_err(|_| D::Error::custom("Invalid cell"))?;
         Ok(cell)
     }
+}
+
+pub struct InputMessage(pub Vec<NamedAbiValue>);
+
+pub struct ContractCall {
+    pub inputs: Vec<NamedAbiValue>,
+    pub outputs: Vec<NamedAbiValue>,
 }

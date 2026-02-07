@@ -4,7 +4,13 @@ use num_traits::FromPrimitive;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
-use crate::{ton_core::*, utils::ton_wallet::MultisigType};
+use crate::{
+    ton_core::*,
+    utils::{
+        multisig::{models::MultisigTransaction, parsing},
+        ton_wallet::MultisigType,
+    },
+};
 
 #[derive(thiserror::Error, Debug, Copy, Clone)]
 pub enum TransactionError {
@@ -47,15 +53,15 @@ pub async fn parse_ton_transaction(
     let fee = BigDecimal::from_u128(compute_fees(&transaction));
     let value = BigDecimal::from_u128(compute_value(&transaction));
     let balance_change = BigDecimal::from_i128(compute_balance_change(&transaction));
-    let multisig_transaction_id = nekoton::core::parsing::parse_multisig_transaction(
-        MultisigType::SafeMultisigWallet,
-        &transaction,
-    )
-    .and_then(|transaction| match transaction {
-        MultisigTransaction::Confirm(transaction) => Some(transaction.transaction_id as i64),
-        MultisigTransaction::Submit(transaction) => Some(transaction.trans_id as i64),
-        _ => None,
-    });
+    let multisig_transaction_id =
+        parsing::parse_multisig_transaction(MultisigType::SafeMultisigWallet, &transaction)
+            .and_then(|transaction| match transaction {
+                MultisigTransaction::Confirm(transaction) => {
+                    Some(transaction.transaction_id as i64)
+                }
+                MultisigTransaction::Submit(transaction) => Some(transaction.trans_id as i64),
+                _ => None,
+            });
 
     let parsed = match in_msg.info {
         MsgInfo::Int(header) => {

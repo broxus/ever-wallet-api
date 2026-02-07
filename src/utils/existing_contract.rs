@@ -1,4 +1,10 @@
 use anyhow::Result;
+use tycho_types::{
+    abi::{Function, NamedAbiValue},
+    models::ShardAccount,
+};
+
+use crate::models::ExistingContract;
 
 pub trait ExistingContractExt {
     fn from_shard_account(shard_account: &ShardAccount) -> Result<Option<ExistingContract>>;
@@ -6,11 +12,8 @@ pub trait ExistingContractExt {
         shard_account: &Option<ShardAccount>,
     ) -> Result<Option<ExistingContract>>;
 
-    fn run_local(
-        &self,
-        function: &ton_abi::Function,
-        input: &[ton_abi::Token],
-    ) -> Result<Vec<ton_abi::Token>>;
+    fn run_local(&self, function: &Function, input: &[NamedAbiValue])
+        -> Result<Vec<NamedAbiValue>>;
 }
 
 impl ExistingContractExt for ExistingContract {
@@ -37,9 +40,9 @@ impl ExistingContractExt for ExistingContract {
 
     fn run_local(
         &self,
-        function: &ton_abi::Function,
-        input: &[ton_abi::Token],
-    ) -> Result<Vec<ton_abi::Token>> {
+        function: &Function,
+        input: &[NamedAbiValue],
+    ) -> Result<Vec<NamedAbiValue>> {
         let ExecutionOutput {
             tokens,
             result_code,

@@ -18,6 +18,8 @@ use tycho_vm::StackValue;
 
 use crate::models::ExistingContract;
 use crate::ton_core::*;
+use crate::utils::token_wallets::models::TokenWalletVersion;
+use crate::utils::token_wallets::parsing;
 
 pub struct TonSubscriber {
     // tip block timestamp
@@ -252,7 +254,9 @@ impl TonSubscriber {
                     };
                 }
                 None => {
-                    let token_subscription = token_subscription.as_ref().trust_me();
+                    let Some(token_subscription) = token_subscription.as_ref() else {
+                        continue;
+                    };
 
                     match token_subscription.handle_block(
                         &state_subscriptions,
@@ -450,13 +454,13 @@ impl TokenSubscription {
                 _ => continue,
             };
 
-            let parsed_token_transaction = match nekoton::core::parsing::parse_token_transaction(
+            let parsed_token_transaction = match parsing::parse_token_transaction(
                 &transaction,
                 &transaction_info,
                 TokenWalletVersion::Tip3,
             ) {
                 Some(parsed_token_transaction) => Some(parsed_token_transaction),
-                None => nekoton::core::parsing::parse_token_transaction(
+                None => parsing::parse_token_transaction(
                     &transaction,
                     &transaction_info,
                     TokenWalletVersion::OldTip3v4,
@@ -469,7 +473,7 @@ impl TokenSubscription {
                     .ok_or_else(|| TonCoreError::AccountNotExist(account.to_string()))?;
 
                 let (token_wallet_details, ..) = get_token_wallet_details(&token_contract)?;
-                let owner_account = &token_wallet_details.owner_address;
+                let owner_account = &token_wallet_details.owner_address.address;
 
                 if state_subscriptions.get(owner_account).is_some() {
                     let in_msg = match transaction.in_msg.as_ref() {

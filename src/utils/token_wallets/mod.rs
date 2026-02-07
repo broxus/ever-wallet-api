@@ -9,6 +9,7 @@ use crate::utils::declare_function;
 pub const INTERFACE_ID: u32 = 0x2a4ac43e;
 
 pub mod models;
+pub mod parsing;
 
 /// Get token wallet owner address
 ///
