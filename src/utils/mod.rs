@@ -1,6 +1,7 @@
 use std::hash::BuildHasherDefault;
 
 use rustc_hash::FxHasher;
+use tycho_types::abi::NamedAbiValue;
 
 pub use self::encoding::*;
 pub use self::existing_contract::*;

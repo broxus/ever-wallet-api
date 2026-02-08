@@ -1,11 +1,10 @@
 use std::convert::TryFrom;
 
 use anyhow::Result;
-use num_bigint::BigUint;
 use tycho_types::{
     abi::Function,
     cell::{Cell, CellSlice, HashBytes, Load},
-    models::{MsgInfo, OwnedMessage, Transaction},
+    models::{MsgInfo, OwnedMessage, StdAddr, Transaction},
 };
 
 use crate::utils::{
@@ -183,15 +182,15 @@ impl TryFrom<(HashBytes, InputMessage)> for MultisigConfirmTransaction {
 #[derive(UnpackAbiPlain)]
 struct MultisigSubmitTransactionInput {
     #[abi(address)]
-    dest: MsgAddressInt,
+    dest: StdAddr,
     #[abi(with = "uint128_number")]
-    value: BigUint,
+    value: u128,
     #[abi(bool)]
     bounce: bool,
     #[abi(bool, name = "allBalance")]
     all_balance: bool,
     #[abi(cell)]
-    payload: ton_types::Cell,
+    payload: Cell,
 }
 
 #[derive(UnpackAbiPlain)]
@@ -239,8 +238,6 @@ impl TryFrom<(HashBytes, ContractCall)> for MultisigSubmitUpdate {
     type Error = UnpackerError;
 
     fn try_from((custodian, value): (HashBytes, ContractCall)) -> Result<Self, Self::Error> {
-        use nekoton_contracts::wallets::multisig2;
-
         let input: multisig2::SubmitUpdateParams = value.inputs.unpack()?;
         let output: multisig2::SubmitUpdateOutput = value.outputs.unpack()?;
 
