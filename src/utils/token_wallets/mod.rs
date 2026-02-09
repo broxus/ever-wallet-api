@@ -1,7 +1,9 @@
+use anyhow::{anyhow, Result};
+use num_traits::ToPrimitive;
 use tycho_types::{
-    abi::{AbiType, Function, NamedAbiType},
+    abi::{AbiType, AbiValue, Function, NamedAbiType, NamedAbiValue},
     cell::Cell,
-    models::StdAddr,
+    models::{AnyAddr, StdAddr},
 };
 
 use crate::utils::declare_function;
@@ -51,6 +53,88 @@ impl TransferInputs {
             AbiType::Cell.named("payload"),
         ]
     }
+
+    pub fn unpack(values: Vec<NamedAbiValue>) -> Result<Self> {
+        if values.len() != 6 {
+            return Err(anyhow!("Invalid number of arguments"));
+        }
+        let amount_abi_value = &values[0];
+        let recipient_abi_value = &values[1];
+        let deploy_wallet_value_abi_value = &values[2];
+        let remaining_gas_to_abi_value = &values[3];
+        let notify_abi_value = &values[4];
+        let payload_abi_value = &values[5];
+
+        if &*amount_abi_value.name != "amount"
+            && amount_abi_value.value.get_type() != AbiType::Uint(128)
+        {
+            return Err(anyhow!("Invalid amount"));
+        }
+        let AbiValue::Uint(_, amount) = &amount_abi_value.value else {
+            return Err(anyhow!("Invalid amount"));
+        };
+
+        if &*recipient_abi_value.name != "recipient"
+            && recipient_abi_value.value.get_type() != AbiType::Address
+        {
+            return Err(anyhow!("Invalid recipient"));
+        }
+        let AbiValue::Address(recipient) = &recipient_abi_value.value else {
+            return Err(anyhow!("Invalid recipient"));
+        };
+
+        let AnyAddr::Std(recipient) = *recipient.clone() else {
+            return Err(anyhow!("Invalid recipient"));
+        };
+
+        if &*deploy_wallet_value_abi_value.name != "deployWalletValue"
+            && deploy_wallet_value_abi_value.value.get_type() != AbiType::Uint(128)
+        {
+            return Err(anyhow!("Invalid deployWalletValue"));
+        }
+        let AbiValue::Uint(_, deploy_wallet_value) = &deploy_wallet_value_abi_value.value else {
+            return Err(anyhow!("Invalid deployWalletValue"));
+        };
+
+        if &*remaining_gas_to_abi_value.name != "remainingGasTo"
+            && remaining_gas_to_abi_value.value.get_type() != AbiType::Address
+        {
+            return Err(anyhow!("Invalid remainingGasTo"));
+        }
+        let AbiValue::Address(remaining_gas_to) = &remaining_gas_to_abi_value.value else {
+            return Err(anyhow!("Invalid remainingGasTo"));
+        };
+
+        let AnyAddr::Std(remaining_gas_to) = *remaining_gas_to.clone() else {
+            return Err(anyhow!("Invalid remainingGasTo"));
+        };
+
+        if &*notify_abi_value.name != "notify" && notify_abi_value.value.get_type() != AbiType::Bool
+        {
+            return Err(anyhow!("Invalid notify"));
+        }
+        let AbiValue::Bool(notify) = &notify_abi_value.value else {
+            return Err(anyhow!("Invalid notify"));
+        };
+
+        if &*payload_abi_value.name != "payload"
+            && payload_abi_value.value.get_type() != AbiType::Cell
+        {
+            return Err(anyhow!("Invalid payload"));
+        }
+        let AbiValue::Cell(payload) = &payload_abi_value.value else {
+            return Err(anyhow!("Invalid payload"));
+        };
+
+        Ok(Self {
+            amount: amount.to_u128().unwrap(),
+            recipient: recipient,
+            deploy_wallet_value: deploy_wallet_value.to_u128().unwrap(),
+            remaining_gas_to: remaining_gas_to,
+            notify: *notify,
+            payload: payload.clone(),
+        })
+    }
 }
 
 /// Transfer tokens and optionally deploy token wallet for the recipient
@@ -93,6 +177,78 @@ impl TransferToWalletInputs {
             AbiType::Cell.named("payload"),
         ]
     }
+
+    pub fn unpack(values: Vec<NamedAbiValue>) -> Result<Self> {
+        if values.len() != 5 {
+            return Err(anyhow!("Invalid number of arguments"));
+        }
+        let amount_abi_value = &values[0];
+        let recipient_token_wallet_abi_value = &values[1];
+        let remaining_gas_to_abi_value = &values[2];
+        let notify_abi_value = &values[3];
+        let payload_abi_value = &values[4];
+
+        if &*amount_abi_value.name != "amount"
+            && amount_abi_value.value.get_type() != AbiType::Uint(128)
+        {
+            return Err(anyhow!("Invalid amount"));
+        }
+        let AbiValue::Uint(_, amount) = &amount_abi_value.value else {
+            return Err(anyhow!("Invalid amount"));
+        };
+
+        if &*recipient_token_wallet_abi_value.name != "recipientTokenWallet"
+            && recipient_token_wallet_abi_value.value.get_type() != AbiType::Address
+        {
+            return Err(anyhow!("Invalid recipientTokenWallet"));
+        }
+        let AbiValue::Address(recipient_token_wallet) = &recipient_token_wallet_abi_value.value
+        else {
+            return Err(anyhow!("Invalid recipientTokenWallet"));
+        };
+
+        let AnyAddr::Std(recipient_token_wallet) = *recipient_token_wallet.clone() else {
+            return Err(anyhow!("Invalid recipientTokenWallet"));
+        };
+
+        if &*remaining_gas_to_abi_value.name != "remainingGasTo"
+            && remaining_gas_to_abi_value.value.get_type() != AbiType::Address
+        {
+            return Err(anyhow!("Invalid remainingGasTo"));
+        }
+        let AbiValue::Address(remaining_gas_to) = &remaining_gas_to_abi_value.value else {
+            return Err(anyhow!("Invalid remainingGasTo"));
+        };
+
+        let AnyAddr::Std(remaining_gas_to) = *remaining_gas_to.clone() else {
+            return Err(anyhow!("Invalid remainingGasTo"));
+        };
+
+        if &*notify_abi_value.name != "notify" && notify_abi_value.value.get_type() != AbiType::Bool
+        {
+            return Err(anyhow!("Invalid notify"));
+        }
+        let AbiValue::Bool(notify) = &notify_abi_value.value else {
+            return Err(anyhow!("Invalid notify"));
+        };
+
+        if &*payload_abi_value.name != "payload"
+            && payload_abi_value.value.get_type() != AbiType::Cell
+        {
+            return Err(anyhow!("Invalid payload"));
+        }
+        let AbiValue::Cell(payload) = &payload_abi_value.value else {
+            return Err(anyhow!("Invalid payload"));
+        };
+
+        Ok(Self {
+            amount: amount.to_u128().unwrap(),
+            recipient_token_wallet: recipient_token_wallet,
+            remaining_gas_to: remaining_gas_to,
+            notify: *notify,
+            payload: payload.clone(),
+        })
+    }
 }
 
 /// Transfer tokens using token wallet address
@@ -133,6 +289,77 @@ impl AcceptTransferInputs {
             AbiType::Bool.named("notify"),
             AbiType::Cell.named("payload"),
         ]
+    }
+
+    pub fn unpack(values: Vec<NamedAbiValue>) -> Result<Self> {
+        if values.len() != 5 {
+            return Err(anyhow!("Invalid number of arguments"));
+        }
+        let amount_abi_value = &values[0];
+        let sender_abi_value = &values[1];
+        let remaining_gas_to_abi_value = &values[2];
+        let notify_abi_value = &values[3];
+        let payload_abi_value = &values[4];
+
+        if &*amount_abi_value.name != "amount"
+            && amount_abi_value.value.get_type() != AbiType::Uint(128)
+        {
+            return Err(anyhow!("Invalid amount"));
+        }
+        let AbiValue::Uint(_, amount) = &amount_abi_value.value else {
+            return Err(anyhow!("Invalid amount"));
+        };
+
+        if &*sender_abi_value.name != "sender"
+            && sender_abi_value.value.get_type() != AbiType::Address
+        {
+            return Err(anyhow!("Invalid sender"));
+        }
+        let AbiValue::Address(sender) = &sender_abi_value.value else {
+            return Err(anyhow!("Invalid sender"));
+        };
+
+        let AnyAddr::Std(sender) = *sender.clone() else {
+            return Err(anyhow!("Invalid sender"));
+        };
+
+        if &*remaining_gas_to_abi_value.name != "remainingGasTo"
+            && remaining_gas_to_abi_value.value.get_type() != AbiType::Address
+        {
+            return Err(anyhow!("Invalid remainingGasTo"));
+        }
+        let AbiValue::Address(remaining_gas_to) = &remaining_gas_to_abi_value.value else {
+            return Err(anyhow!("Invalid remainingGasTo"));
+        };
+
+        let AnyAddr::Std(remaining_gas_to) = *remaining_gas_to.clone() else {
+            return Err(anyhow!("Invalid remainingGasTo"));
+        };
+
+        if &*notify_abi_value.name != "notify" && notify_abi_value.value.get_type() != AbiType::Bool
+        {
+            return Err(anyhow!("Invalid notify"));
+        }
+        let AbiValue::Bool(notify) = &notify_abi_value.value else {
+            return Err(anyhow!("Invalid notify"));
+        };
+
+        if &*payload_abi_value.name != "payload"
+            && payload_abi_value.value.get_type() != AbiType::Cell
+        {
+            return Err(anyhow!("Invalid payload"));
+        }
+        let AbiValue::Cell(payload) = &payload_abi_value.value else {
+            return Err(anyhow!("Invalid payload"));
+        };
+
+        Ok(Self {
+            amount: amount.to_u128().unwrap(),
+            sender: sender,
+            remaining_gas_to: remaining_gas_to,
+            notify: *notify,
+            payload: payload.clone(),
+        })
     }
 }
 
@@ -176,6 +403,62 @@ impl AcceptMintInputs {
             AbiType::Cell.named("payload"),
         ]
     }
+
+    pub fn unpack(values: Vec<NamedAbiValue>) -> Result<Self> {
+        if values.len() != 4 {
+            return Err(anyhow!("Invalid number of arguments"));
+        }
+        let amount_abi_value = &values[0];
+        let remaining_gas_to_abi_value = &values[1];
+        let notify_abi_value = &values[2];
+        let payload_abi_value = &values[3];
+
+        if &*amount_abi_value.name != "amount"
+            && amount_abi_value.value.get_type() != AbiType::Uint(128)
+        {
+            return Err(anyhow!("Invalid amount"));
+        }
+        let AbiValue::Uint(_, amount) = &amount_abi_value.value else {
+            return Err(anyhow!("Invalid amount"));
+        };
+
+        if &*remaining_gas_to_abi_value.name != "remainingGasTo"
+            && remaining_gas_to_abi_value.value.get_type() != AbiType::Address
+        {
+            return Err(anyhow!("Invalid remainingGasTo"));
+        }
+        let AbiValue::Address(remaining_gas_to) = &remaining_gas_to_abi_value.value else {
+            return Err(anyhow!("Invalid remainingGasTo"));
+        };
+
+        let AnyAddr::Std(remaining_gas_to) = *remaining_gas_to.clone() else {
+            return Err(anyhow!("Invalid remainingGasTo"));
+        };
+
+        if &*notify_abi_value.name != "notify" && notify_abi_value.value.get_type() != AbiType::Bool
+        {
+            return Err(anyhow!("Invalid notify"));
+        }
+        let AbiValue::Bool(notify) = &notify_abi_value.value else {
+            return Err(anyhow!("Invalid notify"));
+        };
+
+        if &*payload_abi_value.name != "payload"
+            && payload_abi_value.value.get_type() != AbiType::Cell
+        {
+            return Err(anyhow!("Invalid payload"));
+        }
+        let AbiValue::Cell(payload) = &payload_abi_value.value else {
+            return Err(anyhow!("Invalid payload"));
+        };
+
+        Ok(Self {
+            amount: amount.to_u128().unwrap(),
+            remaining_gas_to: remaining_gas_to,
+            notify: *notify,
+            payload: payload.clone(),
+        })
+    }
 }
 
 /// Accept minted tokens from root
@@ -199,6 +482,12 @@ pub fn accept_mint() -> &'static Function {
 }
 
 pub mod burnable {
+    use num_traits::ToPrimitive;
+    use tycho_types::{
+        abi::{AbiValue, NamedAbiValue},
+        models::AnyAddr,
+    };
+
     use super::*;
 
     #[derive(Debug, Clone)]
@@ -217,6 +506,67 @@ pub mod burnable {
                 AbiType::Address.named("callbackTo"),
                 AbiType::Cell.named("payload"),
             ]
+        }
+
+        pub fn unpack(values: Vec<NamedAbiValue>) -> Result<Self> {
+            if values.len() != 4 {
+                return Err(anyhow!("Invalid number of arguments"));
+            }
+            let amount_abi_value = &values[0];
+            let remaining_gas_to_abi_value = &values[1];
+            let callback_to_abi_value = &values[2];
+            let payload_abi_value = &values[3];
+
+            if &*amount_abi_value.name != "amount"
+                && amount_abi_value.value.get_type() != AbiType::Uint(128)
+            {
+                return Err(anyhow!("Invalid amount"));
+            }
+            let AbiValue::Uint(_, amount) = &amount_abi_value.value else {
+                return Err(anyhow!("Invalid amount"));
+            };
+
+            if &*remaining_gas_to_abi_value.name != "remainingGasTo"
+                && remaining_gas_to_abi_value.value.get_type() != AbiType::Address
+            {
+                return Err(anyhow!("Invalid remainingGasTo"));
+            }
+            let AbiValue::Address(remaining_gas_to) = &remaining_gas_to_abi_value.value else {
+                return Err(anyhow!("Invalid remainingGasTo"));
+            };
+
+            let AnyAddr::Std(remaining_gas_to) = *remaining_gas_to.clone() else {
+                return Err(anyhow!("Invalid remainingGasTo"));
+            };
+
+            if &*callback_to_abi_value.name != "callbackTo"
+                && callback_to_abi_value.value.get_type() != AbiType::Address
+            {
+                return Err(anyhow!("Invalid callbackTo"));
+            }
+            let AbiValue::Address(callback_to) = &callback_to_abi_value.value else {
+                return Err(anyhow!("Invalid callbackTo"));
+            };
+
+            let AnyAddr::Std(callback_to) = *callback_to.clone() else {
+                return Err(anyhow!("Invalid callback_to"));
+            };
+
+            if &*payload_abi_value.name != "payload"
+                && payload_abi_value.value.get_type() != AbiType::Cell
+            {
+                return Err(anyhow!("Invalid payload"));
+            }
+            let AbiValue::Cell(payload) = &payload_abi_value.value else {
+                return Err(anyhow!("Invalid payload"));
+            };
+
+            Ok(Self {
+                amount: amount.to_u128().unwrap(),
+                remaining_gas_to: remaining_gas_to,
+                callback_to: callback_to,
+                payload: payload.clone(),
+            })
         }
     }
 
@@ -254,6 +604,48 @@ pub fn mint() -> &'static Function {
             AbiType::Bool.named("notify"),
             AbiType::Cell.named("payload"),
         ],
+        outputs: Vec::new(),
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct AcceptBurnInputs {
+    pub amount: u128,
+    pub wallet_owner: StdAddr,
+    pub remaining_gas_to: StdAddr,
+    pub callback_to: StdAddr,
+    pub payload: ton_types::Cell,
+}
+
+impl AcceptBurnInputs {
+    fn abi_type() -> Vec<NamedAbiType> {
+        vec![
+            AbiType::Uint(128).named("amount"),
+            AbiType::Address.named("walletOwner"),
+            AbiType::Address.named("remainingGasTo"),
+            AbiType::Address.named("callbackTo"),
+            AbiType::Cell.named("payload"),
+        ]
+    }
+}
+
+/// Called by token wallet on burn
+///
+/// # Type
+/// Internal method
+///
+/// # Inputs
+/// * `amount: uint128` - amount of tokens
+/// * `walletOwner: address` - token wallet owner
+/// * `remainingGasTo: address` - address where to send excess gas
+/// * `callbackTo: address` - address where to send callback
+/// * `payload: cell` - arbitrary payload
+///
+pub fn accept_burn() -> &'static Function {
+    declare_function! {
+        function_id: 0x192B51B1,
+        name: "acceptBurn",
+        inputs: AcceptBurnInputs::abi_type(),
         outputs: Vec::new(),
     }
 }

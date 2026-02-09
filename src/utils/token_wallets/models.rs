@@ -4,7 +4,7 @@ use num_bigint::BigUint;
 use serde::{Deserialize, Serialize};
 use tycho_types::{
     cell::{Cell, HashBytes},
-    models::{OrdinaryTxInfo, StdAddr, Transaction},
+    models::StdAddr,
 };
 
 use crate::utils::{serde_address, serde_cell, serde_string};
@@ -16,18 +16,18 @@ pub enum TokenWalletTransaction {
     OutgoingTransfer(TokenOutgoingTransfer),
     SwapBack(TokenSwapBack),
     #[serde(with = "serde_string")]
-    Accept(BigUint),
+    Accept(u128),
     #[serde(with = "serde_string")]
-    TransferBounced(BigUint),
+    TransferBounced(u128),
     #[serde(with = "serde_string")]
-    SwapBackBounced(BigUint),
+    SwapBackBounced(u128),
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct TokenIncomingTransfer {
     #[serde(with = "serde_string")]
-    pub tokens: BigUint,
+    pub tokens: u128,
     /// Not the address of the token wallet, but the address of its owner
     #[serde(with = "serde_address")]
     pub sender_address: StdAddr,
@@ -37,7 +37,7 @@ pub struct TokenIncomingTransfer {
 pub struct TokenOutgoingTransfer {
     pub to: TransferRecipient,
     #[serde(with = "serde_string")]
-    pub tokens: BigUint,
+    pub tokens: u128,
     /// token transfer payload
     #[serde(with = "serde_cell")]
     pub payload: Cell,
@@ -55,7 +55,7 @@ pub enum TransferRecipient {
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
 pub struct TokenSwapBack {
     #[serde(with = "serde_string")]
-    pub tokens: BigUint,
+    pub tokens: u128,
     #[serde(with = "serde_address")]
     pub callback_address: StdAddr,
     /// ETH address or something else
@@ -96,7 +96,7 @@ pub struct RootTokenContractDetails {
     #[serde(with = "serde_address")]
     pub owner_address: StdAddr,
     #[serde(with = "serde_string")]
-    pub total_supply: BigUint,
+    pub total_supply: u128,
 }
 
 #[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]

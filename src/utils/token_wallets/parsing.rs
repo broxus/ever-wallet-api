@@ -1,10 +1,10 @@
 use std::{convert::TryFrom, sync::OnceLock};
 
 use anyhow::Result;
-use num_bigint::BigUint;
 use tycho_types::{
     abi::Function,
-    models::{OrdinaryTxInfo, Transaction},
+    cell::Load,
+    models::{MsgInfo, OrdinaryTxInfo, OwnedMessage, Transaction},
 };
 
 use crate::utils::{
@@ -28,35 +28,55 @@ pub fn parse_token_transaction(
         return None;
     }
 
-    let in_msg = tx.in_msg.as_ref()?.read_struct().ok()?;
+    let in_msg_cell = tx.in_msg.as_ref()?;
 
-    let mut body = in_msg.body()?;
-    let function_id = read_function_id(&body).ok()?;
+    let Ok(mut slice) = in_msg_cell.as_slice() else {
+        return None;
+    };
+    let Ok(in_msg) = OwnedMessage::load_from(&mut slice) else {
+        return None;
+    };
 
-    let header = in_msg.int_header()?;
+    let body = in_msg.body;
+    let Ok(mut body_slice) = body.1.as_slice() else {
+        return None;
+    };
+
+    let Ok(function_id) = body_slice.get_u32(0) else {
+        return None;
+    };
+
+    let MsgInfo::Int(info) = in_msg.info else {
+        return None;
+    };
 
     let functions = TokenWalletFunctions::for_version(version);
 
-    if header.bounced {
-        body.move_by(32).ok()?;
-        let function_id = read_function_id(&body).ok()?;
-        body.move_by(32).ok()?;
+    if info.bounced {
+        body_slice.skip_first(32, 0).ok()?;
+        let Ok(function_id) = body_slice.get_u32(0) else {
+            return None;
+        };
+        body_slice.skip_first(32, 0).ok()?;
 
         if function_id == functions.accept_transfer.input_id {
             return Some(TokenWalletTransaction::TransferBounced(
-                body.get_next_u128().ok()?.into(),
+                body_slice.load_u128().ok()?.into(),
             ));
         }
 
         if function_id == functions.accept_burn.input_id {
             Some(TokenWalletTransaction::SwapBackBounced(
-                body.get_next_u128().ok()?.into(),
+                body_slice.load_u128().ok()?.into(),
             ))
         } else {
             None
         }
     } else if function_id == functions.accept_mint.input_id {
-        let inputs = functions.accept_mint.decode_input(body, true, false).ok()?;
+        let inputs = functions
+            .accept_mint
+            .decode_internal_input(body_slice)
+            .ok()?;
 
         Accept::try_from((InputMessage(inputs), version))
             .map(|Accept { tokens }| TokenWalletTransaction::Accept(tokens))
@@ -64,7 +84,7 @@ pub fn parse_token_transaction(
     } else if function_id == functions.transfer_to_wallet.input_id {
         let inputs = functions
             .transfer_to_wallet
-            .decode_input(body, true, false)
+            .decode_internal_input(body_slice)
             .ok()?;
 
         TokenOutgoingTransfer::try_from((
@@ -75,7 +95,7 @@ pub fn parse_token_transaction(
         .map(TokenWalletTransaction::OutgoingTransfer)
         .ok()
     } else if function_id == functions.transfer.input_id {
-        let inputs = functions.transfer.decode_input(body, true, false).ok()?;
+        let inputs = functions.transfer.decode_internal_input(body_slice).ok()?;
 
         TokenOutgoingTransfer::try_from((
             InputMessage(inputs),
@@ -87,14 +107,14 @@ pub fn parse_token_transaction(
     } else if function_id == functions.accept_transfer.input_id {
         let inputs = functions
             .accept_transfer
-            .decode_input(body, true, false)
+            .decode_internal_input(body_slice)
             .ok()?;
 
         TokenIncomingTransfer::try_from((InputMessage(inputs), version))
             .map(TokenWalletTransaction::IncomingTransfer)
             .ok()
     } else if function_id == functions.burn.input_id {
-        let inputs = functions.burn.decode_input(body, true, false).ok()?;
+        let inputs = functions.burn.decode_internal_input(body_slice).ok()?;
 
         TokenSwapBack::try_from((InputMessage(inputs), version))
             .map(TokenWalletTransaction::SwapBack)
@@ -133,7 +153,7 @@ impl TokenWalletFunctions {
                     transfer_to_wallet: token_wallets::transfer_to_wallet(),
                     accept_transfer: token_wallets::accept_transfer(),
                     burn: token_wallets::burnable::burn(),
-                    accept_burn: root_token_contract::accept_burn(),
+                    accept_burn: token_wallets::accept_burn(),
                 })
             }
         }
@@ -149,7 +169,8 @@ impl TryFrom<(InputMessage, TokenWalletVersion)> for TokenSwapBack {
                 return Err(UnpackerError::InvalidAbi);
             }
             TokenWalletVersion::Tip3 => {
-                let input: token_wallets::burnable::BurnInputs = value.0.unpack()?;
+                let input = token_wallets::burnable::BurnInputs::unpack(value.0)
+                    .map_err(|_| UnpackerError::InvalidAbi)?;
 
                 Self {
                     tokens: input.amount,
@@ -162,7 +183,7 @@ impl TryFrom<(InputMessage, TokenWalletVersion)> for TokenSwapBack {
 }
 
 struct Accept {
-    tokens: BigUint,
+    tokens: u128,
 }
 
 impl TryFrom<(InputMessage, TokenWalletVersion)> for Accept {
@@ -174,7 +195,8 @@ impl TryFrom<(InputMessage, TokenWalletVersion)> for Accept {
                 return Err(UnpackerError::InvalidAbi);
             }
             TokenWalletVersion::Tip3 => {
-                let input: token_wallets::AcceptMintInputs = value.0.unpack()?;
+                let input = token_wallets::AcceptMintInputs::unpack(value.0)
+                    .map_err(|_| UnpackerError::InvalidAbi)?;
                 Self {
                     tokens: input.amount,
                 }
@@ -202,7 +224,8 @@ impl TryFrom<(InputMessage, TransferType, TokenWalletVersion)> for TokenOutgoing
                 match transfer_type {
                     // "transfer"
                     TransferType::ByOwnerWalletAddress => {
-                        let input: token_wallets::TransferInputs = value.0.unpack()?;
+                        let input = token_wallets::TransferInputs::unpack(value.0)
+                            .map_err(|_| UnpackerError::InvalidAbi)?;
                         Self {
                             to: TransferRecipient::OwnerWallet(input.recipient),
                             tokens: input.amount,
@@ -211,7 +234,8 @@ impl TryFrom<(InputMessage, TransferType, TokenWalletVersion)> for TokenOutgoing
                     }
                     // "transferToWallet"
                     TransferType::ByTokenWalletAddress => {
-                        let input: token_wallets::TransferToWalletInputs = value.0.unpack()?;
+                        let input = token_wallets::TransferToWalletInputs::unpack(value.0)
+                            .map_err(|_| UnpackerError::InvalidAbi)?;
                         Self {
                             to: TransferRecipient::TokenWallet(input.recipient_token_wallet),
                             tokens: input.amount,
@@ -233,8 +257,8 @@ impl TryFrom<(InputMessage, TokenWalletVersion)> for TokenIncomingTransfer {
                 return Err(UnpackerError::InvalidAbi);
             }
             TokenWalletVersion::Tip3 => {
-                let input: token_wallets::AcceptTransferInputs = value.0.unpack()?;
-
+                let input = token_wallets::AcceptTransferInputs::unpack(value.0)
+                    .map_err(|_| UnpackerError::InvalidAbi)?;
                 Self {
                     tokens: input.amount,
                     sender_address: input.sender,
