@@ -118,9 +118,11 @@ pub fn get_custodians() -> &'static Function {
 }
 
 pub mod safe_multisig {
+    use crate::utils::WithAbiTypePlain;
+
     use super::*;
 
-    #[derive(Debug, Clone, Copy)]
+    #[derive(Debug, Clone, Copy, WithAbiType )]
     pub struct SafeMultisigParams {
         pub max_queued_transactions: u8,
         pub max_custodian_count: u8,
@@ -129,17 +131,7 @@ pub mod safe_multisig {
         pub required_txn_confirms: u8,
     }
 
-    impl SafeMultisigParams {
-        fn abi_type() -> Vec<NamedAbiType> {
-            vec![
-                AbiType::Uint(8).named("maxQueuedTransactions"),
-                AbiType::Uint(8).named("maxCustodianCount"),
-                AbiType::Uint(64).named("expirationTime"),
-                AbiType::Uint(128).named("minValue"),
-                AbiType::Uint(8).named("requiredTxnConfirms"),
-            ]
-        }
-    }
+    impl WithAbiTypePlain for SafeMultisigParams {}
 
     pub fn get_parameters() -> &'static Function {
         declare_function! {
@@ -147,15 +139,17 @@ pub mod safe_multisig {
             header: [pubkey, time, expire],
             name: "getParameters",
             inputs: vec![] as Vec<NamedAbiType>,
-            outputs: SafeMultisigParams::abi_type(),
+            outputs: SafeMultisigParams::abi_type_plain(),
         }
     }
 }
 
 pub mod set_code_multisig {
+    use crate::utils::WithAbiTypePlain;
+
     use super::*;
 
-    #[derive(Debug, Clone, Copy)]
+    #[derive(Debug, Clone, Copy, WithAbiType )]
     pub struct SetCodeMultisigParams {
         pub max_queued_transactions: u8,
         pub max_custodian_count: u8,
@@ -165,18 +159,7 @@ pub mod set_code_multisig {
         pub required_upd_confirms: u8,
     }
 
-    impl SetCodeMultisigParams {
-        fn abi_type() -> Vec<NamedAbiType> {
-            vec![
-                AbiType::Uint(8).named("maxQueuedTransactions"),
-                AbiType::Uint(8).named("maxCustodianCount"),
-                AbiType::Uint(64).named("expirationTime"),
-                AbiType::Uint(128).named("minValue"),
-                AbiType::Uint(8).named("requiredTxnConfirms"),
-                AbiType::Uint(8).named("requiredUpdConfirms"),
-            ]
-        }
-    }
+    impl WithAbiTypePlain for SetCodeMultisigParams {}
 
     pub fn get_parameters() -> &'static Function {
         declare_function! {
@@ -184,7 +167,7 @@ pub mod set_code_multisig {
             header: [pubkey, time, expire],
             name: "getParameters",
             inputs: vec![] as Vec<NamedAbiType>,
-            outputs: SetCodeMultisigParams::abi_type(),
+            outputs: SetCodeMultisigParams::abi_type_plain(),
         }
     }
 }

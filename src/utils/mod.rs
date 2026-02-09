@@ -1,7 +1,13 @@
 use std::hash::BuildHasherDefault;
 
 use rustc_hash::FxHasher;
+use tycho_types::abi::AbiType;
+use tycho_types::abi::AbiValue;
+use tycho_types::abi::FromAbi;
+use tycho_types::abi::IntoAbi;
+use tycho_types::abi::NamedAbiType;
 use tycho_types::abi::NamedAbiValue;
+use tycho_types::abi::WithAbiType;
 
 pub use self::encoding::*;
 pub use self::existing_contract::*;
@@ -179,4 +185,42 @@ pub struct InputMessage(pub Vec<NamedAbiValue>);
 pub struct ContractCall {
     pub inputs: Vec<NamedAbiValue>,
     pub outputs: Vec<NamedAbiValue>,
+}
+
+pub trait IntoAbiPlain: IntoAbi {
+
+    fn into_abi_plain(self) -> Vec<NamedAbiValue> 
+    where
+        Self: Sized
+        {
+        let tuple = self.into_abi();
+        match tuple {
+            AbiValue::Tuple(tuple) => tuple,
+            _ => vec![],
+        }
+
+    }
+    fn as_abi_plain(&self) -> Vec<NamedAbiValue> {
+        let tuple = self.as_abi();
+        match tuple {
+            AbiValue::Tuple(tuple) => tuple,
+            _ => vec![],
+        }
+    }
+}
+
+pub trait FromAbiPlain: FromAbi {
+    fn from_abi_plain(value: Vec<NamedAbiValue>) -> anyhow::Result<Self> {
+        Self::from_abi(AbiValue::Tuple(value))
+    }
+}
+
+pub trait WithAbiTypePlain: WithAbiType {
+    fn abi_type_plain() -> Vec<NamedAbiType> {
+        match Self::abi_type()
+        {  
+        AbiType::Tuple(tuple) => tuple.into_iter().cloned().collect(),
+        _ => vec![],
+        }
+    }
 }

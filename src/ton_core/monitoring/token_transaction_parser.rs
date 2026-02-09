@@ -1,6 +1,5 @@
 use anyhow::Result;
 use bigdecimal::BigDecimal;
-use num_bigint::BigUint;
 use tycho_types::cell::Cell;
 use uuid::Uuid;
 
@@ -53,7 +52,7 @@ pub async fn parse_token_transaction(
 
 async fn internal_transfer_send(
     token_transaction_ctx: TokenTransactionContext,
-    tokens: BigUint,
+    tokens: u128,
     payload_cell: Option<Cell>,
     parse_ctx: ParseContext<'_>,
 ) -> Result<CreateTokenTransaction> {
@@ -145,7 +144,7 @@ async fn internal_transfer_receive(
 
 async fn internal_transfer_bounced(
     token_transaction_ctx: TokenTransactionContext,
-    tokens: BigUint,
+    tokens: u128,
     parse_ctx: ParseContext<'_>,
 ) -> Result<CreateTokenTransaction> {
     let address = StdAddr::new(0, token_transaction_ctx.account);
@@ -186,7 +185,7 @@ async fn internal_transfer_bounced(
 
 async fn internal_transfer_mint(
     token_transaction_ctx: TokenTransactionContext,
-    tokens: BigUint,
+    tokens: u128,
     parse_ctx: ParseContext<'_>,
 ) -> Result<CreateTokenTransaction> {
     let address = StdAddr::new(0, token_transaction_ctx.account);

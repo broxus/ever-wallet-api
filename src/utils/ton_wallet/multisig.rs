@@ -11,7 +11,7 @@ use tycho_types::{
 };
 use tycho_util::time::Clock;
 
-use crate::utils::ton_wallet::{MessageFlags, MultisigPendingTransaction, MultisigPendingUpdate};
+use crate::utils::{IntoAbiPlain, ton_wallet::{MessageFlags, MultisigPendingTransaction, MultisigPendingUpdate}};
 
 use super::{Gift, TonWalletDetails};
 
@@ -188,7 +188,7 @@ pub fn prepare_code_update(
             req_confirms: None,
             lifetime: None,
         }
-        .abi_values(),
+        .into_abi_plain(),
     )
 }
 
@@ -210,7 +210,7 @@ pub fn prepare_confirm_update(
         address,
         expire_at,
         multisig2::confirm_update(),
-        multisig2::ConfirmUpdateParams { update_id }.abi_values(),
+        multisig2::ConfirmUpdateParams { update_id }.into_abi_plain(),
     )
 }
 
@@ -233,7 +233,7 @@ pub fn prepare_execute_update(
         address,
         expire_at,
         multisig2::execute_update(),
-        multisig2::ExecuteUpdateParams { update_id, code }.abi_values(),
+        multisig2::ExecuteUpdateParams { update_id, code }.into_abi_plain(),
     )
 }
 

@@ -2,14 +2,13 @@ use anyhow::{anyhow, Result};
 use num_traits::ToPrimitive;
 use serde::{Deserialize, Serialize};
 use tycho_types::{
-    abi::{AbiType, AbiValue, NamedAbiValue},
+    abi::{AbiValue, FromAbi, IntoAbi, NamedAbiValue},
     cell::{Cell, HashBytes},
-    models::{AnyAddr, StdAddr},
+    models::StdAddr,
 };
 
 use crate::utils::{
-    serde_address, serde_cell, serde_string, ton_wallet::multisig::UnpackerError,
-    wallets::multisig2, ContractCall, InputMessage,
+    ContractCall, FromAbiPlain, InputMessage, IntoAbiPlain, serde_address, serde_cell, serde_string, ton_wallet::multisig::UnpackerError, wallets::multisig2
 };
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -23,7 +22,7 @@ pub enum MultisigTransaction {
     ExecuteUpdate(MultisigExecuteUpdate),
 }
 
-#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize, Copy)]
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize, Copy, IntoAbi, FromAbi)]
 #[serde(rename_all = "camelCase")]
 pub struct MultisigConfirmTransaction {
     pub custodian: HashBytes,
@@ -32,30 +31,33 @@ pub struct MultisigConfirmTransaction {
     pub transaction_id: u64,
 }
 
-impl MultisigConfirmTransaction {
-    pub fn unpack(values: Vec<NamedAbiValue>) -> Result<Self> {
-        if values.len() != 1 {
-            return Err(anyhow!("Invalid number of arguments"));
-        }
+impl IntoAbiPlain for MultisigConfirmTransaction {
+    fn into_abi_plain(self) -> Vec<NamedAbiValue> {
+        vec![
+            AbiValue::Uint(64,self.transaction_id.into()).named("transactionId")
+        ]
+    }
+    fn as_abi_plain(&self) -> Vec<NamedAbiValue> {
+        vec![
+            AbiValue::Uint(64,self.transaction_id.into()).named("transactionId")
+        ]
+    }
 
-        let transaction_id_abi_value = &values[0];
-        if &*transaction_id_abi_value.name != "transactionId"
-            && transaction_id_abi_value.value.get_type() != AbiType::Uint(64)
-        {
-            return Err(anyhow!("Invalid transactionId"));
-        }
-        let AbiValue::Uint(_, transaction_id) = &transaction_id_abi_value.value else {
+}
+impl FromAbiPlain for MultisigConfirmTransaction {
+    fn from_abi_plain(value: Vec<NamedAbiValue>) -> anyhow::Result<Self> {
+        let AbiValue::Uint(_, transaction_id) = &value[0].value else {
             return Err(anyhow!("Invalid transactionId"));
         };
 
-        Ok(Self {
+        Ok(MultisigConfirmTransaction {
             custodian: Default::default(),
-            transaction_id: transaction_id.to_u64().unwrap(),
+            transaction_id: transaction_id.to_u64().ok_or(anyhow!("Invalid transaction id"))?,
         })
     }
 }
 
-#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize, IntoAbi, FromAbi)]
 #[serde(rename_all = "camelCase")]
 pub struct MultisigSubmitTransaction {
     #[serde(with = "serde_string")]
@@ -77,8 +79,10 @@ pub struct MultisigSubmitTransaction {
     #[serde(with = "serde_string")]
     pub trans_id: u64,
 }
+impl IntoAbiPlain for MultisigSubmitTransaction {}
+impl FromAbiPlain for MultisigSubmitTransaction {}
 
-#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize, IntoAbi, FromAbi)]
 pub struct MultisigSendTransaction {
     #[serde(with = "serde_address")]
     pub dest: StdAddr,
@@ -93,73 +97,8 @@ pub struct MultisigSendTransaction {
     #[serde(with = "serde_cell")]
     pub payload: Cell,
 }
-
-impl MultisigSendTransaction {
-    pub fn unpack(values: Vec<NamedAbiValue>) -> Result<Self> {
-        if values.len() != 5 {
-            return Err(anyhow!("Invalid number of arguments"));
-        }
-
-        let dest_abi_value = &values[0];
-        let value_abi_value = &values[1];
-        let bounce_abi_value = &values[2];
-        let flags_abi_value = &values[3];
-        let payload_abi_value = &values[4];
-
-        if &*dest_abi_value.name != "dest" && dest_abi_value.value.get_type() != AbiType::Address {
-            return Err(anyhow!("Invalid dest"));
-        }
-        let AbiValue::Address(dest) = &dest_abi_value.value else {
-            return Err(anyhow!("Invalid dest"));
-        };
-
-        let AnyAddr::Std(dest) = *dest.clone() else {
-            return Err(anyhow!("Invalid dest"));
-        };
-
-        if &*value_abi_value.name != "value"
-            && value_abi_value.value.get_type() != AbiType::Uint(128)
-        {
-            return Err(anyhow!("Invalid value"));
-        }
-        let AbiValue::Uint(_, value) = &value_abi_value.value else {
-            return Err(anyhow!("Invalid value"));
-        };
-
-        if &*bounce_abi_value.name != "bounce" && bounce_abi_value.value.get_type() != AbiType::Bool
-        {
-            return Err(anyhow!("Invalid bounce"));
-        }
-        let AbiValue::Bool(bounce) = &bounce_abi_value.value else {
-            return Err(anyhow!("Invalid bounce"));
-        };
-
-        if &*flags_abi_value.name != "flags" && flags_abi_value.value.get_type() != AbiType::Uint(8)
-        {
-            return Err(anyhow!("Invalid flags"));
-        }
-        let AbiValue::Uint(_, flags) = &flags_abi_value.value else {
-            return Err(anyhow!("Invalid flags"));
-        };
-
-        if &*payload_abi_value.name != "payload"
-            && payload_abi_value.value.get_type() != AbiType::Cell
-        {
-            return Err(anyhow!("Invalid payload"));
-        }
-        let AbiValue::Cell(payload) = &payload_abi_value.value else {
-            return Err(anyhow!("Invalid payload"));
-        };
-
-        Ok(Self {
-            dest,
-            value: value.to_u128().unwrap(),
-            bounce: *bounce,
-            flags: flags.to_u8().unwrap(),
-            payload: payload.clone(),
-        })
-    }
-}
+impl IntoAbiPlain for MultisigSendTransaction {}
+impl FromAbiPlain for MultisigSendTransaction {}
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
 pub struct MultisigSubmitUpdate {
@@ -240,7 +179,7 @@ impl TryFrom<(HashBytes, InputMessage)> for MultisigConfirmTransaction {
 
     fn try_from((custodian, value): (HashBytes, InputMessage)) -> Result<Self, Self::Error> {
         let output =
-            MultisigConfirmTransaction::unpack(value.0).map_err(|_| UnpackerError::InvalidAbi)?;
+            MultisigConfirmTransaction::from_abi_plain(value.0).map_err(|_| UnpackerError::InvalidAbi)?;
         Ok(Self {
             custodian,
             transaction_id: output.transaction_id,
@@ -248,6 +187,8 @@ impl TryFrom<(HashBytes, InputMessage)> for MultisigConfirmTransaction {
     }
 }
 
+
+#[derive(Clone, Debug, FromAbi)]
 struct MultisigSubmitTransactionInput {
     dest: StdAddr,
     value: u128,
@@ -256,107 +197,23 @@ struct MultisigSubmitTransactionInput {
     payload: Cell,
 }
 
-impl MultisigSubmitTransactionInput {
-    pub fn unpack(values: Vec<NamedAbiValue>) -> Result<Self> {
-        if values.len() != 5 {
-            return Err(anyhow!("Invalid number of arguments"));
-        }
+impl FromAbiPlain for MultisigSubmitTransactionInput {}
 
-        let dest_abi_value = &values[0];
-        let value_abi_value = &values[1];
-        let bounce_abi_value = &values[2];
-        let all_balance_abi_value = &values[3];
-        let payload_abi_value = &values[4];
 
-        if &*dest_abi_value.name != "dest" && dest_abi_value.value.get_type() != AbiType::Address {
-            return Err(anyhow!("Invalid dest"));
-        }
-        let AbiValue::Address(dest) = &dest_abi_value.value else {
-            return Err(anyhow!("Invalid dest"));
-        };
-
-        let AnyAddr::Std(dest) = *dest.clone() else {
-            return Err(anyhow!("Invalid dest"));
-        };
-
-        if &*value_abi_value.name != "value"
-            && value_abi_value.value.get_type() != AbiType::Uint(128)
-        {
-            return Err(anyhow!("Invalid value"));
-        }
-        let AbiValue::Uint(_, value) = &value_abi_value.value else {
-            return Err(anyhow!("Invalid value"));
-        };
-
-        if &*bounce_abi_value.name != "bounce" && bounce_abi_value.value.get_type() != AbiType::Bool
-        {
-            return Err(anyhow!("Invalid bounce"));
-        }
-        let AbiValue::Bool(bounce) = &bounce_abi_value.value else {
-            return Err(anyhow!("Invalid bounce"));
-        };
-
-        if &*all_balance_abi_value.name != "allBalance"
-            && all_balance_abi_value.value.get_type() != AbiType::Bool
-        {
-            return Err(anyhow!("Invalid allBalance"));
-        }
-        let AbiValue::Bool(all_balance) = &all_balance_abi_value.value else {
-            return Err(anyhow!("Invalid allBalance"));
-        };
-
-        if &*payload_abi_value.name != "payload"
-            && payload_abi_value.value.get_type() != AbiType::Cell
-        {
-            return Err(anyhow!("Invalid payload"));
-        }
-        let AbiValue::Cell(payload) = &payload_abi_value.value else {
-            return Err(anyhow!("Invalid payload"));
-        };
-
-        Ok(Self {
-            dest,
-            value: value.to_u128().unwrap(),
-            bounce: *bounce,
-            all_balance: *all_balance,
-            payload: payload.clone(),
-        })
-    }
-}
-
+#[derive(Clone, Debug, FromAbi)]
 struct MultisigSubmitTransactionOutput {
     trans_id: u64,
 }
 
-impl MultisigSubmitTransactionOutput {
-    pub fn unpack(values: Vec<NamedAbiValue>) -> Result<Self> {
-        if values.len() != 1 {
-            return Err(anyhow!("Invalid number of arguments"));
-        }
-
-        let trans_id_abi_value = &values[0];
-        if &*trans_id_abi_value.name != "transId"
-            && trans_id_abi_value.value.get_type() != AbiType::Uint(64)
-        {
-            return Err(anyhow!("Invalid transId"));
-        }
-        let AbiValue::Uint(_, trans_id) = &trans_id_abi_value.value else {
-            return Err(anyhow!("Invalid transId"));
-        };
-
-        Ok(Self {
-            trans_id: trans_id.to_u64().unwrap(),
-        })
-    }
-}
+impl FromAbiPlain for MultisigSubmitTransactionOutput {}
 
 impl TryFrom<(HashBytes, ContractCall)> for MultisigSubmitTransaction {
     type Error = UnpackerError;
 
     fn try_from((custodian, value): (HashBytes, ContractCall)) -> Result<Self, Self::Error> {
-        let input = MultisigSubmitTransactionInput::unpack(value.inputs)
+        let input = MultisigSubmitTransactionInput::from_abi_plain(value.inputs)
             .map_err(|_| UnpackerError::InvalidAbi)?;
-        let output = MultisigSubmitTransactionOutput::unpack(value.outputs)
+        let output = MultisigSubmitTransactionOutput::from_abi_plain(value.outputs)
             .map_err(|_| UnpackerError::InvalidAbi)?;
 
         Ok(Self {
@@ -376,7 +233,7 @@ impl TryFrom<InputMessage> for MultisigSendTransaction {
 
     fn try_from(value: InputMessage) -> Result<Self, Self::Error> {
         let input =
-            MultisigSendTransaction::unpack(value.0).map_err(|_| UnpackerError::InvalidAbi)?;
+            MultisigSendTransaction::from_abi_plain(value.0).map_err(|_| UnpackerError::InvalidAbi)?;
 
         Ok(Self {
             dest: input.dest,
@@ -392,9 +249,9 @@ impl TryFrom<(HashBytes, ContractCall)> for MultisigSubmitUpdate {
     type Error = UnpackerError;
 
     fn try_from((custodian, value): (HashBytes, ContractCall)) -> Result<Self, Self::Error> {
-        let input = multisig2::SubmitUpdateParams::unpack(value.inputs)
+        let input = multisig2::SubmitUpdateParams::from_abi_plain(value.inputs)
             .map_err(|_| UnpackerError::InvalidAbi)?;
-        let output = multisig2::SubmitUpdateOutput::unpack(value.outputs)
+        let output = multisig2::SubmitUpdateOutput::from_abi_plain(value.outputs)
             .map_err(|_| UnpackerError::InvalidAbi)?;
 
         Ok(Self {
@@ -412,7 +269,7 @@ impl TryFrom<(HashBytes, InputMessage)> for MultisigConfirmUpdate {
     type Error = UnpackerError;
 
     fn try_from((custodian, input): (HashBytes, InputMessage)) -> Result<Self, Self::Error> {
-        let input = multisig2::ConfirmUpdateParams::unpack(input.0)
+        let input = multisig2::ConfirmUpdateParams::from_abi_plain(input.0)
             .map_err(|_| UnpackerError::InvalidAbi)?;
         Ok(Self {
             custodian,
@@ -425,7 +282,7 @@ impl TryFrom<(HashBytes, InputMessage)> for MultisigExecuteUpdate {
     type Error = UnpackerError;
 
     fn try_from((custodian, input): (HashBytes, InputMessage)) -> Result<Self, Self::Error> {
-        let input = multisig2::ExecuteUpdateParams::unpack(input.0)
+        let input = multisig2::ExecuteUpdateParams::from_abi_plain(input.0)
             .map_err(|_| UnpackerError::InvalidAbi)?;
         Ok(Self {
             custodian,
