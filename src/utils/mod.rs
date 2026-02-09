@@ -122,6 +122,34 @@ pub mod serde_address {
     }
 }
 
+pub mod serde_optional_string {
+    use std::fmt;
+    use std::str::FromStr;
+
+    use serde::de::Error;
+    use serde::{Deserialize, Serialize};
+
+    pub fn serialize<S, T>(data: &Option<T>, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+        T: fmt::Display,
+    {
+        data.as_ref().map(ToString::to_string).serialize(serializer)
+    }
+
+    pub fn deserialize<'de, D, T>(deserializer: D) -> Result<Option<T>, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+        T: FromStr,
+        T::Err: fmt::Display,
+    {
+        Option::<String>::deserialize(deserializer).and_then(|data| {
+            data.map(|data| T::from_str(&data).map_err(Error::custom))
+                .transpose()
+        })
+    }
+}
+
 pub mod serde_cell {
     use serde::de::Error;
     use serde::Deserialize;

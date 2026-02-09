@@ -1,7 +1,11 @@
 use std::sync::Arc;
 
+use anyhow::{anyhow, Result};
+use num_traits::ToPrimitive;
 use tycho_types::{
-    abi::{AbiType, FromAbi, Function, IntoAbi, NamedAbiType, NamedAbiValue, WithAbiType},
+    abi::{
+        AbiType, AbiValue, FromAbi, Function, IntoAbi, NamedAbiType, NamedAbiValue, WithAbiType,
+    },
     cell::{Cell, HashBytes},
     models::StdAddr,
 };
@@ -170,6 +174,107 @@ impl SubmitUpdateParams {
             self.lifetime.as_abi().named("lifetime"),
         ]
     }
+
+    pub fn unpack(values: Vec<NamedAbiValue>) -> Result<Self> {
+        if values.len() != 4 {
+            return Err(anyhow!("Invalid number of arguments"));
+        }
+
+        let code_hash_abi_value = &values[0];
+        let owners_abi_value = &values[1];
+        let req_confirms_abi_value = &values[2];
+        let lifetime_abi_value = &values[3];
+
+        if &*code_hash_abi_value.name != "codeHash"
+            && code_hash_abi_value.value.get_type()
+                != AbiType::Optional(Arc::new(AbiType::Uint(256)))
+        {
+            return Err(anyhow!("Invalid code_hash"));
+        }
+        let AbiValue::Optional(_, code_hash) = &code_hash_abi_value.value else {
+            return Err(anyhow!("Invalid code_hash"));
+        };
+
+        let code_hash = if let Some(code_hash) = code_hash {
+            let AbiValue::Uint(_, code_hash) = &**code_hash else {
+                return Err(anyhow!("Invalid code_hash"));
+            };
+            Some(HashBytes::from_slice(&code_hash.to_bytes_be()))
+        } else {
+            None
+        };
+
+        if &*owners_abi_value.name != "owners"
+            && owners_abi_value.value.get_type()
+                != AbiType::Optional(Arc::new(AbiType::Array(Arc::new(AbiType::Uint(256)))))
+        {
+            return Err(anyhow!("Invalid owners"));
+        }
+        let AbiValue::Optional(_, owners) = &owners_abi_value.value else {
+            return Err(anyhow!("Invalid owners"));
+        };
+
+        let owners = if let Some(owners) = owners {
+            let AbiValue::Array(_, owners) = &**owners else {
+                return Err(anyhow!("Invalid owners"));
+            };
+
+            let mut owners_res: Vec<HashBytes> = Vec::with_capacity(owners.len());
+            for owner in owners {
+                let AbiValue::Uint(_, owner) = owner else {
+                    return Err(anyhow!("Invalid owner"));
+                };
+                owners_res.push(HashBytes::from_slice(&owner.to_bytes_be()));
+            }
+            Some(owners_res)
+        } else {
+            None
+        };
+
+        if &*req_confirms_abi_value.name != "reqConfirms"
+            && req_confirms_abi_value.value.get_type()
+                != AbiType::Optional(Arc::new(AbiType::Uint(8)))
+        {
+            return Err(anyhow!("Invalid reqConfirms"));
+        }
+        let AbiValue::Optional(_, req_confirms) = &req_confirms_abi_value.value else {
+            return Err(anyhow!("Invalid reqConfirms"));
+        };
+
+        let req_confirms = if let Some(req_confirms) = req_confirms {
+            let AbiValue::Uint(_, req_confirms) = &**req_confirms else {
+                return Err(anyhow!("Invalid reqConfirms"));
+            };
+            (*req_confirms).to_u8()
+        } else {
+            None
+        };
+
+        if &*lifetime_abi_value.name != "lifetime"
+            && lifetime_abi_value.value.get_type() != AbiType::Optional(Arc::new(AbiType::Uint(64)))
+        {
+            return Err(anyhow!("Invalid lifetime"));
+        }
+        let AbiValue::Optional(_, lifetime) = &lifetime_abi_value.value else {
+            return Err(anyhow!("Invalid lifetime"));
+        };
+
+        let lifetime = if let Some(lifetime) = lifetime {
+            let AbiValue::Uint(_, lifetime) = &**lifetime else {
+                return Err(anyhow!("Invalid lifetime"));
+            };
+            (*lifetime).to_u64()
+        } else {
+            None
+        };
+
+        Ok(SubmitUpdateParams {
+            code_hash,
+            owners,
+            req_confirms,
+            lifetime,
+        })
+    }
 }
 
 #[derive(Debug, Copy, Clone)]
@@ -180,6 +285,26 @@ pub struct SubmitUpdateOutput {
 impl SubmitUpdateOutput {
     fn abi_type() -> Vec<NamedAbiType> {
         vec![AbiType::Uint(64).named("updateId")]
+    }
+
+    pub fn unpack(values: Vec<NamedAbiValue>) -> Result<Self> {
+        if values.len() != 1 {
+            return Err(anyhow!("Invalid number of arguments"));
+        }
+
+        let update_id_abi_value = &values[0];
+        if &*update_id_abi_value.name != "updateId"
+            && update_id_abi_value.value.get_type() != AbiType::Uint(64)
+        {
+            return Err(anyhow!("Invalid updateId"));
+        }
+        let AbiValue::Uint(_, update_id) = &update_id_abi_value.value else {
+            return Err(anyhow!("Invalid updateId"));
+        };
+
+        Ok(SubmitUpdateOutput {
+            update_id: update_id.to_u64().unwrap(),
+        })
     }
 }
 
@@ -205,6 +330,25 @@ impl ConfirmUpdateParams {
 
     pub fn abi_values(&self) -> Vec<NamedAbiValue> {
         vec![self.update_id.as_abi().named("updateId")]
+    }
+    pub fn unpack(values: Vec<NamedAbiValue>) -> Result<Self> {
+        if values.len() != 1 {
+            return Err(anyhow!("Invalid number of arguments"));
+        }
+
+        let update_id_abi_value = &values[0];
+        if &*update_id_abi_value.name != "updateId"
+            && update_id_abi_value.value.get_type() != AbiType::Uint(64)
+        {
+            return Err(anyhow!("Invalid updateId"));
+        }
+        let AbiValue::Uint(_, update_id) = &update_id_abi_value.value else {
+            return Err(anyhow!("Invalid updateId"));
+        };
+
+        Ok(ConfirmUpdateParams {
+            update_id: update_id.to_u64().unwrap(),
+        })
     }
 }
 
@@ -237,6 +381,47 @@ impl ExecuteUpdateParams {
             self.update_id.as_abi().named("updateId"),
             self.code.as_abi().named("code"),
         ]
+    }
+
+    pub fn unpack(values: Vec<NamedAbiValue>) -> Result<Self> {
+        if values.len() != 2 {
+            return Err(anyhow!("Invalid number of arguments"));
+        }
+
+        let update_id_abi_value = &values[0];
+        let code_abi_value = &values[1];
+
+        if &*update_id_abi_value.name != "updateId"
+            && update_id_abi_value.value.get_type() != AbiType::Uint(64)
+        {
+            return Err(anyhow!("Invalid updateId"));
+        }
+        let AbiValue::Uint(_, update_id) = &update_id_abi_value.value else {
+            return Err(anyhow!("Invalid updateId"));
+        };
+
+        if &*code_abi_value.name != "code"
+            && code_abi_value.value.get_type() != AbiType::Optional(Arc::new(AbiType::Cell))
+        {
+            return Err(anyhow!("Invalid code"));
+        }
+        let AbiValue::Optional(_, code) = &code_abi_value.value else {
+            return Err(anyhow!("Invalid code"));
+        };
+
+        let code = if let Some(code) = code {
+            let AbiValue::Cell(code) = &**code else {
+                return Err(anyhow!("Invalid code"));
+            };
+            Some(code.clone())
+        } else {
+            None
+        };
+
+        Ok(ExecuteUpdateParams {
+            update_id: update_id.to_u64().unwrap(),
+            code,
+        })
     }
 }
 

@@ -4,7 +4,7 @@ use num_bigint::BigUint;
 use serde::{Deserialize, Serialize};
 use tycho_types::{
     cell::{Cell, HashBytes},
-    models::StdAddr,
+    models::{AccountState, StdAddr},
 };
 
 use crate::utils::{serde_address, serde_cell, serde_string};
@@ -126,13 +126,13 @@ pub struct TokenWalletContractState<'a>(pub ExecutionContext<'a>);
 
 impl TokenWalletContractState<'_> {
     pub fn get_code_hash(&self) -> anyhow::Result<HashBytes> {
-        match &self.0.account_stuff.storage.state {
-            ton_block::AccountState::AccountActive { state_init, .. } => {
+        match &self.0.account.state {
+            AccountState::Active(state_init) => {
                 let code = state_init
                     .code
                     .as_ref()
                     .ok_or(Tip3Error::WalletNotDeployed)?;
-                Ok(code.repr_hash())
+                Ok(*code.repr_hash())
             }
             _ => Err(Tip3Error::WalletNotDeployed.into()),
         }
@@ -140,7 +140,7 @@ impl TokenWalletContractState<'_> {
 
     pub fn get_balance(&self, version: TokenWalletVersion) -> anyhow::Result<BigUint> {
         match version {
-            TokenWalletVersion::OldTip3v4 => old_tip3::TokenWalletContract(self.0).balance(),
+            TokenWalletVersion::OldTip3v4 => Err(Tip3Error::UnknownVersion.into()),
             TokenWalletVersion::Tip3 => tip3::TokenWalletContract(self.0).balance(),
         }
     }
@@ -148,13 +148,7 @@ impl TokenWalletContractState<'_> {
     pub fn get_details(&self, version: TokenWalletVersion) -> anyhow::Result<TokenWalletDetails> {
         Ok(match version {
             TokenWalletVersion::OldTip3v4 => {
-                let details = old_tip3::TokenWalletContract(self.0).get_details()?;
-
-                TokenWalletDetails {
-                    root_address: details.root_address,
-                    owner_address: details.owner_address,
-                    balance: details.balance,
-                }
+                return Err(Tip3Error::UnknownVersion.into());
             }
             TokenWalletVersion::Tip3 => {
                 let token_wallet = tip3::TokenWalletContract(self.0);
@@ -178,12 +172,9 @@ impl TokenWalletContractState<'_> {
             tip3::token_wallet_contract::INTERFACE_ID,
             tip3_1::token_wallet_contract::INTERFACE_ID,
         ]) {
-            return Ok(TokenWalletVersion::Tip3);
-        }
-
-        match old_tip3::TokenWalletContract(self.0).get_version()? {
-            4 => Ok(TokenWalletVersion::OldTip3v4),
-            _ => Err(Tip3Error::UnknownVersion.into()),
+            Ok(TokenWalletVersion::Tip3)
+        } else {
+            Err(Tip3Error::UnknownVersion.into())
         }
     }
 }
