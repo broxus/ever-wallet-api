@@ -11,7 +11,10 @@ use tycho_types::{
 };
 use tycho_util::time::Clock;
 
-use crate::utils::{IntoAbiPlain, ton_wallet::{MessageFlags, MultisigPendingTransaction, MultisigPendingUpdate}};
+use crate::utils::{
+    ton_wallet::{MessageFlags, MultisigPendingTransaction, MultisigPendingUpdate},
+    IntoAbiPlain,
+};
 
 use super::{Gift, TonWalletDetails};
 

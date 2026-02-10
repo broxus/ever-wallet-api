@@ -1,14 +1,12 @@
 use std::sync::Arc;
 
 use tycho_types::{
-    abi::{
-        AbiType, FromAbi, Function, IntoAbi, NamedAbiType, WithAbiType,
-    },
+    abi::{AbiType, FromAbi, Function, IntoAbi, NamedAbiType, WithAbiType},
     cell::{Cell, HashBytes},
     models::StdAddr,
 };
 
-use crate::utils::{FromAbiPlain, IntoAbiPlain, WithAbiTypePlain, declare_function};
+use crate::utils::{declare_function, FromAbiPlain, IntoAbiPlain, WithAbiTypePlain};
 
 pub fn constructor() -> &'static Function {
     declare_function! {
@@ -128,7 +126,6 @@ impl IntoAbiPlain for SubmitUpdateParams {}
 impl FromAbiPlain for SubmitUpdateParams {}
 impl WithAbiTypePlain for SubmitUpdateParams {}
 
-
 #[derive(Debug, Copy, Clone, WithAbiType, FromAbi, IntoAbi)]
 pub struct SubmitUpdateOutput {
     pub update_id: u64,
@@ -173,7 +170,6 @@ pub struct ExecuteUpdateParams {
 impl IntoAbiPlain for ExecuteUpdateParams {}
 impl FromAbiPlain for ExecuteUpdateParams {}
 impl WithAbiTypePlain for ExecuteUpdateParams {}
-
 
 pub fn execute_update() -> &'static Function {
     declare_function! {

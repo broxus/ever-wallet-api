@@ -20,6 +20,7 @@ use crate::prelude::*;
 use crate::services::*;
 use crate::sqlx_client::*;
 use crate::ton_core::*;
+use crate::utils::mnemonic::{derive_from_phrase, generate_key, Bip39MnemonicData, MnemonicType};
 use crate::utils::ton_wallet::multisig::DeployParams;
 use crate::utils::ton_wallet::MultisigType;
 use crate::utils::*;
@@ -62,14 +63,12 @@ impl TonClient {
     }
 
     pub async fn create_address(&self, payload: CreateAddress) -> Result<CreatedAddress, Error> {
-        let generated_key = nekoton::crypto::generate_key(nekoton::crypto::MnemonicType::Bip39(
-            nekoton::crypto::Bip39MnemonicData::labs_old(0),
-        ));
+        let generated_key = generate_key(MnemonicType::Bip39(Bip39MnemonicData::labs_old(0)));
 
-        let Keypair { public, secret } = nekoton::crypto::derive_from_phrase(
-            &generated_key.words.join(" "),
-            generated_key.account_type,
-        )?;
+        let signing_key =
+            derive_from_phrase(&generated_key.words.join(" "), generated_key.account_type)?;
+
+        let public = signing_key.verifying_key();
 
         let workchain_id = payload.workchain_id.unwrap_or_default();
         let account_type = payload.account_type.unwrap_or_default();
@@ -120,10 +119,10 @@ impl TonClient {
 
                 let mut custodians = Vec::with_capacity(public_keys.len());
                 for key in public_keys {
-                    let mut key = [0u8; 32];
                     let decoded_key = hex::decode(key).map_err(|_| {
                         TonServiceError::WrongInput("Invalid custodian".to_string())
                     })?;
+                    let mut key = [0u8; 32];
                     key.copy_from_slice(&decoded_key);
 
                     custodians.push(VerifyingKey::from_bytes(&key).map_err(|_| {
@@ -151,7 +150,7 @@ impl TonClient {
             hex: address.address.to_string(),
             base64url: address.display_base64_url(true).to_string(),
             public_key: public.to_bytes().to_vec(),
-            private_key: secret.to_bytes().to_vec(),
+            private_key: signing_key.to_bytes().to_vec(),
             account_type,
             custodians,
             confirmations,

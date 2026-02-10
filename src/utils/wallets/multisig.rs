@@ -122,7 +122,7 @@ pub mod safe_multisig {
 
     use super::*;
 
-    #[derive(Debug, Clone, Copy, WithAbiType )]
+    #[derive(Debug, Clone, Copy, WithAbiType)]
     pub struct SafeMultisigParams {
         pub max_queued_transactions: u8,
         pub max_custodian_count: u8,
@@ -149,7 +149,7 @@ pub mod set_code_multisig {
 
     use super::*;
 
-    #[derive(Debug, Clone, Copy, WithAbiType )]
+    #[derive(Debug, Clone, Copy, WithAbiType)]
     pub struct SetCodeMultisigParams {
         pub max_queued_transactions: u8,
         pub max_custodian_count: u8,

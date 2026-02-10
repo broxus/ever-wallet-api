@@ -6,6 +6,9 @@ use sha2::Digest;
 use slip10_ed25519::derive_ed25519_private_key;
 use tiny_hderive::bip32::ExtendedPrivKey;
 
+pub(super) mod labs;
+pub(super) mod legacy;
+
 const LANGUAGE: bip39::Language = bip39::Language::English;
 
 #[derive(Serialize, Copy, Clone, Debug, Eq, PartialEq)]
@@ -136,7 +139,10 @@ pub struct GeneratedKey {
     pub account_type: MnemonicType,
 }
 
-pub fn derive_from_phrase(phrase: &str, mnemonic_type: MnemonicType) -> Result<Keypair, Error> {
+pub fn derive_from_phrase(
+    phrase: &str,
+    mnemonic_type: MnemonicType,
+) -> Result<ed25519_dalek::SigningKey, Error> {
     match mnemonic_type {
         MnemonicType::Legacy => legacy::derive_from_phrase(phrase),
         MnemonicType::Bip39(data) => labs::derive_from_phrase(phrase, data),
@@ -184,8 +190,9 @@ pub fn generate_key(account_type: MnemonicType) -> GeneratedKey {
 mod tests {
     use serde::Deserialize;
 
-    use crate::crypto::mnemonic::LANGUAGE;
-    use crate::crypto::{Bip39Entropy, Bip39MnemonicData, Bip39Path, MnemonicType};
+    use crate::utils::mnemonic::{
+        Bip39Entropy, Bip39MnemonicData, Bip39Path, MnemonicType, LANGUAGE,
+    };
 
     #[test]
     fn mnemonic_type_deserialize() {
@@ -228,8 +235,8 @@ mod tests {
 
         let derived = Bip39Path::Ton.derive(seed_bytes, 0).unwrap();
 
-        let secret = ed25519_dalek::SecretKey::from_bytes(&derived).unwrap();
-        let public = ed25519_dalek::PublicKey::from(&secret);
+        let secret = ed25519_dalek::SigningKey::from_bytes(&derived);
+        let public = secret.verifying_key();
 
         assert_eq!(
             hex::encode(public.to_bytes()),

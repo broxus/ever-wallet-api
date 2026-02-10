@@ -8,7 +8,8 @@ use tycho_types::{
 };
 
 use crate::utils::{
-    ContractCall, FromAbiPlain, InputMessage, IntoAbiPlain, serde_address, serde_cell, serde_string, ton_wallet::multisig::UnpackerError, wallets::multisig2
+    serde_address, serde_cell, serde_string, ton_wallet::multisig::UnpackerError,
+    wallets::multisig2, ContractCall, FromAbiPlain, InputMessage, IntoAbiPlain,
 };
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -33,16 +34,11 @@ pub struct MultisigConfirmTransaction {
 
 impl IntoAbiPlain for MultisigConfirmTransaction {
     fn into_abi_plain(self) -> Vec<NamedAbiValue> {
-        vec![
-            AbiValue::Uint(64,self.transaction_id.into()).named("transactionId")
-        ]
+        vec![AbiValue::Uint(64, self.transaction_id.into()).named("transactionId")]
     }
     fn as_abi_plain(&self) -> Vec<NamedAbiValue> {
-        vec![
-            AbiValue::Uint(64,self.transaction_id.into()).named("transactionId")
-        ]
+        vec![AbiValue::Uint(64, self.transaction_id.into()).named("transactionId")]
     }
-
 }
 impl FromAbiPlain for MultisigConfirmTransaction {
     fn from_abi_plain(value: Vec<NamedAbiValue>) -> anyhow::Result<Self> {
@@ -52,7 +48,9 @@ impl FromAbiPlain for MultisigConfirmTransaction {
 
         Ok(MultisigConfirmTransaction {
             custodian: Default::default(),
-            transaction_id: transaction_id.to_u64().ok_or(anyhow!("Invalid transaction id"))?,
+            transaction_id: transaction_id
+                .to_u64()
+                .ok_or(anyhow!("Invalid transaction id"))?,
         })
     }
 }
@@ -178,15 +176,14 @@ impl TryFrom<(HashBytes, InputMessage)> for MultisigConfirmTransaction {
     type Error = UnpackerError;
 
     fn try_from((custodian, value): (HashBytes, InputMessage)) -> Result<Self, Self::Error> {
-        let output =
-            MultisigConfirmTransaction::from_abi_plain(value.0).map_err(|_| UnpackerError::InvalidAbi)?;
+        let output = MultisigConfirmTransaction::from_abi_plain(value.0)
+            .map_err(|_| UnpackerError::InvalidAbi)?;
         Ok(Self {
             custodian,
             transaction_id: output.transaction_id,
         })
     }
 }
-
 
 #[derive(Clone, Debug, FromAbi)]
 struct MultisigSubmitTransactionInput {
@@ -198,7 +195,6 @@ struct MultisigSubmitTransactionInput {
 }
 
 impl FromAbiPlain for MultisigSubmitTransactionInput {}
-
 
 #[derive(Clone, Debug, FromAbi)]
 struct MultisigSubmitTransactionOutput {
@@ -232,8 +228,8 @@ impl TryFrom<InputMessage> for MultisigSendTransaction {
     type Error = UnpackerError;
 
     fn try_from(value: InputMessage) -> Result<Self, Self::Error> {
-        let input =
-            MultisigSendTransaction::from_abi_plain(value.0).map_err(|_| UnpackerError::InvalidAbi)?;
+        let input = MultisigSendTransaction::from_abi_plain(value.0)
+            .map_err(|_| UnpackerError::InvalidAbi)?;
 
         Ok(Self {
             dest: input.dest,

@@ -188,17 +188,15 @@ pub struct ContractCall {
 }
 
 pub trait IntoAbiPlain: IntoAbi {
-
-    fn into_abi_plain(self) -> Vec<NamedAbiValue> 
+    fn into_abi_plain(self) -> Vec<NamedAbiValue>
     where
-        Self: Sized
-        {
+        Self: Sized,
+    {
         let tuple = self.into_abi();
         match tuple {
             AbiValue::Tuple(tuple) => tuple,
             _ => vec![],
         }
-
     }
     fn as_abi_plain(&self) -> Vec<NamedAbiValue> {
         let tuple = self.as_abi();
@@ -217,10 +215,9 @@ pub trait FromAbiPlain: FromAbi {
 
 pub trait WithAbiTypePlain: WithAbiType {
     fn abi_type_plain() -> Vec<NamedAbiType> {
-        match Self::abi_type()
-        {  
-        AbiType::Tuple(tuple) => tuple.into_iter().cloned().collect(),
-        _ => vec![],
+        match Self::abi_type() {
+            AbiType::Tuple(tuple) => tuple.into_iter().cloned().collect(),
+            _ => vec![],
         }
     }
 }
