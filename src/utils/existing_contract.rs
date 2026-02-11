@@ -18,17 +18,14 @@ pub trait ExistingContractExt {
 
 impl ExistingContractExt for ExistingContract {
     fn from_shard_account(shard_account: &ShardAccount) -> Result<Option<Self>> {
-        Ok(match shard_account.read_account()? {
-            Account::Account(account) => Some(Self {
+        if let Some(account) = shard_account.load_account()? {
+            Ok(Some(Self {
                 account,
-                timings: GenTimings::Unknown,
-                last_transaction_id: LastTransactionId::Exact(TransactionId {
-                    lt: shard_account.last_trans_lt(),
-                    hash: *shard_account.last_trans_hash(),
-                }),
-            }),
-            Account::AccountNone => None,
-        })
+                last_transaction_hash: shard_account.last_trans_hash,
+            }))
+        } else {
+            Ok(None)
+        }
     }
 
     fn from_shard_account_opt(shard_account: &Option<ShardAccount>) -> Result<Option<Self>> {

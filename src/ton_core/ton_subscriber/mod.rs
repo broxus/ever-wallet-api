@@ -25,6 +25,7 @@ pub struct TonSubscriber {
     // tip block timestamp
     current_utime: AtomicU32,
     signature_id: SignatureId,
+    capabilities: Capabilities,
     state_subscriptions: RwLock<FxHashMap<HashBytes, StateSubscription>>,
     token_subscription: RwLock<Option<TokenSubscription>>,
     sc_accounts: RwLock<FxHashMap<ShardIdent, CachedAccounts>>,
@@ -48,6 +49,7 @@ impl TonSubscriber {
                 Default::default(),
             )),
             messages_queue,
+            capabilities: Capabilities::default(),
         })
     }
 
@@ -62,6 +64,7 @@ impl TonSubscriber {
 
     pub async fn start(self: &Arc<Self>, capabilities: u64, global_id: i32) -> Result<()> {
         self.update_signature_id(capabilities, global_id)?;
+        self.update_capabilies(capabilities)?;
         Ok(())
     }
 
@@ -71,6 +74,10 @@ impl TonSubscriber {
 
     pub fn signature_id(&self) -> Option<i32> {
         self.signature_id.load()
+    }
+
+    pub fn capabilities(&self) -> u64 {
+        self.capabilities.0.load(Ordering::Acquire)
     }
 
     pub fn add_transactions_subscription<I, T>(&self, accounts: I, subscription: &Arc<T>)
@@ -156,6 +163,16 @@ impl TonSubscriber {
                 }
             },
         );
+        if block_info.key_block {
+            let extra = block.load_extra()?;
+            let custom = extra.load_custom()?;
+            if let Some(custom) = custom {
+                if let Some(config) = custom.config {
+                    let global_version = config.get_global_version()?;
+                    self.update_capabilies(global_version.capabilities.into_inner())?;
+                }
+            }
+        }
 
         Ok(())
     }
@@ -287,6 +304,10 @@ impl TonSubscriber {
 
     fn update_signature_id(&self, capabilities: u64, global_id: i32) -> Result<()> {
         self.signature_id.store(capabilities, global_id);
+        Ok(())
+    }
+    fn update_capabilies(&self, capabilities: u64) -> Result<()> {
+        self.capabilities.0.store(capabilities, Ordering::Release);
         Ok(())
     }
 }
@@ -642,6 +663,9 @@ impl ShardAccountsMapExt for FxHashMap<ShardIdent, CachedAccounts> {
         }
     }
 }
+
+#[derive(Default)]
+struct Capabilities(pub AtomicU64);
 
 #[derive(Default)]
 struct SignatureId(AtomicU64);

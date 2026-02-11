@@ -1,7 +1,10 @@
+use std::str::FromStr;
+
 use axum::extract::State;
 use axum::Json;
 use metrics::{histogram, increment_counter};
 use tokio::time::Instant;
+use tycho_types::cell::HashBytes;
 use uuid::Uuid;
 
 use crate::api::controllers::*;
@@ -95,14 +98,14 @@ pub async fn post_prepare_generic_message(
         )
         .await?;
 
-    ctx.memory_storage.add_message(unsigned_message);
+    let message_hash = ctx.memory_storage.add_message(unsigned_message);
 
     let elapsed = start.elapsed();
     histogram!("execution_time_seconds", elapsed, "method" => "prepareGenericMessage");
     increment_counter!("requests_processed", "method" => "prepareGenericMessage");
 
     Ok(Json(UnsignedMessageHashResponse {
-        unsigned_message_hash: hex::encode(unsigned_message.hash()),
+        unsigned_message_hash: message_hash.to_string(),
     }))
 }
 
@@ -111,8 +114,10 @@ pub async fn post_send_signed_message(
     Json(req): Json<SignedMessageRequest>,
 ) -> Result<Json<SignedMessageHashResponse>> {
     let start = Instant::now();
+    let message_hash = HashBytes::from_str(&req.hash)
+        .map_err(|_| ControllersError::WrongInput("Bad hash format".to_string()))?;
 
-    let res = match ctx.memory_storage.get_message(&req.hash) {
+    let res = match ctx.memory_storage.get_message(&message_hash) {
         Some(message) => {
             let expire_at = message.expire_at();
             let signature: [u8; 64] = hex::decode(req.signature)

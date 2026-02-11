@@ -10,7 +10,7 @@ use tokio::sync::oneshot;
 use tycho_types::abi::{Function, NamedAbiValue, UnsignedExternalMessage};
 use tycho_types::boc::Boc;
 use tycho_types::cell::{CellBuilder, HashBytes};
-use tycho_types::models::{OwnedMessage, StdAddr};
+use tycho_types::models::{GlobalCapabilities, OwnedMessage, SignatureContext, StdAddr};
 use tycho_util::time::now_sec;
 use uuid::Uuid;
 
@@ -233,7 +233,12 @@ impl TonClient {
 
         let key_pair = ed25519_dalek::SigningKey::from_bytes(&key);
 
-        let owned_message = unsigned_message.sign(&key_pair, self.ton_core.signature_id())?;
+        let context = SignatureContext {
+            global_id: self.ton_core.signature_id().unwrap_or_default(),
+            capabilities: GlobalCapabilities::new(self.ton_core.capabilities()),
+        };
+
+        let owned_message = unsigned_message.sign(&key_pair, context)?;
 
         let cell_builder = CellBuilder::build_from(&owned_message).map_err(anyhow::Error::from)?;
         let hash = cell_builder.repr_hash();
@@ -421,7 +426,12 @@ impl TonClient {
 
         let key_pair = ed25519_dalek::SigningKey::from_bytes(&key);
 
-        let owned_message = unsigned_message.sign(&key_pair, self.ton_core.signature_id())?;
+        let context = SignatureContext {
+            global_id: self.ton_core.signature_id().unwrap_or_default(),
+            capabilities: GlobalCapabilities::new(self.ton_core.capabilities()),
+        };
+
+        let owned_message = unsigned_message.sign(&key_pair, context)?;
 
         let cell_builder = CellBuilder::build_from(&owned_message).map_err(anyhow::Error::from)?;
         let message_hash = cell_builder.repr_hash();
@@ -474,7 +484,12 @@ impl TonClient {
 
         let key_pair = ed25519_dalek::SigningKey::from_bytes(&key);
 
-        let owned_message = unsigned_message.sign(&key_pair, self.ton_core.signature_id())?;
+        let context = SignatureContext {
+            global_id: self.ton_core.signature_id().unwrap_or_default(),
+            capabilities: GlobalCapabilities::new(self.ton_core.capabilities()),
+        };
+
+        let owned_message = unsigned_message.sign(&key_pair, context)?;
 
         let cell_builder = CellBuilder::build_from(&owned_message).map_err(anyhow::Error::from)?;
         let message_hash = cell_builder.repr_hash();
@@ -836,7 +851,12 @@ impl TonClient {
         let key_pair = ed25519_dalek::SigningKey::from_bytes(&key);
         let expire_at = unsigned_message.expire_at();
 
-        let owned_message = unsigned_message.sign(&key_pair, self.ton_core.signature_id())?;
+        let context = SignatureContext {
+            global_id: self.ton_core.signature_id().unwrap_or_default(),
+            capabilities: GlobalCapabilities::new(self.ton_core.capabilities()),
+        };
+
+        let owned_message = unsigned_message.sign(&key_pair, context)?;
 
         Ok((owned_message, expire_at))
     }
@@ -1128,7 +1148,12 @@ fn build_token_transaction(
 
     let key_pair = ed25519_dalek::SigningKey::from_bytes(&key);
 
-    let owned_message = unsigned_message.sign(&key_pair, ton_core.signature_id())?;
+    let context = SignatureContext {
+        global_id: ton_core.signature_id().unwrap_or_default(),
+        capabilities: GlobalCapabilities::new(ton_core.capabilities()),
+    };
+
+    let owned_message = unsigned_message.sign(&key_pair, context)?;
 
     let cell_builder = CellBuilder::build_from(&owned_message).map_err(anyhow::Error::from)?;
     let hash = cell_builder.repr_hash();

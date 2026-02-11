@@ -106,6 +106,9 @@ impl TonCore {
     pub fn signature_id(&self) -> Option<i32> {
         self.context.ton_subscriber.signature_id()
     }
+    pub fn capabilities(&self) -> u64 {
+        self.context.ton_subscriber.capabilities()
+    }
 }
 
 pub struct TonCoreContext {

@@ -60,7 +60,7 @@ tower-http = { version = "0.6", features = ["trace", "cors", "limit", "set-heade
 tower-service = "0.3.3"
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
-tycho-types = { version = "0.3.1", features = ["tycho", "stats", "serde", "abi"] }
+tycho-types = { git = "https://github.com/broxus/tycho-types.git", rev = "f9e5dbe1222ee51f3e4f5a6836f95a515dd6cdf1" , features = ["tycho", "stats", "serde", "abi"] }
 
 uuid = { version = "1.1", features = ["v4", "serde"] }
 
@@ -71,13 +71,13 @@ tikv-jemallocator = { version = "0.6.0", features = [
     "background_threads",
 ] }
 
-tycho-block-util = { git = "https://github.com/broxus/tycho.git", rev = "bb2d3cca4c3dd010a4e1aef82e2f76655fc23a3e" }
-tycho-core = { git = "https://github.com/broxus/tycho.git", rev = "bb2d3cca4c3dd010a4e1aef82e2f76655fc23a3e", features = ["cli"]  }
-tycho-storage = { git = "https://github.com/broxus/tycho.git", rev = "bb2d3cca4c3dd010a4e1aef82e2f76655fc23a3e" }
-tycho-util = { git = "https://github.com/broxus/tycho.git", rev = "bb2d3cca4c3dd010a4e1aef82e2f76655fc23a3e", features = ["cli"] }
+tycho-block-util = { version = "0.3.6" }
+tycho-core = { version = "0.3.6", features = ["cli"]  }
+tycho-storage = { version = "0.3.6" }
+tycho-util = { version = "0.3.6", features = ["cli"] }
 
-tycho-vm = "0.3.0"
-tycho-executor = "0.3.0"
+tycho-vm = "0.3.2"
+tycho-executor = "0.3.2"
 
 # TON specific dependencies
 ton_block = { git = "https://github.com/broxus/ton-labs-block" }
@@ -94,3 +94,6 @@ sysinfo = "0.30.13"
 
 [features]
 default = []
+
+[patch.crates-io]
+tycho-types = { git = "https://github.com/broxus/tycho-types.git", rev = "f9e5dbe1222ee51f3e4f5a6836f95a515dd6cdf1" , features = ["tycho", "stats", "serde", "abi"] }
