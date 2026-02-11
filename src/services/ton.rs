@@ -7,8 +7,10 @@ use bigdecimal::BigDecimal;
 use chrono::Utc;
 use serde_json::Value;
 use tycho_types::abi::{
-    AbiHeaderType, AbiVersion, Function, NamedAbiType, NamedAbiValue, UnsignedExternalMessage,
+    AbiHeaderType, AbiValue, AbiVersion, Function, NamedAbiType, NamedAbiValue,
+    UnsignedExternalMessage,
 };
+use tycho_types::boc::Boc;
 use tycho_types::cell::{CellBuilder, HashBytes};
 use tycho_types::models::{OwnedMessage, StdAddr};
 use uuid::Uuid;
@@ -882,21 +884,22 @@ impl TonService {
         outputs: Vec<NamedAbiType>,
         headers: Vec<AbiHeaderType>,
         responsible: bool,
-    ) -> Result<Value, Error> {
+    ) -> Result<Vec<AbiValue>, Error> {
         let account_addr = HashBytes::from_str(&account_addr).map_err(anyhow::Error::from)?;
 
-        let inputs = inputs
+        let input_params: Vec<NamedAbiType> = inputs.iter().map(|x| x.abi_type.clone()).collect();
+
+        let inputs: Result<Vec<NamedAbiValue>, anyhow::Error> = inputs
             .into_iter()
-            .map(|x| NamedAbiValue {
-                name: x.param.name,
-                value: x.param.ty,
+            .map(|x| {
+                Ok(NamedAbiValue {
+                    name: x.abi_type.name,
+                    value: AbiValue::from_json_str(&x.value, &x.abi_type.ty)
+                        .map_err(anyhow::Error::from)?,
+                })
             })
             .collect();
-
-        let input_params: Vec<NamedAbiType> = inputs
-            .iter()
-            .map(|x| x.value.get_type().named(x.name.into()))
-            .collect();
+        let inputs = inputs?;
 
         let function = Function::builder(AbiVersion::V2_2, function_name)
             .with_headers(headers)
@@ -904,7 +907,7 @@ impl TonService {
             .with_outputs(outputs)
             .build();
 
-        let output = match self
+        let tokens = match self
             .ton_api_client
             .run_local(account_addr, function, &inputs, responsible)
             .await?
@@ -913,15 +916,9 @@ impl TonService {
             None => return Err(TonServiceError::ExecuteContract.into()),
         };
 
-        let tokens = match output.tokens {
-            Some(tokens) => {
-                if tokens.is_empty() {
-                    tracing::warn!("No response tokens in execution output")
-                }
-                tokens
-            }
-            None => return Err(TonServiceError::ExecuteContract.into()),
-        };
+        if tokens.is_empty() {
+            tracing::warn!("No response tokens in execution output")
+        }
 
         Ok(tokens)
     }
@@ -939,7 +936,7 @@ impl TonService {
         function_details: Option<FunctionDetails>,
         transaction_id: Uuid,
     ) -> Result<TransactionDb, Error> {
-        let (function, values) = match function_details {
+        let (function, inputs) = match function_details {
             Some(details) => {
                 let function =
                     Function::builder(AbiVersion::V2_2, details.function_name.to_string())
@@ -949,13 +946,26 @@ impl TonService {
                                 .input_params
                                 .clone()
                                 .into_iter()
-                                .map(|x| x.value.get_type().named(x.name.into()))
+                                .map(|x| x.abi_type)
                                 .collect::<Vec<NamedAbiType>>(),
                         )
                         .with_outputs(details.output_params)
                         .build();
 
-                (Some(function), Some(details.input_params))
+                let inputs: Result<Vec<NamedAbiValue>, anyhow::Error> = details
+                    .input_params
+                    .into_iter()
+                    .map(|x| {
+                        Ok(NamedAbiValue {
+                            name: x.abi_type.name,
+                            value: AbiValue::from_json_str(&x.value, &x.abi_type.ty)
+                                .map_err(anyhow::Error::from)?,
+                        })
+                    })
+                    .collect();
+                let inputs = inputs?;
+
+                (Some(function), Some(inputs))
             }
             None => (None, None),
         };
@@ -989,11 +999,12 @@ impl TonService {
                 account_type,
                 custodians,
                 function,
-                values,
+                inputs,
             )
             .await?;
 
-        let cell_builder = CellBuilder::build_from(owned_message).map_err(anyhow::Error::from)?;
+        let cell_builder =
+            CellBuilder::build_from(owned_message.clone()).map_err(anyhow::Error::from)?;
         let message_hash = *cell_builder.repr_hash();
 
         let sent_transaction = SentTransaction {
@@ -1041,7 +1052,7 @@ impl TonService {
         custodians: &Option<i32>,
         function_details: Option<FunctionDetails>,
     ) -> Result<UnsignedExternalMessage, Error> {
-        let (function, values) = match function_details {
+        let (function, inputs) = match function_details {
             Some(details) => {
                 let function =
                     Function::builder(AbiVersion::V2_2, details.function_name.to_string())
@@ -1051,13 +1062,26 @@ impl TonService {
                                 .input_params
                                 .clone()
                                 .into_iter()
-                                .map(|x| x.value.get_type().named(x.name.into()))
+                                .map(|x| x.abi_type)
                                 .collect::<Vec<NamedAbiType>>(),
                         )
                         .with_outputs(details.output_params)
                         .build();
 
-                (Some(function), Some(details.input_params))
+                let inputs: Result<Vec<NamedAbiValue>, anyhow::Error> = details
+                    .input_params
+                    .into_iter()
+                    .map(|x| {
+                        Ok(NamedAbiValue {
+                            name: x.abi_type.name,
+                            value: AbiValue::from_json_str(&x.value, &x.abi_type.ty)
+                                .map_err(anyhow::Error::from)?,
+                        })
+                    })
+                    .collect();
+                let inputs = inputs?;
+
+                (Some(function), Some(inputs))
             }
             None => (None, None),
         };
@@ -1074,7 +1098,7 @@ impl TonService {
                 account_type,
                 custodians,
                 function,
-                values,
+                inputs,
             )
             .await?;
 
@@ -1082,27 +1106,27 @@ impl TonService {
     }
 
     pub fn encode_tvm_cell(&self, data: Vec<InputParam>) -> Result<String, Error> {
-        let mut tokens: Vec<Token> = Vec::new();
-        for d in data {
-            let token_value = ton_abi::token::Tokenizer::tokenize_parameter(
-                &d.param.kind,
-                &d.value,
-                &d.param.name,
-            )?;
-            let token = Token::new(&d.param.name, token_value);
-            tokens.push(token);
-        }
-        let initial = if tokens.is_empty() {
-            BuilderData::default()
+        let tokens: Result<Vec<NamedAbiValue>, anyhow::Error> = data
+            .into_iter()
+            .map(|x| {
+                Ok(NamedAbiValue {
+                    name: x.abi_type.name,
+                    value: AbiValue::from_json_str(&x.value, &x.abi_type.ty)
+                        .map_err(anyhow::Error::from)?,
+                })
+            })
+            .collect();
+        let tokens = tokens?;
+
+        let cell = if tokens.is_empty() {
+            CellBuilder::default()
+                .build()
+                .map_err(anyhow::Error::from)?
         } else {
-            TokenValue::pack_values_into_chain(
-                tokens.as_slice(),
-                Default::default(),
-                &ABI_VERSION_2_2,
-            )?
+            NamedAbiValue::tuple_to_cell(tokens.as_slice(), AbiVersion::V2_2)
+                .map_err(anyhow::Error::from)?
         };
-        let cell = initial.into_cell()?;
-        Ok(base64::encode(cell.write_to_bytes()?))
+        Ok(Boc::encode_base64(cell))
     }
 
     pub async fn send_signed_message(

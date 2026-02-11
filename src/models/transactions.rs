@@ -181,8 +181,8 @@ pub struct SentTransaction {
 
 #[derive(Clone, Deserialize, Debug)]
 pub struct InputParam {
-    pub param: NamedAbiType,
-    pub value: serde_json::Value,
+    pub value: String,
+    pub abi_type: NamedAbiType,
 }
 
 #[derive(Clone, Debug, Deserialize)]

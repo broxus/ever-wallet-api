@@ -4,6 +4,8 @@ use axum::extract::State;
 use axum::Json;
 use metrics::{histogram, increment_counter};
 use tokio::time::Instant;
+use tycho_types::abi::SerializeAbiValue;
+use tycho_types::abi::SerializeAbiValueParams;
 use tycho_types::cell::HashBytes;
 use uuid::Uuid;
 
@@ -34,7 +36,20 @@ pub async fn post_read_contract(
             req.responsible.unwrap_or_default(),
         )
         .await
-        .map(|value| ReadContractResponse { object: value })?;
+        .map(|values| {
+            let params = SerializeAbiValueParams::default();
+            let mut result = Vec::new();
+            for value in values {
+                if let Some(json) =
+                    serde_json::to_value(&SerializeAbiValue::with_params(&value, params)).ok()
+                {
+                    result.push(json);
+                }
+            }
+            ReadContractResponse {
+                object: serde_json::Value::from(result),
+            }
+        })?;
 
     let elapsed = start.elapsed();
     histogram!("execution_time_seconds", elapsed, "method" => "readContract");

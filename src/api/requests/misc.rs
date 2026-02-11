@@ -30,16 +30,16 @@ pub struct FunctionDetailsDTO {
 #[derive(Deserialize, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct InputParamDTO {
+    pub value: String,
     #[schemars(schema_with = "any_schema")]
-    pub param: NamedAbiType,
-    pub value: serde_json::Value,
+    pub abi_type: NamedAbiType,
 }
 
 impl From<InputParamDTO> for InputParam {
     fn from(i: InputParamDTO) -> Self {
         Self {
-            param: i.param,
             value: i.value,
+            abi_type: i.abi_type,
         }
     }
 }

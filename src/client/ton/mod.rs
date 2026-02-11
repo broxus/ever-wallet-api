@@ -7,7 +7,7 @@ use ed25519_dalek::VerifyingKey;
 use num_bigint::BigUint;
 use num_traits::FromPrimitive;
 use tokio::sync::oneshot;
-use tycho_types::abi::{Function, NamedAbiValue, UnsignedExternalMessage};
+use tycho_types::abi::{AbiValue, Function, NamedAbiValue, UnsignedExternalMessage};
 use tycho_types::boc::Boc;
 use tycho_types::cell::{CellBuilder, HashBytes};
 use tycho_types::models::{GlobalCapabilities, OwnedMessage, SignatureContext, StdAddr};
@@ -798,7 +798,7 @@ impl TonClient {
         function: Function,
         input: &[NamedAbiValue],
         responsible: bool,
-    ) -> anyhow::Result<Option<nekoton_abi::ExecutionOutput>> {
+    ) -> anyhow::Result<Option<Vec<AbiValue>>> {
         let state = match self.ton_core.get_contract_state(&contract_address) {
             Ok(a) => a,
             Err(e) => {
