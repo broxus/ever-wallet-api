@@ -7,11 +7,8 @@ use futures::stream::FuturesUnordered;
 use futures::StreamExt;
 use parking_lot::{Mutex, RwLock, RwLockReadGuard};
 use rustc_hash::FxHashMap;
-use tycho_types::boc::Boc;
 use tycho_types::cell::{Cell, CellBuilder, HashBytes, Load};
 
-use ton_block::Deserializable;
-use ton_types::SliceData;
 use tycho_block_util::block::BlockStuff;
 use tycho_block_util::state::{RefMcStateHandle, ShardStateStuff};
 use tycho_vm::StackValue;
@@ -607,18 +604,6 @@ pub fn make_existing_contract(state: Option<ShardAccount>) -> Result<Option<Exis
         account,
         last_transaction_hash: state.last_transaction_hash,
     }))
-}
-
-pub fn convert_to_old_account(
-    account: tycho_types::models::OptionalAccount,
-) -> Result<Option<ton_block::AccountStuff>> {
-    let cell = CellBuilder::build_from(account)?;
-    let bytes = Boc::encode(cell);
-    let cell = ton_types::deserialize_tree_of_cells(&mut &*bytes)?;
-    match ton_block::Account::construct_from(&mut SliceData::load_cell(cell)?)? {
-        ton_block::Account::AccountNone => Ok(None),
-        ton_block::Account::Account(stuff) => Ok(Some(stuff)),
-    }
 }
 
 pub struct CachedAccounts {

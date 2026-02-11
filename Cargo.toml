@@ -79,16 +79,7 @@ tycho-util = { version = "0.3.6", features = ["cli"] }
 tycho-vm = "0.3.2"
 tycho-executor = "0.3.2"
 
-# TON specific dependencies
-ton_block = { git = "https://github.com/broxus/ton-labs-block" }
-ton_abi = { git = "https://github.com/broxus/ton-labs-abi" }
-ton_types = { git = "https://github.com/broxus/ton-labs-types" }
-
-# Nekoton SDK
-nekoton = { git = "https://github.com/broxus/nekoton.git", default-features = true }
-nekoton-abi = { git = "https://github.com/broxus/nekoton.git", features = ["derive"] }
-nekoton-utils = { git = "https://github.com/broxus/nekoton.git" }
-nekoton-contracts = { git = "https://github.com/broxus/nekoton.git" }
+nekoton-core = { git = "https://github.com/broxus/tycho-nekoton.git" }
 
 sysinfo = "0.30.13"
 

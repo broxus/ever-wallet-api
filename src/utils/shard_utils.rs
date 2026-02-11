@@ -1,17 +1,7 @@
-use std::collections::HashMap;
-
 use anyhow::Result;
 use tycho_types::{cell::HashBytes, models::ShardIdent};
 
 use crate::models::ExistingContract;
-
-pub type ShardsMap = HashMap<ton_block::ShardIdent, ton_block::BlockIdExt>;
-
-#[derive(Debug, Clone)]
-pub struct LatestShardBlocks {
-    pub current_utime: u32,
-    pub block_ids: ShardsMap,
-}
 
 /// Helper trait to reduce boilerplate for getting accounts from shards state
 pub trait ShardAccountsMapExt {
@@ -86,7 +76,7 @@ mod tests {
                 .unwrap(),
         );
 
-        let mut shards = vec![ShardIdent::new(0, ton_block::SHARD_FULL).unwrap()];
+        let mut shards = vec![ShardIdent::new(0, ShardIdent::PREFIX_FULL).unwrap()];
         for _ in 0..4 {
             let mut new_shards = vec![];
             for shard in &shards {

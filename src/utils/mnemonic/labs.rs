@@ -1,14 +1,13 @@
 use std::convert::TryInto;
 
 use anyhow::Result;
-use nekoton_utils::TrustMe;
 
 use super::{Bip39MnemonicData, LANGUAGE};
 
 pub fn derive_master_key(phrase: &str) -> Result<[u8; 64]> {
     let mnemonic = bip39::Mnemonic::from_phrase(phrase, LANGUAGE)?;
     let hd = bip39::Seed::new(&mnemonic, "");
-    Ok(hd.as_bytes().try_into().trust_me())
+    Ok(hd.as_bytes().try_into().unwrap())
 }
 
 pub fn derive_from_phrase(

@@ -614,7 +614,7 @@ pub struct AcceptBurnInputs {
     pub wallet_owner: StdAddr,
     pub remaining_gas_to: StdAddr,
     pub callback_to: StdAddr,
-    pub payload: ton_types::Cell,
+    pub payload: Cell,
 }
 
 impl AcceptBurnInputs {

@@ -40,16 +40,6 @@ impl From<AccountState> for AccountStatus {
     }
 }
 
-impl From<ton_block::AccountState> for AccountStatus {
-    fn from(state: ton_block::AccountState) -> Self {
-        match state {
-            ton_block::AccountState::AccountUninit => AccountStatus::UnInit,
-            ton_block::AccountState::AccountActive { .. } => AccountStatus::Active,
-            ton_block::AccountState::AccountFrozen { .. } => AccountStatus::Frozen,
-        }
-    }
-}
-
 #[derive(
     Debug, Deserialize, Serialize, Clone, JsonSchema, Eq, PartialEq, sqlx::Type, Copy, EnumString,
 )]
