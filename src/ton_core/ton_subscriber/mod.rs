@@ -9,6 +9,8 @@ use parking_lot::{Mutex, RwLock, RwLockReadGuard};
 use rustc_hash::FxHashMap;
 use tycho_types::cell::{Cell, CellBuilder, HashBytes, Load};
 
+use nekoton_core::contracts::blockchain_context::{BlockchainContext, BlockchainContextBuilder};
+use nekoton_core::transport::SimpleTransport;
 use tycho_block_util::block::BlockStuff;
 use tycho_block_util::state::{RefMcStateHandle, ShardStateStuff};
 use tycho_vm::StackValue;
@@ -19,7 +21,6 @@ use crate::utils::token_wallets::models::TokenWalletVersion;
 use crate::utils::token_wallets::parsing;
 
 pub struct TonSubscriber {
-    // tip block timestamp
     current_utime: AtomicU32,
     signature_id: SignatureId,
     capabilities: Capabilities,
@@ -28,6 +29,7 @@ pub struct TonSubscriber {
     sc_accounts: RwLock<FxHashMap<ShardIdent, CachedAccounts>>,
     mc_block_awaiters: Mutex<FxHashMap<usize, Box<dyn BlockAwaiter>>>,
     messages_queue: Arc<PendingMessagesQueue>,
+    blockchain_context: RwLock<BlockchainContext>,
 }
 
 impl TonSubscriber {
@@ -47,6 +49,7 @@ impl TonSubscriber {
             )),
             messages_queue,
             capabilities: Capabilities::default(),
+            blockchain_context: RwLock::new(BlockchainContextBuilder::default().build().unwrap()),
         })
     }
 
@@ -75,6 +78,10 @@ impl TonSubscriber {
 
     pub fn capabilities(&self) -> u64 {
         self.capabilities.0.load(Ordering::Acquire)
+    }
+
+    pub fn blockchain_context(&self) -> BlockchainContext {
+        self.blockchain_context.read().clone()
     }
 
     pub fn add_transactions_subscription<I, T>(&self, accounts: I, subscription: &Arc<T>)
@@ -167,6 +174,7 @@ impl TonSubscriber {
                 if let Some(config) = custom.config {
                     let global_version = config.get_global_version()?;
                     self.update_capabilies(global_version.capabilities.into_inner())?;
+                    self.update_blockchain_context(config)?;
                 }
             }
         }
@@ -305,6 +313,20 @@ impl TonSubscriber {
     }
     fn update_capabilies(&self, capabilities: u64) -> Result<()> {
         self.capabilities.0.store(capabilities, Ordering::Release);
+        Ok(())
+    }
+
+    fn update_blockchain_context(&self, config: BlockchainConfig) -> Result<()> {
+        let mut blockchain_context = self.blockchain_context.write();
+
+        let transport = SimpleTransport::new(vec![], config.clone())?;
+
+        let context = BlockchainContextBuilder::new()
+            .with_config(config)
+            .with_transport(Arc::new(transport))
+            .build()?;
+
+        *blockchain_context = context;
         Ok(())
     }
 }

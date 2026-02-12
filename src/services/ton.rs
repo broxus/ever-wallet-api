@@ -884,7 +884,7 @@ impl TonService {
         outputs: Vec<NamedAbiType>,
         headers: Vec<AbiHeaderType>,
         responsible: bool,
-    ) -> Result<Vec<AbiValue>, Error> {
+    ) -> Result<Vec<NamedAbiValue>, Error> {
         let account_addr = HashBytes::from_str(&account_addr).map_err(anyhow::Error::from)?;
 
         let input_params: Vec<NamedAbiType> = inputs.iter().map(|x| x.abi_type.clone()).collect();

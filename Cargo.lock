@@ -2412,7 +2412,7 @@ dependencies = [
 [[package]]
 name = "nekoton-core"
 version = "0.0.2"
-source = "git+https://github.com/broxus/tycho-nekoton.git#60faf969afb88336b19b246d3c76a4f29668cda9"
+source = "git+https://github.com/broxus/tycho-nekoton.git?branch=feature%2Fupgrade-tycho-types#3ee48557f83ea1002c8417e428715c5022d93523"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -2424,15 +2424,15 @@ dependencies = [
  "serde",
  "thiserror 2.0.17",
  "tokio",
- "tycho-executor 0.2.1",
- "tycho-types 0.2.1",
- "tycho-vm 0.2.1",
+ "tycho-executor",
+ "tycho-types",
+ "tycho-vm",
 ]
 
 [[package]]
 name = "nekoton-utils"
 version = "0.0.2"
-source = "git+https://github.com/broxus/tycho-nekoton.git#60faf969afb88336b19b246d3c76a4f29668cda9"
+source = "git+https://github.com/broxus/tycho-nekoton.git?branch=feature%2Fupgrade-tycho-types#3ee48557f83ea1002c8417e428715c5022d93523"
 dependencies = [
  "hex",
  "serde",
@@ -4508,7 +4508,7 @@ dependencies = [
  "thiserror 2.0.17",
  "tl-proto",
  "tycho-storage-traits",
- "tycho-types 0.3.2",
+ "tycho-types",
  "tycho-util",
 ]
 
@@ -4566,7 +4566,7 @@ dependencies = [
  "tycho-crypto",
  "tycho-network",
  "tycho-storage",
- "tycho-types 0.3.2",
+ "tycho-types",
  "tycho-util",
  "weedb",
 ]
@@ -4588,20 +4588,6 @@ dependencies = [
 
 [[package]]
 name = "tycho-executor"
-version = "0.2.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c1caac6fbbfebd1ab9922d4dc021a7f1646bbd668ea928faeec7959006f6d534"
-dependencies = [
- "ahash 0.8.12",
- "anyhow",
- "num-bigint",
- "thiserror 2.0.17",
- "tycho-types 0.2.1",
- "tycho-vm 0.2.1",
-]
-
-[[package]]
-name = "tycho-executor"
 version = "0.3.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "737e032f9c6b68cdfe1a3433b151bca08dd81f66745a875e9d981fc6f5fdb2fb"
@@ -4610,8 +4596,8 @@ dependencies = [
  "anyhow",
  "num-bigint",
  "thiserror 2.0.17",
- "tycho-types 0.3.2",
- "tycho-vm 0.3.2",
+ "tycho-types",
+ "tycho-vm",
 ]
 
 [[package]]
@@ -4687,35 +4673,7 @@ checksum = "3449aeb0ad7213e38bb8047498a8af265e2ff7682922bac518af83f20d9ebfec"
 dependencies = [
  "bytes",
  "smallvec",
- "tycho-types 0.3.2",
-]
-
-[[package]]
-name = "tycho-types"
-version = "0.2.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8acf40ab2845c62d22fa75bca0470eb4b9f054b8a9d551d99be180bd9f8f8c4a"
-dependencies = [
- "ahash 0.8.12",
- "anyhow",
- "base64 0.22.1",
- "bitflags",
- "bytes",
- "crc32c",
- "ed25519-dalek",
- "hex",
- "num-bigint",
- "num-traits",
- "scc",
- "serde",
- "sha2 0.10.9",
- "smallvec",
- "thiserror 2.0.17",
- "tl-proto",
- "tycho-crypto",
- "tycho-types-abi-proc 0.2.0",
- "tycho-types-proc 0.2.0",
- "typeid",
+ "tycho-types",
 ]
 
 [[package]]
@@ -4746,21 +4704,9 @@ dependencies = [
  "thiserror 2.0.17",
  "tl-proto",
  "tycho-crypto",
- "tycho-types-abi-proc 0.3.0",
- "tycho-types-proc 0.3.0",
+ "tycho-types-abi-proc",
+ "tycho-types-proc",
  "typeid",
-]
-
-[[package]]
-name = "tycho-types-abi-proc"
-version = "0.2.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "97ef3008d7786bcca8e4de0481f1812c364b9669164f542ee1b4b80f57c0a6e0"
-dependencies = [
- "anyhow",
- "proc-macro2",
- "quote",
- "syn 2.0.111",
 ]
 
 [[package]]
@@ -4769,17 +4715,6 @@ version = "0.3.0"
 source = "git+https://github.com/broxus/tycho-types.git?rev=f9e5dbe1222ee51f3e4f5a6836f95a515dd6cdf1#f9e5dbe1222ee51f3e4f5a6836f95a515dd6cdf1"
 dependencies = [
  "anyhow",
- "proc-macro2",
- "quote",
- "syn 2.0.111",
-]
-
-[[package]]
-name = "tycho-types-proc"
-version = "0.2.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "80d303e410fed076d6ff43c930598e8c4fcff75bfed2f197c130cc314aa9123b"
-dependencies = [
  "proc-macro2",
  "quote",
  "syn 2.0.111",
@@ -4850,29 +4785,6 @@ dependencies = [
 
 [[package]]
 name = "tycho-vm"
-version = "0.2.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "64b65d687d7f06dcb2645a3a3aa2a8bb6608cbbf55d01b230086898222294d0c"
-dependencies = [
- "ahash 0.8.12",
- "anyhow",
- "bitflags",
- "blake2",
- "dyn-clone",
- "num-bigint",
- "num-integer",
- "num-traits",
- "sha2 0.10.9",
- "thiserror 2.0.17",
- "tl-proto",
- "tracing",
- "tycho-crypto",
- "tycho-types 0.2.1",
- "tycho-vm-proc 0.2.1",
-]
-
-[[package]]
-name = "tycho-vm"
 version = "0.3.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b7b4ae1dade385e5fbdca14e0439b1b7b518be19076324669785f4ef04d9e093"
@@ -4888,21 +4800,10 @@ dependencies = [
  "sha2 0.10.9",
  "thiserror 2.0.17",
  "tl-proto",
+ "tracing",
  "tycho-crypto",
- "tycho-types 0.3.2",
- "tycho-vm-proc 0.3.2",
-]
-
-[[package]]
-name = "tycho-vm-proc"
-version = "0.2.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3548fea44ef0cd0494084439572b2ece3e570f88e51d8b7aac95ea2b47706012"
-dependencies = [
- "darling 0.21.3",
- "proc-macro2",
- "quote",
- "syn 2.0.111",
+ "tycho-types",
+ "tycho-vm-proc",
 ]
 
 [[package]]
@@ -4980,11 +4881,11 @@ dependencies = [
  "tracing-subscriber",
  "tycho-block-util",
  "tycho-core",
- "tycho-executor 0.3.2",
+ "tycho-executor",
  "tycho-storage",
- "tycho-types 0.3.2",
+ "tycho-types",
  "tycho-util",
- "tycho-vm 0.3.2",
+ "tycho-vm",
  "uuid",
 ]
 

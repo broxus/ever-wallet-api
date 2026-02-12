@@ -2,6 +2,7 @@ use std::str::FromStr;
 use std::sync::Arc;
 
 use anyhow::{Context, Result};
+use nekoton_core::contracts::blockchain_context::BlockchainContext;
 use parking_lot::Mutex;
 use tokio::sync::{mpsc, oneshot};
 use tycho_core::blockchain_rpc::BlockchainRpcClient;
@@ -108,6 +109,9 @@ impl TonCore {
     }
     pub fn capabilities(&self) -> u64 {
         self.context.ton_subscriber.capabilities()
+    }
+    pub fn blockchain_context(&self) -> BlockchainContext {
+        self.context.ton_subscriber.blockchain_context()
     }
 }
 

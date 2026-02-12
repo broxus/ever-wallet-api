@@ -4,9 +4,11 @@ use num_bigint::BigUint;
 use num_traits::ToPrimitive;
 use tycho_types::abi::AbiValue;
 use tycho_types::cell::{Cell, HashBytes};
-use tycho_types::models::StdAddr;
+use tycho_types::models::{AccountState, StdAddr};
 
 use crate::models::ExistingContract;
+use crate::utils::token_wallets::models::RootTokenContractState;
+use crate::utils::token_wallets::models::TokenWalletContractState;
 use crate::utils::token_wallets::models::{
     RootTokenContractDetails, TokenWalletDetails, TokenWalletVersion,
 };
@@ -153,7 +155,6 @@ pub fn get_token_wallet_address(
     owner: &StdAddr,
 ) -> Result<StdAddr> {
     let root_contract_state = RootTokenContractState(ExecutionContext {
-        clock: &SimpleClock,
         account_stuff: &root_contract.account,
         libraries: &[],
     });
@@ -167,7 +168,6 @@ pub fn get_token_wallet_account(
     owner: &StdAddr,
 ) -> Result<HashBytes> {
     let root_contract_state = RootTokenContractState(ExecutionContext {
-        clock: &SimpleClock,
         account_stuff: &root_contract.account,
         libraries: &[],
     });
@@ -183,7 +183,6 @@ pub fn get_token_wallet_basic_info(
     token_contract: &ExistingContract,
 ) -> Result<(TokenWalletVersion, BigDecimal)> {
     let token_wallet_state = TokenWalletContractState(ExecutionContext {
-        clock: &SimpleClock,
         account_stuff: &token_contract.account,
         libraries: &[],
     });
@@ -196,23 +195,31 @@ pub fn get_token_wallet_basic_info(
 
 pub fn get_token_wallet_details(
     token_contract: &ExistingContract,
-) -> Result<(TokenWalletDetails, TokenWalletVersion, [u8; 32])> {
+) -> Result<(TokenWalletDetails, TokenWalletVersion, HashBytes)> {
     let contract_state = TokenWalletContractState(ExecutionContext {
-        clock: &SimpleClock,
         account_stuff: &token_contract.account,
         libraries: &[],
     });
 
-    let hash = *contract_state.get_code_hash()?.as_slice();
+    let hash = match &token_contract.account.state {
+        AccountState::Active(state_init) => {
+            let code = state_init
+                .code
+                .as_ref()
+                .ok_or_else(|| anyhow::anyhow!("Wallet not deployed"))?;
+            *code.repr_hash()
+        }
+        _ => anyhow::bail!("Wallet not deployed"),
+    };
+
     let version = contract_state.get_version()?;
     let details = contract_state.get_details(version)?;
 
     Ok((details, version, hash))
 }
 
-pub fn get_root_token_version(root_contract: &ExistingContract) -> Result<TokenWalletVersion> {
+pub fn get_root_token_version(root_contract: &ExistingContract, context: BlockchainContext) -> Result<TokenWalletVersion> {
     let root_contract_state = RootTokenContractState(ExecutionContext {
-        clock: &SimpleClock,
         account_stuff: &root_contract.account,
         libraries: &[],
     });

@@ -4,10 +4,12 @@ use std::sync::Arc;
 use axum::http::StatusCode;
 use bigdecimal::{BigDecimal, ToPrimitive};
 use ed25519_dalek::VerifyingKey;
+use nekoton_core::contracts::function_ext::ExecutionOutput;
+use nekoton_core::contracts::function_ext::FunctionExt;
 use num_bigint::BigUint;
 use num_traits::FromPrimitive;
 use tokio::sync::oneshot;
-use tycho_types::abi::{AbiValue, Function, NamedAbiValue, UnsignedExternalMessage};
+use tycho_types::abi::{Function, NamedAbiValue, UnsignedExternalMessage};
 use tycho_types::boc::Boc;
 use tycho_types::cell::{CellBuilder, HashBytes};
 use tycho_types::models::{GlobalCapabilities, OwnedMessage, SignatureContext, StdAddr};
@@ -798,8 +800,8 @@ impl TonClient {
         function: Function,
         input: &[NamedAbiValue],
         responsible: bool,
-    ) -> anyhow::Result<Option<Vec<AbiValue>>> {
-        let state = match self.ton_core.get_contract_state(&contract_address) {
+    ) -> anyhow::Result<Option<Vec<NamedAbiValue>>> {
+        let mut state = match self.ton_core.get_contract_state(&contract_address) {
             Ok(a) => a,
             Err(e) => {
                 tracing::error!("Failed to get contract state: {e:?}");
@@ -807,13 +809,18 @@ impl TonClient {
             }
         };
 
-        let res = if responsible {
-            function.run_local_responsible(&SimpleClock, state.account, input, &[])
-        } else {
-            function.run_local(&SimpleClock, state.account, input, &[])
-        };
+        let ExecutionOutput { values, exit_code } = function.run_local(
+            &mut state.account,
+            input,
+            responsible,
+            &mut self.ton_core.blockchain_context(),
+        )?;
 
-        res.map(Some)
+        if exit_code != 0 {
+            return Err(anyhow::anyhow!("Non-zero result code: {exit_code}"));
+        }
+
+        Ok(Some(values))
     }
 
     pub async fn prepare_signed_generic_message(

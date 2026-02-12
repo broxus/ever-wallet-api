@@ -649,3 +649,238 @@ pub fn accept_burn() -> &'static Function {
         outputs: Vec::new(),
     }
 }
+
+/// Returns the token wallet code.
+///
+/// # Type
+/// Responsible getter method
+///
+/// # Inputs
+/// * `answerId: uint32` - responsible answer id
+///
+/// # Outputs
+/// * `walletCode: cell`
+///
+pub fn wallet_code() -> &'static Function {
+    declare_function! {
+        name: "walletCode",
+        inputs: vec![
+            AbiType::Uint(32).named("answerId"),],
+        outputs: vec![
+            AbiType::Cell.named("walletCode")],
+    }
+}
+
+/// Returns the total token supply.
+///
+/// # Type
+/// Responsible getter method
+///
+/// # Inputs
+/// * `answerId: uint32` - responsible answer id
+///
+/// # Outputs
+/// * `totalSupply: string`
+///
+pub fn total_supply() -> &'static Function {
+    declare_function! {
+        name: "totalSupply",
+        inputs: vec![
+            AbiType::Uint(32).named("answerId"),
+            ],
+        outputs: vec![
+            AbiType::Uint(128).named("totalSupply"),
+            ],
+    }
+}
+
+/// Returns the name of the token - e.g. `MyToken`.
+///
+/// # Type
+/// Responsible getter method
+///
+/// # Inputs
+/// * `answerId: uint32` - responsible answer id
+///
+/// # Outputs
+/// * `name: string`
+///
+pub fn name() -> &'static Function {
+    declare_function! {
+        name: "name",
+        inputs: vec![
+            AbiType::Uint(32).named("answerId"),
+            ],
+        outputs: vec![
+            AbiType::String.named("name"),
+            ],
+    }
+}
+
+/// Returns the symbol of the token. E.g. "HIX".
+///
+/// # Type
+/// Responsible getter method
+///
+/// # Inputs
+/// * `answerId: uint32` - responsible answer id
+///
+/// # Outputs
+/// * `symbol: string`
+///
+pub fn symbol() -> &'static Function {
+    declare_function! {
+        name: "symbol",
+        inputs: vec![
+            AbiType::Uint(32).named("answerId"),
+            ],
+        outputs: vec![
+
+            AbiType::String.named("symbol"),
+            ],
+    }
+}
+
+/// Returns the number of decimals the token uses - e.g. 8,
+/// means to divide the token amount by 100000000 to get its user representation.
+///
+/// # Type
+/// Responsible getter method
+///
+/// # Inputs
+/// * `answerId: uint32` - responsible answer id
+///
+/// # Outputs
+/// * `decimals: uint8`
+///
+pub fn decimals() -> &'static Function {
+    declare_function! {
+        name: "decimals",
+        inputs: vec![
+            AbiType::Uint(32).named("answerId"),
+            ],
+        outputs: vec![
+
+            AbiType::Uint(8).named("decimals"),],
+    }
+}
+
+/// A contract that is compliant with TIP6 shall implement the following interface
+///
+/// # Type
+/// Responsible getter method
+///
+/// # Inputs
+/// * `answerId: uint32` - responsible answer id
+/// * `interfaceID: bytes4` - interface ID
+///
+/// # Outputs
+/// * `name: string`
+///
+pub fn supports_interface() -> &'static Function {
+    declare_function! {
+        name: "supportsInterface",
+        inputs: vec![
+            AbiType::Uint(32).named("answerId"),
+            AbiType::Uint(32).named("interfaceID"),
+        ],
+        outputs: vec![
+            AbiType::Bool.named("supports"),
+            ],
+    }
+}
+
+/// Returns the token root address.
+///
+/// # Type
+/// Responsible getter method
+///
+/// # Inputs
+/// * `answerId: uint32` - responsible answer id
+///
+/// # Outputs
+/// * `root: address`
+///
+pub fn root() -> &'static Function {
+    declare_function! {
+        name: "root",
+        inputs: vec![
+            AbiType::Uint(32).named("answerId"),
+            ],
+        outputs: vec![
+            AbiType::Address.named("root"),
+            ],
+    }
+}
+
+/// Returns the token wallet balance.
+///
+/// # Type
+/// Responsible getter method
+///
+/// # Inputs
+/// * `answerId: uint32` - responsible answer id
+///
+/// # Outputs
+/// * `balance: uint128`
+///
+pub fn balance() -> &'static Function {
+    declare_function! {
+        name: "balance",
+        inputs: vec![
+            AbiType::Uint(32).named("answerId"),
+            ],
+        outputs: vec![
+
+            AbiType::Uint(128).named("balance"),
+            ],
+    }
+}
+
+/// Get root owner
+///
+/// # Type
+/// Responsible getter method
+///
+/// # Inputs
+/// * `answerId: uint32` - responsible answer id
+///
+/// # Outputs
+/// * `owner: address` - owner wallet address
+///
+pub fn root_owner() -> &'static Function {
+    declare_function! {
+        name: "rootOwner",
+        inputs: vec![
+            AbiType::Uint(32).named("answerId"),
+            ],
+        outputs: vec![
+
+            AbiType::Address.named("rootOwner"),],
+    }
+}
+
+/// Derive `TokenWallet` address from owner address
+///
+/// # Type
+/// Responsible getter method
+///
+/// # Inputs
+/// * `answerId: uint32` - responsible answer id
+/// * `owner: address` - owner address
+///
+/// # Outputs
+/// * `walletAddress: address` - owner wallet address
+///
+pub fn wallet_of() -> &'static Function {
+    declare_function! {
+        name: "walletOf",
+        inputs: vec![
+            AbiType::Uint(32).named("answerId"),
+            AbiType::Address.named("owner"),
+        ],
+        outputs: vec![
+            AbiType::Address.named("walletAddress"),
+            ],
+    }
+}

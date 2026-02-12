@@ -3,13 +3,15 @@ use std::convert::TryFrom;
 
 use anyhow::Result;
 use ed25519_dalek::VerifyingKey;
+use nekoton_core::contracts::blockchain_context::BlockchainContext;
+use nekoton_core::contracts::function_ext::ExecutionOutput;
+use nekoton_core::contracts::function_ext::FunctionExt;
 use tycho_types::{
     abi::{AbiValue, FromAbi, Function, IntoAbi, NamedAbiValue, UnsignedExternalMessage},
     cell::{Cell, CellBuilder, CellDataBuilder, HashBytes, Load},
     dict::RawDict,
     models::{Account, StateInit, StdAddr},
 };
-use tycho_util::time::Clock;
 
 use crate::utils::{
     ton_wallet::{MessageFlags, MultisigPendingTransaction, MultisigPendingUpdate},
@@ -457,16 +459,20 @@ pub fn prepare_state_init(
 }
 
 fn run_local(
-    clock: &dyn Clock,
     function: &Function,
-    account_stuff: Account,
+    mut account_stuff: Account,
+    input: &[NamedAbiValue],
+    responsible: bool,
+    context: &mut BlockchainContext,
 ) -> Result<Vec<NamedAbiValue>> {
-    unimplemented!()
-    //let ExecutionOutput {
-    //    tokens,
-    //    result_code,
-    //} = function.run_local(clock, account_stuff, &[], &[])?;
-    //tokens.ok_or_else(|| MultisigError::NonZeroResultCode(result_code).into())
+    let ExecutionOutput { values, exit_code } =
+        function.run_local(&mut account_stuff, input, responsible, context)?;
+
+    if exit_code != 0 {
+        return Err(MultisigError::NonZeroResultCode(exit_code).into());
+    }
+
+    Ok(values)
 }
 
 #[derive(Copy, Clone)]
@@ -517,9 +523,9 @@ impl TryFrom<Vec<NamedAbiValue>> for MultisigParamsPrefix {
 }
 
 pub fn get_params(
-    clock: &dyn Clock,
     multisig_type: MultisigType,
     account: Cow<'_, Account>,
+    context: &mut BlockchainContext,
 ) -> Result<MultisigParamsPrefix> {
     let function = match multisig_type {
         MultisigType::Multisig2 | MultisigType::Multisig2_1 => {
@@ -537,21 +543,23 @@ pub fn get_params(
         }
     };
 
-    let output = run_local(clock, function, account.into_owned())?;
+    let output = run_local(function, account.into_owned(), &[], false, context)?;
     MultisigParamsPrefix::try_from(output)
 }
 
 pub fn get_custodians(
-    clock: &dyn Clock,
     multisig_type: MultisigType,
     account: Cow<'_, Account>,
+    context: &mut BlockchainContext,
 ) -> Result<Vec<HashBytes>> {
     let function = if multisig_type.is_multisig2() {
         crate::utils::wallets::multisig2::get_custodians()
     } else {
         crate::utils::wallets::multisig::get_custodians()
     };
-    run_local(clock, function, account.into_owned()).and_then(parse_multisig_contract_custodians)
+
+    let output = run_local(function, account.into_owned(), &[], false, context)?;
+    parse_multisig_contract_custodians(output)
 }
 
 fn parse_multisig_contract_custodians(tokens: Vec<NamedAbiValue>) -> Result<Vec<HashBytes>> {
@@ -571,10 +579,10 @@ fn parse_multisig_contract_custodians(tokens: Vec<NamedAbiValue>) -> Result<Vec<
 }
 
 pub fn find_pending_transaction(
-    clock: &dyn Clock,
     multisig_type: MultisigType,
     account: Cow<'_, Account>,
     pending_transaction_id: u64,
+    context: &mut BlockchainContext,
 ) -> Result<bool> {
     #[derive(Copy, Clone)]
     pub struct MultisigTransactionId {
@@ -607,7 +615,7 @@ pub fn find_pending_transaction(
         crate::utils::wallets::multisig::get_transactions()
     };
 
-    let tokens = run_local(clock, function, account.into_owned())?;
+    let tokens = run_local(function, account.into_owned(), &[], false, context)?;
 
     let array = match tokens.into_iter().next().map(|v| v.value) {
         Some(AbiValue::Array(_, tokens)) => tokens,
@@ -624,10 +632,10 @@ pub fn find_pending_transaction(
 }
 
 pub fn find_pending_update(
-    clock: &dyn Clock,
     multisig_type: MultisigType,
     account: Cow<'_, Account>,
     update_id: u64,
+    context: &mut BlockchainContext,
 ) -> Result<Option<UpdatedParams>> {
     use crate::utils::wallets::multisig2;
 
@@ -637,7 +645,7 @@ pub fn find_pending_update(
         _ => return Ok(None),
     };
 
-    let tokens = run_local(clock, function, account.into_owned())?;
+    let tokens = run_local(function, account.into_owned(), &[], false, context)?;
 
     let array = match tokens.into_iter().next().map(|v| v.value) {
         Some(AbiValue::Array(_, tokens)) => tokens,
@@ -668,17 +676,17 @@ pub struct UpdatedParams {
 }
 
 pub fn get_pending_transactions(
-    clock: &dyn Clock,
     multisig_type: MultisigType,
     account: Cow<'_, Account>,
     custodians: &[HashBytes],
+    context: &mut BlockchainContext,
 ) -> Result<Vec<MultisigPendingTransaction>> {
     let function = if multisig_type.is_multisig2() {
         crate::utils::wallets::multisig2::get_transactions()
     } else {
         crate::utils::wallets::multisig::get_transactions()
     };
-    run_local(clock, function, account.into_owned()).and_then(|tokens| {
+    run_local(function, account.into_owned(), &[], false, context).and_then(|tokens| {
         let array = match tokens.into_iter().next().map(|v| v.value) {
             Some(AbiValue::Array(_, tokens)) => tokens,
             _ => return Err(UnpackerError::InvalidAbi.into()),
@@ -699,10 +707,10 @@ pub fn get_pending_transactions(
 }
 
 pub fn get_pending_updates(
-    clock: &dyn Clock,
     multisig_type: MultisigType,
     account: Cow<'_, Account>,
     custodians: &[HashBytes],
+    context: &mut BlockchainContext,
 ) -> Result<Vec<MultisigPendingUpdate>> {
     use crate::utils::wallets::multisig2;
 
@@ -712,7 +720,7 @@ pub fn get_pending_updates(
         _ => return Ok(Vec::new()),
     };
 
-    run_local(clock, function, account.into_owned()).and_then(|tokens| {
+    run_local(function, account.into_owned(), &[], false, context).and_then(|tokens| {
         let array = match tokens.into_iter().next().map(|v| v.value) {
             Some(AbiValue::Array(_, tokens)) => tokens,
             _ => return Err(UnpackerError::InvalidAbi.into()),

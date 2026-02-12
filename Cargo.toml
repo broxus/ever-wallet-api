@@ -60,7 +60,7 @@ tower-http = { version = "0.6", features = ["trace", "cors", "limit", "set-heade
 tower-service = "0.3.3"
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
-tycho-types = { git = "https://github.com/broxus/tycho-types.git", rev = "f9e5dbe1222ee51f3e4f5a6836f95a515dd6cdf1" , features = ["tycho", "stats", "serde", "abi"] }
+tycho-types = { version = "0.3.2" , features = ["tycho", "stats", "serde", "abi"] }
 
 uuid = { version = "1.1", features = ["v4", "serde"] }
 
@@ -79,7 +79,7 @@ tycho-util = { version = "0.3.6", features = ["cli"] }
 tycho-vm = "0.3.2"
 tycho-executor = "0.3.2"
 
-nekoton-core = { git = "https://github.com/broxus/tycho-nekoton.git" }
+nekoton-core = { git = "https://github.com/broxus/tycho-nekoton.git", branch = "feature/upgrade-tycho-types" }
 
 sysinfo = "0.30.13"
 
@@ -87,4 +87,4 @@ sysinfo = "0.30.13"
 default = []
 
 [patch.crates-io]
-tycho-types = { git = "https://github.com/broxus/tycho-types.git", rev = "f9e5dbe1222ee51f3e4f5a6836f95a515dd6cdf1" , features = ["tycho", "stats", "serde", "abi"] }
+tycho-types = { git = "https://github.com/broxus/tycho-types.git", rev = "f9e5dbe1222ee51f3e4f5a6836f95a515dd6cdf1"}

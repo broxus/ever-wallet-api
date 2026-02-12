@@ -38,17 +38,18 @@ pub async fn post_read_contract(
         .await
         .map(|values| {
             let params = SerializeAbiValueParams::default();
-            let mut result = Vec::new();
+            let mut output = Vec::new();
             for value in values {
-                if let Some(json) =
-                    serde_json::to_value(&SerializeAbiValue::with_params(&value, params)).ok()
-                {
-                    result.push(json);
-                }
+                output.push(OutputParamDTO {
+                    abi_value: serde_json::to_string(&SerializeAbiValue::with_params(
+                        &value.value,
+                        params,
+                    ))
+                    .unwrap_or_default(),
+                    name: value.name.to_string(),
+                });
             }
-            ReadContractResponse {
-                object: serde_json::Value::from(result),
-            }
+            ReadContractResponse { output }
         })?;
 
     let elapsed = start.elapsed();

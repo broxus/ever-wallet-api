@@ -1,4 +1,6 @@
 use anyhow::Result;
+use nekoton_core::contracts::blockchain_context::BlockchainContext;
+use nekoton_core::contracts::function_ext::{ExecutionOutput, FunctionExt};
 use tycho_types::{
     abi::{Function, NamedAbiValue},
     models::ShardAccount,
@@ -12,8 +14,13 @@ pub trait ExistingContractExt {
         shard_account: &Option<ShardAccount>,
     ) -> Result<Option<ExistingContract>>;
 
-    fn run_local(&self, function: &Function, input: &[NamedAbiValue])
-        -> Result<Vec<NamedAbiValue>>;
+    fn run_local(
+        &mut self,
+        function: &Function,
+        input: &[NamedAbiValue],
+        responsible: bool,
+        context: &mut BlockchainContext,
+    ) -> Result<Vec<NamedAbiValue>>;
 }
 
 impl ExistingContractExt for ExistingContract {
@@ -36,16 +43,20 @@ impl ExistingContractExt for ExistingContract {
     }
 
     fn run_local(
-        &self,
+        &mut self,
         function: &Function,
         input: &[NamedAbiValue],
+        responsible: bool,
+        context: &mut BlockchainContext,
     ) -> Result<Vec<NamedAbiValue>> {
-        let ExecutionOutput {
-            tokens,
-            result_code,
-        } = function.run_local(self.account.clone(), input, &[])?;
+        let ExecutionOutput { values, exit_code } =
+            function.run_local(&mut self.account, input, responsible, context)?;
 
-        tokens.ok_or_else(|| ExistingContractError::NonZeroResultCode(result_code).into())
+        if exit_code != 0 {
+            return Err(ExistingContractError::NonZeroResultCode(exit_code).into());
+        }
+
+        Ok(values)
     }
 }
 
