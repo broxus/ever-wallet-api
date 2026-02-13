@@ -513,7 +513,8 @@ impl TokenSubscription {
                     .ok_or_else(|| TonCoreError::AccountNotExist(account.to_string()))?;
 
                 let context = BlockchainContextBuilder::new().build()?;
-                let (token_wallet_details, ..) = get_token_wallet_details(token_contract.clone(), context)?;
+                let (token_wallet_details, ..) =
+                    get_token_wallet_details(token_contract.clone(), context)?;
                 let owner_account = &token_wallet_details.owner_address.address;
 
                 if state_subscriptions.get(owner_account).is_some() {

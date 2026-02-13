@@ -79,7 +79,7 @@ tycho-util = { version = "0.3.6", features = ["cli"] }
 tycho-vm = "0.3.2"
 tycho-executor = "0.3.2"
 
-nekoton-core = { git = "https://github.com/broxus/tycho-nekoton.git", branch = "feature/upgrade-tycho-types" }
+nekoton-core = { git = "https://github.com/broxus/tycho-nekoton.git" }
 
 sysinfo = "0.30.13"
 

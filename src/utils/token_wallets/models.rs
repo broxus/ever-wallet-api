@@ -135,7 +135,10 @@ impl TokenWalletContractState<'_> {
         }
     }
 
-    pub fn get_details(&mut self, version: TokenWalletVersion) -> anyhow::Result<TokenWalletDetails> {
+    pub fn get_details(
+        &mut self,
+        version: TokenWalletVersion,
+    ) -> anyhow::Result<TokenWalletDetails> {
         Ok(match version {
             TokenWalletVersion::OldTip3v4 => {
                 return Err(Tip3Error::UnknownVersion.into());
