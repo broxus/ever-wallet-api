@@ -2,6 +2,7 @@ use anyhow::Result;
 use bigdecimal::BigDecimal;
 use tycho_types::cell::Cell;
 use uuid::Uuid;
+use nekoton_core::contracts::blockchain_context::BlockchainContextBuilder;
 
 use crate::ton_core::*;
 use crate::utils::token_wallets::models::{TokenIncomingTransfer, TokenWalletTransaction};
@@ -58,8 +59,9 @@ async fn internal_transfer_send(
 ) -> Result<CreateTokenTransaction> {
     let address = StdAddr::new(0, token_transaction_ctx.account);
 
+    let context = BlockchainContextBuilder::new().build()?;
     let owner_info =
-        get_token_wallet_info(&address, &parse_ctx, &token_transaction_ctx.token_state).await?;
+        get_token_wallet_info(&address, &parse_ctx, token_transaction_ctx.token_state, context).await?;
 
     let mut message_hash = Default::default();
     for message in token_transaction_ctx.transaction.iter_out_msgs() {
@@ -105,9 +107,10 @@ async fn internal_transfer_receive(
     parse_ctx: ParseContext<'_>,
 ) -> Result<CreateTokenTransaction> {
     let address = StdAddr::new(0, token_transaction_ctx.account);
+    let context = BlockchainContextBuilder::new().build()?;
 
     let owner_info =
-        get_token_wallet_info(&address, &parse_ctx, &token_transaction_ctx.token_state).await?;
+        get_token_wallet_info(&address, &parse_ctx, token_transaction_ctx.token_state, context).await?;
 
     let message_hash = token_transaction_ctx
         .transaction
@@ -148,9 +151,11 @@ async fn internal_transfer_bounced(
     parse_ctx: ParseContext<'_>,
 ) -> Result<CreateTokenTransaction> {
     let address = StdAddr::new(0, token_transaction_ctx.account);
+    
+    let context = BlockchainContextBuilder::new().build()?;
 
     let owner_info =
-        get_token_wallet_info(&address, &parse_ctx, &token_transaction_ctx.token_state).await?;
+        get_token_wallet_info(&address, &parse_ctx, token_transaction_ctx.token_state, context).await?;
 
     let message_hash = token_transaction_ctx
         .transaction
@@ -190,8 +195,9 @@ async fn internal_transfer_mint(
 ) -> Result<CreateTokenTransaction> {
     let address = StdAddr::new(0, token_transaction_ctx.account);
 
+    let context = BlockchainContextBuilder::new().build()?;
     let owner_info =
-        get_token_wallet_info(&address, &parse_ctx, &token_transaction_ctx.token_state).await?;
+        get_token_wallet_info(&address, &parse_ctx, token_transaction_ctx.token_state, context).await?;
 
     let message_hash = token_transaction_ctx
         .transaction
@@ -227,15 +233,16 @@ async fn internal_transfer_mint(
 async fn get_token_wallet_info(
     contract_address: &StdAddr,
     parse_ctx: &ParseContext<'_>,
-    contract: &ExistingContract,
+    contract: ExistingContract,
+    context: BlockchainContext,
 ) -> Result<OwnerInfo> {
     let res = match parse_ctx.owners_cache.get(contract_address).await {
         None => {
-            let (wallet, version, hash) = get_token_wallet_details(contract)?;
+            let (wallet, version, hash) = get_token_wallet_details(contract, context)?;
             let info = OwnerInfo {
                 owner_address: wallet.owner_address,
                 root_address: wallet.root_address,
-                code_hash: hash.to_vec(),
+                code_hash: hash,
                 version,
             };
 

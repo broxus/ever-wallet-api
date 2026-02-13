@@ -15,6 +15,7 @@ use tycho_types::cell::{CellBuilder, HashBytes};
 use tycho_types::models::{GlobalCapabilities, OwnedMessage, SignatureContext, StdAddr};
 use tycho_util::time::now_sec;
 use uuid::Uuid;
+use nekoton_core::contracts::blockchain_context::BlockchainContextBuilder;
 
 use crate::api::*;
 use crate::models::*;
@@ -522,7 +523,9 @@ impl TonClient {
         let root_account = root_address.address;
         let root_contract = self.ton_core.get_contract_state(&root_account)?;
 
-        let token_address = get_token_wallet_address(&root_contract, owner)?;
+        let context = BlockchainContextBuilder::new().build()?;
+
+        let token_address = get_token_wallet_address(root_contract, context.clone(), owner)?;
         let token_account = token_address.address;
         let token_contract = match self.ton_core.get_contract_state(&token_account) {
             Ok(contract) => contract,
@@ -534,7 +537,11 @@ impl TonClient {
             }
         };
 
-        let (version, network_balance) = get_token_wallet_basic_info(&token_contract)?;
+        let account_status = token_contract.account.state.clone().into();
+        let last_transaction_hash = Some(token_contract.last_transaction_hash.to_string());
+        let last_transaction_lt = Some(token_contract.account.last_trans_lt.to_string());
+
+        let (version, network_balance) = get_token_wallet_basic_info(token_contract, context)?;
 
         Ok(NetworkTokenAddressData {
             workchain_id: token_address.workchain as i32,
@@ -542,9 +549,9 @@ impl TonClient {
             root_address: root_address.to_string(),
             version: version.to_string(),
             network_balance,
-            account_status: token_contract.account.state.into(),
-            last_transaction_hash: Some(token_contract.last_transaction_hash.to_string()),
-            last_transaction_lt: Some(token_contract.account.last_trans_lt.to_string()),
+            account_status,
+            last_transaction_hash,
+            last_transaction_lt,
             sync_u_time: 0, // TODO: fix
         })
     }
@@ -695,8 +702,9 @@ impl TonClient {
 
         let root_account = root_token.address;
         let root_contract = self.ton_core.get_contract_state(&root_account)?;
+        let context = BlockchainContextBuilder::new().build()?;
 
-        let version = get_root_token_version(&root_contract)?;
+        let version = get_root_token_version(root_contract, context)?;
 
         let (value, _) = input.value.clone().as_bigint_and_exponent();
         let tokens = value.to_biguint().ok_or(TonClientError::ParseBigUint)?;

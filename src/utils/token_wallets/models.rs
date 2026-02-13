@@ -125,7 +125,7 @@ pub enum Tip3Error {
     WalletNotDeployed,
 }
 
-pub struct TokenWalletContractState<'a>(&'a mut BlockchainAccount);
+pub struct TokenWalletContractState<'a>(pub &'a mut BlockchainAccount);
 
 impl TokenWalletContractState<'_> {
     pub fn get_balance(&mut self, version: TokenWalletVersion) -> anyhow::Result<u128> {
@@ -166,7 +166,7 @@ impl TokenWalletContractState<'_> {
     }
 }
 
-pub struct RootTokenContractState<'a>(&'a mut BlockchainAccount);
+pub struct RootTokenContractState<'a>(pub &'a mut BlockchainAccount);
 
 impl RootTokenContractState<'_> {
     /// Calculates token wallet address
@@ -222,7 +222,7 @@ impl RootTokenContractState<'_> {
     }
 }
 
-pub struct RootTokenContract<'a>(&'a mut BlockchainAccount);
+pub struct RootTokenContract<'a>(pub &'a mut BlockchainAccount);
 
 impl RootTokenContract<'_> {
     pub fn name(&mut self) -> anyhow::Result<String> {
@@ -399,7 +399,7 @@ impl RootTokenContract<'_> {
     }
 }
 
-pub struct TokenWalletContract<'a>(&'a mut BlockchainAccount);
+pub struct TokenWalletContract<'a>(pub &'a mut BlockchainAccount);
 
 impl TokenWalletContract<'_> {
     pub fn owner(&mut self) -> anyhow::Result<StdAddr> {
@@ -477,7 +477,7 @@ impl TokenWalletContract<'_> {
     }
 }
 
-pub struct SidContract<'a>(&'a mut BlockchainAccount);
+pub struct SidContract<'a>(pub &'a mut BlockchainAccount);
 
 impl SidContract<'_> {
     pub fn supports_interfaces(&mut self, interfaces: &[u32]) -> anyhow::Result<bool> {

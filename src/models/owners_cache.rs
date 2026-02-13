@@ -4,6 +4,7 @@ use std::sync::Arc;
 
 use lru::LruCache;
 use parking_lot::Mutex;
+use tycho_types::cell::HashBytes;
 use tycho_types::models::StdAddr;
 
 use crate::models::sqlx::*;
@@ -38,7 +39,7 @@ impl OwnersCache {
                     ))
                     .unwrap(),
                     root_address: StdAddr::from_str(&got.root_address).unwrap(),
-                    code_hash: got.code_hash,
+                    code_hash: HashBytes::from_slice(&got.code_hash),
                     version: got.version.into(),
                 }
             }
@@ -54,7 +55,7 @@ impl OwnersCache {
             owner_account_workchain_id: value.owner_address.workchain as i32,
             owner_account_hex: value.owner_address.address.to_string(),
             root_address: value.root_address.to_string(),
-            code_hash: value.code_hash,
+            code_hash: value.code_hash.as_array().to_vec(),
             created_at: chrono::Utc::now().naive_utc(), //doesn't matter
             version: value.version.into(),
         };
@@ -68,7 +69,7 @@ impl OwnersCache {
 pub struct OwnerInfo {
     pub owner_address: StdAddr,
     pub root_address: StdAddr,
-    pub code_hash: Vec<u8>,
+    pub code_hash: HashBytes,
     pub version: TokenWalletVersion,
 }
 
@@ -90,7 +91,7 @@ impl OwnersCache {
                 OwnerInfo {
                     owner_address,
                     root_address,
-                    code_hash: x.code_hash,
+                    code_hash: HashBytes::from_slice(&x.code_hash),
                     version: x.version.into(),
                 },
             );

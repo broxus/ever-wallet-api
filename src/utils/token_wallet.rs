@@ -5,6 +5,8 @@ use num_traits::ToPrimitive;
 use tycho_types::abi::AbiValue;
 use tycho_types::cell::{Cell, HashBytes};
 use tycho_types::models::{AccountState, StdAddr};
+use nekoton_core::contracts::blockchain_context::BlockchainAccount;
+use nekoton_core::contracts::blockchain_context::BlockchainContext;
 
 use crate::models::ExistingContract;
 use crate::utils::token_wallets::models::RootTokenContractState;
@@ -151,12 +153,13 @@ pub fn prepare_token_mint(
 }
 
 pub fn get_token_wallet_address(
-    root_contract: &ExistingContract,
+    root_contract: ExistingContract,
+    context: BlockchainContext,
     owner: &StdAddr,
 ) -> Result<StdAddr> {
-    let root_contract_state = RootTokenContractState(ExecutionContext {
-        account_stuff: &root_contract.account,
-        libraries: &[],
+    let mut root_contract_state = RootTokenContractState(&mut BlockchainAccount{
+        account: root_contract.account,
+        context
     });
     let RootTokenContractDetails { version, .. } = root_contract_state.guess_details()?;
 
@@ -164,12 +167,13 @@ pub fn get_token_wallet_address(
 }
 
 pub fn get_token_wallet_account(
-    root_contract: &ExistingContract,
+    root_contract: ExistingContract,
+    context: BlockchainContext,
     owner: &StdAddr,
 ) -> Result<HashBytes> {
-    let root_contract_state = RootTokenContractState(ExecutionContext {
-        account_stuff: &root_contract.account,
-        libraries: &[],
+    let mut root_contract_state = RootTokenContractState(&mut BlockchainAccount{
+        account: root_contract.account,
+        context
     });
     let RootTokenContractDetails { version, .. } = root_contract_state.guess_details()?;
 
@@ -180,26 +184,23 @@ pub fn get_token_wallet_account(
 }
 
 pub fn get_token_wallet_basic_info(
-    token_contract: &ExistingContract,
+    token_contract: ExistingContract,
+    context: BlockchainContext
 ) -> Result<(TokenWalletVersion, BigDecimal)> {
-    let token_wallet_state = TokenWalletContractState(ExecutionContext {
-        account_stuff: &token_contract.account,
-        libraries: &[],
+    let mut token_wallet_state = TokenWalletContractState(&mut BlockchainAccount{
+        account: token_contract.account,
+        context
     });
 
-    let version = token_wallet_state.get_version()?;
-    let balance = BigDecimal::new(token_wallet_state.get_balance(version)?.into(), 0);
+    let balance = BigDecimal::new(token_wallet_state.get_balance(TokenWalletVersion::Tip3)?.into(), 0);
 
-    Ok((version, balance))
+    Ok((TokenWalletVersion::Tip3, balance))
 }
 
 pub fn get_token_wallet_details(
-    token_contract: &ExistingContract,
+    token_contract: ExistingContract,
+    context: BlockchainContext
 ) -> Result<(TokenWalletDetails, TokenWalletVersion, HashBytes)> {
-    let contract_state = TokenWalletContractState(ExecutionContext {
-        account_stuff: &token_contract.account,
-        libraries: &[],
-    });
 
     let hash = match &token_contract.account.state {
         AccountState::Active(state_init) => {
@@ -212,16 +213,20 @@ pub fn get_token_wallet_details(
         _ => anyhow::bail!("Wallet not deployed"),
     };
 
-    let version = contract_state.get_version()?;
-    let details = contract_state.get_details(version)?;
+    let mut contract_state = TokenWalletContractState(&mut BlockchainAccount{
+        account: token_contract.account,
+        context
+    });
 
-    Ok((details, version, hash))
+    let details = contract_state.get_details(TokenWalletVersion::Tip3)?;
+
+    Ok((details, TokenWalletVersion::Tip3, hash))
 }
 
-pub fn get_root_token_version(root_contract: &ExistingContract, context: BlockchainContext) -> Result<TokenWalletVersion> {
-    let root_contract_state = RootTokenContractState(ExecutionContext {
-        account_stuff: &root_contract.account,
-        libraries: &[],
+pub fn get_root_token_version(root_contract: ExistingContract, context: BlockchainContext) -> Result<TokenWalletVersion> {
+    let mut root_contract_state = RootTokenContractState(&mut BlockchainAccount{
+        account: root_contract.account,
+        context,
     });
     let RootTokenContractDetails { version, .. } = root_contract_state.guess_details()?;
 
