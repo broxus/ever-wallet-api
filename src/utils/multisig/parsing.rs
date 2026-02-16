@@ -198,24 +198,24 @@ impl MultisigFunctions {
 #[cfg(test)]
 mod tests {
 
-    use tycho_types::{
-        boc::Boc,
-        cell::Load,
-        models::{OrdinaryTxInfo, TxInfo},
-    };
+    // use tycho_types::{
+    //     boc::Boc,
+    //     cell::Load,
+    //     models::{OrdinaryTxInfo, TxInfo},
+    // };
 
-    use super::*;
+    // use super::*;
 
-    fn parse_transaction(data: &str) -> (Transaction, OrdinaryTxInfo) {
-        let binding = Boc::decode_base64(data).unwrap();
-        let mut cell = binding.as_slice().unwrap();
-        let transaction = Transaction::load_from(&mut cell).unwrap();
-        let info = match transaction.load_info().unwrap() {
-            TxInfo::Ordinary(info) => info,
-            _ => panic!(),
-        };
-        (transaction, info)
-    }
+    // fn parse_transaction(data: &str) -> (Transaction, OrdinaryTxInfo) {
+    //     let binding = Boc::decode_base64(data).unwrap();
+    //     let mut cell = binding.as_slice().unwrap();
+    //     let transaction = Transaction::load_from(&mut cell).unwrap();
+    //     let info = match transaction.load_info().unwrap() {
+    //         TxInfo::Ordinary(info) => info,
+    //         _ => panic!(),
+    //     };
+    //     (transaction, info)
+    // }
 
     //#[test]
     //fn test_parse_multisig_submit() {

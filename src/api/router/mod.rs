@@ -25,10 +25,14 @@ pub fn router(
 ) -> ApiRouter {
     describe_gauge!("in_flight_requests", "number of inflight requests");
     let (in_flight_requests_layer, counter) = InFlightRequestsLayer::pair();
-    tokio::spawn(async {
+    let in_flight_gauge = gauge!("in_flight_requests");
+    tokio::spawn(async move {
         counter
-            .run_emitter(Duration::from_secs(5), |count| async move {
-                gauge!("in_flight_requests", count as f64)
+            .run_emitter(Duration::from_secs(5), move |count| {
+                let gauge = in_flight_gauge.clone();
+                async move {
+                    gauge.set(count as f64)
+                }
             })
             .await;
     });

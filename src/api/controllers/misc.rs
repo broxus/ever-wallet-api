@@ -2,7 +2,7 @@ use std::str::FromStr;
 
 use axum::extract::State;
 use axum::Json;
-use metrics::{histogram, increment_counter};
+use metrics::{counter, histogram};
 use tokio::time::Instant;
 use tycho_types::abi::SerializeAbiValue;
 use tycho_types::abi::SerializeAbiValueParams;
@@ -53,8 +53,8 @@ pub async fn post_read_contract(
         })?;
 
     let elapsed = start.elapsed();
-    histogram!("execution_time_seconds", elapsed, "method" => "readContract");
-    increment_counter!("requests_processed", "method" => "readContract");
+    histogram!("execution_time_seconds", "method" => "readContract").record(elapsed);
+    counter!("requests_processed", "method" => "readContract").increment(1);
 
     Ok(Json(tokens))
 }
@@ -76,8 +76,8 @@ pub async fn post_encode_tvm_cell(
         .map(|cell| EncodedCellResponse { base64_cell: cell })?;
 
     let elapsed = start.elapsed();
-    histogram!("execution_time_seconds", elapsed, "method" => "encodeTvmCell");
-    increment_counter!("requests_processed", "method" => "encodeTvmCell");
+    histogram!("execution_time_seconds", "method" => "encodeTvmCell").record(elapsed);
+    counter!("requests_processed", "method" => "encodeTvmCell").increment(1);
 
     Ok(Json(cell))
 }
@@ -117,8 +117,8 @@ pub async fn post_prepare_generic_message(
     let message_hash = ctx.memory_storage.add_message(unsigned_message);
 
     let elapsed = start.elapsed();
-    histogram!("execution_time_seconds", elapsed, "method" => "prepareGenericMessage");
-    increment_counter!("requests_processed", "method" => "prepareGenericMessage");
+    histogram!("execution_time_seconds", "method" => "prepareGenericMessage").record(elapsed);
+    counter!("requests_processed", "method" => "prepareGenericMessage").increment(1);
 
     Ok(Json(UnsignedMessageHashResponse {
         unsigned_message_hash: message_hash.to_string(),
@@ -160,8 +160,8 @@ pub async fn post_send_signed_message(
     }?;
 
     let elapsed = start.elapsed();
-    histogram!("execution_time_seconds", elapsed, "method" => "sendSignedMessage");
-    increment_counter!("requests_processed", "method" => "sendSignedMessage");
+    histogram!("execution_time_seconds", "method" => "sendSignedMessage").record(elapsed);
+    counter!("requests_processed", "method" => "sendSignedMessage").increment(1);
 
     Ok(Json(res))
 }
@@ -202,8 +202,8 @@ pub async fn post_send_generic_message(
         .map(From::from);
 
     let elapsed = start.elapsed();
-    histogram!("execution_time_seconds", elapsed, "method" => "sendGenericMessage");
-    increment_counter!("requests_processed", "method" => "sendGenericMessage");
+    histogram!("execution_time_seconds", "method" => "sendGenericMessage").record(elapsed);
+    counter!("requests_processed", "method" => "sendGenericMessage").increment(1);
 
     Ok(Json(TransactionResponse::from(transaction)))
 }
@@ -222,8 +222,8 @@ pub async fn post_set_callback(
         .await?;
 
     let elapsed = start.elapsed();
-    histogram!("execution_time_seconds", elapsed, "method" => "setCallback");
-    increment_counter!("requests_processed", "method" => "setCallback");
+    histogram!("execution_time_seconds", "method" => "setCallback").record(elapsed);
+    counter!("requests_processed", "method" => "setCallback").increment(1);
 
     Ok(Json(SetCallbackResponse { callback: response }))
 }
@@ -245,8 +245,8 @@ pub async fn get_token_whitelist(
     })?;
 
     let elapsed = start.elapsed();
-    histogram!("execution_time_seconds", elapsed, "method" => "getTokenWhitelist");
-    increment_counter!("requests_processed", "method" => "getTokenWhitelist");
+    histogram!("execution_time_seconds", "method" => "getTokenWhitelist").record(elapsed);
+    counter!("requests_processed", "method" => "getTokenWhitelist").increment(1);
 
     Ok(Json(whitelist))
 }
@@ -259,8 +259,8 @@ pub async fn post_resubscribe_for_all_accounts(
     ctx.ton_service.resubscribe_for_all_accounts().await?;
 
     let elapsed = start.elapsed();
-    histogram!("execution_time_seconds", elapsed, "method" => "resubscribeForAllAccounts");
-    increment_counter!("requests_processed", "method" => "resubscribeForAllAccounts");
+    histogram!("execution_time_seconds", "method" => "resubscribeForAllAccounts").record(elapsed);
+    counter!("requests_processed", "method" => "resubscribeForAllAccounts").increment(1);
 
     Ok(Json(ResubscribeResponse {}))
 }
