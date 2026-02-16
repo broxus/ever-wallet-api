@@ -41,9 +41,16 @@ impl TonCore {
         token_transaction_producer: TokenTransactionTx,
         storage: CoreStorage,
         blockchain_rpc_client: BlockchainRpcClient,
+        last_block_id: &BlockId,
     ) -> Result<Arc<Self>> {
-        let context =
-            TonCoreContext::new(sqlx_client, owners_cache, storage, blockchain_rpc_client).await?;
+        let context = TonCoreContext::new(
+            sqlx_client,
+            owners_cache,
+            storage,
+            blockchain_rpc_client,
+            last_block_id,
+        )
+        .await?;
 
         let ton_transaction =
             TonTransaction::new(context.clone(), ton_transaction_producer).await?;
@@ -56,14 +63,6 @@ impl TonCore {
             ton_transaction: Mutex::new(ton_transaction),
             token_transaction: Mutex::new(token_transaction),
         }))
-    }
-
-    pub async fn start(&self, last_block_id: &BlockId) -> Result<()> {
-        // Sync node and subscribers
-        self.context.start(last_block_id).await?;
-
-        // Done
-        Ok(())
     }
 
     pub fn add_ton_account_subscription<I>(&self, accounts: I)
@@ -130,10 +129,37 @@ impl TonCoreContext {
         owners_cache: OwnersCache,
         storage: CoreStorage,
         blockchain_rpc_client: BlockchainRpcClient,
+        last_block_id: &BlockId,
     ) -> Result<Arc<Self>> {
         let messages_queue = PendingMessagesQueue::new(512);
 
-        let ton_subscriber = TonSubscriber::new(messages_queue.clone());
+        let mc_state = storage
+            .shard_state_storage()
+            .load_state(last_block_id.seqno, last_block_id)
+            .await?;
+
+        let config = mc_state.config_params()?.clone();
+        let global_version = config.get_global_version()?;
+
+        let ton_subscriber = TonSubscriber::new(
+            messages_queue.clone(),
+            global_version.capabilities.into_inner(),
+            mc_state.state().global_id,
+            config,
+        );
+
+        // Load last states if exists
+        let block_ids = sqlx_client.get_last_key_blocks().await?;
+        for block_id in block_ids {
+            let block_id = BlockId::from_str(&block_id.block_id)?;
+            if let Ok(state) = storage
+                .shard_state_storage()
+                .load_state(last_block_id.seqno, &block_id)
+                .await
+            {
+                ton_subscriber.update_shards_accounts_cache(block_id.shard, state)?;
+            }
+        }
 
         Ok(Arc::new(Self {
             sqlx_client,
@@ -143,42 +169,6 @@ impl TonCoreContext {
             storage,
             blockchain_rpc_client,
         }))
-    }
-
-    async fn start(&self, last_block_id: &BlockId) -> Result<()> {
-        // Load last states if exists
-        let block_ids = self.sqlx_client.get_last_key_blocks().await?;
-        for block_id in block_ids {
-            let block_id = BlockId::from_str(&block_id.block_id)?;
-            if let Ok(state) = self
-                .storage
-                .shard_state_storage()
-                .load_state(last_block_id.seqno, &block_id)
-                .await
-            {
-                self.ton_subscriber
-                    .update_shards_accounts_cache(block_id.shard, state)?;
-            }
-        }
-
-        let mc_state = self
-            .storage
-            .shard_state_storage()
-            .load_state(last_block_id.seqno, last_block_id)
-            .await?;
-
-        let config = mc_state.config_params()?;
-        let global_version = config.get_global_version()?;
-
-        self.ton_subscriber
-            .start(
-                global_version.capabilities.into_inner(),
-                mc_state.state().global_id,
-            )
-            .await
-            .context("Failed to start ton_subscriber")?;
-
-        Ok(())
     }
 
     fn get_contract_state(&self, account: &HashBytes) -> Result<ExistingContract> {

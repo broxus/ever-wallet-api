@@ -128,13 +128,6 @@ impl Cmd {
             .init_blockchain_rpc(NoopBroadcastListener, NoopBroadcastListener)?
             .build()?;
 
-        let context = EngineContext::new(
-            node_config.api,
-            node.core_storage.clone(),
-            node.blockchain_rpc_client.clone(),
-        )
-        .await?;
-
         // Sync node.
         node.wait_for_neighbours(3).await;
 
@@ -151,6 +144,14 @@ impl Cmd {
         node.update_validator_set_from_shard_state(&init_block_id)
             .await?;
 
+        let context = EngineContext::new(
+            node_config.api,
+            node.core_storage.clone(),
+            node.blockchain_rpc_client.clone(),
+            &init_block_id,
+        )
+        .await?;
+
         // Build strider.
         let archive_block_provider = node.build_archive_block_provider();
         let storage_block_provider = node.build_storage_block_provider();
@@ -165,11 +166,6 @@ impl Cmd {
                 MetricsSubscriber,
             ),
         );
-
-        context
-            .start(&init_block_id)
-            .await
-            .context("failed to start context")?;
 
         let api = Api::bind(
             context.config.server_addr,

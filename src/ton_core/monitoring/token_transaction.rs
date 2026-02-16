@@ -51,11 +51,17 @@ impl TokenTransaction {
                     }
                 };
 
+                let Some(context) = event.ctx.blockchain_context.clone() else {
+                    tracing::error!("Failed to parse received token transaction: Failed to get blockchain context");
+                    continue;
+                };
+
                 match token_transaction_parser::parse_token_transaction(
                     event.ctx,
                     event.parsed,
                     &token_transaction.context.sqlx_client,
                     &token_transaction.context.owners_cache,
+                    context.blockchain_context,
                 )
                 .await
                 {
@@ -87,6 +93,7 @@ pub struct TokenTransactionContext {
     pub transaction: Transaction,
     pub token_state: ExistingContract,
     pub in_msg: OwnedMessage,
+    pub blockchain_context: Option<BlockchainContextWrapper>,
 }
 
 #[derive(Debug)]
@@ -118,6 +125,7 @@ impl ReadFromTransaction for TokenTransactionEvent {
                         transaction: ctx.transaction.clone(),
                         token_state: token_state.clone(),
                         in_msg: ctx.in_msg.clone(),
+                        blockchain_context: ctx.blockchain_context.clone(),
                     },
                     parsed: parsed.clone(),
                     state,

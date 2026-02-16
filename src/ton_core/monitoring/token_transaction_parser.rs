@@ -1,6 +1,5 @@
 use anyhow::Result;
 use bigdecimal::BigDecimal;
-use nekoton_core::contracts::blockchain_context::BlockchainContextBuilder;
 use tycho_types::cell::Cell;
 use uuid::Uuid;
 
@@ -17,6 +16,7 @@ pub async fn parse_token_transaction(
     parsed_token_transaction: TokenWalletTransaction,
     sqlx_client: &SqlxClient,
     owners_cache: &OwnersCache,
+    context: BlockchainContext,
 ) -> Result<CreateTokenTransaction> {
     let parse_ctx = ParseContext {
         sqlx_client,
@@ -25,10 +25,10 @@ pub async fn parse_token_transaction(
 
     let parsed = match parsed_token_transaction {
         TokenWalletTransaction::IncomingTransfer(transfer) => {
-            internal_transfer_receive(token_transaction_ctx, transfer, parse_ctx).await?
+            internal_transfer_receive(token_transaction_ctx, transfer, parse_ctx, context).await?
         }
         TokenWalletTransaction::Accept(tokens) => {
-            internal_transfer_mint(token_transaction_ctx, tokens, parse_ctx).await?
+            internal_transfer_mint(token_transaction_ctx, tokens, parse_ctx, context).await?
         }
         TokenWalletTransaction::OutgoingTransfer(token_transfer) => {
             internal_transfer_send(
@@ -36,15 +36,23 @@ pub async fn parse_token_transaction(
                 token_transfer.tokens,
                 Some(token_transfer.payload),
                 parse_ctx,
+                context,
             )
             .await?
         }
         TokenWalletTransaction::SwapBack(swap_back) => {
-            internal_transfer_send(token_transaction_ctx, swap_back.tokens, None, parse_ctx).await?
+            internal_transfer_send(
+                token_transaction_ctx,
+                swap_back.tokens,
+                None,
+                parse_ctx,
+                context,
+            )
+            .await?
         }
         TokenWalletTransaction::TransferBounced(tokens)
         | TokenWalletTransaction::SwapBackBounced(tokens) => {
-            internal_transfer_bounced(token_transaction_ctx, tokens, parse_ctx).await?
+            internal_transfer_bounced(token_transaction_ctx, tokens, parse_ctx, context).await?
         }
     };
 
@@ -56,10 +64,10 @@ async fn internal_transfer_send(
     tokens: u128,
     payload_cell: Option<Cell>,
     parse_ctx: ParseContext<'_>,
+    context: BlockchainContext,
 ) -> Result<CreateTokenTransaction> {
     let address = StdAddr::new(0, token_transaction_ctx.account);
 
-    let context = BlockchainContextBuilder::new().build()?;
     let owner_info = get_token_wallet_info(
         &address,
         &parse_ctx,
@@ -110,9 +118,9 @@ async fn internal_transfer_receive(
     token_transaction_ctx: TokenTransactionContext,
     token_transfer: TokenIncomingTransfer,
     parse_ctx: ParseContext<'_>,
+    context: BlockchainContext,
 ) -> Result<CreateTokenTransaction> {
     let address = StdAddr::new(0, token_transaction_ctx.account);
-    let context = BlockchainContextBuilder::new().build()?;
 
     let owner_info = get_token_wallet_info(
         &address,
@@ -159,10 +167,9 @@ async fn internal_transfer_bounced(
     token_transaction_ctx: TokenTransactionContext,
     tokens: u128,
     parse_ctx: ParseContext<'_>,
+    context: BlockchainContext,
 ) -> Result<CreateTokenTransaction> {
     let address = StdAddr::new(0, token_transaction_ctx.account);
-
-    let context = BlockchainContextBuilder::new().build()?;
 
     let owner_info = get_token_wallet_info(
         &address,
@@ -207,10 +214,10 @@ async fn internal_transfer_mint(
     token_transaction_ctx: TokenTransactionContext,
     tokens: u128,
     parse_ctx: ParseContext<'_>,
+    context: BlockchainContext,
 ) -> Result<CreateTokenTransaction> {
     let address = StdAddr::new(0, token_transaction_ctx.account);
 
-    let context = BlockchainContextBuilder::new().build()?;
     let owner_info = get_token_wallet_info(
         &address,
         &parse_ctx,

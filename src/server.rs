@@ -36,6 +36,7 @@ impl EngineContext {
         config: AppConfig,
         storage: CoreStorage,
         blockchain_rpc_client: BlockchainRpcClient,
+        last_block_id: &BlockId,
     ) -> Result<Arc<Self>> {
         let pool = PgPoolOptions::new()
             .max_connections(config.db_pool_size)
@@ -65,10 +66,16 @@ impl EngineContext {
             token_transaction_tx,
             storage,
             blockchain_rpc_client,
+            last_block_id,
         )
         .await?;
 
         let ton_client = Arc::new(TonClient::new(ton_core.clone(), sqlx_client.clone()));
+
+        ton_client
+            .start()
+            .await
+            .context("failed to start ton_client")?;
 
         let ton_service = Arc::new(TonService::new(
             sqlx_client.clone(),
@@ -77,7 +84,12 @@ impl EngineContext {
             config.key.clone(),
         ));
 
-        let auth_service = Arc::new(AuthService::new(sqlx_client.clone()));
+        ton_service
+            .start()
+            .await
+            .context("failed to start ton_service")?;
+
+        let auth_service = Arc::new(AuthService::new(sqlx_client));
 
         let memory_storage = Arc::new(StorageHandler::default());
 
@@ -96,23 +108,6 @@ impl EngineContext {
         engine_context.start_updating_accounts_subscription();
 
         Ok(engine_context)
-    }
-
-    pub async fn start(&self, last_block_id: &BlockId) -> Result<()> {
-        self.ton_client
-            .start()
-            .await
-            .context("failed to start ton_client")?;
-        self.ton_service
-            .start()
-            .await
-            .context("failed to start ton_service")?;
-        self.ton_core
-            .start(last_block_id)
-            .await
-            .context("failed to start ton_core")?;
-
-        Ok(())
     }
 
     fn start_listening_ton_transaction(self: &Arc<Self>, mut rx: TonTransactionRx) {

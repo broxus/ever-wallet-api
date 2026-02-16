@@ -33,10 +33,28 @@ pub struct TonSubscriber {
 }
 
 impl TonSubscriber {
-    pub fn new(messages_queue: Arc<PendingMessagesQueue>) -> Arc<Self> {
+    pub fn new(
+        messages_queue: Arc<PendingMessagesQueue>,
+        capabilities_bits: u64,
+        global_id: i32,
+        config: BlockchainConfig,
+    ) -> Arc<Self> {
+        let signature_id = SignatureId::default();
+        signature_id.store(capabilities_bits, global_id);
+
+        let capabilities = Capabilities(AtomicU64::new(capabilities_bits));
+
+        let transport = SimpleTransport::new(vec![], config.clone()).unwrap();
+
+        let blockchain_context = BlockchainContextBuilder::new()
+            .with_config(config)
+            .with_transport(Arc::new(transport))
+            .build()
+            .unwrap();
+
         Arc::new(Self {
             current_utime: AtomicU32::new(0),
-            signature_id: SignatureId::default(),
+            signature_id,
             state_subscriptions: RwLock::new(FxHashMap::with_capacity_and_hasher(
                 1024,
                 Default::default(),
@@ -48,8 +66,8 @@ impl TonSubscriber {
                 Default::default(),
             )),
             messages_queue,
-            capabilities: Capabilities::default(),
-            blockchain_context: RwLock::new(BlockchainContextBuilder::default().build().unwrap()),
+            capabilities,
+            blockchain_context: RwLock::new(blockchain_context),
         })
     }
 
@@ -60,12 +78,6 @@ impl TonSubscriber {
             signature_id: self.signature_id(),
             pending_message_count: self.messages_queue.len(),
         }
-    }
-
-    pub async fn start(self: &Arc<Self>, capabilities: u64, global_id: i32) -> Result<()> {
-        self.update_signature_id(capabilities, global_id)?;
-        self.update_capabilies(capabilities)?;
-        Ok(())
     }
 
     pub fn current_utime(&self) -> u32 {
@@ -253,6 +265,7 @@ impl TonSubscriber {
         let state_subscriptions = self.state_subscriptions.read();
         let token_subscription = self.token_subscription.read();
         let shards_accounts_cache = self.sc_accounts.read();
+        let blockchain_context = self.blockchain_context();
 
         for account_block in account_blocks.iter() {
             let (account, _, account_block) = account_block?;
@@ -287,6 +300,7 @@ impl TonSubscriber {
                         &account_block,
                         &account,
                         block_hash,
+                        blockchain_context.clone(),
                     ) {
                         Ok(rx_states) => {
                             if !rx_states.is_empty() {
@@ -307,10 +321,6 @@ impl TonSubscriber {
         Ok(states)
     }
 
-    fn update_signature_id(&self, capabilities: u64, global_id: i32) -> Result<()> {
-        self.signature_id.store(capabilities, global_id);
-        Ok(())
-    }
     fn update_capabilies(&self, capabilities: u64) -> Result<()> {
         self.capabilities.0.store(capabilities, Ordering::Release);
         Ok(())
@@ -427,6 +437,7 @@ impl StateSubscription {
                 in_msg: &in_msg,
                 token_transaction: &None,
                 token_state: &None,
+                blockchain_context: &None,
             };
 
             // Handle transaction
@@ -465,6 +476,7 @@ impl TokenSubscription {
         account_block: &AccountBlock,
         account: &HashBytes,
         block_hash: &HashBytes,
+        blockchain_context: BlockchainContext,
     ) -> Result<FuturesUnordered<HandleTransactionStatusRx>> {
         let states = FuturesUnordered::new();
 
@@ -512,9 +524,8 @@ impl TokenSubscription {
                     .find_account(&HashBytes::from_slice(account.as_slice()))?
                     .ok_or_else(|| TonCoreError::AccountNotExist(account.to_string()))?;
 
-                let context = BlockchainContextBuilder::new().build()?;
                 let (token_wallet_details, ..) =
-                    get_token_wallet_details(token_contract.clone(), context)?;
+                    get_token_wallet_details(token_contract.clone(), blockchain_context.clone())?;
                 let owner_account = &token_wallet_details.owner_address.address;
 
                 if state_subscriptions.get(owner_account).is_some() {
@@ -533,6 +544,9 @@ impl TokenSubscription {
                         in_msg: &in_msg,
                         token_transaction: &Some(parsed),
                         token_state: &Some(token_contract),
+                        blockchain_context: &Some(BlockchainContextWrapper {
+                            blockchain_context: blockchain_context.clone(),
+                        }),
                     };
 
                     if let Some(transaction_subscription) = self.transaction_subscription.upgrade()

@@ -4,7 +4,6 @@ use std::sync::Arc;
 use axum::http::StatusCode;
 use bigdecimal::{BigDecimal, ToPrimitive};
 use ed25519_dalek::VerifyingKey;
-use nekoton_core::contracts::blockchain_context::BlockchainContextBuilder;
 use nekoton_core::contracts::function_ext::ExecutionOutput;
 use nekoton_core::contracts::function_ext::FunctionExt;
 use num_bigint::BigUint;
@@ -530,7 +529,7 @@ impl TonClient {
         let root_account = root_address.address;
         let root_contract = self.ton_core.get_contract_state(&root_account)?;
 
-        let context = BlockchainContextBuilder::new().build()?;
+        let context = self.ton_core.blockchain_context();
 
         let token_address = get_token_wallet_address(root_contract, context.clone(), owner)?;
         let token_account = token_address.address;
@@ -725,7 +724,7 @@ impl TonClient {
 
         let root_account = root_token.address;
         let root_contract = self.ton_core.get_contract_state(&root_account)?;
-        let context = BlockchainContextBuilder::new().build()?;
+        let context = self.ton_core.blockchain_context();
 
         let version = get_root_token_version(root_contract, context)?;
 

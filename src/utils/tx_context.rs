@@ -1,4 +1,5 @@
 use anyhow::Result;
+use nekoton_core::contracts::blockchain_context::BlockchainContext;
 use tokio::sync::oneshot;
 use tycho_types::{
     abi::{Function, NamedAbiValue},
@@ -32,6 +33,20 @@ pub struct TxContext<'a> {
     pub in_msg: &'a OwnedMessage,
     pub token_transaction: &'a Option<crate::utils::token_wallets::models::TokenWalletTransaction>,
     pub token_state: &'a Option<ExistingContract>,
+    pub blockchain_context: &'a Option<BlockchainContextWrapper>,
+}
+
+#[derive(Clone)]
+pub struct BlockchainContextWrapper {
+    pub blockchain_context: BlockchainContext,
+}
+
+impl std::fmt::Debug for BlockchainContextWrapper {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("BlockchainContextWrapper")
+            .field("blockchain_context", &"context")
+            .finish()
+    }
 }
 
 impl TxContext<'_> {
