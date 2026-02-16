@@ -11,7 +11,7 @@ use axum::http::Method;
 use futures_util::future::BoxFuture;
 use metrics::{describe_counter, describe_histogram};
 use metrics_exporter_prometheus::Matcher;
-use schemars::schema::{InstanceType, SchemaObject};
+use schemars::{json_schema, Schema, SchemaGenerator};
 use tower::ServiceBuilder;
 use tower_http::cors::{AllowHeaders, AllowMethods, AllowOrigin, CorsLayer};
 use tower_http::trace::TraceLayer;
@@ -139,14 +139,9 @@ fn api_docs(api: TransformOpenApi) -> TransformOpenApi {
         .summary("Tycho Wallet indexer")
 }
 
-pub(super) fn int_schema(_: &mut schemars::SchemaGenerator) -> schemars::schema::Schema {
-    let object_schema = schemars::schema::SchemaObject {
-        instance_type: Some(InstanceType::Number.into()),
-        ..Default::default()
-    };
-    object_schema.into()
+pub(super) fn int_schema(_: &mut SchemaGenerator) -> Schema {
+    json_schema!({"type": "number"})
 }
-pub(super) fn any_schema(_: &mut schemars::SchemaGenerator) -> schemars::schema::Schema {
-    let object_schema = SchemaObject::default();
-    object_schema.into()
+pub(super) fn any_schema(_: &mut SchemaGenerator) -> Schema {
+    json_schema!({})
 }
