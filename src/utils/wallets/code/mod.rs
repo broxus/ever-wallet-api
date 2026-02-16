@@ -29,6 +29,6 @@ declare_tvc! {
     ever_wallet => "./ever_wallet_code.boc" (EVER_WALLET_CODE),
 }
 
-fn load(mut data: &[u8]) -> Cell {
-    Boc::decode(&mut data).expect("Trust me")
+fn load(data: &[u8]) -> Cell {
+    Boc::decode(data).expect("Trust me")
 }

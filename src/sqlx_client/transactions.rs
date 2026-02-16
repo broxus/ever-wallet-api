@@ -1,8 +1,7 @@
-use std::str::FromStr;
-
 use anyhow::{Context, Result};
 use chrono::prelude::*;
 use tycho_types::models::StdAddr;
+use tycho_types::models::StdAddrFormat;
 use uuid::Uuid;
 
 use crate::models::*;
@@ -713,7 +712,7 @@ pub fn filter_transaction_query(
     }
 
     if let Some(account) = account {
-        if let Ok(account) = StdAddr::from_str(&account) {
+        if let Ok((account, _)) = StdAddr::from_str_ext(&account, StdAddrFormat::any()) {
             updates.push(format!(" AND account_workchain_id = ${} ", *args_len + 1,));
             *args_len += 1;
             args.add(account.workchain).map_err(sqlx::Error::Encode)?;

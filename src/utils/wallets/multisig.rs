@@ -117,6 +117,7 @@ pub fn get_custodians() -> &'static Function {
     }
 }
 
+#[allow(unused)]
 pub mod safe_multisig {
     use crate::utils::WithAbiTypePlain;
 
@@ -144,6 +145,7 @@ pub mod safe_multisig {
     }
 }
 
+#[allow(unused)]
 pub mod set_code_multisig {
     use crate::utils::WithAbiTypePlain;
 

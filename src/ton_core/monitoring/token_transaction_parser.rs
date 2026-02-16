@@ -94,7 +94,7 @@ async fn internal_transfer_send(
         sender_hex: None,
         root_address: owner_info.root_address.to_string(),
         value: -BigDecimal::new(tokens.into(), 0),
-        payload: payload_cell.map(|c| Boc::encode(c)),
+        payload: payload_cell.map(Boc::encode),
         block_hash: token_transaction_ctx.block_hash.to_string(),
         block_time: token_transaction_ctx.block_utime as i32,
         direction: TonTransactionDirection::Send,

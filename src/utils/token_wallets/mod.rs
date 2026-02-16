@@ -128,9 +128,9 @@ impl TransferInputs {
 
         Ok(Self {
             amount: amount.to_u128().unwrap(),
-            recipient: recipient,
+            recipient,
             deploy_wallet_value: deploy_wallet_value.to_u128().unwrap(),
-            remaining_gas_to: remaining_gas_to,
+            remaining_gas_to,
             notify: *notify,
             payload: payload.clone(),
         })
@@ -243,8 +243,8 @@ impl TransferToWalletInputs {
 
         Ok(Self {
             amount: amount.to_u128().unwrap(),
-            recipient_token_wallet: recipient_token_wallet,
-            remaining_gas_to: remaining_gas_to,
+            recipient_token_wallet,
+            remaining_gas_to,
             notify: *notify,
             payload: payload.clone(),
         })
@@ -355,8 +355,8 @@ impl AcceptTransferInputs {
 
         Ok(Self {
             amount: amount.to_u128().unwrap(),
-            sender: sender,
-            remaining_gas_to: remaining_gas_to,
+            sender,
+            remaining_gas_to,
             notify: *notify,
             payload: payload.clone(),
         })
@@ -454,7 +454,7 @@ impl AcceptMintInputs {
 
         Ok(Self {
             amount: amount.to_u128().unwrap(),
-            remaining_gas_to: remaining_gas_to,
+            remaining_gas_to,
             notify: *notify,
             payload: payload.clone(),
         })
@@ -563,8 +563,8 @@ pub mod burnable {
 
             Ok(Self {
                 amount: amount.to_u128().unwrap(),
-                remaining_gas_to: remaining_gas_to,
-                callback_to: callback_to,
+                remaining_gas_to,
+                callback_to,
                 payload: payload.clone(),
             })
         }

@@ -122,7 +122,7 @@ pub fn prepare_transfer(
         current_state
             .address
             .as_std()
-            .ok_or_else(|| WalletV3Error::InvalidAddress)?
+            .ok_or(WalletV3Error::InvalidAddress)?
             .clone(),
     );
     if with_state_init {
@@ -133,6 +133,7 @@ pub fn prepare_transfer(
     Ok(unsigned_message)
 }
 
+#[allow(unused)]
 struct UnsignedWalletV3Message {
     init_data: InitData,
     gifts: Vec<Gift>,

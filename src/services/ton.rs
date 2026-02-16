@@ -12,7 +12,7 @@ use tycho_types::abi::{
 };
 use tycho_types::boc::Boc;
 use tycho_types::cell::{CellBuilder, HashBytes};
-use tycho_types::models::{OwnedMessage, StdAddr};
+use tycho_types::models::{OwnedMessage, StdAddr, StdAddrFormat};
 use uuid::Uuid;
 
 use crate::api::*;
@@ -106,7 +106,8 @@ impl TonService {
         service_id: &ServiceId,
         address: Address,
     ) -> Result<(AddressDb, NetworkAddressData), Error> {
-        let account = StdAddr::from_str(&address.0).map_err(anyhow::Error::from)?;
+        let (account, _) =
+            StdAddr::from_str_ext(&address.0, StdAddrFormat::any()).map_err(anyhow::Error::from)?;
         let address = self
             .sqlx_client
             .get_address(
@@ -125,7 +126,8 @@ impl TonService {
         service_id: &ServiceId,
         address: Address,
     ) -> Result<AddressDb, Error> {
-        let account = StdAddr::from_str(&address.0).map_err(anyhow::Error::from)?;
+        let (account, _) =
+            StdAddr::from_str_ext(&address.0, StdAddrFormat::any()).map_err(anyhow::Error::from)?;
         let address = self
             .sqlx_client
             .get_address(
@@ -143,7 +145,8 @@ impl TonService {
         service_id: &ServiceId,
         input: TransactionSend,
     ) -> Result<TransactionDb, Error> {
-        let address = StdAddr::from_str(&input.from_address.0).map_err(anyhow::Error::from)?;
+        let (address, _) = StdAddr::from_str_ext(&input.from_address.0, StdAddrFormat::any())
+            .map_err(anyhow::Error::from)?;
         let network = self.ton_api_client.get_address_info(&address).await?;
 
         for transaction_output in input.outputs.iter() {
@@ -227,7 +230,8 @@ impl TonService {
         service_id: &ServiceId,
         input: TransactionConfirm,
     ) -> Result<TransactionDb, Error> {
-        let address = StdAddr::from_str(&input.address.0).map_err(anyhow::Error::from)?;
+        let (address, _) = StdAddr::from_str_ext(&input.address.0, StdAddrFormat::any())
+            .map_err(anyhow::Error::from)?;
 
         let address_db = self
             .sqlx_client
@@ -542,7 +546,8 @@ impl TonService {
         service_id: &ServiceId,
         address: &Address,
     ) -> Result<Vec<(TokenBalanceFromDb, NetworkTokenAddressData)>, Error> {
-        let account = StdAddr::from_str(&address.0).map_err(anyhow::Error::from)?;
+        let (account, _) =
+            StdAddr::from_str_ext(&address.0, StdAddrFormat::any()).map_err(anyhow::Error::from)?;
         let balances = self
             .sqlx_client
             .get_token_balances(
@@ -578,7 +583,9 @@ impl TonService {
             return Err(TonServiceError::WrongInput("Invalid value".to_string()).into());
         }
 
-        let owner = StdAddr::from_str(&input.from_address.0).map_err(anyhow::Error::from)?;
+        let (owner, _) = StdAddr::from_str_ext(&input.from_address.0, StdAddrFormat::any())
+            .map_err(anyhow::Error::from)?;
+
         let address_db = self
             .sqlx_client
             .get_address(
@@ -675,7 +682,9 @@ impl TonService {
             return Err(TonServiceError::WrongInput("Invalid value".to_string()).into());
         }
 
-        let owner = StdAddr::from_str(&input.from_address.0).map_err(anyhow::Error::from)?;
+        let (owner, _) = StdAddr::from_str_ext(&input.from_address.0, StdAddrFormat::any())
+            .map_err(anyhow::Error::from)?;
+
         let address_db = self
             .sqlx_client
             .get_address(
@@ -777,7 +786,9 @@ impl TonService {
             return Err(TonServiceError::WrongInput("Invalid value".to_string()).into());
         }
 
-        let owner = StdAddr::from_str(&input.owner_address.0).map_err(anyhow::Error::from)?;
+        let (owner, _) = StdAddr::from_str_ext(&input.owner_address.0, StdAddrFormat::any())
+            .map_err(anyhow::Error::from)?;
+
         let address_db = self
             .sqlx_client
             .get_address(
@@ -885,7 +896,7 @@ impl TonService {
         headers: Vec<AbiHeaderType>,
         responsible: bool,
     ) -> Result<Vec<NamedAbiValue>, Error> {
-        let account_addr = HashBytes::from_str(&account_addr).map_err(anyhow::Error::from)?;
+        let account_addr = HashBytes::from_str(account_addr).map_err(anyhow::Error::from)?;
 
         let input_params: Vec<NamedAbiType> = inputs.iter().map(|x| x.abi_type.clone()).collect();
 
@@ -970,7 +981,8 @@ impl TonService {
             None => (None, None),
         };
 
-        let sender = StdAddr::from_str(&sender_addr).map_err(anyhow::Error::from)?;
+        let (sender, _) = StdAddr::from_str_ext(sender_addr, StdAddrFormat::any())
+            .map_err(anyhow::Error::from)?;
 
         let address_db = self
             .sqlx_client
@@ -1136,7 +1148,8 @@ impl TonService {
         owned_message: OwnedMessage,
         expire_at: u32,
     ) -> Result<String, Error> {
-        let addr = StdAddr::from_str(&sender_addr).map_err(anyhow::Error::from)?;
+        let (addr, _) = StdAddr::from_str_ext(&sender_addr, StdAddrFormat::any())
+            .map_err(anyhow::Error::from)?;
         self.ton_api_client
             .add_ton_account_subscription(addr.address);
 
@@ -1159,7 +1172,9 @@ impl TonService {
     }
 
     pub async fn add_account_subscription(self: &Arc<Self>, address: String) -> Result<(), Error> {
-        let addr = StdAddr::from_str(&address).map_err(anyhow::Error::from)?;
+        let (addr, _) =
+            StdAddr::from_str_ext(&address, StdAddrFormat::any()).map_err(anyhow::Error::from)?;
+
         self.ton_api_client
             .add_ton_account_subscription(addr.address);
         Ok(())

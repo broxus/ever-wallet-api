@@ -106,11 +106,9 @@ pub mod serde_string {
 }
 
 pub mod serde_address {
-    use std::str::FromStr;
-
     use serde::de::Error;
     use serde::Deserialize;
-    use tycho_types::models::StdAddr;
+    use tycho_types::models::{StdAddr, StdAddrFormat};
 
     pub fn serialize<S>(data: &StdAddr, serializer: S) -> Result<S::Ok, S::Error>
     where
@@ -124,7 +122,10 @@ pub mod serde_address {
         D: serde::Deserializer<'de>,
     {
         let data = String::deserialize(deserializer)?;
-        StdAddr::from_str(&data).map_err(|_| D::Error::custom("Invalid address"))
+
+        let (address, _) = StdAddr::from_str_ext(&data, StdAddrFormat::any())
+            .map_err(|_| D::Error::custom("Invalid address"))?;
+        Ok(address)
     }
 }
 
@@ -216,7 +217,7 @@ pub trait FromAbiPlain: FromAbi {
 pub trait WithAbiTypePlain: WithAbiType {
     fn abi_type_plain() -> Vec<NamedAbiType> {
         match Self::abi_type() {
-            AbiType::Tuple(tuple) => tuple.into_iter().cloned().collect(),
+            AbiType::Tuple(tuple) => tuple.iter().cloned().collect(),
             _ => vec![],
         }
     }

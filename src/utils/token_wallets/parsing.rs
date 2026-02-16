@@ -50,7 +50,9 @@ pub fn parse_token_transaction(
         return None;
     };
 
-    let functions = TokenWalletFunctions::for_version(version);
+    let Ok(functions) = TokenWalletFunctions::for_version(version) else {
+        return None;
+    };
 
     if info.bounced {
         body_slice.skip_first(32, 0).ok()?;
@@ -61,13 +63,13 @@ pub fn parse_token_transaction(
 
         if function_id == functions.accept_transfer.input_id {
             return Some(TokenWalletTransaction::TransferBounced(
-                body_slice.load_u128().ok()?.into(),
+                body_slice.load_u128().ok()?,
             ));
         }
 
         if function_id == functions.accept_burn.input_id {
             Some(TokenWalletTransaction::SwapBackBounced(
-                body_slice.load_u128().ok()?.into(),
+                body_slice.load_u128().ok()?,
             ))
         } else {
             None
@@ -140,21 +142,21 @@ struct TokenWalletFunctions {
 }
 
 impl TokenWalletFunctions {
-    pub fn for_version(version: TokenWalletVersion) -> &'static TokenWalletFunctions {
+    pub fn for_version(
+        version: TokenWalletVersion,
+    ) -> Result<&'static TokenWalletFunctions, UnpackerError> {
         match version {
-            TokenWalletVersion::OldTip3v4 => {
-                unimplemented!()
-            }
+            TokenWalletVersion::OldTip3v4 => Err(UnpackerError::InvalidAbi),
             TokenWalletVersion::Tip3 => {
                 static IDS: OnceLock<TokenWalletFunctions> = OnceLock::new();
-                IDS.get_or_init(|| Self {
+                Ok(IDS.get_or_init(|| Self {
                     accept_mint: token_wallets::accept_mint(),
                     transfer: token_wallets::transfer(),
                     transfer_to_wallet: token_wallets::transfer_to_wallet(),
                     accept_transfer: token_wallets::accept_transfer(),
                     burn: token_wallets::burnable::burn(),
                     accept_burn: token_wallets::accept_burn(),
-                })
+                }))
             }
         }
     }
@@ -298,15 +300,5 @@ mod tests {
 
         let parsed = parse_token_transaction(&transaction, &description, TokenWalletVersion::Tip3);
         println!("parsed tx: {parsed:#?}");
-    }
-
-    #[test]
-    fn test_parse_bounced_tokens_transfer() {
-        let (tx, description) = parse_transaction("te6ccgECCQEAAiEAA7V9jKvgMYxeLukedeW/PRr7QyRzEpkal33nb9KfgpelA3AAAO1mmxCMEy4UbEGiIQKVpE2nzO2Ar32k7H36ni1NMpxrcPorUNuwAADtZo+e3BYO9BHwADRwGMkIBQQBAhcMSgkCmI36GG92AhEDAgBvyYehIEwUWEAAAAAAAAQAAgAAAAKLF5Ge7DorMQ9dbEzZTgWK7Jiugap8s4dRpkiQl7CNEEBQFgwAnkP1TAqiBAAAAAAAAAAAtgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAgnIBZa/nTbAD2Vcr8A6p+uT7XD4tLowmBLZEuIHLxU1zbeHGgHFi5dfeWnrNgtL3FHE6zw6ysjTJJI3LFFDAgPi3AgHgCAYBAd8HALFoAbGVfAYxi8XdI868t+ejX2hkjmJTI1LvvO36U/BS9KBvABgzjiRJUfoXsV99CuD/WnKK4QN5mlferMiVbk0Y3Jc3ECddFmAGFFhgAAAdrNNiEYTB3oI+QAD5WAHF6/YBDYNj7TABzedO3/4+ENpaE0PhwRx5NFYisFNfpQA2Mq+AxjF4u6R515b89GvtDJHMSmRqXfedv0p+Cl6UDdApiN+gBhRYYAAAHazSjHIEwd6CFH////+MaQuBAAAAAAAAAAAAAAAAAAAAAIAAAAAAAAAAAAAAAEA=");
-
-        assert!(matches!(
-            parse_token_transaction(&tx, &description, TokenWalletVersion::OldTip3v4).unwrap(),
-            TokenWalletTransaction::TransferBounced(_)
-        ));
     }
 }

@@ -57,9 +57,9 @@ pub fn get_init_data(
     match current_state.state {
         AccountState::Active(ref state_init) => match &state_init.data {
             Some(data) => Ok((InitData::try_from(data)?, false)),
-            None => return Err(WalletV5Error::InvalidInitData.into()),
+            None => Err(WalletV5Error::InvalidInitData.into()),
         },
-        AccountState::Frozen { .. } => return Err(WalletV5Error::AccountIsFrozen.into()),
+        AccountState::Frozen { .. } => Err(WalletV5Error::AccountIsFrozen.into()),
         AccountState::Uninit => Ok((make_init_data(public_key), true)),
     }
 }
@@ -97,7 +97,7 @@ pub fn prepare_transfer(
         current_state
             .address
             .as_std()
-            .ok_or_else(|| WalletV5Error::InvalidAddress)?
+            .ok_or(WalletV5Error::InvalidAddress)?
             .clone(),
     );
     if with_state_init {
@@ -108,6 +108,7 @@ pub fn prepare_transfer(
     Ok(unsigned_message)
 }
 
+#[allow(unused)]
 struct UnsignedWalletV5 {
     init_data: InitData,
     gifts: Vec<Gift>,

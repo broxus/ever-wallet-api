@@ -78,7 +78,7 @@ pub fn prepare_transfer(
         current_state
             .address
             .as_std()
-            .ok_or_else(|| HighloadWalletV2Error::InvalidAddress)?
+            .ok_or(HighloadWalletV2Error::InvalidAddress)?
             .clone(),
     );
     if with_state_init {
@@ -89,6 +89,7 @@ pub fn prepare_transfer(
     Ok(unsigned_message)
 }
 
+#[allow(unused)]
 struct UnsignedHighloadWalletV2Message {
     init_data: InitData,
     gifts: Vec<Gift>,

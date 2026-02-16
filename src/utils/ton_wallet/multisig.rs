@@ -449,7 +449,7 @@ pub fn prepare_state_init(
     key_builder.store_u64(0)?;
     let cell_builder = CellBuilder::from_raw_data(public_key.as_bytes(), 256)?;
     let data_slice = cell_builder.as_data_slice();
-    result.set(key_builder.as_data_slice(), &data_slice)?;
+    result.set(key_builder.as_data_slice(), data_slice)?;
 
     // Encode init data as mapping
     let cell = CellBuilder::build_from(result)?;
@@ -759,7 +759,7 @@ fn extend_pending_transaction(
         creator: tx.creator,
         index: tx.index,
         dest: tx.dest,
-        value: tx.value.into(),
+        value: tx.value,
         send_flags: tx.send_flags,
         payload: tx.payload,
         bounce: tx.bounce,
@@ -791,7 +791,7 @@ fn extend_pending_update(
 }
 
 fn make_ext_message(
-    public_key: &VerifyingKey,
+    _public_key: &VerifyingKey,
     address: StdAddr,
     expire_at: u32,
     function: &'static Function,

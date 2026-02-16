@@ -4,6 +4,7 @@ use anyhow::Result;
 
 use super::{Bip39MnemonicData, LANGUAGE};
 
+#[allow(unused)]
 pub fn derive_master_key(phrase: &str) -> Result<[u8; 64]> {
     let mnemonic = bip39::Mnemonic::from_phrase(phrase, LANGUAGE)?;
     let hd = bip39::Seed::new(&mnemonic, "");

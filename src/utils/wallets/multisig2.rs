@@ -69,6 +69,7 @@ pub fn confirm_transaction() -> &'static Function {
     }
 }
 
+#[allow(unused)]
 #[derive(Debug, WithAbiType)]
 pub struct MultisigTransaction {
     pub id: u64,
@@ -97,6 +98,7 @@ pub fn get_transactions() -> &'static Function {
     }
 }
 
+#[allow(unused)]
 #[derive(Debug, Clone, Copy, WithAbiType)]
 pub struct MultisigCustodian {
     pub index: u8,
@@ -181,6 +183,7 @@ pub fn execute_update() -> &'static Function {
     }
 }
 
+#[allow(unused)]
 #[derive(Debug, Clone, Copy)]
 pub struct SetCodeMultisigParams {
     pub max_queued_transactions: u8,
