@@ -35,11 +35,11 @@ pub fn prepare_deploy(
         .with_id(0x169e3e11)
         .build();
 
-    let unsigned_body = function
+    let mut unsigned_message = function
         .encode_external(&[])
+        .with_pubkey(public_key)
         .with_expire_at(expire_at)
-        .build_input()?;
-    let mut unsigned_message = unsigned_body.with_dst(dst);
+        .build_message(&dst)?;
     unsigned_message.set_state_init(Some(state_init));
     Ok(unsigned_message)
 }
@@ -105,9 +105,11 @@ pub fn prepare_transfer(
         }
     };
 
-    let external_input = function.encode_external(&tokens);
-    let unsigned_body = external_input.with_expire_at(expire_at).build_input()?;
-    let mut unsigned_message = unsigned_body.with_dst(address);
+    let mut unsigned_message = function
+        .encode_external(&tokens)
+        .with_pubkey(public_key)
+        .with_expire_at(expire_at)
+        .build_message(&address)?;
 
     match &current_state.state {
         AccountState::Active { .. } => {}

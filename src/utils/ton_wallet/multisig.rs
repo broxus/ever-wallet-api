@@ -79,10 +79,12 @@ pub fn prepare_deploy(
         );
     }
 
-    let external_input = function.encode_external(&abi_values);
+    let mut unsigned_message = function
+        .encode_external(&abi_values)
+        .with_pubkey(public_key)
+        .with_expire_at(expire_at)
+        .build_message(&dst)?;
 
-    let unsigned_body = external_input.with_expire_at(expire_at).build_input()?;
-    let mut unsigned_message = unsigned_body.with_dst(dst);
     unsigned_message.set_state_init(Some(state_init));
     Ok(unsigned_message)
 }
@@ -791,15 +793,17 @@ fn extend_pending_update(
 }
 
 fn make_ext_message(
-    _public_key: &VerifyingKey,
+    public_key: &VerifyingKey,
     address: StdAddr,
     expire_at: u32,
     function: &'static Function,
     input: Vec<NamedAbiValue>,
 ) -> Result<UnsignedExternalMessage> {
-    let external_input = function.encode_external(&input);
-    let unsigned_body = external_input.with_expire_at(expire_at).build_input()?;
-    let unsigned_message = unsigned_body.with_dst(address);
+    let unsigned_message = function
+        .encode_external(&input)
+        .with_pubkey(public_key)
+        .with_expire_at(expire_at)
+        .build_message(&address)?;
 
     Ok(unsigned_message)
 }
