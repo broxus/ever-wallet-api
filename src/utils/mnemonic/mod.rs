@@ -1,5 +1,5 @@
 use anyhow::Error;
-use rand::Rng;
+use rand::RngExt;
 use serde::de::{MapAccess, Unexpected, Visitor};
 use serde::{de, Deserialize, Deserializer, Serialize};
 use sha2::Digest;
@@ -153,7 +153,7 @@ pub fn derive_from_phrase(
 pub fn generate_key(account_type: MnemonicType) -> GeneratedKey {
     use bip39::util::{Bits11, IterExt};
 
-    let rng = &mut rand::thread_rng();
+    let rng = &mut rand::rng();
 
     pub fn generate_words(entropy: &[u8]) -> Vec<&'static str> {
         let wordlist = LANGUAGE.wordlist();
@@ -177,7 +177,7 @@ pub fn generate_key(account_type: MnemonicType) -> GeneratedKey {
     };
 
     let entropy = (0..entropy_size)
-        .map(|_| rng.gen::<u8>())
+        .map(|_| rng.random::<u8>())
         .collect::<Vec<u8>>();
 
     GeneratedKey {

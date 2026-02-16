@@ -2,7 +2,6 @@ use std::str::FromStr;
 
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
-use strum_macros::EnumString;
 use tycho_types::models::{AccountState, StdAddr};
 
 use crate::{
@@ -41,7 +40,16 @@ impl From<AccountState> for AccountStatus {
 }
 
 #[derive(
-    Debug, Deserialize, Serialize, Clone, JsonSchema, Eq, PartialEq, sqlx::Type, Copy, EnumString,
+    Debug,
+    Deserialize,
+    Serialize,
+    Clone,
+    JsonSchema,
+    Eq,
+    PartialEq,
+    sqlx::Type,
+    Copy,
+    derive_more::FromStr,
 )]
 #[sqlx(type_name = "twa_token_wallet_version", rename_all = "PascalCase")]
 pub enum TokenWalletVersionDb {

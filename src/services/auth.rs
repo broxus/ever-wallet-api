@@ -6,6 +6,8 @@ use chrono::DateTime;
 use chrono::Utc;
 use parking_lot::Mutex;
 
+use base64::{engine::general_purpose, Engine as _};
+
 use crate::models::*;
 use crate::sqlx_client::*;
 
@@ -74,7 +76,7 @@ impl AuthService {
 
         let calculated_signature = hmac_sha256::HMAC::mac(concat.as_bytes(), key.secret.as_bytes());
 
-        let expected_signature = base64::decode(signature)?;
+        let expected_signature = general_purpose::STANDARD.decode(signature)?;
 
         if calculated_signature != expected_signature.as_slice() {
             anyhow::bail!("Invalid signature");

@@ -30,9 +30,7 @@ pub fn router(
         counter
             .run_emitter(Duration::from_secs(5), move |count| {
                 let gauge = in_flight_gauge.clone();
-                async move {
-                    gauge.set(count as f64)
-                }
+                async move { gauge.set(count as f64) }
             })
             .await;
     });

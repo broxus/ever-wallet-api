@@ -1,5 +1,7 @@
 use std::str::FromStr;
 
+use base64::{engine::general_purpose, Engine as _};
+
 use bigdecimal::BigDecimal;
 use tycho_types::models::StdAddr;
 
@@ -249,7 +251,9 @@ impl From<TokenTransactionFromDb> for TokenTransactionDataResponse {
         let account =
             StdAddr::from_str(&format!("{}:{}", c.account_workchain_id, c.account_hex)).unwrap();
         let base64url = Address(account.display_base64_url(true).to_string());
-        let payload = c.payload.map(base64::encode);
+        let payload = c
+            .payload
+            .map(|value| general_purpose::STANDARD.encode(value));
 
         TokenTransactionDataResponse {
             id: c.id,

@@ -2,7 +2,7 @@ use std::net::{IpAddr, Ipv4Addr, SocketAddr};
 use std::path::Path;
 
 use anyhow::{Context, Result};
-use argon2::password_hash::PasswordHasher;
+use argon2::password_hash::{PasswordHasher, Salt};
 use regex;
 use serde::{Deserialize, Deserializer, Serialize};
 
@@ -71,15 +71,16 @@ fn default_key() -> Vec<u8> {
         let mut options = argon2::ParamsBuilder::default();
         let options = options
             .output_len(32) //chacha key size
-            .and_then(|x| x.clone().params())
+            .build()
             .unwrap();
 
         // Argon2 with default params (Argon2id v19)
         let argon2 =
             argon2::Argon2::new(argon2::Algorithm::Argon2id, argon2::Version::V0x13, options);
 
+        let salt = Salt::from_b64(&salt).unwrap();
         let key = argon2
-            .hash_password(secret.as_bytes(), &salt)
+            .hash_password(secret.as_bytes(), salt)
             .unwrap()
             .hash
             .context("No hash")?

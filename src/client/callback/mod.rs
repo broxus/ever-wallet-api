@@ -1,4 +1,5 @@
 use anyhow::Result;
+use base64::{engine::general_purpose, Engine as _};
 use chrono::Utc;
 use reqwest::{Method, StatusCode, Url};
 
@@ -63,5 +64,5 @@ impl CallbackClient {
 fn calc_sign(body: String, url: String, timestamp_ms: i64, secret: String) -> String {
     let concat = format!("{}{}{}", timestamp_ms, url, body);
     let calculated_signature = hmac_sha256::HMAC::mac(concat.as_bytes(), secret.as_bytes());
-    base64::encode(calculated_signature)
+    general_purpose::STANDARD.encode(calculated_signature)
 }

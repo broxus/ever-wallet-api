@@ -40,16 +40,18 @@ pub fn derive_from_phrase(phrase: &str) -> Result<ed25519_dalek::SigningKey, Err
 mod tests {
     use super::*;
 
+    use base64::{engine::general_purpose, Engine as _};
+
     #[test]
     fn correct_legacy_derive() {
         let keypair = derive_from_phrase("unaware face erupt ceiling frost shiver crumble know party before brisk skirt fence boat powder copy plastic until butter fluid property concert say verify").unwrap();
         let expected = "o0kpHL39KRq0KX11zZ0/sCwJL66t+gA4vnfuwBjhAWU=";
         let pub_expecteed = "lHW4ZS8QvCHcgR4uChD7QJWU2kf5JRMtUnZ2p1GSZjg=";
         assert_eq!(
-            base64::encode(keypair.verifying_key().as_bytes()),
+            general_purpose::STANDARD.encode(keypair.verifying_key().as_bytes()),
             pub_expecteed
         );
-        let got = base64::encode(keypair.as_bytes());
+        let got = general_purpose::STANDARD.encode(keypair.as_bytes());
         assert_eq!(got, expected);
     }
 }
