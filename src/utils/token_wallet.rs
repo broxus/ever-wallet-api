@@ -57,8 +57,7 @@ pub fn prepare_token_transfer(
         }
     };
 
-    let external_input = function.encode_external(&tokens);
-    let (_, body) = external_input.build_input_without_signature()?;
+    let body = function.encode_internal_input(&tokens)?.build()?;
 
     Ok(InternalMessage {
         source: Some(owner),
@@ -98,8 +97,7 @@ pub fn prepare_token_burn(
         }
     };
 
-    let external_input = function.encode_external(&tokens);
-    let (_, body) = external_input.build_input_without_signature()?;
+    let body = function.encode_internal_input(&tokens)?.build()?;
 
     Ok(InternalMessage {
         source: Some(owner),
@@ -140,8 +138,7 @@ pub fn prepare_token_mint(
         }
     };
 
-    let external_input = function.encode_external(&tokens);
-    let (_, body) = external_input.build_input_without_signature()?;
+    let body = function.encode_internal_input(&tokens)?.build()?;
 
     Ok(InternalMessage {
         source: Some(owner),
