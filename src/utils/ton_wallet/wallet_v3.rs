@@ -29,7 +29,7 @@ pub fn prepare_deploy(
     let unsigned_body = UnsignedBody {
         payload,
         hash,
-        abi_version: AbiVersion::V2_3,
+        abi_version: AbiVersion::V1_0,
         expire_at,
     };
     let mut unsigned_message = unsigned_body.with_dst(dst);
@@ -192,7 +192,7 @@ impl InitData {
         Self {
             seqno: 0,
             wallet_id: 0,
-            public_key: HashBytes::from_slice(key.as_bytes()),
+            public_key: HashBytes(key.to_bytes()),
         }
     }
 
