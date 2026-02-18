@@ -1,0 +1,1 @@
+ALTER TYPE twa_account_type ADD VALUE 'WalletV5R1' AFTER 'EverWallet';

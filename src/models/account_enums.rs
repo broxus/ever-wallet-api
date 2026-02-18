@@ -19,6 +19,7 @@ pub enum AccountType {
     Wallet,
     SafeMultisig,
     EverWallet,
+    WalletV5R1,
 }
 
 #[derive(Debug, Deserialize, Serialize, Clone, JsonSchema, sqlx::Type, Eq, PartialEq)]

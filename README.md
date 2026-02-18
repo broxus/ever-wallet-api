@@ -204,6 +204,13 @@ NOTE: scripts are prepared and tested on **Ubuntu 20.04**. You may need to modif
       event a `Done` state by calling `/events/mark`.
    2) by polling the GET method `/transactions/id/<uuid>`
 
+   To confirm a pending multisig transaction, use the script:
+   ```bash
+   API_KEY=${API_KEY} SECRET=${API_SECRET} HOST=${HOST} \
+   ./scripts/wallet.sh -m confirm_transaction \
+   --address {multisig_wallet_address} --transaction-id {transaction_id}
+   ```
+
 5. #### How to process a payment from a user on the backend
    We generate a deposit address for the user by calling `/address/create` with empty parameters. After receiving the
    payment, the backend receives a callback of the form `AccountTransactionEvent` (see [swagger](https://tonapi.broxus.com/swagger.yaml)).

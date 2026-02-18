@@ -86,6 +86,9 @@ impl TonClient {
             AccountType::Wallet => {
                 ton_wallet::wallet_v3::compute_contract_address(&public, workchain_id as i8)
             }
+            AccountType::WalletV5R1 => {
+                ton_wallet::wallet_v5r1::compute_contract_address(&public, workchain_id as i8)
+            }
             AccountType::SafeMultisig => ton_wallet::multisig::compute_contract_address(
                 &public,
                 MultisigType::SafeMultisigWallet,
@@ -101,9 +104,10 @@ impl TonClient {
                 Some(payload.custodians.unwrap_or(1)),
                 Some(payload.confirmations.unwrap_or(1)),
             ),
-            AccountType::HighloadWallet | AccountType::Wallet | AccountType::EverWallet => {
-                (None, None)
-            }
+            AccountType::HighloadWallet
+            | AccountType::Wallet
+            | AccountType::WalletV5R1
+            | AccountType::EverWallet => (None, None),
         };
 
         if let (Some(custodians), Some(confirmations)) = (custodians, confirmations) {
@@ -141,7 +145,10 @@ impl TonClient {
 
                 Some(custodians)
             }
-            AccountType::HighloadWallet | AccountType::Wallet | AccountType::EverWallet => None,
+            AccountType::HighloadWallet
+            | AccountType::Wallet
+            | AccountType::WalletV5R1
+            | AccountType::EverWallet => None,
         };
 
         // Subscribe to accounts
@@ -226,9 +233,21 @@ impl TonClient {
                 address.workchain_id as i8,
                 expire_at,
             )?,
-            AccountType::HighloadWallet | AccountType::Wallet => {
-                return Ok(None);
-            }
+            AccountType::WalletV5R1 => ton_wallet::wallet_v5r1::prepare_deploy(
+                &public_key,
+                address.workchain_id as i8,
+                expire_at,
+            )?,
+            AccountType::HighloadWallet => ton_wallet::highload_wallet_v2::prepare_deploy(
+                &public_key,
+                address.workchain_id as i8,
+                expire_at,
+            )?,
+            AccountType::Wallet => ton_wallet::wallet_v3::prepare_deploy(
+                &public_key,
+                address.workchain_id as i8,
+                expire_at,
+            )?,
         };
 
         let mut key = [0u8; 32];
@@ -354,6 +373,41 @@ impl TonClient {
                 let seqno_offset =
                     ton_wallet::wallet_v3::estimate_seqno_offset(&current_state, &[]);
                 ton_wallet::wallet_v3::prepare_transfer(
+                    &public_key,
+                    &current_state,
+                    seqno_offset,
+                    gifts,
+                    expire_at,
+                )?
+            }
+            AccountType::WalletV5R1 => {
+                let account = address.address;
+                let current_state = self.ton_core.get_contract_state(&account)?.account;
+
+                let mut gifts: Vec<ton_wallet::Gift> = vec![];
+                for item in transaction.outputs {
+                    let flags = item.output_type.unwrap_or_default();
+                    let (destination, _) =
+                        StdAddr::from_str_ext(&item.recipient_address.0, StdAddrFormat::any())
+                            .map_err(anyhow::Error::from)?;
+                    let amount = item
+                        .value
+                        .to_u128()
+                        .ok_or(TonClientError::ParseBigDecimal)?;
+
+                    gifts.push(ton_wallet::Gift {
+                        flags: flags.into(),
+                        bounce,
+                        destination,
+                        amount,
+                        body: body.clone(),
+                        state_init: None,
+                    });
+                }
+
+                let seqno_offset = 0; // TODO: implement seqno offset if needed
+
+                ton_wallet::wallet_v5r1::prepare_transfer(
                     &public_key,
                     &current_state,
                     seqno_offset,
@@ -963,6 +1017,29 @@ impl TonClient {
                     expire_at,
                 )?
             }
+            AccountType::WalletV5R1 => {
+                let account = address.address;
+                let current_state = self.ton_core.get_contract_state(&account)?.account;
+
+                let gift = ton_wallet::Gift {
+                    flags: execution_flag,
+                    bounce,
+                    destination,
+                    amount,
+                    body,
+                    state_init: None,
+                };
+
+                let seqno_offset = 0; // TODO: implement seqno offset if needed
+
+                ton_wallet::wallet_v5r1::prepare_transfer(
+                    &public_key,
+                    &current_state,
+                    seqno_offset,
+                    vec![gift],
+                    expire_at,
+                )?
+            }
             AccountType::SafeMultisig => {
                 let has_multiple_owners = match custodians {
                     Some(custodians) => *custodians > 1,
@@ -1137,6 +1214,29 @@ fn build_token_transaction(
                 &current_state,
                 seqno_offset,
                 gifts,
+                expire_at,
+            )?
+        }
+        AccountType::WalletV5R1 => {
+            let account = owner.address;
+            let current_state = ton_core.get_contract_state(&account)?.account;
+
+            let gift = ton_wallet::Gift {
+                flags: flags.into(),
+                bounce,
+                destination,
+                amount,
+                body,
+                state_init: None,
+            };
+
+            let seqno_offset = 0; // TODO: implement seqno offset if needed
+
+            ton_wallet::wallet_v5r1::prepare_transfer(
+                &public_key,
+                &current_state,
+                seqno_offset,
+                vec![gift],
                 expire_at,
             )?
         }
