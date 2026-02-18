@@ -212,7 +212,7 @@ impl InitData {
         let dict = CellBuilder::build_from(&self.data)?;
 
         builder.store_bit_one()?;
-        builder.store_cell_data(&dict)?;
+        builder.store_reference(dict)?;
         let data = builder.build()?;
         Ok(data)
     }
