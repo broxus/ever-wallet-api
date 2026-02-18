@@ -19,6 +19,7 @@ pub enum AccountType {
     Wallet,
     SafeMultisig,
     EverWallet,
+    #[sqlx(rename = "WalletV5R1")]
     WalletV5R1,
 }
 
