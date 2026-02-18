@@ -1,9 +1,9 @@
-use std::convert::TryFrom;
+use std::{collections::LinkedList, convert::TryFrom};
 
 use anyhow::Result;
 use ed25519_dalek::VerifyingKey;
 use tycho_types::{
-    cell::{Cell, CellBuilder, HashBytes, Lazy, Load},
+    cell::{Cell, CellBuilder, HashBytes, Lazy, Load, Store},
     models::{
         Account, AccountState, CurrencyCollection, ExtInMsgInfo, IntAddr, OutAction, OwnedMessage,
         OwnedRelaxedMessage, RelaxedIntMsgInfo, RelaxedMsgInfo, SendMsgFlags, StateInit, StdAddr,
@@ -276,7 +276,7 @@ impl InitData {
         builder.store_u32(expire_at)?;
         builder.store_u32(self.seqno)?;
 
-        let mut actions_builder = CellBuilder::new();
+        let mut actions_builder = OutActions(Default::default());
 
         for gift in gifts {
             let internal_message = Lazy::new(&OwnedRelaxedMessage {
@@ -297,11 +297,11 @@ impl InitData {
                 out_msg: internal_message,
             };
 
-            actions_builder.store_reference(CellBuilder::build_from(action)?)?;
+            actions_builder.0.push_back(action);
         }
 
         builder.store_bit_one()?;
-        builder.store_reference(actions_builder.build()?)?;
+        builder.store_reference(CellBuilder::build_from(&actions_builder)?)?;
 
         // has_other_actions
         builder.store_bit_zero()?;
@@ -333,6 +333,30 @@ impl TryFrom<&Cell> for InitData {
             public_key,
             extensions,
         })
+    }
+}
+
+pub struct OutActions(pub LinkedList<OutAction>);
+
+impl Store for OutActions {
+    fn store_into(
+        &self,
+        builder: &mut CellBuilder,
+        context: &dyn tycho_types::prelude::CellContext,
+    ) -> std::result::Result<(), tycho_types::error::Error> {
+        let mut new_builder = CellBuilder::new();
+
+        for action in self.0.iter() {
+            let mut next_builder = CellBuilder::new();
+
+            next_builder.store_reference(new_builder.build()?)?;
+            action.store_into(&mut next_builder, context)?;
+
+            new_builder = next_builder;
+        }
+
+        builder.store_builder(&new_builder)?;
+        Ok(())
     }
 }
 
