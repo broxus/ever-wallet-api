@@ -3,12 +3,14 @@ use std::sync::Arc;
 
 use axum::http::StatusCode;
 use bigdecimal::{BigDecimal, ToPrimitive};
+use ed25519_dalek::Signer;
 use ed25519_dalek::VerifyingKey;
 use nekoton_core::contracts::function_ext::ExecutionOutput;
 use nekoton_core::contracts::function_ext::FunctionExt;
 use num_bigint::BigUint;
 use num_traits::FromPrimitive;
 use tokio::sync::oneshot;
+use tycho_types::abi::extend_signature_with_id;
 use tycho_types::abi::{Function, NamedAbiValue, UnsignedExternalMessage};
 use tycho_types::boc::Boc;
 use tycho_types::cell::{CellBuilder, HashBytes};
@@ -233,12 +235,7 @@ impl TonClient {
                 address.workchain_id as i8,
                 expire_at,
             )?,
-            AccountType::WalletV5R1 => ton_wallet::wallet_v5r1::prepare_deploy(
-                &public_key,
-                address.workchain_id as i8,
-                expire_at,
-            )?,
-            AccountType::HighloadWallet | AccountType::Wallet => {
+            AccountType::WalletV5R1 | AccountType::HighloadWallet | AccountType::Wallet => {
                 return Ok(None);
             }
         };
@@ -305,7 +302,17 @@ impl TonClient {
             .transpose()
             .map_err(anyhow::Error::from)?;
 
-        let unsigned_message = match account_type {
+        let mut key = [0u8; 32];
+        key.copy_from_slice(private_key);
+
+        let key_pair = ed25519_dalek::SigningKey::from_bytes(&key);
+
+        let context = SignatureContext {
+            global_id: self.ton_core.signature_id().unwrap_or_default(),
+            capabilities: GlobalCapabilities::new(self.ton_core.capabilities()),
+        };
+
+        let owned_message = match account_type {
             AccountType::HighloadWallet => {
                 let account = address.address;
                 let current_state = self.ton_core.get_contract_state(&account)?.account;
@@ -330,12 +337,17 @@ impl TonClient {
                         state_init: None,
                     });
                 }
-                ton_wallet::highload_wallet_v2::prepare_transfer(
+                let unsigned_message = ton_wallet::highload_wallet_v2::prepare_transfer(
                     &public_key,
                     &current_state,
                     gifts,
                     expire_at,
-                )?
+                )?;
+
+                let data_to_sign =
+                    extend_signature_with_id(unsigned_message.hash(), self.ton_core.signature_id());
+                let signature = key_pair.sign(&data_to_sign);
+                unsigned_message.sign(&signature.to_bytes())?
             }
             AccountType::Wallet => {
                 let account = address.address;
@@ -365,13 +377,18 @@ impl TonClient {
                 }];
                 let seqno_offset =
                     ton_wallet::wallet_v3::estimate_seqno_offset(&current_state, &[]);
-                ton_wallet::wallet_v3::prepare_transfer(
+                let unsigned_message = ton_wallet::wallet_v3::prepare_transfer(
                     &public_key,
                     &current_state,
                     seqno_offset,
                     gifts,
                     expire_at,
-                )?
+                )?;
+
+                let data_to_sign =
+                    extend_signature_with_id(unsigned_message.hash(), self.ton_core.signature_id());
+                let signature = key_pair.sign(&data_to_sign);
+                unsigned_message.sign(&signature.to_bytes())?
             }
             AccountType::WalletV5R1 => {
                 let account = address.address;
@@ -400,13 +417,18 @@ impl TonClient {
 
                 let seqno_offset = 0; // TODO: implement seqno offset if needed
 
-                ton_wallet::wallet_v5r1::prepare_transfer(
+                let unsigned_message = ton_wallet::wallet_v5r1::prepare_transfer(
                     &public_key,
                     &current_state,
                     seqno_offset,
                     gifts,
                     expire_at,
-                )?
+                )?;
+
+                let data_to_sign =
+                    extend_signature_with_id(unsigned_message.hash(), self.ton_core.signature_id());
+                let signature = key_pair.sign(&data_to_sign);
+                unsigned_message.sign(&signature.to_bytes())?
             }
             AccountType::SafeMultisig => {
                 let recipient = transaction
@@ -434,14 +456,16 @@ impl TonClient {
                     body,
                     state_init: None,
                 };
-                ton_wallet::multisig::prepare_transfer(
+                let unsigned_message = ton_wallet::multisig::prepare_transfer(
                     MultisigType::SafeMultisigWallet,
                     &public_key,
                     has_multiple_owners,
                     address.clone(),
                     gift,
                     expire_at,
-                )?
+                )?;
+
+                unsigned_message.sign(&key_pair, context)?
             }
             AccountType::EverWallet => {
                 let account = address.address;
@@ -466,27 +490,17 @@ impl TonClient {
                         state_init: None,
                     });
                 }
-                ton_wallet::ever_wallet::prepare_transfer(
+                let unsigned_message = ton_wallet::ever_wallet::prepare_transfer(
                     &public_key,
                     &current_state,
                     address.clone(),
                     gifts,
                     expire_at,
-                )?
+                )?;
+
+                unsigned_message.sign(&key_pair, context)?
             }
         };
-
-        let mut key = [0u8; 32];
-        key.copy_from_slice(private_key);
-
-        let key_pair = ed25519_dalek::SigningKey::from_bytes(&key);
-
-        let context = SignatureContext {
-            global_id: self.ton_core.signature_id().unwrap_or_default(),
-            capabilities: GlobalCapabilities::new(self.ton_core.capabilities()),
-        };
-
-        let owned_message = unsigned_message.sign(&key_pair, context)?;
 
         let cell_builder = CellBuilder::build_from(&owned_message).map_err(anyhow::Error::from)?;
         let message_hash = cell_builder.repr_hash();
@@ -986,52 +1000,8 @@ impl TonClient {
 
         let amount = value.to_u128().ok_or(TonClientError::ParseBigDecimal)?;
         let unsigned_message = match account_type {
-            AccountType::Wallet => {
-                let account = address.address;
-                let current_state = self.ton_core.get_contract_state(&account)?.account;
-
-                let gifts = vec![ton_wallet::Gift {
-                    flags: execution_flag,
-                    bounce,
-                    destination,
-                    amount,
-                    body,
-                    state_init: None,
-                }];
-
-                let seqno_offset =
-                    ton_wallet::wallet_v3::estimate_seqno_offset(&current_state, &[]);
-
-                ton_wallet::wallet_v3::prepare_transfer(
-                    &public_key,
-                    &current_state,
-                    seqno_offset,
-                    gifts,
-                    expire_at,
-                )?
-            }
-            AccountType::WalletV5R1 => {
-                let account = address.address;
-                let current_state = self.ton_core.get_contract_state(&account)?.account;
-
-                let gift = ton_wallet::Gift {
-                    flags: execution_flag,
-                    bounce,
-                    destination,
-                    amount,
-                    body,
-                    state_init: None,
-                };
-
-                let seqno_offset = 0; // TODO: implement seqno offset if needed
-
-                ton_wallet::wallet_v5r1::prepare_transfer(
-                    &public_key,
-                    &current_state,
-                    seqno_offset,
-                    vec![gift],
-                    expire_at,
-                )?
+            AccountType::Wallet | AccountType::WalletV5R1 | AccountType::HighloadWallet => {
+                return Err(anyhow::anyhow!("Not implemented").into());
             }
             AccountType::SafeMultisig => {
                 let has_multiple_owners = match custodians {
@@ -1054,26 +1024,6 @@ impl TonClient {
                     has_multiple_owners,
                     address,
                     gift,
-                    expire_at,
-                )?
-            }
-            AccountType::HighloadWallet => {
-                let account = address.address;
-                let current_state = self.ton_core.get_contract_state(&account)?.account;
-
-                let gift = ton_wallet::Gift {
-                    flags: execution_flag,
-                    bounce,
-                    destination,
-                    amount,
-                    body,
-                    state_init: None,
-                };
-
-                ton_wallet::highload_wallet_v2::prepare_transfer(
-                    &public_key,
-                    &current_state,
-                    vec![gift],
                     expire_at,
                 )?
             }
@@ -1166,7 +1116,17 @@ fn build_token_transaction(
 
     let expire_at = now_sec() + DEFAULT_EXPIRATION_TIMEOUT;
 
-    let unsigned_message = match account_type {
+    let mut key = [0u8; 32];
+    key.copy_from_slice(private_key);
+
+    let key_pair = ed25519_dalek::SigningKey::from_bytes(&key);
+
+    let context = SignatureContext {
+        global_id: ton_core.signature_id().unwrap_or_default(),
+        capabilities: GlobalCapabilities::new(ton_core.capabilities()),
+    };
+
+    let owned_message = match account_type {
         AccountType::HighloadWallet => {
             let account = owner.address;
             let current_state = ton_core.get_contract_state(&account)?.account;
@@ -1180,12 +1140,17 @@ fn build_token_transaction(
                 state_init: None,
             };
 
-            ton_wallet::highload_wallet_v2::prepare_transfer(
+            let unsigned_message = ton_wallet::highload_wallet_v2::prepare_transfer(
                 &public_key,
                 &current_state,
                 vec![gift],
                 expire_at,
-            )?
+            )?;
+
+            let data_to_sign =
+                extend_signature_with_id(unsigned_message.hash(), ton_core.signature_id());
+            let signature = key_pair.sign(&data_to_sign);
+            unsigned_message.sign(&signature.to_bytes())?
         }
         AccountType::Wallet => {
             let account = owner.address;
@@ -1202,13 +1167,18 @@ fn build_token_transaction(
 
             let seqno_offset = ton_wallet::wallet_v3::estimate_seqno_offset(&current_state, &[]);
 
-            ton_wallet::wallet_v3::prepare_transfer(
+            let unsigned_message = ton_wallet::wallet_v3::prepare_transfer(
                 &public_key,
                 &current_state,
                 seqno_offset,
                 gifts,
                 expire_at,
-            )?
+            )?;
+
+            let data_to_sign =
+                extend_signature_with_id(unsigned_message.hash(), ton_core.signature_id());
+            let signature = key_pair.sign(&data_to_sign);
+            unsigned_message.sign(&signature.to_bytes())?
         }
         AccountType::WalletV5R1 => {
             let account = owner.address;
@@ -1225,13 +1195,18 @@ fn build_token_transaction(
 
             let seqno_offset = 0; // TODO: implement seqno offset if needed
 
-            ton_wallet::wallet_v5r1::prepare_transfer(
+            let unsigned_message = ton_wallet::wallet_v5r1::prepare_transfer(
                 &public_key,
                 &current_state,
                 seqno_offset,
                 vec![gift],
                 expire_at,
-            )?
+            )?;
+
+            let data_to_sign =
+                extend_signature_with_id(unsigned_message.hash(), ton_core.signature_id());
+            let signature = key_pair.sign(&data_to_sign);
+            unsigned_message.sign(&signature.to_bytes())?
         }
         AccountType::SafeMultisig => {
             let has_multiple_owners = match custodians {
@@ -1248,14 +1223,16 @@ fn build_token_transaction(
                 state_init: None,
             };
 
-            ton_wallet::multisig::prepare_transfer(
+            let unsigned_message = ton_wallet::multisig::prepare_transfer(
                 MultisigType::SafeMultisigWallet,
                 &public_key,
                 has_multiple_owners,
                 owner.clone(),
                 gift,
                 expire_at,
-            )?
+            )?;
+
+            unsigned_message.sign(&key_pair, context)?
         }
         AccountType::EverWallet => {
             let account = owner.address;
@@ -1270,27 +1247,17 @@ fn build_token_transaction(
                 state_init: None,
             };
 
-            ton_wallet::ever_wallet::prepare_transfer(
+            let unsigned_message = ton_wallet::ever_wallet::prepare_transfer(
                 &public_key,
                 &current_state,
                 owner.clone(),
                 vec![gift],
                 expire_at,
-            )?
+            )?;
+
+            unsigned_message.sign(&key_pair, context)?
         }
     };
-
-    let mut key = [0u8; 32];
-    key.copy_from_slice(private_key);
-
-    let key_pair = ed25519_dalek::SigningKey::from_bytes(&key);
-
-    let context = SignatureContext {
-        global_id: ton_core.signature_id().unwrap_or_default(),
-        capabilities: GlobalCapabilities::new(ton_core.capabilities()),
-    };
-
-    let owned_message = unsigned_message.sign(&key_pair, context)?;
 
     let cell_builder = CellBuilder::build_from(&owned_message).map_err(anyhow::Error::from)?;
     let hash = cell_builder.repr_hash();

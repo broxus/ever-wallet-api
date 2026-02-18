@@ -3,11 +3,10 @@ use std::convert::TryFrom;
 use anyhow::Result;
 use ed25519_dalek::VerifyingKey;
 use tycho_types::{
-    abi::{AbiVersion, UnsignedBody, UnsignedExternalMessage},
     cell::{Cell, CellBuilder, HashBytes, Lazy, Load},
     models::{
-        Account, AccountState, CurrencyCollection, IntAddr, OutAction, OwnedRelaxedMessage,
-        RelaxedIntMsgInfo, RelaxedMsgInfo, SendMsgFlags, StateInit, StdAddr,
+        Account, AccountState, CurrencyCollection, ExtInMsgInfo, IntAddr, OutAction, OwnedMessage,
+        OwnedRelaxedMessage, RelaxedIntMsgInfo, RelaxedMsgInfo, SendMsgFlags, StateInit, StdAddr,
     },
 };
 
@@ -23,20 +22,27 @@ pub fn prepare_deploy(
     public_key: &VerifyingKey,
     workchain: i8,
     expire_at: u32,
-) -> Result<UnsignedExternalMessage> {
+) -> Result<UnsignedWalletV5> {
     let init_data = make_init_data(public_key);
     let dst = compute_contract_address(public_key, workchain)?;
+    let message = OwnedMessage {
+        info: tycho_types::models::MsgInfo::ExtIn(ExtInMsgInfo {
+            dst: IntAddr::Std(dst),
+            ..Default::default()
+        }),
+        body: Default::default(),
+        init: Some(init_data.make_state_init()?),
+        layout: None,
+    };
     let (hash, payload) = init_data.make_transfer_payload(None, expire_at, false)?;
-    let unsigned_body = UnsignedBody {
+    Ok(UnsignedWalletV5 {
+        init_data,
+        gifts: vec![],
         payload,
         hash,
-        abi_version: AbiVersion::V2_3,
         expire_at,
-    };
-    let mut unsigned_message = unsigned_body.with_dst(dst);
-    let state_init = init_data.make_state_init()?;
-    unsigned_message.set_state_init(Some(state_init));
-    Ok(unsigned_message)
+        message,
+    })
 }
 
 pub fn prepare_state_init(public_key: &VerifyingKey) -> Result<StateInit> {
@@ -77,7 +83,7 @@ pub fn prepare_transfer(
     seqno_offset: u32,
     gifts: Vec<Gift>,
     expire_at: u32,
-) -> Result<UnsignedExternalMessage> {
+) -> Result<UnsignedWalletV5> {
     if gifts.len() > MAX_MESSAGES {
         return Err(WalletV5Error::TooManyGifts.into());
     }
@@ -87,35 +93,64 @@ pub fn prepare_transfer(
 
     let (hash, payload) = init_data.make_transfer_payload(gifts.clone(), expire_at, false)?;
 
-    let unsigned_body = UnsignedBody {
-        payload,
-        hash,
-        abi_version: AbiVersion::V2_3,
-        expire_at,
+    let mut message = OwnedMessage {
+        info: tycho_types::models::MsgInfo::ExtIn(ExtInMsgInfo {
+            dst: IntAddr::Std(
+                current_state
+                    .address
+                    .as_std()
+                    .ok_or(WalletV5Error::InvalidAddress)?
+                    .clone(),
+            ),
+            ..Default::default()
+        }),
+        body: Default::default(),
+        init: None,
+        layout: None,
     };
-    let mut unsigned_message = unsigned_body.with_dst(
-        current_state
-            .address
-            .as_std()
-            .ok_or(WalletV5Error::InvalidAddress)?
-            .clone(),
-    );
+
     if with_state_init {
         let state_init = init_data.make_state_init()?;
-        unsigned_message.set_state_init(Some(state_init));
+        message.init = Some(state_init);
     }
 
-    Ok(unsigned_message)
+    Ok(UnsignedWalletV5 {
+        init_data,
+        gifts,
+        payload,
+        hash,
+        expire_at,
+        message,
+    })
 }
 
-#[allow(unused)]
-struct UnsignedWalletV5 {
+pub struct UnsignedWalletV5 {
     init_data: InitData,
     gifts: Vec<Gift>,
-    payload: Cell,
+    payload: CellBuilder,
     hash: HashBytes,
     expire_at: u32,
-    message: UnsignedExternalMessage,
+    message: OwnedMessage,
+}
+
+impl UnsignedWalletV5 {
+    pub fn expire_at(&self) -> u32 {
+        self.expire_at
+    }
+
+    pub fn hash(&self) -> &[u8] {
+        self.hash.as_slice()
+    }
+
+    pub fn sign(&self, signature: &[u8; ed25519_dalek::SIGNATURE_LENGTH]) -> Result<OwnedMessage> {
+        let mut payload = self.payload.clone();
+        payload.store_raw(signature, (ed25519_dalek::SIGNATURE_LENGTH * 8) as u16)?;
+
+        let mut message = self.message.clone();
+        message.body = payload.build()?.into();
+
+        Ok(message)
+    }
 }
 
 pub static CODE_HASH: &[u8; 32] = &[
@@ -218,7 +253,7 @@ impl InitData {
         gifts: impl IntoIterator<Item = Gift>,
         expire_at: u32,
         is_internal_flow: bool,
-    ) -> Result<(HashBytes, Cell)> {
+    ) -> Result<(HashBytes, CellBuilder)> {
         // Check if signatures are allowed
         if !self.is_signature_allowed {
             return if self.extensions.is_none() {
@@ -271,10 +306,10 @@ impl InitData {
         // has_other_actions
         builder.store_bit_zero()?;
 
-        let payload = builder.build()?;
+        let payload = builder.clone().build()?;
         let hash = payload.repr_hash();
 
-        Ok((*hash, payload))
+        Ok((*hash, builder))
     }
 }
 

@@ -3,12 +3,11 @@ use std::convert::TryFrom;
 use anyhow::Result;
 use ed25519_dalek::VerifyingKey;
 use tycho_types::{
-    abi::{AbiVersion, UnsignedBody, UnsignedExternalMessage},
     cell::{Cell, CellBuilder, CellFamily, HashBytes, Load, Store},
     dict::Dict,
     models::{
-        Account, AccountState, CurrencyCollection, IntAddr, IntMsgInfo, Message, MsgInfo,
-        StateInit, StdAddr,
+        Account, AccountState, CurrencyCollection, ExtInMsgInfo, IntAddr, IntMsgInfo, Message,
+        MsgInfo, OwnedMessage, StateInit, StdAddr,
     },
 };
 
@@ -20,20 +19,27 @@ pub fn prepare_deploy(
     public_key: &VerifyingKey,
     workchain: i8,
     expire_at: u32,
-) -> Result<UnsignedExternalMessage> {
+) -> Result<UnsignedHighloadWalletV2Message> {
     let init_data = InitData::from_key(public_key).with_wallet_id(WALLET_ID);
     let dst = compute_contract_address(public_key, workchain)?;
     let (hash, payload) = init_data.make_deploy_payload(expire_at)?;
-    let unsigned_body = UnsignedBody {
+    let message = OwnedMessage {
+        info: tycho_types::models::MsgInfo::ExtIn(ExtInMsgInfo {
+            dst: IntAddr::Std(dst),
+            ..Default::default()
+        }),
+        body: Default::default(),
+        init: Some(init_data.make_state_init()?),
+        layout: None,
+    };
+    Ok(UnsignedHighloadWalletV2Message {
+        init_data,
+        gifts: vec![],
         payload,
         hash,
-        abi_version: AbiVersion::V1_0,
         expire_at,
-    };
-    let mut unsigned_message = unsigned_body.with_dst(dst);
-    let state_init = init_data.make_state_init()?;
-    unsigned_message.set_state_init(Some(state_init));
-    Ok(unsigned_message)
+        message,
+    })
 }
 
 pub fn prepare_state_init(public_key: &VerifyingKey) -> Result<StateInit> {
@@ -46,7 +52,7 @@ pub fn prepare_transfer(
     current_state: &Account,
     gifts: Vec<Gift>,
     expire_at: u32,
-) -> Result<UnsignedExternalMessage> {
+) -> Result<UnsignedHighloadWalletV2Message> {
     if gifts.len() > DETAILS.max_messages {
         return Err(HighloadWalletV2Error::TooManyGifts.into());
     }
@@ -68,35 +74,63 @@ pub fn prepare_transfer(
     }
 
     let (hash, payload) = init_data.make_transfer_payload(gifts.clone(), expire_at)?;
-    let unsigned_body = UnsignedBody {
-        payload,
-        hash,
-        abi_version: AbiVersion::V1_0,
-        expire_at,
+    let mut message = OwnedMessage {
+        info: tycho_types::models::MsgInfo::ExtIn(ExtInMsgInfo {
+            dst: IntAddr::Std(
+                current_state
+                    .address
+                    .as_std()
+                    .ok_or(HighloadWalletV2Error::InvalidAddress)?
+                    .clone(),
+            ),
+            ..Default::default()
+        }),
+        body: Default::default(),
+        init: None,
+        layout: None,
     };
-    let mut unsigned_message = unsigned_body.with_dst(
-        current_state
-            .address
-            .as_std()
-            .ok_or(HighloadWalletV2Error::InvalidAddress)?
-            .clone(),
-    );
+
     if with_state_init {
-        let state_init = init_data.make_state_init()?;
-        unsigned_message.set_state_init(Some(state_init));
+        message.init = Some(init_data.make_state_init()?);
     }
 
-    Ok(unsigned_message)
+    Ok(UnsignedHighloadWalletV2Message {
+        init_data,
+        gifts,
+        payload,
+        hash,
+        expire_at,
+        message,
+    })
 }
 
-#[allow(unused)]
-struct UnsignedHighloadWalletV2Message {
+pub struct UnsignedHighloadWalletV2Message {
     init_data: InitData,
     gifts: Vec<Gift>,
-    payload: Cell,
+    payload: CellBuilder,
     hash: HashBytes,
     expire_at: u32,
-    message: UnsignedExternalMessage,
+    message: OwnedMessage,
+}
+
+impl UnsignedHighloadWalletV2Message {
+    pub fn expire_at(&self) -> u32 {
+        self.expire_at
+    }
+
+    pub fn hash(&self) -> &[u8] {
+        self.hash.as_slice()
+    }
+
+    pub fn sign(&self, signature: &[u8; ed25519_dalek::SIGNATURE_LENGTH]) -> Result<OwnedMessage> {
+        let mut payload = self.payload.clone();
+        payload.prepend_raw(signature, (ed25519_dalek::SIGNATURE_LENGTH * 8) as u16)?;
+
+        let mut message = self.message.clone();
+        message.body = payload.build()?.into();
+
+        Ok(message)
+    }
 }
 
 pub static CODE_HASH: &[u8; 32] = &[
@@ -183,7 +217,7 @@ impl InitData {
         Ok(data)
     }
 
-    pub fn make_deploy_payload(&self, expire_at: u32) -> Result<(HashBytes, Cell)> {
+    pub fn make_deploy_payload(&self, expire_at: u32) -> Result<(HashBytes, CellBuilder)> {
         let mut builder = CellBuilder::new();
 
         builder.store_u32(self.wallet_id)?;
@@ -191,18 +225,18 @@ impl InitData {
         builder.store_u32(u32::MAX)?;
         builder.store_bit_zero()?;
 
-        let payload = builder.build()?;
+        let payload = builder.clone().build()?;
 
         let hash = payload.repr_hash();
 
-        Ok((*hash, payload))
+        Ok((*hash, builder))
     }
 
     pub fn make_transfer_payload(
         &self,
         gifts: impl IntoIterator<Item = Gift>,
         expire_at: u32,
-    ) -> Result<(HashBytes, Cell)> {
+    ) -> Result<(HashBytes, CellBuilder)> {
         // Prepare messages array
         let mut messages = Dict::<u16, Cell>::new();
         for (i, gift) in gifts.into_iter().enumerate() {
@@ -237,16 +271,16 @@ impl InitData {
         let messages_hash = messages_cell.repr_hash();
 
         // Build payload
-        let mut payload = CellBuilder::new();
-        payload.store_u32(self.wallet_id)?;
-        payload.store_u32(expire_at)?;
-        payload.store_raw(&messages_hash.as_slice()[28..32], 32)?;
-        payload.store_builder(&message_builder)?;
+        let mut builder = CellBuilder::new();
+        builder.store_u32(self.wallet_id)?;
+        builder.store_u32(expire_at)?;
+        builder.store_raw(&messages_hash.as_slice()[28..32], 32)?;
+        builder.store_builder(&message_builder)?;
 
-        let payload = payload.build()?;
+        let payload = builder.clone().build()?;
         let hash = payload.repr_hash();
 
-        Ok((*hash, payload))
+        Ok((*hash, builder))
     }
 }
 
