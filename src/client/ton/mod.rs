@@ -238,16 +238,9 @@ impl TonClient {
                 address.workchain_id as i8,
                 expire_at,
             )?,
-            AccountType::HighloadWallet => ton_wallet::highload_wallet_v2::prepare_deploy(
-                &public_key,
-                address.workchain_id as i8,
-                expire_at,
-            )?,
-            AccountType::Wallet => ton_wallet::wallet_v3::prepare_deploy(
-                &public_key,
-                address.workchain_id as i8,
-                expire_at,
-            )?,
+            AccountType::HighloadWallet | AccountType::Wallet => {
+                return Ok(None);
+            }
         };
 
         let mut key = [0u8; 32];
