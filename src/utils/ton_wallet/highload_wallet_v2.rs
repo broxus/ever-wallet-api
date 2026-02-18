@@ -7,7 +7,8 @@ use tycho_types::{
     dict::Dict,
     models::{
         Account, AccountState, CurrencyCollection, ExtInMsgInfo, IntAddr, IntMsgInfo, Message,
-        MsgInfo, OwnedMessage, StateInit, StdAddr,
+        MsgInfo, OwnedMessage, OwnedRelaxedMessage, RelaxedIntMsgInfo, RelaxedMsgInfo, StateInit,
+        StdAddr,
     },
 };
 
@@ -208,11 +209,7 @@ impl InitData {
         builder.store_u32(self.wallet_id)?;
         builder.store_u64(self.last_cleaned)?;
         builder.store_u256(&self.public_key)?;
-
-        let dict = CellBuilder::build_from(&self.data)?;
-
-        builder.store_bit_one()?;
-        builder.store_reference(dict)?;
+        self.data.store_into(&mut builder, Cell::empty_context())?;
         let data = builder.build()?;
         Ok(data)
     }
@@ -240,9 +237,8 @@ impl InitData {
         // Prepare messages array
         let mut messages = Dict::<u16, Cell>::new();
         for (i, gift) in gifts.into_iter().enumerate() {
-            let body = gift.body.unwrap_or(Default::default());
-            let internal_message = Message {
-                info: MsgInfo::Int(IntMsgInfo {
+            let internal_message = OwnedRelaxedMessage {
+                info: RelaxedMsgInfo::Int(RelaxedIntMsgInfo {
                     ihr_disabled: true,
                     bounce: gift.bounce,
                     dst: IntAddr::Std(gift.destination),
@@ -250,7 +246,7 @@ impl InitData {
                     ..Default::default()
                 }),
                 init: gift.state_init,
-                body: body.as_slice()?,
+                body: gift.body.unwrap_or(Default::default()).into(),
                 layout: None,
             };
 
