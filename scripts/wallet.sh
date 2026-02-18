@@ -23,6 +23,11 @@ function print_help() {
   echo '                          --dst-addr    Recipient address'
   echo '                          --root-addr   Root Token address'
   echo '                          --amount      Token amount'
+  echo ''
+  echo '                      - confirm_transaction - confirm a pending multisig transaction.'
+  echo '                        Options:'
+  echo '                          --address         Multisig wallet address'
+  echo '                          --transaction-id  Multisig transaction ID to confirm'
 }
 
 while [[ $# -gt 0 ]]; do
@@ -93,6 +98,28 @@ while [[ $# -gt 0 ]]; do
         if [ "$#" -gt 0 ]; then shift;
         else
           echo 'ERROR: Expected account type'
+          echo ''
+          print_help
+          exit 1
+        fi
+      ;;
+      --address)
+        address="$2"
+        shift # past argument
+        if [ "$#" -gt 0 ]; then shift;
+        else
+          echo 'ERROR: Expected address'
+          echo ''
+          print_help
+          exit 1
+        fi
+      ;;
+      --transaction-id)
+        transaction_id="$2"
+        shift # past argument
+        if [ "$#" -gt 0 ]; then shift;
+        else
+          echo 'ERROR: Expected transaction ID'
           echo ''
           print_help
           exit 1
@@ -200,6 +227,28 @@ function create_token_transaction() {
     --data-raw "$body"
 }
 
+function confirm_transaction() {
+  timestamp=$1
+  address=$2
+  transaction_id=$3
+
+  uri="/ton/v3/transactions/confirm"
+  body='{"id": "", "address": "", "transactionId": 0}'
+  body=$(echo "$body" | jq --indent 4 -r --arg id "$(uuidgen)" '.id = $id')
+  body=$(echo "$body" | jq --indent 4 -r --arg address "$address" '.address = $address')
+  body=$(echo "$body" | jq --indent 4 -r --argjson transaction_id "$transaction_id" '.transactionId = $transaction_id')
+
+  stringToSign="$timestamp$uri$body"
+  signature=$(create_signature "$stringToSign")
+
+  curl -s --location --request POST "$host$uri" \
+    --header 'Content-Type: application/json' \
+    --header "api-key: $api_key" \
+    --header "timestamp: $timestamp" \
+    --header "sign: $signature" \
+    --data-raw "$body"
+}
+
 case $method in
   create_account)
     if [ -z "$account_type" ]; then
@@ -263,6 +312,23 @@ case $method in
 
     timestamp=$(timestamp_ms)
     create_token_transaction "$timestamp" "$sender" "$recipient" "$root_address" "$amount" | jq .
+  ;;
+  confirm_transaction)
+    if [ -z "$address" ]; then
+      echo 'ERROR: Skipped address'
+      echo ''
+      print_help
+      exit 1
+    fi
+    if [ -z "$transaction_id" ]; then
+      echo 'ERROR: Skipped transaction ID'
+      echo ''
+      print_help
+      exit 1
+    fi
+
+    timestamp=$(timestamp_ms)
+    confirm_transaction "$timestamp" "$address" "$transaction_id" | jq .
   ;;
   *) # unknown method
     echo 'ERROR: Unknown method'
