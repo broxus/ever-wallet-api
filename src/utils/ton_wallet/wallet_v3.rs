@@ -5,8 +5,8 @@ use ed25519_dalek::VerifyingKey;
 use tycho_types::{
     cell::{Cell, CellBuilder, HashBytes},
     models::{
-        Account, AccountState, CurrencyCollection, ExtInMsgInfo, IntAddr, IntMsgInfo, Message,
-        MsgInfo, OwnedMessage, StateInit, StdAddr,
+        Account, AccountState, CurrencyCollection, ExtInMsgInfo, IntAddr, MsgInfo, OwnedMessage,
+        OwnedRelaxedMessage, RelaxedIntMsgInfo, RelaxedMsgInfo, StateInit, StdAddr,
     },
 };
 use tycho_util::time::now_sec;
@@ -273,9 +273,8 @@ impl InitData {
 
         // create internal message
         for gift in gifts {
-            let body = gift.body.unwrap_or(Default::default());
-            let internal_message = Message {
-                info: MsgInfo::Int(IntMsgInfo {
+            let internal_message = OwnedRelaxedMessage {
+                info: RelaxedMsgInfo::Int(RelaxedIntMsgInfo {
                     ihr_disabled: true,
                     bounce: gift.bounce,
                     dst: IntAddr::Std(gift.destination),
@@ -283,7 +282,7 @@ impl InitData {
                     ..Default::default()
                 }),
                 init: gift.state_init,
-                body: body.as_slice()?,
+                body: gift.body.unwrap_or(Default::default()).into(),
                 layout: None,
             };
             // append it to the body
