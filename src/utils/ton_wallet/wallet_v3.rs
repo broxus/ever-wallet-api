@@ -115,7 +115,7 @@ pub fn prepare_transfer(
     let unsigned_body = UnsignedBody {
         payload,
         hash,
-        abi_version: AbiVersion::V2_3,
+        abi_version: AbiVersion::V1_0,
         expire_at,
     };
     let mut unsigned_message = unsigned_body.with_dst(
