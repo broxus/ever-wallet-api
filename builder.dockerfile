@@ -42,9 +42,6 @@ RUN cargo sqlx migrate run --database-url "$DATABASE_URL"
 RUN if [ "$NETWORK" = "tycho" ]; then \
       cargo sqlx prepare && \
       RUSTFLAGS="-C target_cpu=native" SQLX_OFFLINE=true cargo build --release; \
-    elif [ "$NETWORK" = "venom" ]; then \
-      cargo sqlx prepare && \
-      RUSTFLAGS="-C target_cpu=native" SQLX_OFFLINE=true cargo build --release --features venom; \
     else \
       echo 'ERROR: Unexpected network'; \
       exit 1; \

@@ -1,10 +1,4 @@
 <p align="center">
-  <a href="https://github.com/venom-blockchain/developer-program">
-    <img src="https://raw.githubusercontent.com/venom-blockchain/developer-program/main/vf-dev-program.png" alt="Logo" width="366.8" height="146.4">
-  </a>
-</p>
-
-<p align="center">
    <h3 align="center">Tycho Wallet API</h3>
     <p align="center">
         <a href="/LICENSE">
@@ -531,7 +525,7 @@ for setting up the deployment environment.
 
 1. **Build the builder image**:
    The `builder.dockerfile` is responsible for compiling the project using Rust. It builds the project based on the 
-   specified network (either `tycho` or `venom`) and prepares the database for the application using SQLx.
+   specified network (either `tycho` or other) and prepares the database for the application using SQLx.
 
    Use the following command to build the builder image:
 
@@ -591,7 +585,7 @@ Once the images are built, you can run the container using Podman or Docker.
 
 ### Troubleshooting
 
-When the node is out of sync, which especially applies for Venom, removing database and re-syncing node may help to
+When the node is out of sync, removing database and re-syncing node may help to
 restore service operations.
 
 `rm -rf /var/db/tycho-wallet-api`

@@ -42,7 +42,7 @@ in {
         type = types.str;
         default = "Tycho";
         description = ''
-          Which blockchain to use: Tycho, Venom
+          Which blockchain to use: Tycho, any other
         '';
       };
 
@@ -263,7 +263,7 @@ in {
     # Create systemd service
     systemd.services.tycho-wallet-api = {
       enable = true;
-      description = "Service that indexes transactions for Tycho or Venom";
+      description = "Service that indexes transactions for Tycho or any other";
       after = ["network.target" cfg.dbPasswordFileService cfg.tychoSecretFileService cfg.tychoSaltFileService];
       wants = ["network.target" cfg.dbPasswordFileService cfg.tychoSecretFileService cfg.tychoSaltFileService];
       path = with pkgs; [ ];
