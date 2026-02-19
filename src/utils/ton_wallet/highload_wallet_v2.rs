@@ -246,7 +246,7 @@ impl InitData {
         expire_at: u32,
     ) -> Result<(HashBytes, CellBuilder)> {
         // Prepare messages array
-        let mut messages = Dict::<u16, Cell>::new();
+        let mut messages = Dict::<u16, (u8, Cell)>::new();
         for (i, gift) in gifts.into_iter().enumerate() {
             let internal_message = OwnedRelaxedMessage {
                 info: RelaxedMsgInfo::Int(RelaxedIntMsgInfo {
@@ -263,12 +263,8 @@ impl InitData {
 
             let cell = CellBuilder::build_from(internal_message)?;
 
-            let mut item = CellBuilder::new();
-            item.store_u8(gift.flags)?;
-            item.store_reference(cell)?;
-
             let key = i as u16;
-            messages.set(key, item.build()?)?;
+            messages.set(key, (gift.flags, cell))?;
         }
 
         let mut message_builder = CellBuilder::new();
@@ -331,9 +327,17 @@ enum HighloadWalletV2Error {
 #[cfg(test)]
 pub mod tests {
     use anyhow::Result;
-    use tycho_types::{boc::Boc, cell::Load, models::AccountState};
+    use ed25519_dalek::VerifyingKey;
+    use tycho_types::{
+        boc::Boc,
+        cell::Load,
+        models::{AccountState, StdAddr},
+    };
 
-    use crate::utils::ton_wallet::highload_wallet_v2::InitData;
+    use crate::utils::ton_wallet::{
+        highload_wallet_v2::{InitData, WALLET_ID},
+        Gift,
+    };
 
     #[test]
     fn check_state() -> Result<()> {
@@ -353,5 +357,24 @@ pub mod tests {
         println!("{:?}", init_data.data.values().count());
 
         Ok(())
+    }
+
+    #[test]
+    fn test_init_data() {
+        let p = hex::decode("b76bf868d742e291c9f1a9a1a47dc79728456d5b74b07471dded4bc8f06d5d8a")
+            .unwrap();
+        let public_key = VerifyingKey::from_bytes(&p.try_into().unwrap()).unwrap();
+        let init_data = InitData::from_key(&public_key).with_wallet_id(WALLET_ID);
+        let gifts = vec![Gift {
+            amount: 0,
+            state_init: None,
+            body: None,
+            flags: 0,
+            bounce: false,
+            destination: StdAddr::default(),
+        }];
+        //let gifts = vec![];
+        let (hash, payload) = init_data.make_transfer_payload(gifts, 0).unwrap();
+        println!("{hash:?} {}", Boc::encode_base64(payload.build().unwrap()));
     }
 }
