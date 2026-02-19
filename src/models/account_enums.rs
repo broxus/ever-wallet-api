@@ -14,12 +14,12 @@ use crate::{
 )]
 #[sqlx(type_name = "twa_account_type", rename_all = "PascalCase")]
 pub enum AccountType {
-    #[default]
     HighloadWallet,
     Wallet,
     SafeMultisig,
     EverWallet,
     #[sqlx(rename = "WalletV5R1")]
+    #[default]
     WalletV5R1,
 }
 
