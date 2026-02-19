@@ -6,9 +6,8 @@ use tycho_types::{
     cell::{Cell, CellBuilder, CellFamily, HashBytes, Load, Store},
     dict::Dict,
     models::{
-        Account, AccountState, CurrencyCollection, ExtInMsgInfo, IntAddr, IntMsgInfo, Message,
-        MsgInfo, OwnedMessage, OwnedRelaxedMessage, RelaxedIntMsgInfo, RelaxedMsgInfo, StateInit,
-        StdAddr,
+        Account, AccountState, CurrencyCollection, ExtInMsgInfo, IntAddr, OwnedMessage,
+        OwnedRelaxedMessage, RelaxedIntMsgInfo, RelaxedMsgInfo, StateInit, StdAddr,
     },
 };
 
@@ -121,6 +120,18 @@ impl UnsignedHighloadWalletV2Message {
 
     pub fn hash(&self) -> &[u8] {
         self.hash.as_slice()
+    }
+
+    pub fn gifts(&self) -> &[Gift] {
+        &self.gifts
+    }
+
+    pub fn message(&self) -> &OwnedMessage {
+        &self.message
+    }
+
+    pub fn init_data(&self) -> &InitData {
+        &self.init_data
     }
 
     pub fn sign(&self, signature: &[u8; ed25519_dalek::SIGNATURE_LENGTH]) -> Result<OwnedMessage> {

@@ -142,6 +142,18 @@ impl UnsignedWalletV5 {
         self.hash.as_slice()
     }
 
+    pub fn gifts(&self) -> &[Gift] {
+        &self.gifts
+    }
+
+    pub fn message(&self) -> &OwnedMessage {
+        &self.message
+    }
+
+    pub fn init_data(&self) -> &InitData {
+        &self.init_data
+    }
+
     pub fn sign(&self, signature: &[u8; ed25519_dalek::SIGNATURE_LENGTH]) -> Result<OwnedMessage> {
         let mut payload = self.payload.clone();
         payload.store_raw(signature, (ed25519_dalek::SIGNATURE_LENGTH * 8) as u16)?;
