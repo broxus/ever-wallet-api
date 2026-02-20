@@ -135,7 +135,7 @@ NOTE: scripts are prepared and tested on **Ubuntu 20.04**. You may need to modif
 
    ```bash
    API_KEY=${API_KEY} SECRET=${API_SECRET} HOST=${HOST} \
-   ./scripts/wallet.sh -m create_account
+   ./scripts/wallet.sh -m create_account --account-type WalletV5R1
    ```
 
 2. #### Callbacks
