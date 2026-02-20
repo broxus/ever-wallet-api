@@ -1,77 +1,63 @@
 use anyhow::Result;
 use bigdecimal::BigDecimal;
-use nekoton::core::models::{
-    RootTokenContractDetails, TokenWalletDetails, TokenWalletVersion, TransferRecipient,
-};
-use nekoton::core::InternalMessage;
-use nekoton::transport::models::ExistingContract;
-use nekoton_abi::{BigUint128, BigUint256, ExecutionContext, MessageBuilder};
-use nekoton_contracts::tip3_any::{RootTokenContractState, TokenWalletContractState};
-use nekoton_contracts::{old_tip3, tip3_1};
-use nekoton_utils::SimpleClock;
+use nekoton_core::contracts::blockchain_context::BlockchainAccount;
+use nekoton_core::contracts::blockchain_context::BlockchainContext;
 use num_bigint::BigUint;
-use ton_block::MsgAddressInt;
-use ton_types::{SliceData, UInt256};
+use num_traits::ToPrimitive;
+use tycho_types::abi::AbiValue;
+use tycho_types::cell::{Cell, HashBytes};
+use tycho_types::models::{AccountState, StdAddr};
 
-const INITIAL_BALANCE: u64 = 100_000_000; // 0.1 TON
+use crate::models::ExistingContract;
+use crate::utils::token_wallets::models::RootTokenContractState;
+use crate::utils::token_wallets::models::TokenWalletContractState;
+use crate::utils::token_wallets::models::{
+    RootTokenContractDetails, TokenWalletDetails, TokenWalletVersion,
+};
+
+const INITIAL_BALANCE: u128 = 100_000_000; // 0.1
+
+#[derive(Clone, Debug)]
+pub struct InternalMessage {
+    pub source: Option<StdAddr>,
+    pub destination: StdAddr,
+    pub amount: u128,
+    pub bounce: bool,
+    pub body: Cell,
+}
 
 pub fn prepare_token_transfer(
-    owner: MsgAddressInt,
-    token_wallet: MsgAddressInt,
+    owner: StdAddr,
+    token_wallet: StdAddr,
     version: TokenWalletVersion,
-    destination: TransferRecipient,
+    destination: StdAddr,
     tokens: BigUint,
-    send_gas_to: MsgAddressInt,
+    send_gas_to: StdAddr,
     notify_receiver: bool,
     attached_amount: u128,
-    payload: ton_types::Cell,
+    payload: Cell,
 ) -> Result<InternalMessage> {
-    let (function, input) = match version {
+    let (function, tokens) = match version {
         TokenWalletVersion::OldTip3v4 => {
-            use old_tip3::token_wallet_contract;
-            match destination {
-                TransferRecipient::TokenWallet(token_wallet) => {
-                    MessageBuilder::new(token_wallet_contract::transfer())
-                        .arg(token_wallet) // to
-                        .arg(BigUint128(tokens)) // tokens
-                }
-                TransferRecipient::OwnerWallet(owner_wallet) => {
-                    MessageBuilder::new(token_wallet_contract::transfer_to_recipient())
-                        .arg(BigUint256(Default::default())) // recipient_public_key
-                        .arg(owner_wallet) // recipient_address
-                        .arg(BigUint128(tokens)) // tokens
-                        .arg(BigUint128(INITIAL_BALANCE.into())) // deploy_grams
-                }
-            }
-            .arg(BigUint128(Default::default())) // grams / transfer_grams
-            .arg(send_gas_to) // send_gas_to
-            .arg(notify_receiver) // notify_receiver
-            .arg(payload) // payload
-            .build()
+            return Err(TokenWalletError::NotSupported.into());
         }
         TokenWalletVersion::Tip3 => {
-            use tip3_1::token_wallet_contract;
-            match destination {
-                TransferRecipient::TokenWallet(token_wallet) => {
-                    MessageBuilder::new(token_wallet_contract::transfer_to_wallet())
-                        .arg(BigUint128(tokens)) // amount
-                        .arg(token_wallet) // recipient token wallet
-                }
-                TransferRecipient::OwnerWallet(owner_wallet) => {
-                    MessageBuilder::new(token_wallet_contract::transfer())
-                        .arg(BigUint128(tokens)) // amount
-                        .arg(owner_wallet) // recipient
-                        .arg(BigUint128(INITIAL_BALANCE.into())) // deployWalletValue
-                }
-            }
-            .arg(send_gas_to) // remainingGasTo
-            .arg(notify_receiver) // notify
-            .arg(payload) // payload
-            .build()
+            use crate::utils::token_wallets;
+            let function = token_wallets::transfer();
+            let tokens = [
+                AbiValue::uint(128, tokens.to_u128().unwrap()).named("amount"),
+                AbiValue::address(destination).named("recipient"),
+                AbiValue::uint(128, INITIAL_BALANCE).named("deployWalletValue"),
+                AbiValue::address(send_gas_to).named("remainingGasTo"),
+                AbiValue::Bool(notify_receiver).named("notify"),
+                AbiValue::Cell(payload).named("payload"),
+            ]
+            .to_vec();
+            (function, tokens)
         }
     };
 
-    let body = SliceData::load_builder(function.encode_internal_input(&input)?)?;
+    let body = function.encode_internal_input(&tokens)?.build()?;
 
     Ok(InternalMessage {
         source: Some(owner),
@@ -83,38 +69,35 @@ pub fn prepare_token_transfer(
 }
 
 pub fn prepare_token_burn(
-    owner: MsgAddressInt,
-    token_wallet: MsgAddressInt,
+    owner: StdAddr,
+    token_wallet: StdAddr,
     version: TokenWalletVersion,
     tokens: BigUint,
-    send_gas_to: MsgAddressInt,
-    callback_to: MsgAddressInt,
+    send_gas_to: StdAddr,
+    callback_to: StdAddr,
     attached_amount: u128,
-    payload: ton_types::Cell,
+    payload: Cell,
 ) -> Result<InternalMessage> {
-    let (function, input) = match version {
+    let (function, tokens) = match version {
         TokenWalletVersion::OldTip3v4 => {
-            use old_tip3::token_wallet_contract;
-            MessageBuilder::new(token_wallet_contract::burn_by_owner())
-                .arg(BigUint128(tokens)) // amount
-                .arg(0u128) // grams
-                .arg(send_gas_to) // remainingGasTo
-                .arg(callback_to) // callback_address
-                .arg(payload) // payload
-                .build()
+            return Err(TokenWalletError::NotSupported.into());
         }
         TokenWalletVersion::Tip3 => {
-            use tip3_1::token_wallet_contract;
-            MessageBuilder::new(token_wallet_contract::burnable::burn())
-                .arg(BigUint128(tokens)) // amount
-                .arg(send_gas_to) // remainingGasTo
-                .arg(callback_to) // callbackTo
-                .arg(payload) // payload
-                .build()
+            use crate::utils::token_wallets;
+
+            let function = token_wallets::burnable::burn();
+            let tokens = [
+                AbiValue::uint(128, tokens.to_u128().unwrap()).named("amount"),
+                AbiValue::address(send_gas_to).named("remainingGasTo"),
+                AbiValue::address(callback_to).named("callbackTo"),
+                AbiValue::Cell(payload).named("payload"),
+            ]
+            .to_vec();
+            (function, tokens)
         }
     };
 
-    let body = SliceData::load_builder(function.encode_internal_input(&input)?)?;
+    let body = function.encode_internal_input(&tokens)?.build()?;
 
     Ok(InternalMessage {
         source: Some(owner),
@@ -126,33 +109,36 @@ pub fn prepare_token_burn(
 }
 
 pub fn prepare_token_mint(
-    owner: MsgAddressInt,
-    root_token: MsgAddressInt,
+    owner: StdAddr,
+    root_token: StdAddr,
     version: TokenWalletVersion,
     tokens: BigUint,
-    recipient: MsgAddressInt,
+    recipient: StdAddr,
     deploy_wallet_value: BigUint,
-    send_gas_to: MsgAddressInt,
+    send_gas_to: StdAddr,
     notify: bool,
     attached_amount: u128,
-    payload: ton_types::Cell,
+    payload: Cell,
 ) -> Result<InternalMessage> {
-    let (function, input) = match version {
-        TokenWalletVersion::OldTip3v4 => return Err(TokenWalletError::MintNotSupported.into()),
+    let (function, tokens) = match version {
+        TokenWalletVersion::OldTip3v4 => return Err(TokenWalletError::NotSupported.into()),
         TokenWalletVersion::Tip3 => {
-            use tip3_1::root_token_contract;
-            MessageBuilder::new(root_token_contract::mint())
-                .arg(BigUint128(tokens)) // amount
-                .arg(recipient) // recipient
-                .arg(BigUint128(deploy_wallet_value)) // deployWalletValue
-                .arg(send_gas_to) // remainingGasTo
-                .arg(notify) // notify
-                .arg(payload) // payload
-                .build()
+            use crate::utils::token_wallets;
+            let function = token_wallets::mint();
+            let tokens = [
+                AbiValue::uint(128, tokens.to_u128().unwrap()).named("amount"),
+                AbiValue::address(recipient).named("recipient"),
+                AbiValue::uint(128, deploy_wallet_value).named("deployWalletValue"),
+                AbiValue::address(send_gas_to).named("remainingGasTo"),
+                AbiValue::Bool(notify).named("notify"),
+                AbiValue::Cell(payload).named("payload"),
+            ]
+            .to_vec();
+            (function, tokens)
         }
     };
 
-    let body = SliceData::load_builder(function.encode_internal_input(&input)?)?;
+    let body = function.encode_internal_input(&tokens)?.build()?;
 
     Ok(InternalMessage {
         source: Some(owner),
@@ -164,74 +150,78 @@ pub fn prepare_token_mint(
 }
 
 pub fn get_token_wallet_address(
-    root_contract: &ExistingContract,
-    owner: &MsgAddressInt,
-) -> Result<MsgAddressInt> {
-    let root_contract_state = RootTokenContractState(ExecutionContext {
-        clock: &SimpleClock,
-        account_stuff: &root_contract.account,
-        libraries: &[],
-    });
+    root_contract: ExistingContract,
+    context: BlockchainContext,
+    owner: &StdAddr,
+) -> Result<StdAddr> {
+    let mut root_contract_state =
+        RootTokenContractState(&mut BlockchainAccount::new(context, root_contract.account));
     let RootTokenContractDetails { version, .. } = root_contract_state.guess_details()?;
 
     root_contract_state.get_wallet_address(version, owner)
 }
 
 pub fn get_token_wallet_account(
-    root_contract: &ExistingContract,
-    owner: &MsgAddressInt,
-) -> Result<UInt256> {
-    let root_contract_state = RootTokenContractState(ExecutionContext {
-        clock: &SimpleClock,
-        account_stuff: &root_contract.account,
-        libraries: &[],
-    });
+    root_contract: ExistingContract,
+    context: BlockchainContext,
+    owner: &StdAddr,
+) -> Result<HashBytes> {
+    let mut root_contract_state =
+        RootTokenContractState(&mut BlockchainAccount::new(context, root_contract.account));
     let RootTokenContractDetails { version, .. } = root_contract_state.guess_details()?;
 
     let token_wallet_address = root_contract_state.get_wallet_address(version, owner)?;
-    let token_wallet_account =
-        UInt256::from_be_bytes(&token_wallet_address.address().get_bytestring(0));
+    let token_wallet_account = token_wallet_address.address;
 
     Ok(token_wallet_account)
 }
 
 pub fn get_token_wallet_basic_info(
-    token_contract: &ExistingContract,
+    token_contract: ExistingContract,
+    context: BlockchainContext,
 ) -> Result<(TokenWalletVersion, BigDecimal)> {
-    let token_wallet_state = TokenWalletContractState(ExecutionContext {
-        clock: &SimpleClock,
-        account_stuff: &token_contract.account,
-        libraries: &[],
-    });
+    let mut token_wallet_state =
+        TokenWalletContractState(&mut BlockchainAccount::new(context, token_contract.account));
 
-    let version = token_wallet_state.get_version()?;
-    let balance = BigDecimal::new(token_wallet_state.get_balance(version)?.into(), 0);
+    let balance = BigDecimal::new(
+        token_wallet_state
+            .get_balance(TokenWalletVersion::Tip3)?
+            .into(),
+        0,
+    );
 
-    Ok((version, balance))
+    Ok((TokenWalletVersion::Tip3, balance))
 }
 
 pub fn get_token_wallet_details(
-    token_contract: &ExistingContract,
-) -> Result<(TokenWalletDetails, TokenWalletVersion, [u8; 32])> {
-    let contract_state = TokenWalletContractState(ExecutionContext {
-        clock: &SimpleClock,
-        account_stuff: &token_contract.account,
-        libraries: &[],
-    });
+    token_contract: ExistingContract,
+    context: BlockchainContext,
+) -> Result<(TokenWalletDetails, TokenWalletVersion, HashBytes)> {
+    let hash = match &token_contract.account.state {
+        AccountState::Active(state_init) => {
+            let code = state_init
+                .code
+                .as_ref()
+                .ok_or_else(|| anyhow::anyhow!("Wallet not deployed"))?;
+            *code.repr_hash()
+        }
+        _ => anyhow::bail!("Wallet not deployed"),
+    };
 
-    let hash = *contract_state.get_code_hash()?.as_slice();
-    let version = contract_state.get_version()?;
-    let details = contract_state.get_details(version)?;
+    let mut contract_state =
+        TokenWalletContractState(&mut BlockchainAccount::new(context, token_contract.account));
 
-    Ok((details, version, hash))
+    let details = contract_state.get_details(TokenWalletVersion::Tip3)?;
+
+    Ok((details, TokenWalletVersion::Tip3, hash))
 }
 
-pub fn get_root_token_version(root_contract: &ExistingContract) -> Result<TokenWalletVersion> {
-    let root_contract_state = RootTokenContractState(ExecutionContext {
-        clock: &SimpleClock,
-        account_stuff: &root_contract.account,
-        libraries: &[],
-    });
+pub fn get_root_token_version(
+    root_contract: ExistingContract,
+    context: BlockchainContext,
+) -> Result<TokenWalletVersion> {
+    let mut root_contract_state =
+        RootTokenContractState(&mut BlockchainAccount::new(context, root_contract.account));
     let RootTokenContractDetails { version, .. } = root_contract_state.guess_details()?;
 
     Ok(version)
@@ -239,6 +229,6 @@ pub fn get_root_token_version(root_contract: &ExistingContract) -> Result<TokenW
 
 #[derive(thiserror::Error, Debug)]
 enum TokenWalletError {
-    #[error("Mint not supported by OldTip3v4 tokens")]
-    MintNotSupported,
+    #[error("not supported OldTip3v4 tokens")]
+    NotSupported,
 }

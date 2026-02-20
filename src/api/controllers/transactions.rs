@@ -1,6 +1,6 @@
 use axum::extract::{Path, State};
 use axum::Json;
-use metrics::{histogram, increment_counter};
+use metrics::{counter, histogram};
 use tokio::time::Instant;
 use uuid::Uuid;
 
@@ -46,8 +46,8 @@ pub async fn post_transactions_create(
         .map(From::from);
 
     let elapsed = start.elapsed();
-    histogram!("execution_time_seconds", elapsed, "method" => "transactionCreate");
-    increment_counter!("requests_processed", "method" => "transactionCreate");
+    histogram!("execution_time_seconds", "method" => "transactionCreate").record(elapsed);
+    counter!("requests_processed", "method" => "transactionCreate").increment(1);
 
     Ok(Json(TransactionResponse::from(transaction)))
 }
@@ -66,8 +66,8 @@ pub async fn post_transactions_confirm(
         .map(From::from);
 
     let elapsed = start.elapsed();
-    histogram!("execution_time_seconds", elapsed, "method" => "transactionConfirm");
-    increment_counter!("requests_processed", "method" => "transactionConfirm");
+    histogram!("execution_time_seconds", "method" => "transactionConfirm").record(elapsed);
+    counter!("requests_processed", "method" => "transactionConfirm").increment(1);
 
     Ok(Json(TransactionResponse::from(transaction)))
 }
@@ -156,8 +156,8 @@ pub async fn post_tokens_transactions_create(
         .map(From::from);
 
     let elapsed = start.elapsed();
-    histogram!("execution_time_seconds", elapsed, "method" => "tokenTransactionCreate");
-    increment_counter!("requests_processed", "method" => "tokenTransactionCreate");
+    histogram!("execution_time_seconds", "method" => "tokenTransactionCreate").record(elapsed);
+    counter!("requests_processed", "method" => "tokenTransactionCreate").increment(1);
 
     Ok(Json(TransactionResponse::from(transaction)))
 }
@@ -176,8 +176,8 @@ pub async fn post_tokens_transactions_burn(
         .map(From::from);
 
     let elapsed = start.elapsed();
-    histogram!("execution_time_seconds", elapsed, "method" => "tokenTransactionBurn");
-    increment_counter!("requests_processed", "method" => "tokenTransactionBurn");
+    histogram!("execution_time_seconds", "method" => "tokenTransactionBurn").record(elapsed);
+    counter!("requests_processed", "method" => "tokenTransactionBurn").increment(1);
 
     Ok(Json(TransactionResponse::from(transaction)))
 }
@@ -196,8 +196,8 @@ pub async fn post_tokens_transactions_mint(
         .map(From::from);
 
     let elapsed = start.elapsed();
-    histogram!("execution_time_seconds", elapsed, "method" => "tokenTransactionMint");
-    increment_counter!("requests_processed", "method" => "tokenTransactionMint");
+    histogram!("execution_time_seconds", "method" => "tokenTransactionMint").record(elapsed);
+    counter!("requests_processed", "method" => "tokenTransactionMint").increment(1);
 
     Ok(Json(TransactionResponse::from(transaction)))
 }

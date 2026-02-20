@@ -10,44 +10,44 @@
     services.tycho-wallet-api = {
         enable = true;
         port = 7354;
-        chain = "Everscale";
-        dbPasswordFile = "/var/everwalletapidb"; # fill it with password
-        everSecretFile = "/var/everwalletapisecret";
-        everSaltFile = "/var/everwalletapisalt";
+        chain = "Tycho";
+        dbPasswordFile = "/var/tychowalletapidb"; # fill it with password
+        tychoSecretFile = "/var/tychowalletapisecret";
+        tychoSaltFile = "/var/tychowalletapisalt";
         metricsHost = "0.0.0.0";
       };
     systemd.services = {
-      everwalletapidb-key = {
+      tychowalletapidb-key = {
         enable = true;
-        description = "Ever wallet API password for PostgreSQL is provided";
+        description = "Tycho wallet API password for PostgreSQL is provided";
         wantedBy = [ "network.target" ];
         serviceConfig.Type = "oneshot";
         serviceConfig.RemainAfterExit = true;
         script =
           ''
-            echo "Ever wallet API password for PostgreSQL is done"
+            echo "Tycho wallet API password for PostgreSQL is done"
           '';
       };
-      everwalletapisecret-key = {
+      tychowalletapisecret-key = {
         enable = true;
-        description = "Ever wallet encryption secret is provided";
+        description = "Tycho wallet encryption secret is provided";
         wantedBy = [ "network.target" ];
         serviceConfig.Type = "oneshot";
         serviceConfig.RemainAfterExit = true;
         script =
           ''
-            echo "Ever wallet encryption secret is done"
+            echo "Tycho wallet encryption secret is done"
           '';
       };
-      everwalletapisalt-key = {
+      tychowalletapisalt-key = {
         enable = true;
-        description = "Ever wallet encryption salt is provided";
+        description = "Tycho wallet encryption salt is provided";
         wantedBy = [ "network.target" ];
         serviceConfig.Type = "oneshot";
         serviceConfig.RemainAfterExit = true;
         script =
           ''
-            echo "Ever wallet encryption salt is done"
+            echo "Tycho wallet encryption salt is done"
           '';
       };
     };

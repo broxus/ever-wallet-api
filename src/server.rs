@@ -36,15 +36,18 @@ impl EngineContext {
         config: AppConfig,
         storage: CoreStorage,
         blockchain_rpc_client: BlockchainRpcClient,
+        last_block_id: &BlockId,
     ) -> Result<Arc<Self>> {
         let pool = PgPoolOptions::new()
             .max_connections(config.db_pool_size)
             .connect(&config.database_url)
             .await
-            .expect(&format!(
-                "Failed connection to database url - {}",
-                config.database_url
-            ));
+            .unwrap_or_else(|_| {
+                panic!(
+                    "Failed connection to database url - {}",
+                    config.database_url
+                )
+            });
 
         sqlx::migrate!().run(&pool).await?;
 
@@ -63,10 +66,16 @@ impl EngineContext {
             token_transaction_tx,
             storage,
             blockchain_rpc_client,
+            last_block_id,
         )
         .await?;
 
         let ton_client = Arc::new(TonClient::new(ton_core.clone(), sqlx_client.clone()));
+
+        ton_client
+            .start()
+            .await
+            .context("failed to start ton_client")?;
 
         let ton_service = Arc::new(TonService::new(
             sqlx_client.clone(),
@@ -75,7 +84,12 @@ impl EngineContext {
             config.key.clone(),
         ));
 
-        let auth_service = Arc::new(AuthService::new(sqlx_client.clone()));
+        ton_service
+            .start()
+            .await
+            .context("failed to start ton_service")?;
+
+        let auth_service = Arc::new(AuthService::new(sqlx_client));
 
         let memory_storage = Arc::new(StorageHandler::default());
 
@@ -94,23 +108,6 @@ impl EngineContext {
         engine_context.start_updating_accounts_subscription();
 
         Ok(engine_context)
-    }
-
-    pub async fn start(&self, last_block_id: &BlockId) -> Result<()> {
-        self.ton_client
-            .start()
-            .await
-            .context("failed to start ton_client")?;
-        self.ton_service
-            .start()
-            .await
-            .context("failed to start ton_service")?;
-        self.ton_core
-            .start(last_block_id)
-            .await
-            .context("failed to start ton_core")?;
-
-        Ok(())
     }
 
     fn start_listening_ton_transaction(self: &Arc<Self>, mut rx: TonTransactionRx) {
@@ -271,14 +268,14 @@ impl EngineContext {
         let now = chrono::Utc::now().timestamp() as u32;
 
         // Delete expired guards
-        self.guards.retain(|_, (_, expired_at)| now < *expired_at);
+        self.guards.retain(|_, (_, expire_at)| now < *expire_at);
 
         match self.guards.entry(account) {
             Entry::Occupied(entry) => entry.get().0.clone(),
             Entry::Vacant(entry) => {
-                let expired_at = now + 5 * DEFAULT_EXPIRATION_TIMEOUT;
+                let expire_at = now + 5 * DEFAULT_EXPIRATION_TIMEOUT;
                 entry
-                    .insert((Arc::new(Mutex::default()), expired_at))
+                    .insert((Arc::new(Mutex::default()), expire_at))
                     .value()
                     .0
                     .clone()

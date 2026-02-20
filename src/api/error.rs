@@ -46,9 +46,6 @@ pub enum Error {
     #[error("an error occurred with oneshot channel")]
     RecvError(#[from] oneshot::error::RecvError),
 
-    #[error("an error occurred with tokens")]
-    TokensJson(#[from] nekoton_abi::TokensJsonError),
-
     #[error("an error occurred with hex conversion")]
     FromHexError(#[from] hex::FromHexError),
 
@@ -88,7 +85,6 @@ impl Error {
             | Self::Anyhow(_)
             | Self::Ed25519(_)
             | Self::RecvError(_)
-            | Self::TokensJson(_)
             | Self::FromHexError(_)
             | Self::TryFromSliceError(_) => StatusCode::INTERNAL_SERVER_ERROR,
             Error::TonService(e) => e.status_code(),
@@ -138,12 +134,6 @@ impl Error {
                 // TODO: we probably want to use `tracing` instead
                 // so that this gets linked to the HTTP request by `TraceLayer`.
                 tracing::error!("RecvError error: {:?}", e);
-            }
-
-            Self::TokensJson(ref e) => {
-                // TODO: we probably want to use `tracing` instead
-                // so that this gets linked to the HTTP request by `TraceLayer`.
-                tracing::error!("TokensJson error: {:?}", e);
             }
 
             Self::FromHexError(ref e) => {

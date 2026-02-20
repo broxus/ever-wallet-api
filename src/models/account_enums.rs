@@ -1,23 +1,26 @@
 use std::str::FromStr;
 
-use nekoton::core::models::TokenWalletVersion;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
-use strum_macros::EnumString;
 use tycho_types::models::{AccountState, StdAddr};
 
-use crate::models::{Address, AddressDb};
+use crate::{
+    models::{Address, AddressDb},
+    utils::token_wallets::models::TokenWalletVersion,
+};
 
 #[derive(
     Debug, Default, Deserialize, Serialize, Clone, JsonSchema, Eq, PartialEq, sqlx::Type, Copy,
 )]
 #[sqlx(type_name = "twa_account_type", rename_all = "PascalCase")]
 pub enum AccountType {
-    #[default]
     HighloadWallet,
     Wallet,
     SafeMultisig,
     EverWallet,
+    #[sqlx(rename = "WalletV5R1")]
+    #[default]
+    WalletV5R1,
 }
 
 #[derive(Debug, Deserialize, Serialize, Clone, JsonSchema, sqlx::Type, Eq, PartialEq)]
@@ -38,18 +41,17 @@ impl From<AccountState> for AccountStatus {
     }
 }
 
-impl From<ton_block::AccountState> for AccountStatus {
-    fn from(state: ton_block::AccountState) -> Self {
-        match state {
-            ton_block::AccountState::AccountUninit => AccountStatus::UnInit,
-            ton_block::AccountState::AccountActive { .. } => AccountStatus::Active,
-            ton_block::AccountState::AccountFrozen { .. } => AccountStatus::Frozen,
-        }
-    }
-}
-
 #[derive(
-    Debug, Deserialize, Serialize, Clone, JsonSchema, Eq, PartialEq, sqlx::Type, Copy, EnumString,
+    Debug,
+    Deserialize,
+    Serialize,
+    Clone,
+    JsonSchema,
+    Eq,
+    PartialEq,
+    sqlx::Type,
+    Copy,
+    derive_more::FromStr,
 )]
 #[sqlx(type_name = "twa_token_wallet_version", rename_all = "PascalCase")]
 pub enum TokenWalletVersionDb {

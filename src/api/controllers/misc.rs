@@ -1,7 +1,12 @@
+use std::str::FromStr;
+
 use axum::extract::State;
 use axum::Json;
-use metrics::{histogram, increment_counter};
+use metrics::{counter, histogram};
 use tokio::time::Instant;
+use tycho_types::abi::SerializeAbiValue;
+use tycho_types::abi::SerializeAbiValueParams;
+use tycho_types::cell::HashBytes;
 use uuid::Uuid;
 
 use crate::api::controllers::*;
@@ -31,11 +36,25 @@ pub async fn post_read_contract(
             req.responsible.unwrap_or_default(),
         )
         .await
-        .map(|value| ReadContractResponse { object: value })?;
+        .map(|values| {
+            let params = SerializeAbiValueParams::default();
+            let mut output = Vec::new();
+            for value in values {
+                output.push(OutputParamDTO {
+                    abi_value: serde_json::to_string(&SerializeAbiValue::with_params(
+                        &value.value,
+                        params,
+                    ))
+                    .unwrap_or_default(),
+                    name: value.name.to_string(),
+                });
+            }
+            ReadContractResponse { output }
+        })?;
 
     let elapsed = start.elapsed();
-    histogram!("execution_time_seconds", elapsed, "method" => "readContract");
-    increment_counter!("requests_processed", "method" => "readContract");
+    histogram!("execution_time_seconds", "method" => "readContract").record(elapsed);
+    counter!("requests_processed", "method" => "readContract").increment(1);
 
     Ok(Json(tokens))
 }
@@ -57,8 +76,8 @@ pub async fn post_encode_tvm_cell(
         .map(|cell| EncodedCellResponse { base64_cell: cell })?;
 
     let elapsed = start.elapsed();
-    histogram!("execution_time_seconds", elapsed, "method" => "encodeTvmCell");
-    increment_counter!("requests_processed", "method" => "encodeTvmCell");
+    histogram!("execution_time_seconds", "method" => "encodeTvmCell").record(elapsed);
+    counter!("requests_processed", "method" => "encodeTvmCell").increment(1);
 
     Ok(Json(cell))
 }
@@ -95,14 +114,14 @@ pub async fn post_prepare_generic_message(
         )
         .await?;
 
-    ctx.memory_storage.add_message(unsigned_message.clone());
+    let message_hash = ctx.memory_storage.add_message(unsigned_message);
 
     let elapsed = start.elapsed();
-    histogram!("execution_time_seconds", elapsed, "method" => "prepareGenericMessage");
-    increment_counter!("requests_processed", "method" => "prepareGenericMessage");
+    histogram!("execution_time_seconds", "method" => "prepareGenericMessage").record(elapsed);
+    counter!("requests_processed", "method" => "prepareGenericMessage").increment(1);
 
     Ok(Json(UnsignedMessageHashResponse {
-        unsigned_message_hash: hex::encode(unsigned_message.hash()),
+        unsigned_message_hash: message_hash.to_string(),
     }))
 }
 
@@ -111,21 +130,24 @@ pub async fn post_send_signed_message(
     Json(req): Json<SignedMessageRequest>,
 ) -> Result<Json<SignedMessageHashResponse>> {
     let start = Instant::now();
+    let message_hash = HashBytes::from_str(&req.hash)
+        .map_err(|_| ControllersError::WrongInput("Bad hash format".to_string()))?;
 
-    let res = match ctx.memory_storage.get_message(&req.hash) {
+    let res = match ctx.memory_storage.get_message(&message_hash) {
         Some(message) => {
+            let expire_at = message.expire_at();
             let signature: [u8; 64] = hex::decode(req.signature)
                 .map_err(|_| ControllersError::WrongInput("Bad signature format".to_string()))?
                 .try_into()
                 .map_err(|_| ControllersError::WrongInput("Bad signature format".to_string()))?;
 
-            let signed_message = message
-                .sign(&signature)
+            let owned_message = message
+                .with_signature(&ed25519_dalek::Signature::from_bytes(&signature))
                 .map_err(|_| ControllersError::WrongInput("Bad signature format".to_string()))?;
 
             let hash = ctx
                 .ton_service
-                .send_signed_message(req.sender_addr, req.hash, signed_message)
+                .send_signed_message(req.sender_addr, req.hash, owned_message, expire_at)
                 .await?;
 
             Ok(SignedMessageHashResponse {
@@ -138,8 +160,8 @@ pub async fn post_send_signed_message(
     }?;
 
     let elapsed = start.elapsed();
-    histogram!("execution_time_seconds", elapsed, "method" => "sendSignedMessage");
-    increment_counter!("requests_processed", "method" => "sendSignedMessage");
+    histogram!("execution_time_seconds", "method" => "sendSignedMessage").record(elapsed);
+    counter!("requests_processed", "method" => "sendSignedMessage").increment(1);
 
     Ok(Json(res))
 }
@@ -180,8 +202,8 @@ pub async fn post_send_generic_message(
         .map(From::from);
 
     let elapsed = start.elapsed();
-    histogram!("execution_time_seconds", elapsed, "method" => "sendGenericMessage");
-    increment_counter!("requests_processed", "method" => "sendGenericMessage");
+    histogram!("execution_time_seconds", "method" => "sendGenericMessage").record(elapsed);
+    counter!("requests_processed", "method" => "sendGenericMessage").increment(1);
 
     Ok(Json(TransactionResponse::from(transaction)))
 }
@@ -200,8 +222,8 @@ pub async fn post_set_callback(
         .await?;
 
     let elapsed = start.elapsed();
-    histogram!("execution_time_seconds", elapsed, "method" => "setCallback");
-    increment_counter!("requests_processed", "method" => "setCallback");
+    histogram!("execution_time_seconds", "method" => "setCallback").record(elapsed);
+    counter!("requests_processed", "method" => "setCallback").increment(1);
 
     Ok(Json(SetCallbackResponse { callback: response }))
 }
@@ -223,8 +245,8 @@ pub async fn get_token_whitelist(
     })?;
 
     let elapsed = start.elapsed();
-    histogram!("execution_time_seconds", elapsed, "method" => "getTokenWhitelist");
-    increment_counter!("requests_processed", "method" => "getTokenWhitelist");
+    histogram!("execution_time_seconds", "method" => "getTokenWhitelist").record(elapsed);
+    counter!("requests_processed", "method" => "getTokenWhitelist").increment(1);
 
     Ok(Json(whitelist))
 }
@@ -237,8 +259,8 @@ pub async fn post_resubscribe_for_all_accounts(
     ctx.ton_service.resubscribe_for_all_accounts().await?;
 
     let elapsed = start.elapsed();
-    histogram!("execution_time_seconds", elapsed, "method" => "resubscribeForAllAccounts");
-    increment_counter!("requests_processed", "method" => "resubscribeForAllAccounts");
+    histogram!("execution_time_seconds", "method" => "resubscribeForAllAccounts").record(elapsed);
+    counter!("requests_processed", "method" => "resubscribeForAllAccounts").increment(1);
 
     Ok(Json(ResubscribeResponse {}))
 }

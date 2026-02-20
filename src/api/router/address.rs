@@ -34,14 +34,14 @@ pub fn router() -> ApiRouter<ApiContext> {
             taged("address"),
         )
         .api_route_with(
-            "/:address",
+            "/{address}",
             get_with(controllers::get_address_balance, |op| {
                 op.response::<200, Json<AddressBalanceResponse>>()
             }),
             taged("address"),
         )
         .api_route_with(
-            "/:address/info",
+            "/{address}/info",
             get_with(controllers::get_address_info, |op| {
                 op.response::<200, Json<AddressInfoResponse>>()
             }),

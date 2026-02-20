@@ -21,21 +21,21 @@ pub fn router() -> ApiRouter<ApiContext> {
             taged("tokens"),
         )
         .api_route_with(
-            "/address/:address",
+            "/address/{address}",
             get_with(controllers::get_token_address_balance, |op| {
                 op.response::<200, Json<TokenBalanceResponse>>()
             }),
             taged("tokens"),
         )
         .api_route_with(
-            "/transactions/id/:internal_id",
+            "/transactions/id/{internal_id}",
             get_with(controllers::get_tokens_transactions_id, |op| {
                 op.response::<200, Json<TokenTransactionResponse>>()
             }),
             taged("tokens"),
         )
         .api_route_with(
-            "/transactions/mh/:message_hash",
+            "/transactions/mh/{message_hash}",
             get_with(controllers::get_tokens_transactions_mh, |op| {
                 op.response::<200, Json<TokenTransactionResponse>>()
             }),

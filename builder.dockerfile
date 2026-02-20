@@ -30,21 +30,18 @@ WORKDIR /app
 # Copy the source code into the Docker image
 COPY . /app
 
-# Define a build argument to pass in the network (default to "Everscale")
-ARG NETWORK="everscale"
-ARG DATABASE_URL=postgres://everscale:everscale@localhost:5432/everscale
+# Define a build argument to pass in the network (default to "Tycho")
+ARG NETWORK="tycho"
+ARG DATABASE_URL=postgres://tycho:tycho@localhost:5432/tycho
 
 # Migrations first, otherwise it may not compile
 RUN cargo sqlx database create --database-url "$DATABASE_URL"
 RUN cargo sqlx migrate run --database-url "$DATABASE_URL"
 
 # Build the project based on the network variable
-RUN if [ "$NETWORK" = "everscale" ]; then \
+RUN if [ "$NETWORK" = "tycho" ]; then \
       cargo sqlx prepare && \
       RUSTFLAGS="-C target_cpu=native" SQLX_OFFLINE=true cargo build --release; \
-    elif [ "$NETWORK" = "venom" ]; then \
-      cargo sqlx prepare && \
-      RUSTFLAGS="-C target_cpu=native" SQLX_OFFLINE=true cargo build --release --features venom; \
     else \
       echo 'ERROR: Unexpected network'; \
       exit 1; \

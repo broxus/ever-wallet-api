@@ -1,12 +1,13 @@
 use anyhow::{Context, Result};
 use chrono::prelude::*;
+use tycho_types::models::StdAddr;
+use tycho_types::models::StdAddrFormat;
 use uuid::Uuid;
 
 use crate::models::*;
 use crate::sqlx_client::*;
 
 use itertools::Itertools;
-use nekoton_utils::{repack_address, TrustMe};
 use sqlx::postgres::PgArguments;
 use sqlx::Arguments;
 use sqlx::Row;
@@ -295,7 +296,7 @@ impl SqlxClient {
         let mut tx = self.pool.begin().await?;
         let transaction_id = Uuid::new_v4();
         let transaction_timestamp =
-            DateTime::from_timestamp(payload.transaction_timestamp.trust_me() as i64, 0)
+            DateTime::from_timestamp(payload.transaction_timestamp.unwrap_or_default() as i64, 0)
                 .context("Invalid transaction timestamp")?
                 .naive_utc();
 
@@ -711,14 +712,13 @@ pub fn filter_transaction_query(
     }
 
     if let Some(account) = account {
-        if let Ok(account) = repack_address(&account) {
+        if let Ok((account, _)) = StdAddr::from_str_ext(&account, StdAddrFormat::any()) {
             updates.push(format!(" AND account_workchain_id = ${} ", *args_len + 1,));
             *args_len += 1;
-            args.add(account.workchain_id())
-                .map_err(sqlx::Error::Encode)?;
+            args.add(account.workchain).map_err(sqlx::Error::Encode)?;
             updates.push(format!(" AND account_hex = ${} ", *args_len + 1,));
             *args_len += 1;
-            args.add(account.address().to_hex_string())
+            args.add(account.address.to_string())
                 .expect("Failed to add query")
         }
     }

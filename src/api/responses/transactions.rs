@@ -1,7 +1,8 @@
 use std::str::FromStr;
 
+use base64::{engine::general_purpose, Engine as _};
+
 use bigdecimal::BigDecimal;
-use nekoton_utils::pack_std_smc_addr;
 use tycho_types::models::StdAddr;
 
 use schemars::JsonSchema;
@@ -91,15 +92,14 @@ impl From<TransactionDb> for TransactionDataResponse {
                         .into_iter()
                         .map(|output| {
                             let output_address =
-                                nekoton_utils::repack_address(&output.recipient_address.0)
-                                    .unwrap_or_default();
+                                StdAddr::from_str(&output.recipient_address.0).unwrap_or_default();
                             let output_base64url =
-                                Address(pack_std_smc_addr(true, &output_address, true).unwrap());
+                                Address(output_address.display_base64_url(true).to_string());
                             TransactionOutput {
                                 value: output.value,
                                 recipient: Account {
-                                    workchain_id: output_address.workchain_id(),
-                                    hex: Address(output_address.address().to_hex_string()),
+                                    workchain_id: output_address.workchain as i32,
+                                    hex: Address(output_address.address.to_string()),
                                     base64url: output_base64url,
                                 },
                             }
@@ -251,7 +251,9 @@ impl From<TokenTransactionFromDb> for TokenTransactionDataResponse {
         let account =
             StdAddr::from_str(&format!("{}:{}", c.account_workchain_id, c.account_hex)).unwrap();
         let base64url = Address(account.display_base64_url(true).to_string());
-        let payload = c.payload.map(base64::encode);
+        let payload = c
+            .payload
+            .map(|value| general_purpose::STANDARD.encode(value));
 
         TokenTransactionDataResponse {
             id: c.id,

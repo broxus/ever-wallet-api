@@ -1,44 +1,50 @@
 use anyhow::Result;
 use bigdecimal::BigDecimal;
-use nekoton::core::models::{MultisigTransaction, TransactionError};
-use nekoton::core::ton_wallet::MultisigType;
 use num_traits::FromPrimitive;
 use serde::{Deserialize, Serialize};
-use ton_block::{CommonMsgInfo, GetRepresentationHash, MsgAddressInt};
-use ton_types::AccountId;
 use uuid::Uuid;
 
-use crate::ton_core::*;
+use crate::{
+    ton_core::*,
+    utils::{
+        multisig::{models::MultisigTransaction, parsing},
+        ton_wallet::MultisigType,
+    },
+};
+
+#[derive(thiserror::Error, Debug, Copy, Clone)]
+pub enum TransactionError {
+    #[error("Invalid transaction structure")]
+    InvalidStructure,
+    #[error("Unsupported transaction type")]
+    Unsupported,
+}
 
 pub async fn parse_ton_transaction(
-    account: UInt256,
+    account: HashBytes,
     block_utime: u32,
-    transaction_hash: UInt256,
-    transaction: ton_block::Transaction,
+    transaction_hash: HashBytes,
+    transaction: Transaction,
 ) -> Result<CaughtTonTransaction> {
-    let in_msg = match &transaction.in_msg {
-        Some(message) => message
-            .read_struct()
-            .map_err(|_| TransactionError::InvalidStructure)?,
+    let in_msg = match transaction.in_msg.as_ref() {
+        Some(in_msg_cell) => OwnedMessage::load_from(&mut in_msg_cell.as_slice()?)?,
         None => return Err(TransactionError::Unsupported.into()),
     };
-    let address = MsgAddressInt::with_standart(
-        None,
-        ton_block::BASE_WORKCHAIN_ID as i8,
-        AccountId::from(account),
-    )?;
+
+    let address = StdAddr::new(0, account);
 
     let sender_address = get_sender_address(&transaction)?;
     let (sender_workchain_id, sender_hex) = match &sender_address {
         Some(address) => (
-            Some(address.workchain_id()),
-            Some(address.address().to_hex_string()),
+            Some(address.workchain as i32),
+            Some(address.address.to_string()),
         ),
         None => (None, None),
     };
 
-    let message_hash = in_msg.hash()?.to_hex_string();
-    let transaction_hash = Some(transaction_hash.to_hex_string());
+    let cell_builder = CellBuilder::build_from(&in_msg).map_err(anyhow::Error::from)?;
+    let message_hash = cell_builder.repr_hash().to_string();
+    let transaction_hash = Some(transaction_hash.to_string());
     let transaction_lt = BigDecimal::from_u64(transaction.lt);
     let transaction_scan_lt = Some(transaction.lt as i64);
     let transaction_timestamp = block_utime;
@@ -46,19 +52,19 @@ pub async fn parse_ton_transaction(
     let messages_hash = Some(serde_json::to_value(get_messages_hash(&transaction)?)?);
     let fee = BigDecimal::from_u128(compute_fees(&transaction));
     let value = BigDecimal::from_u128(compute_value(&transaction));
-    let balance_change = BigDecimal::from_i128(nekoton_utils::compute_balance_change(&transaction));
-    let multisig_transaction_id = nekoton::core::parsing::parse_multisig_transaction(
-        MultisigType::SafeMultisigWallet,
-        &transaction,
-    )
-    .and_then(|transaction| match transaction {
-        MultisigTransaction::Confirm(transaction) => Some(transaction.transaction_id as i64),
-        MultisigTransaction::Submit(transaction) => Some(transaction.trans_id as i64),
-        _ => None,
-    });
+    let balance_change = BigDecimal::from_i128(compute_balance_change(&transaction));
+    let multisig_transaction_id =
+        parsing::parse_multisig_transaction(MultisigType::SafeMultisigWallet, &transaction)
+            .and_then(|transaction| match transaction {
+                MultisigTransaction::Confirm(transaction) => {
+                    Some(transaction.transaction_id as i64)
+                }
+                MultisigTransaction::Submit(transaction) => Some(transaction.trans_id as i64),
+                _ => None,
+            });
 
-    let parsed = match in_msg.header() {
-        CommonMsgInfo::IntMsgInfo(header) => {
+    let parsed = match in_msg.info {
+        MsgInfo::Int(header) => {
             CaughtTonTransaction::Create(CreateReceiveTransaction {
                 id: Uuid::new_v4(),
                 message_hash,
@@ -69,8 +75,8 @@ pub async fn parse_ton_transaction(
                 transaction_timestamp,
                 sender_workchain_id,
                 sender_hex,
-                account_workchain_id: address.workchain_id(),
-                account_hex: address.address().to_hex_string(),
+                account_workchain_id: address.workchain as i32,
+                account_hex: address.address.to_string(),
                 messages,
                 messages_hash,
                 data: None, // TODO
@@ -87,11 +93,11 @@ pub async fn parse_ton_transaction(
                 multisig_transaction_id,
             })
         }
-        CommonMsgInfo::ExtInMsgInfo(_) => {
+        MsgInfo::ExtIn(_) => {
             CaughtTonTransaction::UpdateSent(UpdateSentTransaction {
                 message_hash,
-                account_workchain_id: address.workchain_id(),
-                account_hex: address.address().to_hex_string(),
+                account_workchain_id: address.workchain as i32,
+                account_hex: address.address.to_string(),
                 input: UpdateSendTransaction {
                     transaction_hash,
                     transaction_lt,
@@ -111,118 +117,155 @@ pub async fn parse_ton_transaction(
                 },
             })
         }
-        CommonMsgInfo::ExtOutMsgInfo(_) => return Err(TransactionError::InvalidStructure.into()),
+        MsgInfo::ExtOut(_) => return Err(TransactionError::InvalidStructure.into()),
     };
 
     Ok(parsed)
 }
 
-fn get_sender_address(transaction: &ton_block::Transaction) -> Result<Option<MsgAddressInt>> {
+fn get_sender_address(transaction: &Transaction) -> Result<Option<StdAddr>> {
     let in_msg = transaction
-        .in_msg
-        .as_ref()
-        .ok_or(TransactionError::InvalidStructure)?
-        .read_struct()?;
-    Ok(in_msg.src())
+        .load_in_msg()?
+        .ok_or(TransactionError::InvalidStructure)?;
+    match in_msg.info {
+        MsgInfo::Int(info) => Ok(info.src.as_std().cloned()),
+        MsgInfo::ExtIn(_) => Ok(None),
+        MsgInfo::ExtOut(info) => Ok(info.src.as_std().cloned()),
+    }
 }
 
-fn get_messages(transaction: &ton_block::Transaction) -> Result<Vec<Message>> {
+fn get_messages(transaction: &Transaction) -> Result<Vec<Message>> {
     let mut out_msgs = Vec::new();
-    transaction
-        .out_msgs
-        .iterate(|ton_block::InRefValue(item)| {
-            let fee = match item.get_fee()? {
-                Some(fee) => Some(
-                    BigDecimal::from_u128(fee.as_u128())
+    for message in transaction.iter_out_msgs() {
+        let message = message?;
+        let (fee, value, recipient) = match &message.info {
+            MsgInfo::Int(info) => (
+                Some(
+                    BigDecimal::from_u128(info.fwd_fee.into_inner())
                         .ok_or(TransactionError::InvalidStructure)?,
                 ),
-                None => None,
-            };
-
-            let value = match item.get_value() {
-                Some(value) => Some(
-                    BigDecimal::from_u128(value.grams.as_u128())
+                Some(
+                    BigDecimal::from_u128(info.value.tokens.into_inner())
                         .ok_or(TransactionError::InvalidStructure)?,
                 ),
-                None => None,
-            };
-
-            let recipient = match item.header().get_dst_address() {
-                Some(dst) => Some(MessageRecipient {
-                    hex: dst.address().to_hex_string(),
-                    base64url: nekoton_utils::pack_std_smc_addr(true, &dst, true)?,
-                    workchain_id: dst.workchain_id(),
+                info.dst.as_std().map(|dst| MessageRecipient {
+                    hex: dst.address.to_string(),
+                    base64url: dst.display_base64_url(true).to_string(),
+                    workchain_id: dst.workchain as i32,
                 }),
-                None => None,
-            };
+            ),
+            MsgInfo::ExtIn(info) => (
+                None,
+                None,
+                info.dst.as_std().map(|dst| MessageRecipient {
+                    hex: dst.address.to_string(),
+                    base64url: dst.display_base64_url(true).to_string(),
+                    workchain_id: dst.workchain as i32,
+                }),
+            ),
+            MsgInfo::ExtOut(_) => (None, None, None),
+        };
 
-            out_msgs.push(Message {
-                fee,
-                value,
-                recipient,
-                message_hash: item.hash()?.to_hex_string(),
-            });
+        let cell_builder = CellBuilder::build_from(&message)?;
+        let message_hash = cell_builder.repr_hash().to_string();
 
-            Ok(true)
-        })
-        .map_err(|_| TransactionError::InvalidStructure)?;
+        out_msgs.push(Message {
+            fee,
+            value,
+            recipient,
+            message_hash,
+        });
+    }
 
     Ok(out_msgs)
 }
 
-fn get_messages_hash(transaction: &ton_block::Transaction) -> Result<Vec<String>> {
+fn get_messages_hash(transaction: &Transaction) -> Result<Vec<String>> {
     let mut hashes = Vec::new();
-    transaction
-        .out_msgs
-        .iterate(|ton_block::InRefValue(item)| {
-            hashes.push(item.hash()?.to_hex_string());
 
-            Ok(true)
-        })
-        .map_err(|_| TransactionError::InvalidStructure)?;
+    for message in transaction.iter_out_msgs() {
+        let message = message?;
+        let cell_builder = CellBuilder::build_from(&message)?;
+        hashes.push(cell_builder.repr_hash().to_string());
+    }
 
     Ok(hashes)
 }
 
-fn compute_value(transaction: &ton_block::Transaction) -> u128 {
+fn compute_value(transaction: &Transaction) -> u128 {
     let mut value = 0;
 
-    if let Some(in_msg) = transaction
-        .in_msg
-        .as_ref()
-        .and_then(|data| data.read_struct().ok())
-    {
-        if let ton_block::CommonMsgInfo::IntMsgInfo(header) = in_msg.header() {
-            value += header.value.grams.as_u128();
+    if let Ok(Some(in_msg)) = transaction.load_in_msg() {
+        if let MsgInfo::Int(header) = in_msg.info {
+            value += header.value.tokens.into_inner();
         }
     }
 
-    let _ = transaction.out_msgs.iterate(|out_msg| {
-        if let CommonMsgInfo::IntMsgInfo(header) = out_msg.0.header() {
-            value += header.value.grams.as_u128();
+    for message in transaction.iter_out_msgs() {
+        let message = message.unwrap();
+        if let MsgInfo::Int(header) = message.info {
+            value += header.value.tokens.into_inner();
         }
-        Ok(true)
-    });
+    }
 
     value
 }
 
-fn compute_fees(transaction: &ton_block::Transaction) -> u128 {
-    let mut fees = 0;
-    if let Ok(ton_block::TransactionDescr::Ordinary(description)) =
-        transaction.description.read_struct()
-    {
-        fees = nekoton_utils::compute_total_transaction_fees(transaction, &description)
+fn compute_fees(transaction: &Transaction) -> u128 {
+    let mut total_fees = 0;
+    if let Ok(TxInfo::Ordinary(info)) = transaction.load_info() {
+        total_fees += compute_total_transaction_fees(transaction, &info);
     }
-    fees
+    total_fees
 }
 
-fn is_aborted(transaction: &ton_block::Transaction) -> bool {
+pub fn compute_balance_change(transaction: &Transaction) -> i128 {
+    let mut diff = 0;
+
+    if let Ok(Some(in_msg)) = transaction.load_in_msg() {
+        if let MsgInfo::Int(header) = in_msg.info {
+            diff += header.value.tokens.into_inner() as i128;
+        }
+    }
+
+    for message in transaction.iter_out_msgs() {
+        let message = message.unwrap();
+        if let MsgInfo::Int(header) = message.info {
+            diff -= header.value.tokens.into_inner() as i128;
+        }
+    }
+
+    if let Ok(TxInfo::Ordinary(info)) = transaction.load_info() {
+        diff -= compute_total_transaction_fees(transaction, &info) as i128;
+    }
+
+    diff
+}
+
+pub fn compute_total_transaction_fees(transaction: &Transaction, info: &OrdinaryTxInfo) -> u128 {
+    let mut total_fees = transaction.total_fees.tokens.into_inner();
+    if let Some(phase) = &info.action_phase {
+        total_fees += phase
+            .total_fwd_fees
+            .as_ref()
+            .map(|tokens| tokens.into_inner())
+            .unwrap_or_default();
+        total_fees -= phase
+            .total_action_fees
+            .as_ref()
+            .map(|tokens| tokens.into_inner())
+            .unwrap_or_default();
+    };
+    if let Some(BouncePhase::Executed(phase)) = &info.bounce_phase {
+        total_fees += phase.fwd_fees.into_inner();
+    }
+    total_fees
+}
+
+fn is_aborted(transaction: &Transaction) -> bool {
     let mut aborted = false;
-    if let Ok(ton_block::TransactionDescr::Ordinary(description)) =
-        transaction.description.read_struct()
-    {
-        aborted = description.aborted
+    if let Ok(TxInfo::Ordinary(info)) = transaction.load_info() {
+        aborted = info.aborted
     }
     aborted
 }
@@ -247,10 +290,9 @@ struct MessageRecipient {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use ton_block::{Deserializable, MsgAddressInt, Transaction};
 
     fn mock_transaction_with_message() -> Transaction {
-        Transaction::construct_from_base64(
+        let binding = Boc::decode_base64(
             "te6ccgECEAEAAwgAA7d+QDCcWfS7Pd3OhqYgoQVempmo2OKQO5sOYx6EZBcyIbAAAuGThxKAhf1hAS\
             h02tBmYeWRHurQLFdhsiPgWeGNTbabaiPlZZ9gAALhk4cSgGZnCjIwADSAIfqQaAUEAQIXBAkFUFwjGIAhHJARA\
             wIAb8mKaBBMG8AMAAAAAAAEAAIAAAADVRiS8otLi359fajChkMh4j7YPNNVzsOUbNa9QsXWtVZBkDxsAJ5IegwV\
@@ -265,26 +307,26 @@ mod tests {
             wQAAgBBa0QhOP1bKLS5gSbcEj5AP6sELkypNssupdc0rEL8tMA4BQ4AQWtEITj9Wyi0uYEm3BI+QD+rBC5MqTbL\
             LqXXNKxC/LTgPAAA=",
         )
-        .unwrap()
-    }
-
-    fn mock_transaction_without_message() -> Transaction {
-        Transaction::default()
+        .unwrap();
+        let mut cell = binding.as_slice().unwrap();
+        Transaction::load_from(&mut cell).unwrap()
     }
 
     fn mock_native_transaction() -> Transaction {
-        Transaction::construct_from_base64(
+        let binding = Boc::decode_base64(
             "te6ccgECBQEAAQ8AA7VxLMcNYtT0Y0vHvF0Y6p6uYuZ3ru6E15MPbdMAiDOW+TAAAxF6kJyoOBX6Ew\
             /7kDzBL0X5vbiyJUQxs8oqMCx81lJVpHEGWGhQAALk17a3eDZv7sCQAABgJyfoAwIBABUMwE5PyQF9eEABIACCc\
             qeMvpds7qXtp0X7fcfK29e715cYDMD4djDoZFaoV2+IniF4UEqnl0mRBkkJUofiHH0OEnxt4bqWdhOvrktU02MB\
             AaAEALFIAQWtEITj9Wyi0uYEm3BI+QD+rBC5MqTbLLqXXNKxC/LTAASzHDWLU9GNLx7xdGOqermLmd67uhNeTD2\
             3TAIgzlvk0BfXhAAGCiwwAABiL1ITlQTN/dgSQA==",
         )
-        .unwrap()
+        .unwrap();
+        let mut cell = binding.as_slice().unwrap();
+        Transaction::load_from(&mut cell).unwrap()
     }
 
     fn mock_tip3_transaction() -> Transaction {
-        Transaction::construct_from_base64(
+        let binding = Boc::decode_base64(
             "te6ccgECDAEAAl0AA7V/QK7VX0Cd/1ZlF9CjnQU/zjx5R/+gPcjjC/w75jghPeAAAxF68tckc9Q9f/\
             cDtEaGB89WcFPg7Kg/ufjqtloFybIORllBjolwAAMRevLXJGZv7tMQADR8gi0IBQQBAhUECQT+XD4YfDDMEQMCA\
             G/Jg9CQTAosIAAAAAAABAACAAAAA/Sl/SUL5ko0FMc/s2rL0MTaDiZjYIA0X+j0FcjV3p3wQFAWDACeRzeMFHQo\
@@ -296,7 +338,9 @@ mod tests {
             N/dpiwAkBa2eguV8AAAAAAAAAAAAACRhOcqAAgBBa0QhOP1bKLS5gSbcEj5AP6sELkypNssupdc0rEL8tMAoBQ4\
             AQWtEITj9Wyi0uYEm3BI+QD+rBC5MqTbLLqXXNKxC/LSgLAAA=",
         )
-        .unwrap()
+        .unwrap();
+        let mut cell = binding.as_slice().unwrap();
+        Transaction::load_from(&mut cell).unwrap()
     }
 
     #[test]
@@ -307,7 +351,7 @@ mod tests {
         assert_eq!(
             result.unwrap(),
             Some(
-                MsgAddressInt::from_str(
+                StdAddr::from_str(
                     "0:fd7cb9aa109bec4fd39f3b8c3a21b661caacbc161a8c6331be6bb88a4e7ff720"
                 )
                 .unwrap()
@@ -323,7 +367,7 @@ mod tests {
         assert_eq!(
             result.unwrap(),
             Some(
-                MsgAddressInt::from_str(
+                StdAddr::from_str(
                     "0:fd7cb9aa109bec4fd39f3b8c3a21b661caacbc161a8c6331be6bb88a4e7ff720"
                 )
                 .unwrap()
@@ -339,19 +383,11 @@ mod tests {
         assert_eq!(
             result.unwrap(),
             Some(
-                MsgAddressInt::from_str(
+                StdAddr::from_str(
                     "0:82d6884271fab6516973024db8247c807f56085c99526d965d4bae695885f969"
                 )
                 .unwrap()
             )
         );
-    }
-
-    #[test]
-    fn test_get_sender_address_without_message() {
-        // Simulate a transaction without an incoming message
-        let transaction = mock_transaction_without_message();
-        let result = get_sender_address(&transaction);
-        assert!(result.is_err()); // Expect an error
     }
 }

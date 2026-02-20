@@ -1,12 +1,12 @@
 use std::sync::Arc;
 
 use anyhow::Result;
-use nekoton::core::models::*;
+
 use tokio::sync::mpsc;
-use ton_types::UInt256;
 
 use crate::ton_core::monitoring::*;
 use crate::ton_core::*;
+use crate::utils::token_wallets::models::TokenWalletTransaction;
 
 pub struct TokenTransaction {
     context: Arc<TonCoreContext>,
@@ -51,11 +51,17 @@ impl TokenTransaction {
                     }
                 };
 
+                let Some(context) = event.ctx.blockchain_context.clone() else {
+                    tracing::error!("Failed to parse received token transaction: Failed to get blockchain context");
+                    continue;
+                };
+
                 match token_transaction_parser::parse_token_transaction(
                     event.ctx,
                     event.parsed,
                     &token_transaction.context.sqlx_client,
                     &token_transaction.context.owners_cache,
+                    context.blockchain_context,
                 )
                 .await
                 {
@@ -80,13 +86,14 @@ impl TokenTransaction {
 
 #[derive(Debug)]
 pub struct TokenTransactionContext {
-    pub account: UInt256,
-    pub block_hash: UInt256,
+    pub account: HashBytes,
+    pub block_hash: HashBytes,
     pub block_utime: u32,
-    pub transaction_hash: UInt256,
-    pub transaction: ton_block::Transaction,
+    pub transaction_hash: HashBytes,
+    pub transaction: Transaction,
     pub token_state: ExistingContract,
-    pub in_msg: ton_block::Message,
+    pub in_msg: OwnedMessage,
+    pub blockchain_context: Option<BlockchainContextWrapper>,
 }
 
 #[derive(Debug)]
@@ -118,6 +125,7 @@ impl ReadFromTransaction for TokenTransactionEvent {
                         transaction: ctx.transaction.clone(),
                         token_state: token_state.clone(),
                         in_msg: ctx.in_msg.clone(),
+                        blockchain_context: ctx.blockchain_context.clone(),
                     },
                     parsed: parsed.clone(),
                     state,

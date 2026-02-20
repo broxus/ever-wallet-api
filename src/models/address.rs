@@ -1,6 +1,6 @@
 use bigdecimal::BigDecimal;
 use schemars::JsonSchema;
-use ton_block::MsgAddressInt;
+use tycho_types::models::StdAddr;
 
 use crate::models::*;
 
@@ -98,10 +98,10 @@ pub struct NetworkAddressData {
 }
 
 impl NetworkAddressData {
-    pub fn uninit(owner: &MsgAddressInt) -> NetworkAddressData {
+    pub fn uninit(owner: &StdAddr) -> NetworkAddressData {
         NetworkAddressData {
-            workchain_id: owner.workchain_id(),
-            hex: owner.address().to_hex_string(),
+            workchain_id: owner.workchain as i32,
+            hex: owner.address.to_string(),
             account_status: AccountStatus::UnInit,
             network_balance: Default::default(),
             last_transaction_hash: None,

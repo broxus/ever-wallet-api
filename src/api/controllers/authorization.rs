@@ -1,7 +1,6 @@
 use std::sync::Arc;
 
 use aide::{OperationInput, OperationOutput};
-use axum::async_trait;
 use axum::body::Body;
 use axum::extract::{FromRequest, FromRequestParts, OriginalUri};
 use axum::http::request::Parts;
@@ -10,6 +9,7 @@ use axum::http::{Method, StatusCode};
 use axum::middleware::Next;
 use axum::response::IntoResponse;
 use schemars::JsonSchema;
+use std::future::ready;
 
 use crate::api::int_schema;
 use crate::models::*;
@@ -103,25 +103,24 @@ async fn check_api_key(
 #[derive(Debug, Clone)]
 pub struct IdExtractor(pub ServiceId);
 
-#[async_trait]
 impl<S> FromRequestParts<S> for IdExtractor
 where
     S: Send + Sync,
 {
     type Rejection = Rejection;
 
-    async fn from_request_parts(
+    fn from_request_parts(
         parts: &mut Parts,
         _state: &S,
-    ) -> Result<IdExtractor, Self::Rejection> {
+    ) -> impl std::future::Future<Output = Result<IdExtractor, Self::Rejection>> + Send {
         let id: Option<&IdExtractor> = parts.extensions.get();
-        match id {
+        ready(match id {
             Some(service_id) => Ok(IdExtractor(service_id.0)),
             None => Err(Rejection {
                 reason: "Service id not found".to_string(),
                 status_code: StatusCode::UNAUTHORIZED,
             }),
-        }
+        })
     }
 }
 

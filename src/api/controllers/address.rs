@@ -2,7 +2,7 @@ use axum::extract::{Path, State};
 use axum::Json;
 use tokio::time::Instant;
 
-use metrics::{histogram, increment_counter};
+use metrics::{counter, histogram};
 
 use crate::api::controllers::*;
 use crate::api::requests::*;
@@ -24,8 +24,8 @@ pub async fn post_address_create(
         .map(From::from);
 
     let elapsed = start.elapsed();
-    histogram!("execution_time_seconds", elapsed, "method" => "createAddress");
-    increment_counter!("requests_processed", "method" => "createAddress");
+    histogram!("execution_time_seconds", "method" => "createAddress").record(elapsed);
+    counter!("requests_processed", "method" => "createAddress").increment(1);
 
     Ok(Json(AddressResponse::from(address)))
 }

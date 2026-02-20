@@ -1,6 +1,6 @@
 use bigdecimal::BigDecimal;
 use serde::{Deserialize, Serialize};
-use ton_abi::Param;
+use tycho_types::abi::{AbiHeaderType, NamedAbiType};
 use uuid::Uuid;
 
 use crate::models::*;
@@ -181,14 +181,14 @@ pub struct SentTransaction {
 
 #[derive(Clone, Deserialize, Debug)]
 pub struct InputParam {
-    pub param: Param,
-    pub value: serde_json::Value,
+    pub value: String,
+    pub abi_type: NamedAbiType,
 }
 
 #[derive(Clone, Debug, Deserialize)]
 pub struct FunctionDetails {
     pub function_name: String,
     pub input_params: Vec<InputParam>,
-    pub output_params: Vec<Param>,
-    pub headers: Vec<Param>,
+    pub output_params: Vec<NamedAbiType>,
+    pub headers: Vec<AbiHeaderType>,
 }

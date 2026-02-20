@@ -1,7 +1,12 @@
 use anyhow::Result;
-use nekoton::transport::models::ExistingContract;
-use nekoton_abi::{ExecutionOutput, FunctionExt, GenTimings, LastTransactionId, TransactionId};
-use ton_block::{Account, ShardAccount};
+use nekoton_core::contracts::blockchain_context::BlockchainContext;
+use nekoton_core::contracts::function_ext::{ExecutionOutput, FunctionExt};
+use tycho_types::{
+    abi::{Function, NamedAbiValue},
+    models::ShardAccount,
+};
+
+use crate::models::ExistingContract;
 
 pub trait ExistingContractExt {
     fn from_shard_account(shard_account: &ShardAccount) -> Result<Option<ExistingContract>>;
@@ -10,25 +15,24 @@ pub trait ExistingContractExt {
     ) -> Result<Option<ExistingContract>>;
 
     fn run_local(
-        &self,
-        function: &ton_abi::Function,
-        input: &[ton_abi::Token],
-    ) -> Result<Vec<ton_abi::Token>>;
+        &mut self,
+        function: &Function,
+        input: &[NamedAbiValue],
+        responsible: bool,
+        context: &mut BlockchainContext,
+    ) -> Result<Vec<NamedAbiValue>>;
 }
 
 impl ExistingContractExt for ExistingContract {
     fn from_shard_account(shard_account: &ShardAccount) -> Result<Option<Self>> {
-        Ok(match shard_account.read_account()? {
-            Account::Account(account) => Some(Self {
+        if let Some(account) = shard_account.load_account()? {
+            Ok(Some(Self {
                 account,
-                timings: GenTimings::Unknown,
-                last_transaction_id: LastTransactionId::Exact(TransactionId {
-                    lt: shard_account.last_trans_lt(),
-                    hash: *shard_account.last_trans_hash(),
-                }),
-            }),
-            Account::AccountNone => None,
-        })
+                last_transaction_hash: shard_account.last_trans_hash,
+            }))
+        } else {
+            Ok(None)
+        }
     }
 
     fn from_shard_account_opt(shard_account: &Option<ShardAccount>) -> Result<Option<Self>> {
@@ -39,21 +43,20 @@ impl ExistingContractExt for ExistingContract {
     }
 
     fn run_local(
-        &self,
-        function: &ton_abi::Function,
-        input: &[ton_abi::Token],
-    ) -> Result<Vec<ton_abi::Token>> {
-        let ExecutionOutput {
-            tokens,
-            result_code,
-        } = function.run_local(
-            &nekoton_utils::SimpleClock,
-            self.account.clone(),
-            input,
-            &[],
-        )?;
+        &mut self,
+        function: &Function,
+        input: &[NamedAbiValue],
+        responsible: bool,
+        context: &mut BlockchainContext,
+    ) -> Result<Vec<NamedAbiValue>> {
+        let ExecutionOutput { values, exit_code } =
+            function.run_local(&mut self.account, input, responsible, context)?;
 
-        tokens.ok_or_else(|| ExistingContractError::NonZeroResultCode(result_code).into())
+        if exit_code != 0 {
+            return Err(ExistingContractError::NonZeroResultCode(exit_code).into());
+        }
+
+        Ok(values)
     }
 }
 

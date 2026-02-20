@@ -31,21 +31,21 @@ pub fn router() -> ApiRouter<ApiContext> {
             taged("transactions"),
         )
         .api_route_with(
-            "/id/:id",
+            "/id/{id}",
             get_with(controllers::get_transactions_id, |op| {
                 op.response::<200, Json<TransactionResponse>>()
             }),
             taged("transactions"),
         )
         .api_route_with(
-            "/h/:hash",
+            "/h/{hash}",
             get_with(controllers::get_transactions_h, |op| {
                 op.response::<200, Json<TransactionResponse>>()
             }),
             taged("transactions"),
         )
         .api_route_with(
-            "/mh/:message_hash",
+            "/mh/{message_hash}",
             get_with(controllers::get_transactions_mh, |op| {
                 op.response::<200, Json<TransactionResponse>>()
             }),

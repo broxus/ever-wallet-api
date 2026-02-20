@@ -31,7 +31,7 @@ pub fn router() -> ApiRouter<ApiContext> {
             taged("events"),
         )
         .api_route_with(
-            "/id/:id",
+            "/id/{id}",
             get_with(controllers::get_events_id, |op| {
                 op.response::<200, Json<TransactionEventResponse>>()
             }),

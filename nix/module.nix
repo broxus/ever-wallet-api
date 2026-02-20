@@ -40,9 +40,9 @@ in {
       };
       chain = mkOption {
         type = types.str;
-        default = "Everscale";
+        default = "Tycho";
         description = ''
-          Which blockchain to use: Everscale, Venom
+          Which blockchain to use: Tycho, any other
         '';
       };
 
@@ -199,44 +199,44 @@ in {
 
       dbPasswordFile = mkOption {
         type = types.str;
-        default = "/run/keys/everwalletapidb";
+        default = "/run/keys/tychowalletapidb";
         description = ''
           Location of file with password for RPC.
         '';
       };
       dbPasswordFileService = mkOption {
         type = types.str;
-        default = "everwalletapidb-key.service";
+        default = "tychowalletapidb-key.service";
         description = ''
           Service that indicates that dbPasswordFile is ready.
         '';
       };
-      everSecretFile = mkOption {
+      tychoSecretFile = mkOption {
         type = types.str;
-        default = "/run/keys/everwalletapisecret";
+        default = "/run/keys/tychowalletapisecret";
         description = ''
           Location of file with secret for decrypting transactions.
         '';
       };
-      everSecretFileService = mkOption {
+      tychoSecretFileService = mkOption {
         type = types.str;
-        default = "everwalletapisecret-key.service";
+        default = "tychowalletapisecret-key.service";
         description = ''
-          Service that indicates that everSecretFile is ready.
+          Service that indicates that tychoSecretFile is ready.
         '';
       };
-      everSaltFile = mkOption {
+      tychoSaltFile = mkOption {
         type = types.str;
-        default = "/run/keys/everwalletapisalt";
+        default = "/run/keys/tychowalletapisalt";
         description = ''
           Location of file with salt for ???.
         '';
       };
-      everSaltFileService = mkOption {
+      tychoSaltFileService = mkOption {
         type = types.str;
-        default = "everwalletapisalt-key.service";
+        default = "tychowalletapisalt-key.service";
         description = ''
-          Service that indicates that everSaltFile is ready.
+          Service that indicates that tychoSaltFile is ready.
         '';
       };
     };
@@ -263,14 +263,14 @@ in {
     # Create systemd service
     systemd.services.tycho-wallet-api = {
       enable = true;
-      description = "Service that indexes transactions for Ever or Venom";
-      after = ["network.target" cfg.dbPasswordFileService cfg.everSecretFileService cfg.everSaltFileService];
-      wants = ["network.target" cfg.dbPasswordFileService cfg.everSecretFileService cfg.everSaltFileService];
+      description = "Service that indexes transactions for Tycho or any other";
+      after = ["network.target" cfg.dbPasswordFileService cfg.tychoSecretFileService cfg.tychoSaltFileService];
+      wants = ["network.target" cfg.dbPasswordFileService cfg.tychoSecretFileService cfg.tychoSaltFileService];
       path = with pkgs; [ ];
       script = ''
         export DB_PASSWORD=$(cat ${cfg.dbPasswordFile} | xargs echo -n)
-        export SECRET=$(cat ${cfg.everSecretFile} | xargs echo -n)
-        export SALT=$(cat ${cfg.everSaltFile} | xargs echo -n)
+        export SECRET=$(cat ${cfg.tychoSecretFile} | xargs echo -n)
+        export SALT=$(cat ${cfg.tychoSaltFile} | xargs echo -n)
 
         ${cfg.package}/bin/tycho-wallet-api server \
           --config /etc/${cfg.configdir}/config.json \

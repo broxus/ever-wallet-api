@@ -1,8 +1,7 @@
-use crate::models::WhitelistedTokenFromDb;
-use nekoton_contracts::tip3_any::TokenWalletVersion;
-
 use schemars::JsonSchema;
 use serde::Serialize;
+
+use crate::{models::WhitelistedTokenFromDb, utils::token_wallets::models::TokenWalletVersion};
 
 #[derive(Serialize, JsonSchema)]
 #[serde(rename_all = "camelCase")]
@@ -11,7 +10,7 @@ pub struct ResubscribeResponse {}
 #[derive(Serialize, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct ReadContractResponse {
-    pub object: serde_json::Value,
+    pub output: Vec<OutputParamDTO>,
 }
 
 #[derive(Serialize, JsonSchema)]
@@ -61,4 +60,11 @@ impl From<WhitelistedTokenFromDb> for WhitelistedTokenResponse {
 pub struct TokenWhitelistResponse {
     pub count: i32,
     pub items: Vec<WhitelistedTokenResponse>,
+}
+
+#[derive(Serialize, JsonSchema)]
+#[serde(rename_all = "camelCase")]
+pub struct OutputParamDTO {
+    pub abi_value: String,
+    pub name: String,
 }

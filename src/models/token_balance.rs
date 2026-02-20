@@ -1,4 +1,5 @@
 use bigdecimal::BigDecimal;
+use tycho_types::models::StdAddr;
 
 use crate::models::*;
 
@@ -25,13 +26,10 @@ pub struct NetworkTokenAddressData {
 }
 
 impl NetworkTokenAddressData {
-    pub fn uninit(
-        owner: &ton_block::MsgAddressInt,
-        root: &ton_block::MsgAddressInt,
-    ) -> NetworkTokenAddressData {
+    pub fn uninit(owner: &StdAddr, root: &StdAddr) -> NetworkTokenAddressData {
         NetworkTokenAddressData {
-            workchain_id: owner.workchain_id(),
-            hex: owner.address().to_hex_string(),
+            workchain_id: owner.workchain as i32,
+            hex: owner.address.to_string(),
             root_address: root.to_string(),
             version: Default::default(),
             account_status: AccountStatus::UnInit,

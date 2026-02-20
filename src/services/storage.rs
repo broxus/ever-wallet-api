@@ -1,28 +1,29 @@
-use std::time::SystemTime;
-
-use nekoton::crypto::UnsignedMessage;
-use nekoton_utils::TrustMe;
+use tycho_types::{
+    abi::UnsignedExternalMessage,
+    cell::{CellBuilder, HashBytes},
+};
+use tycho_util::time::now_sec;
 
 use crate::utils::FxDashMap;
 
 #[derive(Default)]
 pub struct StorageHandler {
-    message_collection: FxDashMap<String, Box<dyn UnsignedMessage>>,
+    message_collection: FxDashMap<HashBytes, UnsignedExternalMessage>,
 }
 
 impl StorageHandler {
-    pub fn add_message(&self, message: Box<dyn UnsignedMessage>) -> String {
-        let key = hex::encode(message.hash());
-        self.message_collection.insert(key.clone(), message);
-        key
+    pub fn add_message(&self, message: UnsignedExternalMessage) -> HashBytes {
+        let cell_builder =
+            CellBuilder::build_from(message.clone().without_signature().unwrap()).unwrap();
+        let message_hash = *cell_builder.repr_hash();
+        self.message_collection.insert(message_hash, message);
+        message_hash
     }
 
-    pub fn get_message(&self, hash: &str) -> Option<Box<dyn UnsignedMessage>> {
-        let now = SystemTime::now()
-            .duration_since(SystemTime::UNIX_EPOCH)
-            .trust_me()
-            .as_secs() as u32;
-        self.message_collection.retain(|_, v| v.expire_at() > now);
+    pub fn get_message(&self, hash: &HashBytes) -> Option<UnsignedExternalMessage> {
+        let now = now_sec();
+        self.message_collection
+            .retain(|_, message| message.expire_at() > now);
         let message = self.message_collection.get(hash).map(|x| x.value().clone());
         message
     }

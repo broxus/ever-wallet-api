@@ -1,11 +1,5 @@
 <p align="center">
-  <a href="https://github.com/venom-blockchain/developer-program">
-    <img src="https://raw.githubusercontent.com/venom-blockchain/developer-program/main/vf-dev-program.png" alt="Logo" width="366.8" height="146.4">
-  </a>
-</p>
-
-<p align="center">
-   <h3 align="center">Everscale Wallet API</h3>
+   <h3 align="center">Tycho Wallet API</h3>
     <p align="center">
         <a href="/LICENSE">
             <img alt="GitHub" src="https://img.shields.io/github/license/broxus/octusbridge-relay" />
@@ -15,7 +9,7 @@
 
 ### Overview
 This is a light node + api for sending and tracking payments. The app listens for addresses from the database and
-indexes all transactions, putting information about them in the postsgres DB. All transactions with native EVERs are
+indexes all transactions, putting information about them in the postsgres DB. All transactions with native TYCHOs are
 tracked, and there is a whitelist of root token addresses to be tracked in the settings. There is a callbacks table
 in the database, where you can specify the url of your backend to which callbacks will come for all transactions.
 
@@ -133,14 +127,15 @@ NOTE: scripts are prepared and tested on **Ubuntu 20.04**. You may need to modif
 ### Let's start using Wallet API
 
 1. #### Create address
-   Create yourself a "system address" by calling `/address/create` with empty parameters. The response will return a EVER
-   address. It is necessary to send EVERs on it, which will be consumed as gas for further work.
+   Create yourself a "system address" by calling `/address/create` with empty parameters. The response will return a TYCHO
+   address. It is necessary to send TYCHOs on it, which will be consumed as gas for further work. Default used account type is
+   `Wallet v5 r1`.
    
    **For simplicity, you use the script**
 
    ```bash
    API_KEY=${API_KEY} SECRET=${API_SECRET} HOST=${HOST} \
-   ./scripts/wallet.sh -m create_account
+   ./scripts/wallet.sh -m create_account --account-type WalletV5R1
    ```
 
 2. #### Callbacks
@@ -162,7 +157,7 @@ NOTE: scripts are prepared and tested on **Ubuntu 20.04**. You may need to modif
    TOKEN_ADDRESS - Token address (example: 0:0ee39330eddb680ce731cd6a443c71d9069db06d149a9bec9569d1eb8d04eb37)
    TOKEN_CONTRACT_VERSION - "Tip3" or "OldTip3v4"
 
-4. #### Transfer EVER
+4. #### Transfer TYCHO
    Example request:
    ```
    /transactions/create
@@ -174,11 +169,11 @@ NOTE: scripts are prepared and tested on **Ubuntu 20.04**. You may need to modif
       "bounce":false,
       "outputs":[
          {
-            // how much EVER to send. To send 1 EVER this value = 1000000000
+            // how much TYCHO to send. To send 1 TYCHO this value = 1000000000
             "value":"1000000000",
-            // Set Normal to take the number of sent EVERs from the value
+            // Set Normal to take the number of sent TYCHOs from the value
             "outputType":"Normal",
-            // Recipient address of EVERs
+            // Recipient address of TYCHOs
             "recipientAddress":"0:0000000000000000000000000000000000000000000000000000000000000000"
          }
       ],
@@ -204,6 +199,13 @@ NOTE: scripts are prepared and tested on **Ubuntu 20.04**. You may need to modif
       event a `Done` state by calling `/events/mark`.
    2) by polling the GET method `/transactions/id/<uuid>`
 
+   To confirm a pending multisig transaction, use the script:
+   ```bash
+   API_KEY=${API_KEY} SECRET=${API_SECRET} HOST=${HOST} \
+   ./scripts/wallet.sh -m confirm_transaction \
+   --address {multisig_wallet_address} --transaction-id {transaction_id}
+   ```
+
 5. #### How to process a payment from a user on the backend
    We generate a deposit address for the user by calling `/address/create` with empty parameters. After receiving the
    payment, the backend receives a callback of the form `AccountTransactionEvent` (see [swagger](https://tonapi.broxus.com/swagger.yaml)).
@@ -216,7 +218,7 @@ NOTE: scripts are prepared and tested on **Ubuntu 20.04**. You may need to modif
 
 6. #### Transfer tokens
    First, check the status and balance of the address you want to send tokens from by making a GET request to /address/{string}.
-   The address you are sending tokens from must have at least 0.6 EVER (balance >= 600000000).
+   The address you are sending tokens from must have at least 0.6 TYCHO (balance >= 600000000).
 
    To transfer tokens, use the method:
    ```
@@ -226,13 +228,13 @@ NOTE: scripts are prepared and tested on **Ubuntu 20.04**. You may need to modif
       "id":"00000000-0000-0000-0000-000000000000",
       // The address of the sender. For example, your system address.
       "fromAddress":"0:0000000000000000000000000000000000000000000000000000000000000000",
-      // Recipient address of EVERs
+      // Recipient address of TYCHOs
       "recipientAddress":"0:0000000000000000000000000000000000000000000000000000000000000000",
       // The number of tokens with decimals. For example, for transferring 1 USDT this value = "1000000"
       "value":"1000000000",
-      // How much to apply EVER, the default recommended value is 0.5 EVER. The funds will be debited fromAddress.
+      // How much to apply TYCHO, the default recommended value is 0.5 TYCHO. The funds will be debited fromAddress.
       "fee": "5000000000",
-      // The address to which to return the residuals EVER. For example, your system address.
+      // The address to which to return the residuals TYCHO. For example, your system address.
       "sendGasTo":"0:0000000000000000000000000000000000000000000000000000000000000000",
       // Token Address from whitelist
       "rootAddress":"0:0000000000000000000000000000000000000000000000000000000000000000",
@@ -523,12 +525,12 @@ for setting up the deployment environment.
 
 1. **Build the builder image**:
    The `builder.dockerfile` is responsible for compiling the project using Rust. It builds the project based on the 
-   specified network (either `everscale` or `venom`) and prepares the database for the application using SQLx.
+   specified network (either `tycho` or other) and prepares the database for the application using SQLx.
 
    Use the following command to build the builder image:
 
    ```bash
-   podman build --layers --network=host -f builder.dockerfile -t builder --build-arg DATABASE_URL="postgresql://everscale:everscale@localhost:5432/everscale"
+   podman build --layers --network=host -f builder.dockerfile -t builder --build-arg DATABASE_URL="postgresql://tycho:tycho@localhost:5432/tycho"
    ```
 
 2. **Build the deployment image**:
@@ -538,7 +540,7 @@ for setting up the deployment environment.
    Build the deployment image using the following command:
 
    ```bash
-   podman build --layers -f deploy.dockerfile -t ever-wallet
+   podman build --layers -f deploy.dockerfile -t tycho-wallet
    ```
 
 #### Running the Container
@@ -550,7 +552,7 @@ Once the images are built, you can run the container using Podman or Docker.
    To run the application, use the following command:
 
    ```bash
-   podman run --network=host ever-wallet
+   podman run --network=host tycho-wallet
    ```
 
    This will run the `tycho-wallet-api` server using the default configuration files already existing in the container.
@@ -568,14 +570,14 @@ Once the images are built, you can run the container using Podman or Docker.
 
    ```bash
    podman run --network=host \
-     -v /tmp/everscale-data:/var/db/tycho-wallet-api
-     -e DB_USER=everscale \
-     -e DB_PASSWORD=everscale \
+     -v /tmp/tycho-data:/var/db/tycho-wallet-api
+     -e DB_USER=tycho \
+     -e DB_PASSWORD=tycho \
      -e DB_HOST=localhost \
-     -e DB_NAME=everscale \
+     -e DB_NAME=tycho \
      -e SECRET=0xAAAAA \
      -e SALT=OreOYYe5nHWTHnOPSvsmMQ \
-     ever-wallet
+     tycho-wallet
    ```
 
    It generally allows dynamically setting environment variables for database credentials, secrets, and other 
@@ -583,7 +585,7 @@ Once the images are built, you can run the container using Podman or Docker.
 
 ### Troubleshooting
 
-When the node is out of sync, which especially applies for Venom, removing database and re-syncing node may help to
+When the node is out of sync, removing database and re-syncing node may help to
 restore service operations.
 
 `rm -rf /var/db/tycho-wallet-api`
